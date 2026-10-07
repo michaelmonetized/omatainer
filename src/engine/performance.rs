@@ -574,6 +574,7 @@ fn destructive(command: &Command) -> bool {
         | Command::MidiSamplerPad { .. }
         | Command::DeckTrack { .. }
         | Command::MidiAdjust(_)
+        | Command::MidiPitch(_)
         | Command::CancelScene
         | Command::SongNavigation(_)
         | Command::DeckPitch { .. }

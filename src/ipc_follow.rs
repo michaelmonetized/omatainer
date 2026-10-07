@@ -35,6 +35,7 @@ struct SmallStatus {
     sync_modes: [crate::engine::deck_sync::Mode; 2],
     sync_aligned: [bool; 2],
     sync_target_bpm: [f32; 2],
+    pitch_pickup: [crate::engine::pitch_pickup::Status;2],
     monitor: crate::engine::monitor::Status,
     master_fx: MasterFx,
     midi_clock: MidiClockInput,
@@ -71,6 +72,7 @@ impl SmallStatus {
             sync_modes: std::array::from_fn(|i| snapshot.decks.get(i).map_or(Default::default(), |deck| deck.sync_mode)),
             sync_aligned: std::array::from_fn(|i| snapshot.decks.get(i).is_some_and(|deck| deck.sync_aligned)),
             sync_target_bpm: std::array::from_fn(|i| snapshot.decks.get(i).map_or(0.0, |deck| deck.sync_target_bpm)),
+            pitch_pickup: std::array::from_fn(|i|snapshot.decks.get(i).map_or(Default::default(),|deck|deck.pitch_pickup)),
             monitor: snapshot.monitor,
             master_fx: MasterFx {
                 types: snapshot.fx_kind,

@@ -495,6 +495,18 @@ Session launch policies are software-qualified through unopened-device MIDI work
 
 Native UI, real catalog-owner transactions, persistence/migration, stale approval and 100000-track software-renderer fixtures pass. Final release qualification is in progress. Supported fields are title, artist, key, tag, group, note, BPM, duration, rating and confirmed current-version played state. Genre/date/playcount are not authoritative catalog fields yet. Large-library measurements exercise software playback, not physical device deadlines.
 
+### Issue #219: implemented
+
+- absolute pitch pickup: [src/engine/pitch_pickup.rs](../src/engine/pitch_pickup.rs) — Physical source/channel and assignment with bounded owners, exact acquisition and lifecycle rearm
+- ordered MIDI crossings and reset generations: [src/engine/midi/handoff.rs](../src/engine/midi/handoff.rs) — Pitch remains ordered even at shared addresses; producer retains overflow, mapping and routing context
+- native target and momentary bends: [src/ui/pitch_controls.rs](../src/ui/pitch_controls.rs) — Separate BPM/range presentation and admitted native mouse/keyboard/assistive press/release with global guards
+- bounded coherent status: [src/ipc_follow.rs](../src/ipc_follow.rs) — Same retained exact pickup scalars on ordinary status and no-allocation subscribed projection
+- Acceptance fixtures: `engine::pitch_pickup::tests`, `ui::pitch_controls::tests`, `engine::midi::handoff::tests::absolute_pitch_factory_and_learned_crossings_keep_ordered_worker_samples_and_rearm_on_mapping_and_overflow`, `ipc_server::follow_tests::cached_projection_is_exact_status_and_ignores_large_unrelated_state_without_allocation`.
+- Evidence: [docs/validation/pitch-pickup.md](../docs/validation/pitch-pickup.md).
+- Evidence: [docs/validation/pitch-pickup-receipt.json](../docs/validation/pitch-pickup-receipt.json).
+
+Linux ARM64 software qualification: source/wire-channel/assignment-owned absolute CC, CC14 and pitch-bend pickup; both crossing directions without changing the base at acquisition; exact physical slot reuse and rearm after layer/range/media/GUI/Sync/assignment/routing/overflow changes; 64 bounded owners and no callback allocation; existing relative controls and native Undo; original/local/effective BPM and range readouts, visible/accessibly described target; independent native pointer/Space/Enter/assistive bend ownership and focus/panel/safety/source/dialog release; production factory/learned input worker, real native project stopped reopen with transient ownership absent; actual PCM versus independent base-rate playback at three output rates; identical bounded ordinary/subscribed status. Sync requires deliberate Off and is never disabled by fader input. No physical audio/MIDI device opened, new GUI or capture started, or physical absolute-fader acceptance claimed; independent stage processes/session preserved.
+
 ### Issue #220: implemented
 
 - fixed media-relative loop bank: [src/engine/saved_loops.rs](../src/engine/saved_loops.rs) — Eight fixed IDs, names/colors, selected slot and independent display order, strict bounded atomic encoding
@@ -694,7 +706,7 @@ Music source: FreeToUse public keyless API. Michael excludes other third-party p
 | [#216](https://github.com/michaelmonetized/omatainer/issues/216) | Scan, catalog and quarantine plugins outside the application process | planned |
 | [#217](https://github.com/michaelmonetized/omatainer/issues/217) | Add configurable crossfader assignments, curves and scratch cut-in | planned |
 | [#218](https://github.com/michaelmonetized/omatainer/issues/218) | Add selectable DJ waveform and library layouts | planned |
-| [#219](https://github.com/michaelmonetized/omatainer/issues/219) | Add safe pitch-fader pickup and temporary pitch bend | planned |
+| [#219](https://github.com/michaelmonetized/omatainer/issues/219) | Add safe pitch-fader pickup and temporary pitch bend | implemented |
 | [#220](https://github.com/michaelmonetized/omatainer/issues/220) | Add named persistent loop banks for each track | implemented |
 | [#221](https://github.com/michaelmonetized/omatainer/issues/221) | Enforce streaming capabilities and protect playback during service failures | partial |
 | [#222](https://github.com/michaelmonetized/omatainer/issues/222) | Follow external MIDI clock with transport and loss handling | planned |

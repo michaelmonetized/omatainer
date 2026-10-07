@@ -1,0 +1,496 @@
+{
+  "retainedPreliminaryResults": {
+    "first": {
+      "binary": {
+        "compiledBinary": "/home/michael/Projects/omatainer-work/remaining-backlog/target/debug/deps/omatainer-700b0f43c8079203",
+        "privateBinary": "target/app-backlog/qualification-bin/pitch-pickup-tests-first",
+        "sha256": "06f6b67266e5a2183ed2c2f3da0a7883ef1478bca42c96fdefbd560d99ede8c1",
+        "compileLogSha256": "20e145a6f465e9e0da32ca326e2425db169721adb32b15294a2d5a4248e12520"
+      },
+      "compiledInventory": {
+        "path": "target/app-backlog/pitch-pickup-first-compiled-source-inventory.json",
+        "sha256": "7e31f2d6adc052ab27a0dfdf7feca91a8656063081061b8662a3f8300ed6a4eb"
+      },
+      "tests": {
+        "core": {
+          "path": "target/app-backlog/pitch-pickup-first-core.log",
+          "sha256": "2d6e14a523edf802e6b919c4ae00566f87a3fc5274a4e4af68abdf8722c064e9",
+          "outcome": "FAILED",
+          "passed": 4,
+          "failed": 1,
+          "ignored": 0,
+          "filtered": 2038,
+          "seconds": 0.44
+        },
+        "native": {
+          "path": "target/app-backlog/pitch-pickup-first-native.log",
+          "sha256": "faac43e355e90f58be22f3b673f98320d1f05f64249d00f557219431c34b9757",
+          "outcome": "ok",
+          "passed": 2,
+          "failed": 0,
+          "ignored": 0,
+          "filtered": 2041,
+          "seconds": 0.32
+        },
+        "worker": {
+          "path": "target/app-backlog/pitch-pickup-first-worker.log",
+          "sha256": "7fc14ba1f119f174152f07ca5e1430cab32461d5a38759198b792ccad6792d06",
+          "outcome": "ok",
+          "passed": 1,
+          "failed": 0,
+          "ignored": 0,
+          "filtered": 2042,
+          "seconds": 0.05
+        }
+      },
+      "reason": "Independent PCM comparison exposed the existing discontinuity fade on pitch-bend button edges. Rate changes already use native rate smoothing, so bend edges now omit that additional fade. The exact PCM oracle was retained."
+    },
+    "second": {
+      "binary": {
+        "compiledBinary": "/home/michael/Projects/omatainer-work/remaining-backlog/target/debug/deps/omatainer-700b0f43c8079203",
+        "privateBinary": "target/app-backlog/qualification-bin/pitch-pickup-tests-second",
+        "sha256": "af8be1db27e4e71c504e6b98afc5f7fcf791c67c59414fd1f1ab2540aa31fe4d",
+        "compileLogSha256": "20e145a6f465e9e0da32ca326e2425db169721adb32b15294a2d5a4248e12520"
+      },
+      "compiledInventory": {
+        "path": "target/app-backlog/pitch-pickup-second-compiled-source-inventory.json",
+        "sha256": "aff05f78b4929ae3f2c77a245f248bb4a939f9b55ae957fb4ef1168ef073ca53"
+      },
+      "tests": {
+        "core": {
+          "path": "target/app-backlog/pitch-pickup-second-core.log",
+          "sha256": "7982d45dec89b55e39345c1fa2ab5d3159eae96be01ffc459a990ba8c1066215",
+          "outcome": "ok",
+          "passed": 5,
+          "failed": 0,
+          "ignored": 0,
+          "filtered": 2038,
+          "seconds": 0.96
+        }
+      },
+      "reason": "Five core checks and all three exact PCM comparisons passed. Code review then identified pitch/range/Sync changes away and back between MIDI samples as needing explicit rearm; production edit and Undo routes now clear prior crossing samples. Final native fixtures also exercise independent MIDI ownership, dialog/media/recovery retirement and the actual target marker."
+    }
+  },
+  "schema": 1,
+  "platform": "Linux ARM64; actual renderer PCM/native egui/AccessKit/production MIDI worker; real native project files",
+  "sourceFiles": {
+    "src/engine/control.rs": "84904dff8def977d4c51c41fe29c1f67206813736f6aa80431dfc2f922c5002e",
+    "src/engine/deck_controls.rs": "1c19262cb4bf7eb4d5bbedb2bbf46df3eb66af8ba8d38729e9ad04684e565bd8",
+    "src/engine/deck_sync.rs": "975209f85cc6b351af57e6bf270dcdc8a9b3536324f8d6c9d4f9f9902a6b940b",
+    "src/engine/midi.rs": "cc1a368ed67878ba3264e65b3be71659216b9eb39a0bfaf842e1f1762a49e0f5",
+    "src/engine/midi/controls.rs": "b4d955ece01b402c31e5fd5ed4e36a103fd530bba93ab4d9cd567367c6dff9e9",
+    "src/engine/midi/controls/tests.rs": "fa8db6281f5510ca95aa7c18d189dd4fdea3c5b655169a70645169ff1baf4908",
+    "src/engine/midi/handoff.rs": "3e39cf9560c76b29ca6ddf8dca128662f61561f65f245b0aadc6a6de96366cbd",
+    "src/engine/midi/handoff/tests.rs": "067842d66bce423d005e7b5f93da8c8d51b2669dd2e8da83c6b877d01614d95d",
+    "src/engine/mod.rs": "cd75881238736b6fd672cf589c2f23c258f2920f0884178f8a17d64e32dd797a",
+    "src/engine/performance.rs": "c23d6c04a116f5b06cf1d6867897b35c72e8c5969a11cdb1bcd5cce2f10728e5",
+    "src/engine/pitch_pickup.rs": "a5bd7863db9b5747221e7c3fb6058d8f0b8c45f7ec98af81dcbd2faf80147fa6",
+    "src/engine/pitch_pickup/tests.rs": "49ee319a89773fcca86b28b5450043907a7fa05d98ac38cbf24f7812cef7b791",
+    "src/engine/snapshot.rs": "735265d3f257c5f277800f090742ed267e33354074b3ec97f8e4d0d415903f44",
+    "src/engine/undo/patch.rs": "15f639142f828866304f7e9566de52555450572402a9a8da2237d68b1c96527e",
+    "src/ipc_follow.rs": "57b6e4fb91c98e91e58297164f641f7155d11e435f4c3cf62f17fe075e2fc4d0",
+    "src/ipc_follow_tests.rs": "706c93ca79f38f88aa1a90f4fb1e8d9ca06bcb68a996db95067dddd0cbbc58b3",
+    "src/main.rs": "9be6a34a09a6ff7e6dd459aaa72fcc60a433a7c0decaaf65b96c3e9e7184990c",
+    "src/ui.rs": "10a47c358289a7e2a088500487246fc84a69a93a20e2954c4242e65e957813fd",
+    "src/ui/deck_sync.rs": "35e748d9da80871c8fedfabe36b6575a72463438a18aa2ff88216693a6e3141a",
+    "src/ui/display_tests.rs": "868f68d2d492e1f11d0f6799fc1750ff05105622a454042fb40a77f894e7e991",
+    "src/ui/help/catalogue.rs": "50d89844b5dd9d55949ee12df97cc2c2df5de2d55041591ab8f6fec19e50a445",
+    "src/ui/pitch_controls.rs": "2152771bc66421eb0732067124f93034444aca3ef0308cb6f876cdab12b1ee21",
+    "src/ui/pitch_controls/tests.rs": "515bcfcc3ed67ba5b97d23c4d790e07c62b6e54525dc51a7473f6574dc9c797c",
+    "src/ui/workspace.rs": "c2bd31195af04ec7fb04f684f2386b8f1d591cc400f7175516b365f100ee7820"
+  },
+  "testBinary": {
+    "path": "target/app-backlog/qualification-bin/pitch-pickup-tests-third",
+    "sha256": "6c1f3a8432af9e81c7b7bbb6e74f4582093626d22a333eb7118ddd389abe9cad"
+  },
+  "compiledInventory": {
+    "path": "target/app-backlog/pitch-pickup-third-compiled-source-inventory.json",
+    "sha256": "7940b9bcd2b96f76e3b943bdbe964c5716dd76a6f6206513604c00e447b4707a",
+    "baseRevision": "ffb14c55c1cdbabf8d04399ff6c6cf402e82da34",
+    "files": 768
+  },
+  "embeddedInputs": {
+    "schema": 1,
+    "baselineRevision": "ffb14c55c1cdbabf8d04399ff6c6cf402e82da34",
+    "embeddedInputs": {
+      "README.md": "abab5cb8b9a15a180652402e983142ce2a3baf21f5272fe1c4e9079a5083143f",
+      "licenses/manifest.json": "5dc8dc199502aa2989c82993da22b1df54788ff7546345022c040ba62faa3bea",
+      "licenses/notices.json": "b15a146c83e362b540c860ae618b80f9ee0150cd9d8d41683a5d3d3fcb85c244"
+    }
+  },
+  "tests": {
+    "core": {
+      "path": "target/app-backlog/pitch-pickup-third-core.log",
+      "sha256": "88a01bb6e9b8084a46ebebad0515caa5e7d5d5c9c18643cb5961115c05c7ccd6",
+      "outcome": "ok",
+      "passed": 5,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2038,
+      "seconds": 0.97
+    },
+    "native": {
+      "path": "target/app-backlog/pitch-pickup-third-native.log",
+      "sha256": "3f3b67b1a028f3473963468f70e0c88ad7d1628796a69a929c367d6396803b13",
+      "outcome": "ok",
+      "passed": 2,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2041,
+      "seconds": 0.39
+    },
+    "worker": {
+      "path": "target/app-backlog/pitch-pickup-third-worker.log",
+      "sha256": "7fc14ba1f119f174152f07ca5e1430cab32461d5a38759198b792ccad6792d06",
+      "outcome": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2042,
+      "seconds": 0.05
+    },
+    "encoders": {
+      "path": "target/app-backlog/pitch-pickup-third-encoders.log",
+      "sha256": "294b27f38eb73a955b1c7c31e546e4d4417b461196010277f8309efd27ab36a6",
+      "outcome": "ok",
+      "passed": 7,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2036,
+      "seconds": 0.11
+    },
+    "input-regression": {
+      "path": "target/app-backlog/pitch-pickup-third-input-regression.log",
+      "sha256": "ca4794e5d6dbdb5852b57278b44f141da6846fdb6a3e7a12c251ba4f2a19d4aa",
+      "outcome": "ok",
+      "passed": 24,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2019,
+      "seconds": 2.51
+    },
+    "bend-regression": {
+      "path": "target/app-backlog/pitch-pickup-third-bend-regression.log",
+      "sha256": "ce28ca1eb76256f80120a67ebb2ed6a8055ec2da20d4122c8c4bd3a98771997e",
+      "outcome": "ok",
+      "passed": 10,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2033,
+      "seconds": 1.24
+    },
+    "sync-regression": {
+      "path": "target/app-backlog/pitch-pickup-third-sync-regression.log",
+      "sha256": "e44b5f09162c3d7a8ad2bfc24feef5b840b7f4c7e7bfa26bf5e4bde823df34b6",
+      "outcome": "ok",
+      "passed": 9,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2034,
+      "seconds": 6.02
+    },
+    "native-sync": {
+      "path": "target/app-backlog/pitch-pickup-third-native-sync.log",
+      "sha256": "db15fe380b137144be38f280646abe57bc3816c43aa1998bea47a036fb215aed",
+      "outcome": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2042,
+      "seconds": 0.25
+    },
+    "native-cue": {
+      "path": "target/app-backlog/pitch-pickup-third-native-cue.log",
+      "sha256": "47db1ae8884270ae4a435744d109be5c1e69dfd0c9ce2fe738b162bb8a9a3000",
+      "outcome": "ok",
+      "passed": 5,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2038,
+      "seconds": 0.64
+    },
+    "native-placement": {
+      "path": "target/app-backlog/pitch-pickup-third-native-placement.log",
+      "sha256": "3906bd010a374a239bd6bb3f3aa3395a22c1ad1fd99f454f4861d88730bb7161",
+      "outcome": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2042,
+      "seconds": 0.31
+    },
+    "ipc": {
+      "path": "target/app-backlog/pitch-pickup-third-ipc.log",
+      "sha256": "a9144d4e83471fcbe7ecb7d7320dbe494d45af590e007c051f093a7c54d0bebe",
+      "outcome": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2042,
+      "seconds": 0.02
+    },
+    "manual": {
+      "path": "target/app-backlog/pitch-pickup-third-manual.log",
+      "sha256": "16e5c89e887b908b7f0a2302045ebaf7898e33494fcc3ec86c0ef6c350d7b2c7",
+      "outcome": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2042,
+      "seconds": 0
+    },
+    "help": {
+      "path": "target/app-backlog/pitch-pickup-third-help.log",
+      "sha256": "495633a478f68e72dea4d0c2e1d669c10113632fc94307ed2a609887b6743f5e",
+      "outcome": "ok",
+      "passed": 14,
+      "failed": 0,
+      "ignored": 1,
+      "filtered": 2028,
+      "seconds": 2.9
+    },
+    "full": {
+      "path": "target/app-backlog/pitch-pickup-third-full.log",
+      "sha256": "b19906a7009ec4fc3fb1df0f71a08b5d117564b0aa23ca81fcbf9266754e1186",
+      "outcome": "ok",
+      "passed": 1999,
+      "failed": 0,
+      "ignored": 44,
+      "filtered": 0,
+      "seconds": 526.48
+    }
+  },
+  "pcm": [
+    {
+      "output_rate": 8000,
+      "compared_frames": 5600,
+      "max_sample_error": 0,
+      "source_position_error": 0,
+      "energy": 554.4816846240115,
+      "physical_devices_opened": false
+    },
+    {
+      "output_rate": 44100,
+      "compared_frames": 30870,
+      "max_sample_error": 0,
+      "source_position_error": 0,
+      "energy": 3089.767032643847,
+      "physical_devices_opened": false
+    },
+    {
+      "output_rate": 48000,
+      "compared_frames": 33600,
+      "max_sample_error": 0,
+      "source_position_error": 0,
+      "energy": 3360.2441813053933,
+      "physical_devices_opened": false
+    }
+  ],
+  "clockLoadRegression": {
+    "path": "target/app-backlog/pitch-pickup-third-full-output-timing.json",
+    "sha256": "082ff27d73652c287b17daf8119bca1491747dd1a7199dc52e11f6720607faa9",
+    "physical_devices_opened": false,
+    "real_decode_egui_iterations": 5311,
+    "schema": 1,
+    "tempos": [
+      {
+        "bpm": 40,
+        "clocks": 24,
+        "delay_ns": [
+          12664,
+          127675,
+          79727,
+          17070,
+          13289,
+          156592,
+          110644,
+          26862,
+          79373,
+          35300,
+          11727,
+          52071,
+          17831,
+          137009,
+          50394,
+          142613,
+          71290,
+          138051,
+          14228,
+          10946,
+          8332,
+          131635,
+          45311,
+          122364
+        ],
+        "max_delay_ns": 156592
+      },
+      {
+        "bpm": 73,
+        "clocks": 24,
+        "delay_ns": [
+          127706,
+          10227,
+          153375,
+          132980,
+          85960,
+          92856,
+          56711,
+          68192,
+          55630,
+          91027,
+          129383,
+          127071,
+          69259,
+          113656,
+          61344,
+          29824,
+          2295816,
+          119201,
+          32139,
+          98827,
+          15265,
+          79496,
+          124143,
+          48789
+        ],
+        "max_delay_ns": 2295816
+      },
+      {
+        "bpm": 120,
+        "clocks": 24,
+        "delay_ns": [
+          26788,
+          43487,
+          15768,
+          21174,
+          44206,
+          40696,
+          83643,
+          117758,
+          82081,
+          134196,
+          62018,
+          54800,
+          138956,
+          5779,
+          154311,
+          28133,
+          136540,
+          42238,
+          89394,
+          106300,
+          78540,
+          52279,
+          120519,
+          132801
+        ],
+        "max_delay_ns": 154311
+      },
+      {
+        "bpm": 137,
+        "clocks": 24,
+        "delay_ns": [
+          96955,
+          61264,
+          54239,
+          39840,
+          108024,
+          22457,
+          84391,
+          110783,
+          23842,
+          127484,
+          111126,
+          35768,
+          106869,
+          62928,
+          91153,
+          42837,
+          116271,
+          131330,
+          145930,
+          41238,
+          111923,
+          74314,
+          71790,
+          69390
+        ],
+        "max_delay_ns": 145930
+      },
+      {
+        "bpm": 180,
+        "clocks": 24,
+        "delay_ns": [
+          24747,
+          56032,
+          98234,
+          73643,
+          118844,
+          123880,
+          70289,
+          9574,
+          54775,
+          149435,
+          27511,
+          35463,
+          53331,
+          20115,
+          80859,
+          75227,
+          92220,
+          94796,
+          100331,
+          62116,
+          149943,
+          85352,
+          99428,
+          77255
+        ],
+        "max_delay_ns": 149943
+      },
+      {
+        "bpm": 240,
+        "clocks": 24,
+        "delay_ns": [
+          130623,
+          15514,
+          110113,
+          29503,
+          138561,
+          102993,
+          92342,
+          49358,
+          100332,
+          82430,
+          64446,
+          68712,
+          37310,
+          80327,
+          70342,
+          119858,
+          13165,
+          72264,
+          143530,
+          42254,
+          44436,
+          61326,
+          126801,
+          90275
+        ],
+        "max_delay_ns": 143530
+      }
+    ]
+  },
+  "node": {
+    "path": "target/app-backlog/pitch-pickup-third-node.log",
+    "sha256": "b570f5327c6c9b711ca24d03f4d7f8558bfe06db5b79973d882de7b6b4f3abc1",
+    "passed": 15,
+    "failed": 0
+  },
+  "floatProjection": {
+    "path": "target/app-backlog/pitch-pickup-float-projection.log",
+    "sha256": "e6dec486cc28891240375ca146c07eefac378f676e678d5fcbe05e7a843d1eef",
+    "reason": "The pinned serde_json standalone check reproduced different direct-f32 and JSON-Value serialization for 0.1f32. Exact widening to f64 made both projections identical; the production ordinary/subscribed parity and no-allocation regression exercises that value."
+  },
+  "limits": "Linux ARM64 software qualification: source/wire-channel/assignment-owned absolute CC, CC14 and pitch-bend pickup; both crossing directions without changing the base at acquisition; exact physical slot reuse and rearm after layer/range/media/GUI/Sync/assignment/routing/overflow changes; 64 bounded owners and no callback allocation; existing relative controls and native Undo; original/local/effective BPM and range readouts, visible/accessibly described target; independent native pointer/Space/Enter/assistive bend ownership and focus/panel/safety/source/dialog release; production factory/learned input worker, real native project stopped reopen with transient ownership absent; actual PCM versus independent base-rate playback at three output rates; identical bounded ordinary/subscribed status. Sync requires deliberate Off and is never disabled by fader input. No physical audio/MIDI device opened, new GUI or capture started, or physical absolute-fader acceptance claimed; independent stage processes/session preserved."
+}

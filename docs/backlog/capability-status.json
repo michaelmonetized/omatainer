@@ -1503,6 +1503,42 @@
       ],
       "limits": "Native UI, real catalog-owner transactions, persistence/migration, stale approval and 100000-track software-renderer fixtures pass. Final release qualification is in progress. Supported fields are title, artist, key, tag, group, note, BPM, duration, rating and confirmed current-version played state. Genre/date/playcount are not authoritative catalog fields yet. Large-library measurements exercise software playback, not physical device deadlines."
     },
+    "219": {
+      "status": "implemented",
+      "paths": [
+        {
+          "kind": "absolute pitch pickup",
+          "file": "src/engine/pitch_pickup.rs",
+          "entry": "Physical source/channel and assignment with bounded owners, exact acquisition and lifecycle rearm"
+        },
+        {
+          "kind": "ordered MIDI crossings and reset generations",
+          "file": "src/engine/midi/handoff.rs",
+          "entry": "Pitch remains ordered even at shared addresses; producer retains overflow, mapping and routing context"
+        },
+        {
+          "kind": "native target and momentary bends",
+          "file": "src/ui/pitch_controls.rs",
+          "entry": "Separate BPM/range presentation and admitted native mouse/keyboard/assistive press/release with global guards"
+        },
+        {
+          "kind": "bounded coherent status",
+          "file": "src/ipc_follow.rs",
+          "entry": "Same retained exact pickup scalars on ordinary status and no-allocation subscribed projection"
+        }
+      ],
+      "fixtures": [
+        "engine::pitch_pickup::tests",
+        "ui::pitch_controls::tests",
+        "engine::midi::handoff::tests::absolute_pitch_factory_and_learned_crossings_keep_ordered_worker_samples_and_rearm_on_mapping_and_overflow",
+        "ipc_server::follow_tests::cached_projection_is_exact_status_and_ignores_large_unrelated_state_without_allocation"
+      ],
+      "evidence": [
+        "docs/validation/pitch-pickup.md",
+        "docs/validation/pitch-pickup-receipt.json"
+      ],
+      "limits": "Linux ARM64 software qualification: source/wire-channel/assignment-owned absolute CC, CC14 and pitch-bend pickup; both crossing directions without changing the base at acquisition; exact physical slot reuse and rearm after layer/range/media/GUI/Sync/assignment/routing/overflow changes; 64 bounded owners and no callback allocation; existing relative controls and native Undo; original/local/effective BPM and range readouts, visible/accessibly described target; independent native pointer/Space/Enter/assistive bend ownership and focus/panel/safety/source/dialog release; production factory/learned input worker, real native project stopped reopen with transient ownership absent; actual PCM versus independent base-rate playback at three output rates; identical bounded ordinary/subscribed status. Sync requires deliberate Off and is never disabled by fader input. No physical audio/MIDI device opened, new GUI or capture started, or physical absolute-fader acceptance claimed; independent stage processes/session preserved."
+    },
     "220": {
       "status": "implemented",
       "paths": [

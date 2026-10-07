@@ -20,6 +20,7 @@ pub const MAX_QUEUED_PAYLOAD_BYTES: usize = 256 * 1024 * 1024;
 pub struct CommandPort {
     support: Option<crate::support::worker::Port>,
     input_epoch: Option<u64>,
+    midi_context: [u64; 3],
     theme_requests: crate::theme::requests::Port,
     remote_jobs: std::sync::Arc<super::remote::Jobs>,
     shared: std::sync::Arc<AdmissionShared>,
@@ -550,6 +551,7 @@ impl CommandPort {
         let port = Self {
             support: None,
             input_epoch: None,
+            midi_context: [0; 3],
             theme_requests: crate::theme::requests::Port::default(),
             remote_jobs: std::sync::Arc::new(super::remote::Jobs::default()),
             shared: shared.clone(),
@@ -636,10 +638,14 @@ impl CommandPort {
         self.shared.ui_requests.stats()
     }
 
-    /// Accepted means queued, not executed. Coalesced means an equivalent
-    /// release is already ordered and no intervening accepted onset exists.
-    /// No producer waits for queue capacity; only the small admission section
-    /// serializes producers. Construct media/instruments before calling here.
+    /// Retain one input worker’s overflow, assignment and routing generations.
+    /// Takes three captured generations; returns an independent producer fence that leaves other input ports unchanged.
+    pub(super) fn for_midi_context(&self, context: [u64; 3]) -> Self {let mut port=self.clone();port.midi_context=context;port}
+    /// Read the input worker generations for a source-owned absolute pitch sample.
+    /// Takes this producer; returns fixed scalar context without locking or allocating.
+    pub(super) fn midi_context(&self) -> [u64; 3] {self.midi_context}
+    /// Retain the performance safety fence captured with one input packet.
+    /// Takes its input epoch; returns a producer that refuses stale onsets while retaining admitted releases.
     pub(super) fn for_input_epoch(&self, epoch: u64) -> Self {
         let mut port = self.clone(); port.input_epoch = Some(epoch); port
     }
@@ -649,6 +655,10 @@ impl CommandPort {
         }
         self.shared.performance.check(command, None)
     }
+    /// Accepted means queued, not executed. Coalesced means an equivalent
+    /// release is already ordered and no intervening accepted onset exists.
+    /// No producer waits for queue capacity; only the small admission section
+    /// serializes producers. Construct media/instruments before calling here.
     pub fn send(&self, command: Command) -> Result<SubmissionOutcome, SubmissionError> {
         let edit_ack = super::midi_edit::admission_ack(&command);
         let sampler_ack = super::sampler::admission_ack(&command);
@@ -724,6 +734,7 @@ impl CommandPort {
         if matches!(&command, Command::DeckPadParameter { deck, .. } if *deck >= 2) { return fail(SubmissionError::InvalidTarget); }
         if matches!(&command, Command::DeckSyncMode { deck, .. } if *deck >= 2) { return fail(SubmissionError::InvalidTarget); }
         if matches!(&command, Command::DeckPadPress(press) if !press.valid()) { return fail(SubmissionError::InvalidTarget); }
+        if matches!(&command, Command::MidiPitch(input) if !input.valid()) { return fail(SubmissionError::InvalidTarget); }
         if matches!(&command, Command::MidiAdjust(adjust) if !adjust.valid()) { return fail(SubmissionError::InvalidTarget); }
         if matches!(&command, Command::Surface(input) if !input.valid()) { return fail(SubmissionError::InvalidTarget); }
         if matches!(&command, Command::MidiSamplerPad { pad, pressure, .. } if *pad >= 16 || !pressure.is_finite() || !(0.0..=1.0).contains(pressure)) { return fail(SubmissionError::InvalidTarget); }

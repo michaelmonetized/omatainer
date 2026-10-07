@@ -303,6 +303,7 @@ impl Frame {
             out.sync_mode = deck.sync_mode();
             out.sync_aligned = deck.sync && deck.sync_phase_locked && rt.deck_sync_ready() && deck.playing && !deck.touching;
             out.sync_target_bpm = deck.sync_bpm;
+            out.pitch_pickup = rt.pitch_pickup_status(index);
             out.keylock = deck.keylock;
             out.controls = deck.controls.status();
             out.saved_loops = deck.audio.as_ref().map_or_else(Default::default, |audio| deck.controls.saved_loops(audio.sr));

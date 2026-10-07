@@ -66,6 +66,7 @@ pub mod dsp;
 pub(crate) mod waveform;
 pub(crate) mod deck_controls;
 pub(crate) mod deck_sync;
+pub(crate) mod pitch_pickup;
 #[cfg(test)]
 mod svf_tests;
 pub mod media_load;
@@ -669,6 +670,7 @@ pub struct RtEngine {
     pub(crate) scenes: scene::State,
     pub decks: [DeckRt; DECKS],
     deck_sync: deck_sync::State,
+    pitch_pickup: pitch_pickup::State,
     // Each control owns its selected processor and both channel histories.
     master_fx: [master_fx::MasterSlot; 3],
     history_measurement: Option<history_measurement::capture::Measurement>,
@@ -776,6 +778,7 @@ pub struct DeckSnap {
     pub sync_mode: deck_sync::Mode,
     pub sync_aligned: bool,
     pub sync_target_bpm: f32,
+    pub(crate) pitch_pickup: pitch_pickup::Status,
     pub keylock: bool,
     pub controls: deck_controls::Status,
     pub keylock_mode: keylock::Mode,
@@ -1012,6 +1015,7 @@ pub enum Command {
     SessionEdit(session::Request),
     SessionControl(session::Scoped),
     MidiAdjust(midi::controls::Adjust),
+    MidiPitch(pitch_pickup::Input),
     PerformanceMode(bool),
     SafetyStop(performance::Safety),
     RecoverPerformance,
@@ -1250,6 +1254,7 @@ impl RtEngine {
             tracks,
             decks: [DeckRt::new(sr), DeckRt::new(sr)],
             deck_sync: deck_sync::State::default(),
+            pitch_pickup: pitch_pickup::State::default(),
             master_fx: std::array::from_fn(|_| master_fx::MasterSlot::new(sr)),
             history_measurement: history_measurement::capture::Measurement::new(sr as u32).ok(),
             fx_kind: [FxKind::Echo, FxKind::Reverb, FxKind::Filter],
@@ -2423,6 +2428,7 @@ impl RtEngine {
                 self.undo.retire_command(command);
                 return;
             }
+            Command::MidiPitch(input) => {self.absolute_pitch(input);return;}
             Command::MidiAdjust(adjust) => {
                 if let Some(command) = adjust.command(self) { self.apply(command); }
                 else { self.undo.reject(undo::Failure::Invalid); }
@@ -2500,7 +2506,7 @@ impl RtEngine {
         if matches!(&c,Command::Select {..}|Command::SelectDeck(_)|Command::SelectDeckRequested {..}|Command::SetView(_)|Command::OpenFxTrack(_)|Command::OpenFxScene(_)|Command::CloseFx) {self.undo.untracked_change();}
         if self.project_command_edits(&c) { self.project.edited(); }
         match c {
-            Command::MidiAdjust(_)|Command::ProviderPreview(_)|Command::Undo|Command::Redo|Command::Gesture {..}|Command::DeckCuePoint {..}|Command::PerformanceMode(_)|Command::SafetyStop(_)|Command::RecoverPerformance=>unreachable!(),
+            Command::MidiPitch(_)|Command::MidiAdjust(_)|Command::ProviderPreview(_)|Command::Undo|Command::Redo|Command::Gesture {..}|Command::DeckCuePoint {..}|Command::PerformanceMode(_)|Command::SafetyStop(_)|Command::RecoverPerformance=>unreachable!(),
             Command::Surface(input) => self.surface_input(input),
             Command::DeckPadPress(press) => self.deck_pad_press(press),
             Command::DeckPadRelease(release) => self.deck_pad_release(release),
@@ -2626,6 +2632,7 @@ impl RtEngine {
                 } else { d.stop_preview(self.sr); }
             }
             Command::DeckSync { deck } => {
+                self.pitch_pickup.rearm(deck as usize % DECKS);
                 let d = &mut self.decks[deck as usize % DECKS];
                 d.sync = !d.sync;
                 d.sync_disengage_phase();
@@ -2672,7 +2679,7 @@ impl RtEngine {
             }
             Command::DeckControl { source, deck, control } => self.deck_control(source, deck, control),
             Command::DeckPitch { deck, value } => {
-                self.decks[deck as usize % DECKS].pitch = value.clamp(0.0, 1.0);
+                if value.is_finite() {self.pitch_pickup.rearm(deck as usize % DECKS);self.decks[deck as usize % DECKS].pitch = value.clamp(0.0, 1.0);}
             }
             Command::DeckGain { deck, value } => {
                 let d = &mut self.decks[deck as usize % DECKS];
@@ -3148,6 +3155,7 @@ impl RtEngine {
                 }
             }
             Command::DeckPitchRange { deck } => {
+                self.pitch_pickup.rearm(deck as usize % DECKS);
                 let d = &mut self.decks[deck as usize % DECKS];
                 d.pitch_range = (d.pitch_range + 1) % 3;
             }

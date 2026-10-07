@@ -122,10 +122,10 @@ fn full_cc_and_pitch_ranges_are_monotonic_centered_invertible_and_limited() {
                 (kind == MsgKind::Cc14).then_some(value),
             )
             .unwrap();
-            let Command::DeckPitch {
-                deck: 0,
-                value: actual,
-            } = rx.try_iter().next().unwrap()
+            let Command::MidiPitch(crate::engine::pitch_pickup::Input {
+                binding: Binding {deck:0,..},
+                value: actual,..
+            }) = rx.try_iter().next().unwrap()
             else {
                 panic!("wrong parameter")
             };
@@ -164,7 +164,7 @@ fn full_cc_and_pitch_ranges_are_monotonic_centered_invertible_and_limited() {
             )
             .unwrap();
             assert!(
-                matches!(rx.try_iter().next().unwrap(), Command::DeckPitch { value, .. } if (value - expected).abs() < 1e-6)
+                matches!(rx.try_iter().next().unwrap(), Command::MidiPitch(crate::engine::pitch_pickup::Input { value, .. }) if (value - expected).abs() < 1e-6)
             );
         }
     }

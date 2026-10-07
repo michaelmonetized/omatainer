@@ -109,11 +109,14 @@ fn cached_projection_is_exact_status_and_ignores_large_unrelated_state_without_a
     snapshot.decks[0].sync_mode = crate::engine::deck_sync::Mode::Bar;
     snapshot.decks[0].sync_aligned = true;
     snapshot.decks[0].sync_target_bpm = 123.5;
+    snapshot.decks[0].pitch_pickup = crate::engine::pitch_pickup::Status {physical:Some(f64::from(0.1_f32)),target:0.75,acquired:false,sync:false};
     let id = json!("\u{1}".repeat(128));
     let mut cache = Cache::default();
     let first: Value =
         serde_json::from_str(cache.update(&snapshot, &commands, &id).unwrap()).unwrap();
     assert_eq!(first["state_truncated"], true);
+    assert_eq!(first["pitch_pickup"][0]["target"],0.75);
+    assert_eq!(first["pitch_pickup"][0]["physical"],0.1_f32 as f64);
     let shared = Arc::new(Mutex::new(snapshot.clone()));
     let (client, peer) = UnixStream::pair().unwrap();
     let port = commands.clone();

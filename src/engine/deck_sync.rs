@@ -207,6 +207,7 @@ impl RtEngine {
     /// Select independent targets or one deliberate leader.
     /// Takes a selection; clears the new deck leader's follower state and re-arms other phase requests without starting audio.
     pub(super) fn deck_sync_leader(&mut self, leader: Option<Leader>) {
+        for deck in 0..2 {self.pitch_pickup.rearm(deck);}
         self.deck_sync = State {
             leader,
             ..Default::default()
@@ -243,6 +244,7 @@ impl RtEngine {
             self.deck_sync_leader(Some(Leader::Transport));
         }
         let tempo = self.deck_sync_leader_bpm();
+        self.pitch_pickup.rearm(index);
         let deck = &mut self.decks[index];
         deck.sync = mode != Mode::Off;
         if deck.sync {

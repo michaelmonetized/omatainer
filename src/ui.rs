@@ -104,6 +104,7 @@ mod deck_quantization;
 mod cue_audition;
 mod deck_pads;
 mod deck_sync;
+mod pitch_controls;
 mod command_palette;
 mod touch;
 mod workspace;
@@ -239,6 +240,7 @@ pub struct App {
     pad_inputs: [u8; 16],
     deck_pad_inputs: deck_pads::Inputs,
     cue_audition: cue_audition::Inputs,
+    pitch_inputs: pitch_controls::Inputs,
     shortcut_focus: keyboard::ShortcutFocus,
     clip_gain_edit: Option<ClipGainEdit>,
     deck_time: [DeckTimeSettings; DECKS],
@@ -389,6 +391,7 @@ impl App {
             pad_inputs: [0; 16],
             deck_pad_inputs: deck_pads::Inputs::new(),
             cue_audition: cue_audition::Inputs::new(),
+            pitch_inputs: pitch_controls::Inputs::new(),
             shortcut_focus: keyboard::ShortcutFocus::default(),
             clip_gain_edit: None,
             deck_time: [DeckTimeSettings::default(); DECKS],
@@ -1036,6 +1039,7 @@ impl App {
     fn handle_keys(&mut self, ctx: &egui::Context) {
         let viewport=ctx.viewport_id();
         self.release_cue_keys(ctx);
+        self.guard_pitch_inputs(ctx);
         // A bound function-key Help action is safe in text/dialog contexts.
         // Letter and punctuation bindings keep the ordinary typing protection.
         let help = ctx.input_mut(|input| {
@@ -1160,9 +1164,9 @@ impl App {
                 .help_detail(ui, HelpControl::PitchLock, &status).clicked() {
                 self.send(Command::DeckKeylock { deck: d as u8 });
             }
-            let fader_h = (h - sq * 2.0 - 8.0).max(t.target_size(48.0)).min((ui.clip_rect().height() - 8.0).max(t.target_size(24.0)));
+            let fader_h = (h - sq * 2.0 - 28.0).max(t.target_size(48.0)).min((ui.clip_rect().height() - 8.0).max(t.target_size(24.0)));
             let span = [8.0, 16.0, 50.0][snap.pitch_range.min(2) as usize];
-            if let Some(v) = fader(ui, t, snap.pitch, span, snap.meter, t.accent, sq, fader_h, d as u8) {
+            if let Some(v) = fader(ui, t, snap.pitch, span, snap.meter, t.accent, sq, fader_h, d as u8, snap.pitch_pickup) {
                 self.send(Command::DeckPitch { deck: d as u8, value: v });
             }
             let lab = ["8", "16", "50"][snap.pitch_range.min(2) as usize];
@@ -1172,6 +1176,7 @@ impl App {
             if range.clicked() {
                 self.send(Command::DeckPitchRange { deck: d as u8 });
             }
+            self.deck_bend_controls(ui,d as u8,snap);
         });
     }
 
@@ -2203,7 +2208,7 @@ fn vertical_wave(ui: &mut Ui, t: &Theme, snap: &crate::engine::DeckSnap, col: Co
     waveform::paint(ui, t, snap, col, Vec2::new(w,h), crate::preferences::waveforms::Zoom::default(), waveform::playhead(snap, None), on_seek);
 }
 
-fn fader(ui: &mut Ui, t: &Theme, value: f32, span: f32, meter: f32, col: Color32, width: f32, height: f32, deck: u8) -> Option<f32> {
+fn fader(ui: &mut Ui, t: &Theme, value: f32, span: f32, meter: f32, col: Color32, width: f32, height: f32, deck: u8, pickup: crate::engine::pitch_pickup::Status) -> Option<f32> {
     let (rect, resp) = ui.allocate_exact_size(Vec2::new(width, height), Sense::click_and_drag());
     let p = ui.painter();
     let track = Rect::from_center_size(rect.center(), Vec2::new(7.0, rect.height() - 8.0));
@@ -2211,11 +2216,15 @@ fn fader(ui: &mut Ui, t: &Theme, value: f32, span: f32, meter: f32, col: Color32
     p.rect_filled(track, 3.0, t.bg_darker);
     let mh = track.height() * meter.clamp(0.0, 1.0);
     p.rect_filled(Rect::from_min_max(Pos2::new(track.right() + 2.0, track.bottom() - mh), Pos2::new(track.right() + 5.0, track.bottom())), 1.0, t.trace(t.green, t.level_contrast));
+    if pickup.physical.is_some() && !pickup.acquired {
+        let y=track.bottom()-pickup.target.clamp(0.0,1.0) as f32*track.height();
+        p.line_segment([Pos2::new(rect.left(),y),Pos2::new(rect.right(),y)],st(2.0,t.orange));
+    }
     let y = track.bottom() - value.clamp(0.0, 1.0) * track.height();
     p.rect_filled(Rect::from_center_size(Pos2::new(rect.center().x, y), Vec2::new(16.0, 7.0)), 2.0, col);
     let alternate = accessibility::numeric(ui, &resp, "Pitch", (value * 2.0 - 1.0) * span, -span, span, 0.1, "%")
         .map(|percent| (percent / span + 1.0) * 0.5);
-    accessibility::status(ui, &resp, &format!("Signal activity {:.0}% (smoothed, not a peak or clipping meter)", meter.clamp(0.0, 1.0) * 100.0));
+    accessibility::status(ui, &resp, &format!("{} · Signal activity {:.0}% (smoothed, not a peak or clipping meter)", pitch_controls::pickup_label(pickup,span), meter.clamp(0.0, 1.0) * 100.0));
     help::annotate(ui, &resp, HelpControl::Pitch);
     if let Some(pos) = mouse.position(&resp) {
         return Some((1.0 - (pos.y - track.top()) / track.height()).clamp(0.0, 1.0));

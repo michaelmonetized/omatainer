@@ -120,7 +120,7 @@ fn waveform_level_contrast_and_motion_change_paint_without_signal_geometry() {
                     vertical_wave(ui, t, &snap, t.accent, 100.0, 200.0, |_| {
                         panic!("contrast cannot seek")
                     });
-                    fader(ui, t, 0.5, 8.0, snap.meter, t.accent, 32.0, 200.0, 0);
+                    fader(ui, t, 0.5, 8.0, snap.meter, t.accent, 32.0, 200.0, 0, Default::default());
                     let readout = Readout::from_snapshot(&snap, DeckTimeSettings::default());
                     platter(ui, t, &snap, &readout, t.accent, 160.0, |_, _| {
                         panic!("motion cannot jog")

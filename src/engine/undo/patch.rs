@@ -454,7 +454,14 @@ impl Patch {
                 gain,
                 &mut rt.tracks[*track as usize].clips[*scene as usize].gain,
             ),
-            Self::Deck(deck, value) => value.swap(&mut rt.decks[*deck as usize], rt.sr),
+            Self::Deck(deck, value) => {
+                let index=usize::from(*deck);
+                if value.pitch!=rt.decks[index].pitch || value.pitch_range!=rt.decks[index].pitch_range
+                    || value.sync!=rt.decks[index].sync || value.sync_phase!=rt.decks[index].sync_phase {
+                    rt.pitch_pickup.rearm(index);
+                }
+                value.swap(&mut rt.decks[index], rt.sr);
+            },
             Self::Position { deck, position } => {
                 let deck = &mut rt.decks[*deck as usize];
                 let current = deck.pos;

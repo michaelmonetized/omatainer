@@ -1930,7 +1930,7 @@ Workflow: Prepare a DJ deck.
 
 Percent; selected ±8, ±16 or ±50 range
 
-Adjust playback rate around zero. Pitch lock determines whether the file's pitch follows the rate. Center resets to the original rate.
+Adjust playback rate around zero. GUI and relative encoder changes are direct; absolute MIDI faders wait until they reach or cross the visible orange software target. The first crossing acquires without moving the base pitch. Changes to source, deck layer, range, Sync mode or another pitch editor require pickup again. Sync stays enabled until you explicitly choose Off. Hold the native −/+ buttons with mouse, Space or Enter for an 8 percent temporary bend; release returns to the base rate. Original source BPM, local grid BPM, effective BPM and range appear separately in Sync settings. Pitch lock determines whether the file's pitch follows the rate. Center resets to the original rate.
 
 Workflow: Prepare a DJ deck.
 

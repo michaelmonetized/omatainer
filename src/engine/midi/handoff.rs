@@ -120,8 +120,7 @@ impl Rules {
                 if binding.kind == MsgKind::Cc
                     && matches!(
                         binding.action,
-                        Action::DeckPitch
-                            | Action::DeckGain
+                        Action::DeckGain
                             | Action::DeckEqHi
                             | Action::DeckEqMid
                             | Action::DeckEqLow
@@ -140,6 +139,9 @@ impl Rules {
                     rules.cc[channel][binding.data as usize] = true;
                 }
             }
+        }
+        for binding in map.bindings.iter().filter(|b|b.kind==MsgKind::Cc && b.action==Action::DeckPitch && b.data<128) {
+            for channel in 0..16 {if binding.ch==0xff || usize::from(binding.ch)==channel {rules.cc[channel][usize::from(binding.data)]=false;}}
         }
         rules
     }
@@ -310,7 +312,7 @@ impl InputWorker {
             return reset;
         };
         if event.epoch == self.shared.epoch.load(Acquire) && event.epoch == self.epoch && event.safety == safety && event.learning == learning {
-            let cmd=self.cmd.for_input_epoch(event.safety);
+            let cmd=self.cmd.for_input_epoch(event.safety).for_midi_context([event.epoch,learning,routing]);
             for frame in super::routing::packet::frames(event.bytes()) {
                 let mut paired = super::controls::PairValues::default();
                 match frame {

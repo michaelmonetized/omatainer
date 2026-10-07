@@ -677,3 +677,29 @@ fn learned_hotcue_enters_its_saved_region_through_the_real_input_worker_without_
     assert!(rt.decks[1].preparation().unwrap().saved_loops.cue_loops.iter().all(Option::is_none));
     drop(worker);render(&mut rt);
 }
+
+#[test]
+fn absolute_pitch_factory_and_learned_crossings_keep_ordered_worker_samples_and_rearm_on_mapping_and_overflow() {
+    use super::super::learn::{Config,Endpoint,Mapping};
+    for learned in [false,true] {
+        let (engine,mut rt)=Engine::headless_for_test(8000,256);
+        let mut factory=map();if !learned {factory.bindings.push(cbind(0,7,Action::DeckPitch,0,0));}
+        let counters=Arc::new(InputCounters::default());
+        let (mut sink,mut worker)=channel(64,2197,factory,engine.cmd.clone(),Arc::new(Mutex::new(Vec::new())),"test device".into(),"test device".into(),counters.clone()).unwrap();
+        let mut config=Config {mappings:vec![Mapping {endpoint:Endpoint {name:"test device".into(),id:"test device".into()},binding:cbind(0,7,Action::DeckPitch,0,0)}]};
+        if learned {engine.cmd.midi_learn().configure(config.clone()).unwrap();drain(&mut worker);}
+        assert_eq!(crate::engine::test_alloc::measure(||{for v in [20,100,20] {sink.push(&[0xb0,7,v]);}}),Default::default());
+        drain(&mut worker);assert_eq!(crate::engine::test_alloc::measure(||render(&mut rt)),Default::default());
+        assert!((rt.decks[0].pitch-20.0/127.0).abs()<1e-6);assert!(rt.pitch_pickup_status(0).acquired);assert_eq!(counters.snapshot().coalesced,0);
+        if learned {
+            config.mappings[0].binding.deck=1;engine.cmd.midi_learn().configure(config.clone()).unwrap();drain(&mut worker);
+            sink.push(&[0xb0,7,100]);drain(&mut worker);render(&mut rt);assert_eq!(rt.decks[1].pitch,0.5);
+            config.mappings[0].binding.deck=0;engine.cmd.midi_learn().configure(config).unwrap();drain(&mut worker);
+            sink.push(&[0xb0,7,100]);drain(&mut worker);render(&mut rt);assert!((rt.decks[0].pitch-20.0/127.0).abs()<1e-6);assert!(!rt.pitch_pickup_status(0).acquired);
+        }
+        let before=rt.decks[0].pitch;
+        for _ in 0..100 {sink.push(&[0xb0,7,100]);}drain(&mut worker);render(&mut rt);
+        sink.push(&[0xb0,7,100]);drain(&mut worker);render(&mut rt);assert_eq!(rt.decks[0].pitch,before);assert!(!rt.pitch_pickup_status(0).acquired);assert!(counters.snapshot().resets>0);
+        drop(worker);render(&mut rt);assert!(!rt.decks[0].playing && !rt.decks[1].playing);
+    }
+}

@@ -658,7 +658,7 @@ impl RtEngine {
                     }
                     _ => {}
                 }
-                if !matches!(button, Button::Cue | Button::HotCue(_) | Button::Delete) {
+                if !matches!(button, Button::Cue | Button::HotCue(_) | Button::Delete | Button::BendDown | Button::BendUp) {
                     self.decks[index].fade_from_last_output(self.sr);
                 }
             }

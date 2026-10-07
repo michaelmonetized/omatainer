@@ -534,7 +534,7 @@ fn dispatch_value_key(
             });
         }
         Action::DeckPitch => {
-            let _ = send(Command::DeckPitch { deck, value: rel });
+            let _ = send(Command::MidiPitch(super::pitch_pickup::Input {source,context:cmd.midi_context(),channel:msg[0]&15,binding:*b,value:rel}));
         }
         Action::DeckGain => {
             let _ = send(Command::DeckGain { deck, value: rel });

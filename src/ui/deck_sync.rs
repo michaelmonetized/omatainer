@@ -84,6 +84,7 @@ impl App {
                         ui.close();
                     }
                 });
+                self.deck_pitch_controls(ui,deck,snap);
                 let response = ui.label(format!("{status} · {:.2} BPM", snap.sync_target_bpm));
                 accessibility::focus(ui, &response);
                 help::annotate(ui, &response, HelpControl::DeckSyncMode);

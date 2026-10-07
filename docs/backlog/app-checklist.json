@@ -3070,9 +3070,12 @@
       "dependencies": [
         193
       ],
-      "state": "planned",
+      "state": "implemented",
       "prs": [],
-      "evidence": []
+      "evidence": [
+        "docs/validation/pitch-pickup.md",
+        "docs/validation/pitch-pickup-receipt.json"
+      ]
     },
     {
       "issue": 220,

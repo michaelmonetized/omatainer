@@ -22,7 +22,7 @@ impl Default for Spec {
     }
 }
 impl Spec {
-    pub(super) fn valid(self, action: Action) -> bool {
+    pub(crate) fn valid(self, action: Action) -> bool {
         let max = match action {
             Action::DeckGain | Action::TrackFader | Action::Master => 1.5,
             _ => 1.0,
