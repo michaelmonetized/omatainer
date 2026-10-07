@@ -3189,9 +3189,12 @@
         196,
         114
       ],
-      "state": "planned",
+      "state": "implemented",
       "prs": [],
-      "evidence": []
+      "evidence": [
+        "docs/validation/scene-properties.md",
+        "docs/validation/scene-properties-receipt.json"
+      ]
     },
     {
       "issue": 228,

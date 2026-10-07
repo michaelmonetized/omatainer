@@ -180,6 +180,7 @@ impl Frame {
         );
         target.conductor = rt.conductor.clone();
         target.navigation = rt.navigation.saved.clone();
+        target.scene_timing = rt.scenes.timing;
         target.routing = rt.routing.as_ref().map(|routing| routing.model.clone());
         target.mic_aux = rt.mic_aux.configuration();
         target.sampler_synth = synth(&rt.sampler_poly);

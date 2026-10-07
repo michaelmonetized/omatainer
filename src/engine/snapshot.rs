@@ -341,6 +341,7 @@ impl Frame {
         target.arrangement_enabled=rt.arrangement.enabled();
         target.arrangement_end=rt.arrangement.plan.as_ref().map_or(0.0,|p|p.end);
         target.navigation = rt.navigation.saved.clone();
+        target.scenes = rt.scenes;
         target.navigation_pending = rt.navigation.pending.map(|p|[p.beat,p.when]);
         target.navigation_error = rt.navigation.error;
         target.file_conductor = rt.conductor.is_some();
@@ -350,6 +351,10 @@ impl Frame {
             target.bar = bar; target.beat_in_bar = beat;
             target.meter_numerator = meter.numerator;
             target.meter_denominator = 1u16 << meter.denominator_power;
+        } else if let Some(timing) = rt.scenes.timing {
+            (target.bar, target.beat_in_bar) = timing.position(rt.precise_midi_beat());
+            target.meter_numerator = timing.signature.numerator;
+            target.meter_denominator = 1_u16 << timing.signature.denominator_power;
         } else {
             target.bar = (rt.beat / 4.0).floor() as u32 + 1;
             target.beat_in_bar = (rt.beat % 4.0) as f32;

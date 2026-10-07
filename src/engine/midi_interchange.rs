@@ -75,6 +75,7 @@ pub(crate) struct Request {
     pub(super) epoch: u64,
     pub(super) session_namespace: Option<[u64; 2]>,
     pub(super) baseline_bpm: f32,
+    pub(super) baseline_scene_timing: Option<super::scene::Timing>,
     pub(super) baseline_conductor: Option<Arc<Conductor>>,
     pub(super) conductor: Option<Arc<Conductor>>,
     pub(super) change_conductor: bool,
@@ -127,6 +128,7 @@ impl Request {
         checkpoint(&mut cancel)?;
         let baseline_conductor = captured.state.conductor.clone();
         let baseline_bpm = captured.state.bpm;
+        let baseline_scene_timing = captured.state.scene_timing;
         if !file.warnings.is_empty() && !reviewed_omissions {
             return Err(
                 "Review and accept the listed unsupported MIDI data before importing".into(),
@@ -374,6 +376,7 @@ impl Request {
             saved.lanes = target.replacement.lanes.clone();
         }
         captured.state.conductor = conductor.clone();
+        if tempo != TempoChoice::KeepSession { captured.state.scene_timing = None; }
         struct Size<'a, F> {
             bytes: usize,
             cancel: &'a mut F,
@@ -411,6 +414,7 @@ impl Request {
                 epoch: captured.checkpoint.epoch,
                 session_namespace: captured.state.session.as_ref().map(|s| s.namespace),
                 baseline_bpm,
+                baseline_scene_timing,
                 baseline_conductor,
                 conductor,
                 change_conductor: tempo != TempoChoice::KeepSession,
@@ -430,8 +434,10 @@ impl Request {
         let namespace = captured.state.session.as_ref().ok_or("Session identity is unavailable")?.namespace;
         let baseline_conductor = captured.state.conductor.clone();
         let baseline_bpm = captured.state.bpm;
+        let baseline_scene_timing = captured.state.scene_timing;
         let conductor = value.map(|c| c.prepare()).transpose()?;
         captured.state.conductor = conductor.clone();
+        captured.state.scene_timing = None;
         captured.state.validate(&captured.media)?;
         struct Size<'a, F> { bytes: usize, cancel: &'a mut F }
         impl<F: FnMut() -> bool> std::io::Write for Size<'_, F> {
@@ -448,7 +454,7 @@ impl Request {
         let ack = Ack::new();
         Ok((Self {
             targets: Vec::new(), epoch: captured.checkpoint.epoch,
-            session_namespace: Some(namespace), baseline_bpm, baseline_conductor,
+            session_namespace: Some(namespace), baseline_bpm, baseline_conductor, baseline_scene_timing,
             conductor, change_conductor: true, ack: ack.clone(),
         }, ack))
     }
@@ -477,7 +483,8 @@ impl RtEngine {
                 && (self.recording || self.count_in.is_some()
                     || self.has_held_project_notes()
                     || (self.conductor.is_none() && self.bpm != request.baseline_bpm)
-                    || self.conductor != request.baseline_conductor)
+                    || self.conductor != request.baseline_conductor
+                    || self.scenes.timing != request.baseline_scene_timing)
         {
             return false;
         }

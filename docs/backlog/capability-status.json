@@ -1514,6 +1514,54 @@
       ],
       "limits": "Software qualification: five-minute 12 kHz reference and 44.1/48/96 kHz references, exact realtime/export parity with a native tempo ramp, overlap/seek/source edits, native handlers/hour navigation, save/reopen/selective imports/templates, cancellation/stale/protected/active/budget refusals and zero renderer allocation/free. Sources are snapshots; later Session changes are independent. Capacity limits are explicit. Streaming, independent warping and physical/cross-platform acceptance remain separate."
     },
+    "227": {
+      "status": "implemented",
+      "paths": [
+        {
+          "kind": "strict native scene metadata",
+          "file": "src/engine/scene/model.rs",
+          "entry": "Independent optional tempo/meter, Stop/Keep and launch grid; native meter range and retained flat phase/click settings"
+        },
+        {
+          "kind": "atomic whole-scene renderer launch",
+          "file": "src/engine/scene/runtime.rs",
+          "entry": "One stable queued boundary, selected-track/physical-owner preservation, continuing tracks, exact empty Stop and queue cancellation/refusal"
+        },
+        {
+          "kind": "guarded metadata Undo",
+          "file": "src/engine/session/transaction.rs",
+          "entry": "Worker-prepared properties, generation/namespace/epoch checks; duplicate/delete/reuse semantics and atomic inverse"
+        },
+        {
+          "kind": "native properties and accessible queue",
+          "file": "src/ui/session_editor/scene_properties.rs",
+          "entry": "Existing Session editor numeric/chooser/save controls; queued scene/cells and cancel/status descriptions"
+        },
+        {
+          "kind": "persistent native clock and conductor inverse",
+          "file": "src/engine/project/model.rs",
+          "entry": "State 23, legacy field-injection guards, real file reopening, native timing import/Undo and no resumed pending scene"
+        },
+        {
+          "kind": "controller-readable bounded status",
+          "file": "src/ipc_follow.rs",
+          "entry": "Names, properties, identities, queued beat and meter in both status paths; bounded names/truncation and allocation-free unchanged cache"
+        }
+      ],
+      "fixtures": [
+        "engine::quantized_launch_tests::scene_batches_share_one_start_even_when_transport_was_stopped_off_grid",
+        "engine::scene::tests",
+        "ui::session_editor::tests::native_scene_properties_save_undo_duplicate_launch_and_cancel_use_real_handlers",
+        "engine::midi::clock::tests::actual_scene_tempo_and_meter_changes_keep_clock_continuous_at_the_shared_launch_sample",
+        "ipc_server::follow_tests::scene_status_exposes_names_properties_queue_and_meter_without_repeated_cache_heap_work",
+        "ipc_server::limits_tests::scene_status_socket_returns_reviewed_properties_names_and_queued_identity"
+      ],
+      "evidence": [
+        "docs/validation/scene-properties.md",
+        "docs/validation/scene-properties-receipt.json"
+      ],
+      "limits": "Software qualification: atomic whole-scene tempo/meter and clip switches at exact sample boundaries; independent timestamp/downbeat oracles at 8/44.1/48 kHz and clock oracles additionally at 96 kHz, callbacks 31/257, continuing tracks under Keep, exact Stop releases, disabled/additive/legato semantics, selected-track and held-input ownership, actual recording completion, native odd-meter count-in/rate change, full native meter inheritance including 255/128 and pickup, guarded metadata Undo/Redo/cancellation/stale identity, deletion/reuse/reorder, safety/seek/project replacement, native state 23 real-container reopen and old-header injection refusal, native egui/AccessKit editing/duplication/launch/cancel, bounded consistent socket/follow status and zero unchanged cache heap work. A selected scene tempo/meter replaces future conductor automation with the current flat clock; historical conductor mapping is not retained. Pending launches/active identities never resume on reopen. No physical controller display or new live hardware/audio qualification; independent stage application unchanged. No ticket acceptance or issue closure claimed."
+    },
     "255": {
       "status": "implemented",
       "paths": [

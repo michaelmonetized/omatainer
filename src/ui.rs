@@ -1695,7 +1695,7 @@ impl App {
                         ui.horizontal(|ui| {
                             ui.spacing_mut().item_spacing = Vec2::splat(gap);
                             let on = self.snap.playing && self.snap.tracks.iter().any(|tr| tr.playing_scene == sc as i16 && !tr.clip_pending);
-                            let queued = self.snap.tracks.iter().any(|tr| tr.playing_scene == sc as i16 && tr.clip_pending || tr.clip_queued==Some(sc as u16));
+                            let queued = self.snap.scenes.pending.is_some_and(|pending| layout.resolves(crate::engine::session::Axis::Scene, sc, pending.scene)) || self.snap.tracks.iter().any(|tr| tr.playing_scene == sc as i16 && tr.clip_pending || tr.clip_queued==Some(sc as u16));
                             let (hr, _) = ui.allocate_exact_size(Vec2::new(scene_w, row_h), Sense::hover());
                             let hresp = ui.interact(hr, egui::Id::new(("session-scene",layout.namespace,layout.scenes[sc].id.0)), Sense::click());
                             let scene_color=layout.scenes[sc].color.map(|c|Color32::from_rgb(c[0],c[1],c[2])).unwrap_or(t.accent);
@@ -1704,7 +1704,9 @@ impl App {
                             ui.painter().with_clip_rect(hr).text(hr.center(), egui::Align2::CENTER_CENTER, &format!("{} {} {}", if queued { "Q" } else if on { ">" } else { "[]" }, display_scene+1,layout.scenes[sc].name), FontId::proportional(t.text_size(11.0)), t.fg);
                             grid_gained_focus |= hresp.gained_focus();
                             accessibility::button(ui, &hresp, &format!("Scene {}: Toggle playback", display_scene + 1), Some(on));
-                            accessibility::status(ui,&hresp,&layout.scenes[sc].name);
+                            let scene_status = format!("{}; {}; {}", layout.scenes[sc].name, session_editor::scene_properties::describe(layout.scenes[sc].scene), if queued { "queued" } else if on { "playing" } else { "stopped" });
+                            accessibility::status(ui,&hresp,&scene_status);
+                            hresp.clone().on_hover_text(&scene_status);
                             let action = accessibility::actions(ui, &hresp, &["Toggle scene", "Add scene", "Open scene effects", "Restart scene", "Edit scene"]);
                             help::annotate(ui, &hresp, HelpControl::Scene);
                             if action == Some(4) { self.send(Command::Select {track:self.snap.selected_track,scene:sc}); self.session_editor.open=true; self.session_editor.select_axis(crate::engine::session::Axis::Scene); }
@@ -1725,7 +1727,8 @@ impl App {
                             let tr = usize::from(layout.track_order[display_track]);
                                 let clip = self.snap.tracks.get(tr).and_then(|x| x.clips.get(sc));
                                 let filled = clip.map(|c| c.kind != 0).unwrap_or(false);
-                                let queued = self.snap.tracks.get(tr).is_some_and(|x| x.playing_scene == sc as i16 && x.clip_pending || x.clip_queued==Some(sc as u16));
+                                let scene_queued = self.snap.scenes.pending.is_some_and(|pending| layout.resolves(crate::engine::session::Axis::Scene, sc, pending.scene) && clip.is_some_and(|clip| !clip.properties.disabled && (filled || !pending.additive && pending.properties.empty == crate::engine::scene::Empty::Stop)));
+                                let queued = scene_queued || self.snap.tracks.get(tr).is_some_and(|x| x.playing_scene == sc as i16 && x.clip_pending || x.clip_queued==Some(sc as u16));
                                 let playing = self.snap.playing && self.snap.tracks.get(tr).is_some_and(|x| x.playing_scene == sc as i16 && !x.clip_pending);
                                 let stopping=playing && self.snap.tracks.get(tr).is_some_and(|x|x.clip_stopping);
                                 let looping = self.snap.tracks.get(tr).map(|x| x.clip_looping).unwrap_or(false);

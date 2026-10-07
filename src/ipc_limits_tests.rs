@@ -416,3 +416,12 @@ fn cli_rejects_oversized_unterminated_peer_response() {
     assert!(error.to_string().contains("byte limit"));
     server.join().unwrap();
 }
+#[test]
+fn scene_status_socket_returns_reviewed_properties_names_and_queued_identity() {
+    use crate::engine::{scene::{Properties,Signature,Empty,Pending},clip_launch::Grid,session::{Layout,Axis}};
+    let snap=snapshot();{
+        let mut s=snap.lock();let mut layout=Layout::fresh(["Software track".into()],2);layout.scenes[0].name="Intro".into();layout.scenes[1].name="Verse".into();
+        s.scenes.active=layout.reference(Axis::Scene,0);s.scenes.active_properties=Some(Properties::default());s.scenes.pending=Some(Pending{scene:layout.reference(Axis::Scene,1).unwrap(),properties:Properties{tempo_micros:Some(500000),meter:Some(Signature{numerator:7,denominator_power:3}),grid:Grid::Bar,empty:Empty::Keep},when:3.5,additive:false});s.session=Some(layout);s.meter_numerator=7;s.meter_denominator=8;
+    }
+    let (mut client,peer)=UnixStream::pair().unwrap();client.set_read_timeout(Some(Duration::from_secs(2))).unwrap();let(commands,_rx)=CommandPort::channel(256);let worker=std::thread::spawn(move||crate::handle_client_with_limits(peer,commands,snap,limits()));writeln!(client,"{}",json!({"op":"status","id":"scenes"})).unwrap();let mut client=BufReader::new(client);let reply=response(&mut client);assert_eq!(reply["ok"],true);assert_eq!(reply["active_scene_name"],"Intro");assert_eq!(reply["queued_scene_name"],"Verse");assert_eq!(reply["meter"],json!([7,8]));assert_eq!(reply["scenes"]["pending"]["when"],3.5);assert_eq!(reply["scenes"]["pending"]["properties"]["tempo_micros"],500000);drop(client);worker.join().unwrap().unwrap();
+}

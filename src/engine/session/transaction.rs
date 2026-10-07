@@ -13,6 +13,7 @@ mod tests;
 
 #[derive(Clone, Debug)]
 pub(crate) enum Action {
+    SceneProperties { id: Id, properties: crate::engine::scene::Properties },
     Rename {
         axis: Axis,
         id: Id,
@@ -127,6 +128,7 @@ impl Request {
         let mut next = layout.clone();
         let mut track_name = None;
         match action {
+            Action::SceneProperties { id, properties } => next.scene_properties(id, properties)?,
             Action::Rename { axis, id, name } => {
                 let slot = next
                     .resolve(axis, id)
@@ -415,6 +417,7 @@ impl Inverse {
                 rt.fx_view = -1;
             }
         }
+        rt.scene_metadata_changed();
         let next_focus = Focus {
             track: rt.selected_track,
             scene: rt.selected_scene,

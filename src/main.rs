@@ -488,6 +488,7 @@ fn handle_client_with_stop(
             }
             continue;
         };
+        let scene_names_truncated = [false, true].into_iter().any(|queued| ipc_transport::short_json_text(s.scene_name(queued), 256).len() < s.scene_name(queued).len());
         let out = serde_json::json!({
             "ok": true,
             "id": request_id,
@@ -504,10 +505,14 @@ fn handle_client_with_stop(
             "xfader": s.xfader,
             "monitor": s.monitor,
             "midi": s.midi.iter().take(8).map(|name| ipc_transport::short_json_text(name, ipc_transport::STATUS_MIDI_NAME_BYTES)).collect::<Vec<_>>(),
-            "state_truncated": s.midi.len() > 8 || s.midi.iter().take(8).any(|name| ipc_transport::short_json_text(name, ipc_transport::STATUS_MIDI_NAME_BYTES).len() < name.len())
+            "state_truncated": scene_names_truncated || s.midi.len() > 8 || s.midi.iter().take(8).any(|name| ipc_transport::short_json_text(name, ipc_transport::STATUS_MIDI_NAME_BYTES).len() < name.len())
                 || s.decks.iter().take(2).any(|deck| ipc_transport::short_json_text(&deck.title, ipc_transport::STATUS_DECK_TITLE_BYTES).len() < deck.title.len()),
             "midi_clock": s.midi_clock,
             "midi_clock_output": commands.clock_output().counters(),
+            "scenes": s.scenes,
+            "active_scene_name": ipc_transport::short_json_text(s.scene_name(false), 256),
+            "queued_scene_name": ipc_transport::short_json_text(s.scene_name(true), 256),
+            "meter": [u16::from(s.meter_numerator), s.meter_denominator],
             "midi_routing": commands.midi_routing().summary(),
             "midi_feedback": s.midi_feedback,
             "midi_input": s.midi_input,

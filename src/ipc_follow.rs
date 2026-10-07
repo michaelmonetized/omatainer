@@ -34,6 +34,8 @@ struct SmallStatus {
     master_fx: MasterFx,
     midi_clock: MidiClockInput,
     midi_clock_output: crate::engine::midi::clock::Counters,
+    scenes: crate::engine::scene::State,
+    meter: [u16; 2],
     midi_routing: crate::engine::midi::routing::Summary,
     midi_feedback: crate::engine::midi::FeedbackStats,
     midi_input: crate::engine::midi::InputStats,
@@ -66,6 +68,8 @@ impl SmallStatus {
             },
             midi_clock: snapshot.midi_clock,
             midi_clock_output: commands.clock_output().counters(),
+            scenes: snapshot.scenes,
+            meter: [u16::from(snapshot.meter_numerator), snapshot.meter_denominator],
             midi_routing: commands.midi_routing().summary(),
             midi_feedback: snapshot.midi_feedback,
             midi_input: snapshot.midi_input,
@@ -89,6 +93,8 @@ struct Metadata {
     #[serde(rename = "deckB")]
     deck_b: String,
     state_truncated: bool,
+    active_scene_name: String,
+    queued_scene_name: String,
 }
 impl Metadata {
     fn refresh(&mut self, s: &Snapshot) -> bool {
@@ -102,10 +108,12 @@ impl Metadata {
             .get(1)
             .map(|d| ipc_transport::short_json_text(&d.title, ipc_transport::STATUS_DECK_TITLE_BYTES))
             .unwrap_or("");
-        let truncated = s.midi.len() > 8
+        let active = ipc_transport::short_json_text(s.scene_name(false), 256);
+        let queued = ipc_transport::short_json_text(s.scene_name(true), 256);
+        let truncated = active.len() < s.scene_name(false).len() || queued.len() < s.scene_name(true).len() || s.midi.len() > 8
             || s.midi.iter().take(8).any(|s| ipc_transport::short_json_text(s, ipc_transport::STATUS_MIDI_NAME_BYTES).len() < s.len())
             || s.decks.iter().take(2).any(|d| ipc_transport::short_json_text(&d.title, ipc_transport::STATUS_DECK_TITLE_BYTES).len() < d.title.len());
-        let changed = self.deck_a != a
+        let changed = self.active_scene_name != active || self.queued_scene_name != queued || self.deck_a != a
             || self.deck_b != b
             || self.state_truncated != truncated
             || self.midi.len() != s.midi.len().min(8)
@@ -115,6 +123,8 @@ impl Metadata {
                 .zip(&s.midi)
                 .any(|(a, b)| a != ipc_transport::short_json_text(b, ipc_transport::STATUS_MIDI_NAME_BYTES));
         if changed {
+            self.active_scene_name.clear(); self.active_scene_name.push_str(active);
+            self.queued_scene_name.clear(); self.queued_scene_name.push_str(queued);
             self.deck_a.clear();
             self.deck_a.push_str(a);
             self.deck_b.clear();

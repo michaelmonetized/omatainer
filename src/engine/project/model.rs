@@ -2,7 +2,7 @@
 //! physical key ownership, worker handles and device connections.
 use super::super::*;
 
-pub const STATE_VERSION: u32 = 22;
+pub const STATE_VERSION: u32 = 23;
 pub const MAX_BANKS: usize = 16;
 pub const MAX_FX_PER_RACK: usize = 128;
 pub const MAX_NOTES_PER_CLIP: usize = 8192;
@@ -24,6 +24,8 @@ pub struct State {
     pub mic_aux: Option<audio::routing::mic_aux::Configuration>,
     #[serde(default)]
     pub session: Option<session::Layout>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub(crate) scene_timing: Option<scene::Timing>,
     pub bpm: f32,
     #[serde(default)]
     pub(crate) conductor: Option<Arc<midi_data::Conductor>>,
@@ -68,6 +70,8 @@ struct StateWire {
     mic_aux: Option<audio::routing::mic_aux::Configuration>,
     #[serde(default)]
     session: Option<session::Layout>,
+    #[serde(default)]
+    scene_timing: Option<scene::Timing>,
     bpm: f32,
     #[serde(default)]
     conductor: Option<Arc<midi_data::Conductor>>,
@@ -103,6 +107,7 @@ impl<'de> Deserialize<'de> for State {
         let raw = serde_json::Value::deserialize(deserializer)?;
         midi_edit::reject_legacy_fields(&raw).map_err(serde::de::Error::custom)?;
         let version = raw["version"].as_u64().unwrap_or(0);
+        if version < 23 && (raw.get("scene_timing").is_some() || raw.get("session").is_some_and(|layout| ["tracks", "scenes"].into_iter().flat_map(|axis| layout.get(axis).and_then(serde_json::Value::as_array).into_iter().flatten()).any(|item| item.get("scene").is_some()))) { return Err(serde::de::Error::custom("Scene properties require project state version 23")); }
         if version < 22 && raw.get("navigation").is_some() { return Err(serde::de::Error::custom("Song sections require project state version 22")); }
         if version<21 && raw.get("tracks").and_then(serde_json::Value::as_array).into_iter().flatten().flat_map(|track|track.get("clips").and_then(serde_json::Value::as_array).into_iter().flatten()).chain(raw.get("arrangement").and_then(|song|song.get("sources")).and_then(serde_json::Value::as_array).into_iter().flatten().filter_map(|source|source.get("clip"))).any(|clip|clip.get("properties").is_some_and(|p|p.get("launch").is_some())){return Err(serde::de::Error::custom("Clip launch policy requires project state version 21"));}
         if version<20 && raw.get("tracks").and_then(serde_json::Value::as_array).into_iter().flatten().flat_map(|track|track.get("clips").and_then(serde_json::Value::as_array).into_iter().flatten()).chain(raw.get("arrangement").and_then(|song|song.get("sources")).and_then(serde_json::Value::as_array).into_iter().flatten().filter_map(|source|source.get("clip"))).any(|clip|clip.get("properties").is_some()){return Err(serde::de::Error::custom("Clip properties require project state version 20"));}
@@ -166,6 +171,7 @@ impl<'de> Deserialize<'de> for State {
             routing: wire.routing,
             mic_aux: wire.mic_aux,
             session: wire.session,
+            scene_timing: wire.scene_timing,
             bpm: wire.bpm,
             beat: wire.beat,
             timeline_seconds: wire.timeline_seconds.unwrap_or_else(|| wire.conductor.as_ref().map_or(wire.beat * 60.0 / f64::from(wire.bpm), |map| map.seconds_at(wire.beat))),
@@ -407,6 +413,7 @@ impl State {
         Self {
             version: STATE_VERSION,
             navigation: None,
+            scene_timing: None,
             arrangement: None,
             routing: None,
             mic_aux: None,
@@ -528,6 +535,8 @@ impl State {
         }
         if self.tracks.is_empty() || self.tracks.len() > session::MAX_TRACKS || self.scene_fx.is_empty() || self.scene_fx.len() > session::MAX_SCENES || self.tracks.iter().any(|t| t.clips.len() != self.scene_fx.len()) { return fail("session dimensions (1–128 tracks, 1–512 scenes)"); }
         if self.version >= 7 && self.session.is_none() {return fail("missing session identity metadata");}
+        if let Some(timing) = self.scene_timing { timing.validate()?; if self.version < 23 || self.conductor.is_some() { return fail("scene timing version or conductor conflict"); } }
+        if self.version < 23 && self.session.as_ref().is_some_and(|layout| layout.scenes.iter().chain(&layout.tracks).any(|item| !item.scene.is_default())) { return fail("scene properties version"); }
         if self.version < 7 && (self.tracks.len() != TRACKS || self.scene_fx.len() != SCENES || self.session.is_some()) { return fail("legacy session dimensions or identity"); }
         if let Some(layout) = &self.session {
             layout.validate()?;

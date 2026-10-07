@@ -38,12 +38,15 @@ impl RtEngine {
         let timing_only = request.targets.is_empty() && (request.conductor.as_ref().is_some_and(|c| c.native.is_some()) || request.baseline_conductor.as_ref().is_some_and(|c| c.native.is_some()));
         self.undo.begin(if timing_only { Name::Timing } else { Name::Multiple }, 0, self.frames_done);
         if request.change_conductor {
+            self.scenes.cancel();
+            self.metro.reset();
             let bytes = self.conductor.as_ref().map_or(0, |c| c.bytes())
                 + request.conductor.as_ref().map_or(0, |c| c.bytes());
             let value = std::mem::replace(&mut self.conductor, request.conductor.take());
             self.mapped_clock = None;
             self.undo.append(Patch::Conductor {
                 bpm: self.bpm,
+                scene_timing: self.scenes.timing.take(),
                 value,
                 reserved_bytes: bytes,
             });

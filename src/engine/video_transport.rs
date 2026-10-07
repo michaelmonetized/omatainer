@@ -11,6 +11,7 @@ impl RtEngine {
         if !seconds.is_finite() || !(0.0..=86400.0).contains(&seconds) {
             return;
         }
+        self.scenes.cancel();
         self.navigation.cancel();
         self.finish_recording_all();
         self.recording = false;

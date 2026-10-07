@@ -6,7 +6,7 @@ Michael resumed physical checks on 2026-10-06. All MPD A/B/C controls were captu
 
 Each issue appears once, after its dependencies. The Code column checks off implemented code, including the existing stack, and does not claim complete acceptance. Accepted requires complete recorded acceptance. The eight provider integrations previously excluded by Michael stay outside this release. No open issue is automatically closed by this checklist.
 
-127 existing stack · 39 implemented · 6 partial · 176 planned · 0 accepted · 8 outside release
+127 existing stack · 40 implemented · 6 partial · 175 planned · 0 accepted · 8 outside release
 
 - [x] High-resolution stereo source peaks with measured rainbow frequency bands, native-rate validation, project reopen and pixel-scaled rendering. [Receipt](../validation/rainbow-waveforms.md)
 
@@ -237,7 +237,7 @@ Each issue appears once, after its dependencies. The Code column checks off impl
 | [ ] | [#224](https://github.com/michaelmonetized/omatainer/issues/224) | Drive controller LEDs and meters from actual application state | planned | #195, #112 |  |
 | [ ] | [#225](https://github.com/michaelmonetized/omatainer/issues/225) | Add runtime controller discovery, enablement and reconnection | planned | #112, #195, #73 |  |
 | [x] | [#226](https://github.com/michaelmonetized/omatainer/issues/226) | Build an editable linear audio and MIDI Arrangement timeline | implemented | #113, #82, #83, #179 | [receipt](../../docs/validation/arrangement.md), [receipt](../../docs/validation/arrangement-receipt.json) |
-| [ ] | [#227](https://github.com/michaelmonetized/omatainer/issues/227) | Give scenes names, tempo, meter and launch-state semantics | planned | #113, #196, #114 |  |
+| [x] | [#227](https://github.com/michaelmonetized/omatainer/issues/227) | Give scenes names, tempo, meter and launch-state semantics | implemented | #113, #196, #114 | [receipt](../../docs/validation/scene-properties.md), [receipt](../../docs/validation/scene-properties-receipt.json) |
 | [ ] | [#228](https://github.com/michaelmonetized/omatainer/issues/228) | Record and overdub audio or MIDI directly into Session slots | planned | #182, #196, #130, #112 |  |
 | [ ] | [#229](https://github.com/michaelmonetized/omatainer/issues/229) | Export aligned stems, track groups and delivery versions in batches | planned | #179 |  |
 | [ ] | [#230](https://github.com/michaelmonetized/omatainer/issues/230) | Expose a clean performance audio feed for OBS and broadcast tools | planned | #130, #176 |  |

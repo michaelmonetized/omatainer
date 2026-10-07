@@ -29,6 +29,12 @@ impl CountIn {
             accents: f64::from(meter.numerator) * f64::from(settings.subdivision),
         })
     }
+    /// Prepare a flat scene lead-in.
+    /// Takes meter, click settings, tempo and output rate; returns an allocation-free count-in when enabled.
+    pub(crate) fn constant(signature: super::scene::Signature, settings: super::midi_data::TimingSettings, bpm: f64, sr: u32) -> Option<Self> {
+        if settings.count_in == 0 { return None; }
+        Some(Self { frame: 0, frames: (f64::from(settings.count_in) * signature.length() * 60.0 / bpm * f64::from(sr)).round() as u64, sr, bpm, unit: signature.unit() / f64::from(settings.subdivision), accents: f64::from(signature.numerator) * f64::from(settings.subdivision) })
+    }
     pub fn finished(&self) -> bool { self.frame >= self.frames }
     pub fn remaining(&self) -> f32 { (self.frames.saturating_sub(self.frame) as f64 / f64::from(self.sr)) as f32 }
     pub fn tick(&mut self, sr: u32) -> Option<bool> {

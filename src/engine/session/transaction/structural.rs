@@ -158,7 +158,7 @@ impl Request {
                     .collect();
                 let rack = state.scene_fx[source].clone();
                 let color = before.scenes[source].color;
-                Self::prepare_scene_change(
+                let content = Self::prepare_scene_change(
                     &mut state,
                     &media,
                     &mut next,
@@ -170,7 +170,10 @@ impl Request {
                     rate,
                     &mut pins,
                     &mut fx_storage,
-                )?
+                )?;
+                let destination = match &content { Content::Scene { slot, .. } => *slot, _ => unreachable!() };
+                next.scenes[destination].scene = before.scenes[source].scene;
+                content
             }
         };
         pins.sort_by_key(|sample| Arc::as_ptr(sample) as usize);

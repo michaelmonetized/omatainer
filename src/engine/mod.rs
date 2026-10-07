@@ -7,6 +7,7 @@ pub(crate) mod midi_edit;
 pub(crate) mod audio_clip;
 pub(crate) mod arrangement;
 pub(crate) mod song_navigation;
+pub(crate) mod scene;
 pub(crate) mod clip_management;
 pub(crate) mod midi_data;
 pub(crate) mod midi_interchange;
@@ -655,6 +656,7 @@ pub struct RtEngine {
     pub session: session::Layout,
     pub(crate) arrangement: Box<arrangement::Playback>,
     pub(crate) navigation: song_navigation::Runtime,
+    pub(crate) scenes: scene::State,
     pub decks: [DeckRt; DECKS],
     // Each control owns its selected processor and both channel histories.
     master_fx: [master_fx::MasterSlot; 3],
@@ -864,6 +866,7 @@ pub struct Snapshot {
     pub(crate) arrangement_enabled: bool,
     pub(crate) arrangement_end: f64,
     pub(crate) navigation: Option<song_navigation::Saved>,
+    pub(crate) scenes: scene::State,
     pub(crate) navigation_pending: Option<[f64;2]>,
     pub(crate) navigation_error: Option<song_navigation::Error>,
     pub surfaces: surface_controls::Status,
@@ -939,6 +942,7 @@ impl Default for Snapshot {
             arrangement_enabled: false,
             arrangement_end: 0.0,
             navigation: None, navigation_pending: None, navigation_error: None,
+            scenes: scene::State::default(),
             surfaces: surface_controls::Status::default(),
             view: 0,
             selected_track: 0,
@@ -1004,6 +1008,7 @@ pub enum Command {
     SetBpm(f32),
     LaunchClip { track: u8, scene: u16 },
     LaunchScene { scene: u16 },
+    CancelScene,
     StopTrack { track: u8 },
     ClipPress(clip_launch::Press),
     ClipRelease(clip_launch::Release),
@@ -1168,6 +1173,7 @@ impl RtEngine {
             session,
             arrangement: arrangement::Playback::new(None,0.0),
             navigation: song_navigation::Runtime::default(),
+            scenes: scene::State::default(),
             midi_routing:cmd_rx.midi_routing(),
             clock_output:midi::clock::Runtime::new(cmd_rx.clock_output()),
             midi_learning:cmd_rx.midi_learning(),
@@ -1504,7 +1510,7 @@ impl RtEngine {
     fn start_count_in(&mut self) {
         if !self.playing {
             self.mapped_clock = None;
-            self.count_in = self.conductor.as_ref().and_then(|map| metronome::CountIn::new(map, self.precise_midi_beat(), self.sr as u32));
+            self.count_in = self.conductor.as_ref().and_then(|map| metronome::CountIn::new(map, self.precise_midi_beat(), self.sr as u32)).or_else(|| self.scenes.timing.and_then(|timing| metronome::CountIn::constant(timing.signature, timing.click, f64::from(self.bpm), self.sr as u32)));
             self.metro.reset();
         }
     }
@@ -1573,6 +1579,8 @@ impl RtEngine {
             #[cfg(test)]
             { self.current_sample_frame = self.frames_done + i as u64; }
             self.song_navigation_tick();
+            if self.count_in.as_ref().is_some_and(|count| count.finished()) { self.count_in = None; }
+            self.scene_launch_tick();
             self.routing_input_frame = self.routing_pipe.frame(self.sr as u32);
             self.remote_tick();
             if self.count_in.as_ref().is_some_and(|count| count.finished()) { self.count_in = None; }
@@ -1582,12 +1590,12 @@ impl RtEngine {
             // Compose holds still have a musical duration with the transport
             // stopped. This clock integrates actual tempo and never loops.
             let midi_position = self.precise_midi_beat();
-            let spb = self.conductor.as_ref().map_or(spb, |c| {
+            let spb = self.conductor.as_ref().map_or(f64::from(self.sr) * 60.0 / f64::from(self.bpm), |c| {
                 let micros = c.micros_exact_at(midi_position);
                 self.bpm = (60000000.0 / f64::from(micros)) as f32;
                 f64::from(self.sr) * f64::from(micros) / 1000000.0
             });
-            if self.conductor.is_some() && spb != conductor_spb {
+            if spb != conductor_spb {
                 for (slot, wet) in self.master_fx.iter_mut().zip(self.fx_wet) { slot.configure(wet, spb); }
                 if let Some(history) = &mut self.history_measurement { history.configure(self.fx_kind, self.fx_wet, spb); }
                 conductor_spb = spb;
@@ -1767,7 +1775,12 @@ impl RtEngine {
             #[cfg(test)]
             if let (Some(trace), Some(accent)) = (&mut self.metro.trace, event) { trace.push((self.current_sample_frame, accent)); }
             self.metro.tick_with_gains(true, event, settings.accent_gain, settings.beat_gain)
-            } else {
+            } else if let Some(timing) = self.scenes.timing.filter(|_| counting_in || self.metronome && self.playing) {
+            let event = if counting_in { count_click } else { timing.click_between(beat_start, self.beat) };
+            #[cfg(test)]
+            if let (Some(trace), Some(accent)) = (&mut self.metro.trace, event) { trace.push((self.current_sample_frame, accent)); }
+            self.metro.tick_with_gains(true, event, timing.click.accent_gain, timing.click.beat_gain)
+        } else {
             self.metro.tick(self.metronome && self.playing, beat_start, self.beat)
         }
     }
@@ -2466,6 +2479,7 @@ impl RtEngine {
                 self.playing = true;
             }
             Command::Stop => {
+                self.scenes.cancel();
                 self.navigation.cancel();
                 self.transport_epoch = self.transport_epoch.wrapping_add(1);
                 self.history_finish_take();
@@ -2489,13 +2503,14 @@ impl RtEngine {
                 if self.playing {
                     self.apply(Command::Stop);
                 } else {
-                    self.start_count_in();
-                    if self.arrangement.enabled(){self.arrangement.reset(self.precise_midi_beat());}else{self.resume_project_clips();}
-                    self.playing = true;
-                    // launch scene 0 if nothing running
-                    if !self.arrangement.enabled() && self.tracks.iter().all(|t| t.playing.is_none()) {
+                    if !self.arrangement.enabled() && self.tracks.iter().all(|t| t.playing.is_none() && t.project_resume.is_none()) {
                         self.apply(Command::LaunchScene { scene: 0 });
+                        self.start_count_in();
+                    } else {
+                        self.start_count_in();
+                        if self.arrangement.enabled(){self.arrangement.reset(self.precise_midi_beat());}else{self.resume_project_clips();}
                     }
+                    self.playing = true;
                 }
             }
             Command::Record => {
@@ -2522,13 +2537,8 @@ impl RtEngine {
             Command::LaunchClip { track, scene } => {
                 self.launch_clip(track as usize, scene, self.launch_start());
             }
-            Command::LaunchScene { scene } => {
-                // Capture before the first launch starts a stopped transport.
-                let start = self.launch_start();
-                for t in 0..self.tracks.len() {
-                    self.launch_clip(t, scene, start);
-                }
-            }
+            Command::LaunchScene { scene } => self.scene_queue(usize::from(scene), false),
+            Command::CancelScene => self.scenes.cancel(),
             Command::StopTrack { track } => {
                 if (track as usize) < self.tracks.len() {
                     self.finish_recording_track(track as usize);
@@ -3092,6 +3102,7 @@ impl RtEngine {
                 }
             }
             Command::ToggleScene { scene } => {
+                if self.scenes.pending.is_some_and(|pending| self.session.resolves(session::Axis::Scene, usize::from(scene), pending.scene)) { self.scenes.cancel(); return; }
                 let active = self.tracks.iter().any(|t| t.playing.map(|p| p.scene) == Some(scene));
                 if active {
                     for t in 0..self.tracks.len() {
@@ -3107,14 +3118,7 @@ impl RtEngine {
             Command::RestartScene { scene } => {
                 self.apply(Command::LaunchScene { scene });
             }
-            Command::AddScene { scene } => {
-                let start = self.launch_start();
-                for t in 0..self.tracks.len() {
-                    if self.tracks[t].clips[scene as usize].occupied() {
-                        self.launch_clip(t, scene, start);
-                    }
-                }
-            }
+            Command::AddScene { scene } => self.scene_queue(usize::from(scene), true),
             Command::LoadBuiltin { deck, stem } => {
                 if let Some(a) = self.builtin.get(stem as usize).and_then(|s| s.clone()) {
                     self.apply(Command::DeckAudio { deck, audio: a });

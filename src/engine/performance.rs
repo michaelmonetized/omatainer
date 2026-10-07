@@ -569,6 +569,7 @@ fn destructive(command: &Command) -> bool {
         | Command::MidiSamplerPad { .. }
         | Command::DeckTrack { .. }
         | Command::MidiAdjust(_)
+        | Command::CancelScene
         | Command::SongNavigation(_)
         | Command::DeckPitch { .. }
         | Command::DeckGain { .. }
@@ -823,6 +824,7 @@ impl super::RtEngine {
             }
         }
         self.pad_targets.fill(None);
+        self.scenes.cancel();
         self.navigation.cancel();
         self.clip_launch_inputs.clear();
         self.release_surface_inputs();

@@ -37,6 +37,7 @@ impl Rack {
 pub(super) struct Global {
     bpm: f32,
     conductor: Option<Arc<midi_data::Conductor>>,
+    scene_timing: Option<scene::Timing>,
     quant: f32,
     quantize: bool,
     metronome: bool,
@@ -59,6 +60,7 @@ impl Global {
         Self {
             bpm: rt.bpm,
             conductor: rt.conductor.clone(),
+            scene_timing: rt.scenes.timing,
             quant: rt.quant,
             quantize: rt.quantize,
             metronome: rt.metronome,
@@ -82,6 +84,8 @@ impl Global {
         rt.bpm = self.bpm;
         let changed=match (&rt.conductor,&self.conductor){(Some(a),Some(b))=>!Arc::ptr_eq(a,b),(None,None)=>false,_=>true};
         rt.conductor = self.conductor.clone();
+        rt.scenes.cancel();
+        rt.scenes.timing = self.scene_timing;
         if changed{rt.mapped_clock = None;}
         rt.quant = self.quant;
         rt.quantize = self.quantize;
@@ -271,7 +275,7 @@ pub(super) enum Patch {
     Arrangement {value:Box<arrangement::Playback>,reserved:[Option<Arc<arrangement::Plan>>;2],bytes:usize},
     Session(Box<session::Inverse>),
     Global(Global),
-    Conductor { bpm: f32, value: Option<Arc<midi_data::Conductor>>, reserved_bytes: usize },
+    Conductor { bpm: f32, value: Option<Arc<midi_data::Conductor>>, scene_timing: Option<scene::Timing>, reserved_bytes: usize },
     Sampler {
         index: usize,
         value: Option<sampler::Bank>,
@@ -430,7 +434,10 @@ impl Patch {
                 *selected = selection;
             }
             Self::Global(value) => value.swap(rt),
-            Self::Conductor { bpm, value, .. } => {
+            Self::Conductor { bpm, value, scene_timing, .. } => {
+                rt.scenes.cancel();
+                std::mem::swap(scene_timing, &mut rt.scenes.timing);
+                rt.metro.reset();
                 std::mem::swap(bpm, &mut rt.bpm);
                 std::mem::swap(value, &mut rt.conductor);
                 rt.mapped_clock = None;

@@ -502,6 +502,20 @@ Software qualification exhausts 16,384 CC-pair/bend values and signed-bit byte v
 
 Software qualification: five-minute 12 kHz reference and 44.1/48/96 kHz references, exact realtime/export parity with a native tempo ramp, overlap/seek/source edits, native handlers/hour navigation, save/reopen/selective imports/templates, cancellation/stale/protected/active/budget refusals and zero renderer allocation/free. Sources are snapshots; later Session changes are independent. Capacity limits are explicit. Streaming, independent warping and physical/cross-platform acceptance remain separate.
 
+### Issue #227: implemented
+
+- strict native scene metadata: [src/engine/scene/model.rs](../src/engine/scene/model.rs) — Independent optional tempo/meter, Stop/Keep and launch grid; native meter range and retained flat phase/click settings
+- atomic whole-scene renderer launch: [src/engine/scene/runtime.rs](../src/engine/scene/runtime.rs) — One stable queued boundary, selected-track/physical-owner preservation, continuing tracks, exact empty Stop and queue cancellation/refusal
+- guarded metadata Undo: [src/engine/session/transaction.rs](../src/engine/session/transaction.rs) — Worker-prepared properties, generation/namespace/epoch checks; duplicate/delete/reuse semantics and atomic inverse
+- native properties and accessible queue: [src/ui/session_editor/scene_properties.rs](../src/ui/session_editor/scene_properties.rs) — Existing Session editor numeric/chooser/save controls; queued scene/cells and cancel/status descriptions
+- persistent native clock and conductor inverse: [src/engine/project/model.rs](../src/engine/project/model.rs) — State 23, legacy field-injection guards, real file reopening, native timing import/Undo and no resumed pending scene
+- controller-readable bounded status: [src/ipc_follow.rs](../src/ipc_follow.rs) — Names, properties, identities, queued beat and meter in both status paths; bounded names/truncation and allocation-free unchanged cache
+- Acceptance fixtures: `engine::quantized_launch_tests::scene_batches_share_one_start_even_when_transport_was_stopped_off_grid`, `engine::scene::tests`, `ui::session_editor::tests::native_scene_properties_save_undo_duplicate_launch_and_cancel_use_real_handlers`, `engine::midi::clock::tests::actual_scene_tempo_and_meter_changes_keep_clock_continuous_at_the_shared_launch_sample`, `ipc_server::follow_tests::scene_status_exposes_names_properties_queue_and_meter_without_repeated_cache_heap_work`, `ipc_server::limits_tests::scene_status_socket_returns_reviewed_properties_names_and_queued_identity`.
+- Evidence: [docs/validation/scene-properties.md](../docs/validation/scene-properties.md).
+- Evidence: [docs/validation/scene-properties-receipt.json](../docs/validation/scene-properties-receipt.json).
+
+Software qualification: atomic whole-scene tempo/meter and clip switches at exact sample boundaries; independent timestamp/downbeat oracles at 8/44.1/48 kHz and clock oracles additionally at 96 kHz, callbacks 31/257, continuing tracks under Keep, exact Stop releases, disabled/additive/legato semantics, selected-track and held-input ownership, actual recording completion, native odd-meter count-in/rate change, full native meter inheritance including 255/128 and pickup, guarded metadata Undo/Redo/cancellation/stale identity, deletion/reuse/reorder, safety/seek/project replacement, native state 23 real-container reopen and old-header injection refusal, native egui/AccessKit editing/duplication/launch/cancel, bounded consistent socket/follow status and zero unchanged cache heap work. A selected scene tempo/meter replaces future conductor automation with the current flat clock; historical conductor mapping is not retained. Pending launches/active identities never resume on reopen. No physical controller display or new live hardware/audio qualification; independent stage application unchanged. No ticket acceptance or issue closure claimed.
+
 ### Issue #255: implemented
 
 - native live section and loop editor: [src/ui/song_navigation.rs](../src/ui/song_navigation.rs) — Named creation/edit/move/delete, exact beat/time entry, quantized previous/next/ID jumps, loop braces and loop-to-next; keyboard/assistive handlers
@@ -621,7 +635,7 @@ Music source: FreeToUse public keyless API. Michael excludes other third-party p
 | [#224](https://github.com/michaelmonetized/omatainer/issues/224) | Drive controller LEDs and meters from actual application state | planned |
 | [#225](https://github.com/michaelmonetized/omatainer/issues/225) | Add runtime controller discovery, enablement and reconnection | planned |
 | [#226](https://github.com/michaelmonetized/omatainer/issues/226) | Build an editable linear audio and MIDI Arrangement timeline | implemented |
-| [#227](https://github.com/michaelmonetized/omatainer/issues/227) | Give scenes names, tempo, meter and launch-state semantics | planned |
+| [#227](https://github.com/michaelmonetized/omatainer/issues/227) | Give scenes names, tempo, meter and launch-state semantics | implemented |
 | [#228](https://github.com/michaelmonetized/omatainer/issues/228) | Record and overdub audio or MIDI directly into Session slots | planned |
 | [#229](https://github.com/michaelmonetized/omatainer/issues/229) | Export aligned stems, track groups and delivery versions in batches | planned |
 | [#230](https://github.com/michaelmonetized/omatainer/issues/230) | Expose a clean performance audio feed for OBS and broadcast tools | planned |

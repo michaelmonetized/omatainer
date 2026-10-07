@@ -255,6 +255,13 @@ pub(crate) fn wire_key(message: &[u8; 3]) -> u32 {
 
 impl RtEngine {
     pub(crate) fn clip_queue_explicit(&mut self, track: usize, scene: u16, looping: bool) {
+        let Some(clip) = self.tracks.get(track).and_then(|track| track.clips.get(usize::from(scene))) else { return; };
+        let when = self.clip_boundary(clip.properties.launch.grid);
+        self.clip_queue_at(track, scene, looping, when);
+    }
+    /// Queue a clip at a reviewed whole-scene boundary.
+    /// Takes storage slots, loop policy and exact beat; retains clip legato without selecting a second grid.
+    pub(crate) fn clip_queue_at(&mut self, track: usize, scene: u16, looping: bool, when: f64) {
         let Some(slot) = address(&self.session, track, usize::from(scene)) else {
             return;
         };
@@ -263,7 +270,6 @@ impl RtEngine {
             return;
         }
         let policy = clip.properties.launch;
-        let when = self.clip_boundary(policy.grid);
         self.clip_launch_inputs.next = self.clip_launch_inputs.next.wrapping_add(1).max(1);
         let start = Start {
             slot,
@@ -295,6 +301,7 @@ impl RtEngine {
         if let (Some(bars), Some(map)) = (grid.bars(), self.conductor.as_ref()) {
             return map.next_bar_boundary(now, bars);
         }
+        if let Some(boundary) = self.scene_bar_boundary(grid, now) { return boundary; }
         let nearest = (now / quantum).round() * quantum;
         if (now - nearest).abs() < super::midi_schedule::BEAT_EPSILON {
             nearest
@@ -531,9 +538,7 @@ impl RtEngine {
             next: match (period, self.conductor.as_ref()) {
                 (RepeatPeriod::Bars(bars), Some(map)) => map
                     .next_bar_boundary(start.when + super::midi_schedule::BEAT_EPSILON * 2.0, bars),
-                (RepeatPeriod::Bars(bars), None) => {
-                    (start.when / (f64::from(bars) * 4.0) + 1.0).floor() * f64::from(bars) * 4.0
-                }
+                (RepeatPeriod::Bars(bars), None) => self.scenes.timing.map_or_else(|| (start.when / (f64::from(bars) * 4.0) + 1.0).floor() * f64::from(bars) * 4.0, |timing| timing.boundary(start.when + super::midi_schedule::BEAT_EPSILON * 2.0, bars)),
                 (RepeatPeriod::Beats(beats), _) => start.when + beats,
                 (RepeatPeriod::BeatGrid(beats), _) => {
                     ((start.when + super::midi_schedule::BEAT_EPSILON) / beats).floor() * beats

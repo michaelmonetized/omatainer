@@ -314,3 +314,17 @@ fn native_cli_multiminute_connection_counts_restart_backoff_and_clean_exit() {
     wait_for(|| server.clients.active.load(Ordering::Acquire) == 0);
     eprintln!("native ctl follow: elapsed={:?}, updates={updates}, accepted=2, handlers=2, peak=1, outage_attempts={}, clean_exit=true", began.elapsed(), errors.len());
 }
+#[test]
+fn scene_status_exposes_names_properties_queue_and_meter_without_repeated_cache_heap_work() {
+    use crate::engine::{scene::{Properties,Signature,Empty,Pending},clip_launch::Grid,session::{Layout,Axis}};
+    let (commands,_receiver)=CommandPort::channel(256);
+    let mut s=Snapshot::default();let mut layout=Layout::fresh(["Software track".into()],2);
+    layout.scenes[0].name="Applied scene".into();layout.scenes[1].name="\u{1}".repeat(4096);
+    s.scenes.active=layout.reference(Axis::Scene,0);s.scenes.active_properties=Some(Properties::default());
+    s.scenes.pending=Some(Pending{scene:layout.reference(Axis::Scene,1).unwrap(),properties:Properties{tempo_micros:Some(500000),meter:Some(Signature{numerator:7,denominator_power:3}),grid:Grid::Bar,empty:Empty::Keep},when:12.5,additive:false});
+    s.session=Some(layout);s.meter_numerator=7;s.meter_denominator=8;
+    let mut cache=Cache::default();let id=json!("scene software fixture");let encoded=cache.update(&s,&commands,&id).unwrap();let frame:Value=serde_json::from_str(encoded).unwrap();
+    assert_eq!(frame["active_scene_name"],"Applied scene");assert_eq!(frame["queued_scene_name"].as_str().unwrap().len(),256/6);assert_eq!(frame["state_truncated"],true);assert_eq!(frame["meter"],json!([7,8]));assert_eq!(frame["scenes"]["pending"]["when"],12.5);assert_eq!(frame["scenes"]["pending"]["properties"]["meter"]["numerator"],7);
+    assert_eq!(crate::engine::test_alloc::measure(||{for _ in 0..1000{assert!(cache.update(&s,&commands,&id).is_ok());}}),Default::default());
+    let serializations=cache.serializations;s.scenes.pending=None;let frame:Value=serde_json::from_str(cache.update(&s,&commands,&id).unwrap()).unwrap();assert_eq!(frame["queued_scene_name"],"");assert!(frame["scenes"]["pending"].is_null());assert_eq!(cache.serializations,serializations+1);
+}

@@ -686,3 +686,21 @@ fn actual_output_deadlines_remain_bounded_under_real_decode_and_egui_load_at_sev
         std::fs::write(path,serde_json::to_vec_pretty(&serde_json::json!({"schema":1,"real_decode_egui_iterations":iterations,"physical_devices_opened":false,"tempos":reports})).unwrap()).unwrap();
     }
 }
+#[test]
+fn actual_scene_tempo_and_meter_changes_keep_clock_continuous_at_the_shared_launch_sample() {
+    use crate::engine::{scene::{Properties, Signature, Empty}, clip_launch::Grid};
+    for rate in [8000, 44100, 48000, 96000] { for block_size in [31,257] {
+        let (engine,mut rt)=Engine::headless_for_test(rate,256);
+        let shared=engine.cmd.clock_output().clone();let events=shared.receiver.lock().take().unwrap();shared.generation.store(1,Release);shared.enabled.store(true,Release);
+        rt.session.scenes[0].scene=Properties{tempo_micros:Some(500000),meter:Some(Signature{numerator:7,denominator_power:3}),grid:Grid::Immediate,empty:Empty::Keep};
+        rt.apply(Command::LaunchScene{scene:0});rt.apply(Command::Play);
+        rt.session.scenes[1].scene=Properties{tempo_micros:Some(750000),meter:Some(Signature::default()),grid:Grid::Bar,empty:Empty::Keep};
+        let base=1_000_000_000u64;let boundary=(f64::from(rate)*1.75).round()as usize;let frames=boundary+(f64::from(rate)*0.75).round()as usize;let mut data=vec![0.0;block_size*2];
+        let render=|rt:&mut crate::engine::RtEngine,begin:usize,end:usize,data:&mut[f32]|{let mut rendered=begin;while rendered<end{let count=(end-rendered).min(block_size);rt.clock_output.begin_at(rate,count,base+rendered as u64*1_000_000_000/u64::from(rate),true);rt.process(&mut data[..count*2]);rendered+=count;}};
+        assert_eq!(test_alloc::measure(||{render(&mut rt,0,100,&mut data);rt.apply(Command::LaunchScene{scene:1});render(&mut rt,100,frames,&mut data);}),Default::default());
+        assert!(rt.scenes.pending.is_none());assert_eq!(rt.scenes.timing.unwrap().signature,Signature::default());
+        let actual:Vec<_>=events.try_iter().collect();assert_eq!(actual[0].message,Message::Start);assert!(actual[1..].iter().all(|e|e.message==Message::Clock));assert_eq!(actual.len(),109);
+        for(tick,event)in actual[1..].iter().enumerate(){let beat=tick as f64/24.0;let seconds=beat.min(3.5)*0.5+(beat-3.5).max(0.0)*0.75;let expected=base+(seconds*f64::from(rate)).ceil()as u64*1_000_000_000/u64::from(rate);assert!(event.deadline_ns.abs_diff(expected)<=1_000_000_000u64.div_ceil(u64::from(rate)),"rate{rate} block{block_size} tick{tick}:{} vs {expected}",event.deadline_ns);}
+        assert_eq!(shared.counters().error,None);
+    }}
+}
