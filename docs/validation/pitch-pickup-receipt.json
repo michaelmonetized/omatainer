@@ -492,5 +492,86 @@
     "sha256": "e6dec486cc28891240375ca146c07eefac378f676e678d5fcbe05e7a843d1eef",
     "reason": "The pinned serde_json standalone check reproduced different direct-f32 and JSON-Value serialization for 0.1f32. Exact widening to f64 made both projections identical; the production ordinary/subscribed parity and no-allocation regression exercises that value."
   },
-  "limits": "Linux ARM64 software qualification: source/wire-channel/assignment-owned absolute CC, CC14 and pitch-bend pickup; both crossing directions without changing the base at acquisition; exact physical slot reuse and rearm after layer/range/media/GUI/Sync/assignment/routing/overflow changes; 64 bounded owners and no callback allocation; existing relative controls and native Undo; original/local/effective BPM and range readouts, visible/accessibly described target; independent native pointer/Space/Enter/assistive bend ownership and focus/panel/safety/source/dialog release; production factory/learned input worker, real native project stopped reopen with transient ownership absent; actual PCM versus independent base-rate playback at three output rates; identical bounded ordinary/subscribed status. Sync requires deliberate Off and is never disabled by fader input. No physical audio/MIDI device opened, new GUI or capture started, or physical absolute-fader acceptance claimed; independent stage processes/session preserved."
+  "limits": "Linux ARM64 software qualification: source/wire-channel/assignment-owned absolute CC, CC14 and pitch-bend pickup; both crossing directions without changing the base at acquisition; exact physical slot reuse and rearm after layer/range/media/GUI/Sync/assignment/routing/overflow changes; 64 bounded owners and no callback allocation; existing relative controls and native Undo; original/local/effective BPM and range readouts, visible/accessibly described target; independent native pointer/Space/Enter/assistive bend ownership and focus/panel/safety/source/dialog release; production factory/learned input worker, real native project stopped reopen with transient ownership absent; actual PCM versus independent base-rate playback at three output rates; identical bounded ordinary/subscribed status. Sync requires deliberate Off and is never disabled by fader input. No physical audio/MIDI device opened, new GUI or capture started, or physical absolute-fader acceptance claimed; independent stage processes/session preserved.",
+  "releaseInstallation": {
+    "schema": 1,
+    "package": {
+      "path": "/home/michael/Projects/omatainer-work/hardware-resurrection/target/app-backlog/release-pitch-pickup-qualified",
+      "manifestSha256": "41d115b461873d6ac863730b7d5ac2c8d3a3c68e5c3713d2a1cfe278cd921a23",
+      "revision": "90acbcabcd4b6b093e3ddb5dff029b258f01afae",
+      "version": "0.1.0+90acbcabcd4b",
+      "executableSha256": "0ba496fa670b37d9f24099e12bf3de50371d308466f44649f952b9462e2715cd"
+    },
+    "installed": {
+      "schema": 1,
+      "before": "2bbc99dfdb277f2ca452c22ee8be6e829a55c778b1a409e5410722cd5196b85a",
+      "after": "0ba496fa670b37d9f24099e12bf3de50371d308466f44649f952b9462e2715cd",
+      "installedAt": "2026-10-07T07:31:57.153Z"
+    },
+    "buildInfo": {
+      "arch": "aarch64",
+      "debug_assertions": false,
+      "os": "linux",
+      "pkg_version": "0.1.0",
+      "schema": 1
+    },
+    "applicationProcessesPreserved": [
+      {
+        "pid": 1649895,
+        "executable": "/home/michael/Projects/omatainer-work/hardware-resurrection/target/hardware/pioneer-apc/bin/omatainer",
+        "arguments": [
+          "/home/michael/Projects/omatainer-work/hardware-resurrection/target/hardware/pioneer-apc/bin/omatainer",
+          "--empty-once"
+        ],
+        "sha256": "646aa453a269d7c49feec0f5e88fcac94a030034f051468a82d2828ef05c4915"
+      },
+      {
+        "pid": 3973522,
+        "executable": "/home/michael/.local/bin/omatainer (deleted)",
+        "arguments": [
+          "/home/michael/.local/bin/omatainer",
+          "ctl",
+          "follow"
+        ],
+        "sha256": "23f88a47125de6eb19a7921d64faef6dafed56d3c25debdb89ac04d060d9b2e4"
+      }
+    ],
+    "protectedSessionPreserved": {
+      "path": "/home/michael/Projects/omatainer-work/hardware-resurrection/target/hardware/apc-restart-20261006/session.omat",
+      "sha256": "96e0b2495cdbdc549c324ecf8337fdef5590bdcbfe8916e4f014eb05d1ee827d",
+      "bytes": 162882871
+    },
+    "additionalProcessesAfterInstall": [],
+    "preinstallState": {
+      "master": 0.8188976645469666,
+      "playing": false,
+      "recording": false,
+      "decks": [
+        {
+          "title": "What More Can I Say",
+          "playing": false
+        },
+        {
+          "title": "Public Service Announcement",
+          "playing": false
+        }
+      ]
+    },
+    "postinstallState": {
+      "master": 0.8188976645469666,
+      "playing": false,
+      "recording": false,
+      "decks": [
+        {
+          "title": "What More Can I Say",
+          "playing": false
+        },
+        {
+          "title": "Public Service Announcement",
+          "playing": false
+        }
+      ]
+    },
+    "scope": "Default executable installed for next launch. Previously active independent private GUI and follower processes retained; no hardware device opened or live playback restarted. An unavailable live state is recorded when no GUI was present."
+  }
 }
