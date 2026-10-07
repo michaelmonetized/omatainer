@@ -1404,10 +1404,12 @@ impl RtEngine {
             .map(|slot|fx::FxSlot::required_storage(slot.id(),sr as f32)).sum::<usize>();
         if effect_bytes>session::MAX_PROCESSOR_BYTES {return Err("Output rate would exceed the 256 MiB session effect-buffer limit; remove effects or choose a lower rate".into());}
         let sampler_banks = self.sampler_rate_banks(sr)?;
+        let surface = self.surface.at_rate(sr as f32).map_err(|error|error.to_string())?;
         let routing = self.routing.as_ref().map(|graph| audio::routing::prepared::Prepared::at_rate(graph.model.clone(), &self.session, sr).map(Box::new)).transpose()?;
         self.timeline_anchor = self.timeline_seconds();
         self.timeline_frames = 0;
         self.sr = sr as f32;
+        self.surface = Box::new(surface);
         self.routing = routing;
         self.mapped_clock = None;
         self.project.set_sample_rate(sr);
@@ -1667,6 +1669,7 @@ impl RtEngine {
         if frames==0 {self.external_clock_frame(0);}
         self.routing_pipe.begin_block(self.sr as u32, frames);
         if frames > 0 { self.prepare_mixer_gains(); }
+        self.surface.resolve_fx_samplers(&self.session);
         let spb = (self.sr as f64) * 60.0 / self.bpm as f64;
         for (slot, wet) in self.master_fx.iter_mut().zip(self.fx_wet) { slot.configure(wet, spb); }
         if let Some(history) = &mut self.history_measurement { history.configure(self.fx_kind, self.fx_wet, spb); }
@@ -1792,8 +1795,10 @@ impl RtEngine {
                 #[cfg(not(test))]
                 self.xfader_gain.tick()
             };
-            let dl = al * ga + bl * gb;
-            let dr = ar * ga + br * gb;
+            let left = self.surface.deck_fx_at(0, surface_controls::fx::Placement::PostFader, [al * ga, ar * ga], spb, self.sr);
+            let right = self.surface.deck_fx_at(1, surface_controls::fx::Placement::PostFader, [bl * gb, br * gb], spb, self.sr);
+            let dl = left[0] + right[0];
+            let dr = left[1] + right[1];
             l += dl;
             r += dr;
             if self.decks[0].pfl {
@@ -1809,6 +1814,7 @@ impl RtEngine {
             l += click;
             r += click;
 
+            [l,r] = self.surface.master_fx_at(surface_controls::fx::Placement::PreFader,[l,r],spb,self.sr);
             // Three legacy controls select real processors in a serial chain.
             for slot in 0..self.master_fx.len() {
                 let timer = self.load_profile.start();
@@ -1827,11 +1833,11 @@ impl RtEngine {
             let preview = self.tick_provider_preview();
             l += preview[0];
             r += preview[1];
-            let headphone = self.render_monitor([l * self.master, r * self.master], [cue_l, cue_r]);
-            let main = [l * self.master, r * self.master];
+            let main = self.surface.master_fx_at(surface_controls::fx::Placement::PostFader,[l * self.master,r * self.master],spb,self.sr);
+            let headphone = self.render_monitor(main, [cue_l, cue_r]);
             self.safety_output.observe(main.map(|sample| if sample.is_finite() { sample.abs() } else { f32::NAN }), self.sr);
-            l = limiter(l * self.master);
-            r = limiter(r * self.master);
+            l = limiter(main[0]);
+            r = limiter(main[1]);
             let headphone = self.safety_output.preview(headphone.map(limiter));
             let [l, r] = self.safety_output.output([l, r]);
             self.observe_master_meter([l, r]);
@@ -2262,6 +2268,7 @@ impl RtEngine {
             // A paused source must never be read repeatedly as a DC signal.
             let d = &mut self.decks[di];
             let [l, r] = d.transition_output([0.0; 2]);
+            let [l,r] = self.surface.deck(di,[l,r],f64::from(self.sr)*60.0/f64::from(self.bpm.max(1.0)));
             d.meter = d.meter * 0.9 + (l.abs() + r.abs()) * 0.05;
             self.routing_deck_taps = [[0.0; 2], [l, r]];
             let [l, r] = self.monitor.deck(di, [l, r]);
@@ -2368,7 +2375,10 @@ impl RtEngine {
             }
             if voice.position >= voice.end { self.finish_sampler_audition(); }
         }
+        let spb=f64::from(self.sr)*60.0/f64::from(self.bpm.max(1.0));
+        self.surface.sampler_fx_at(&mut buses,surface_controls::fx::Placement::PreFader,spb,self.sr);
         for bus in &mut buses { for sample in bus { *sample *= self.surface.status.sampler_volume; } }
+        self.surface.sampler_fx_at(&mut buses,surface_controls::fx::Placement::PostFader,spb,self.sr);
         buses
     }
 

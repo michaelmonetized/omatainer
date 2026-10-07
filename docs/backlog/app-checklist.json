@@ -2617,9 +2617,12 @@
         55,
         62
       ],
-      "state": "planned",
+      "state": "implemented",
       "prs": [],
-      "evidence": []
+      "evidence": [
+        "docs/validation/dj-fx-units.md",
+        "docs/validation/dj-fx-units-receipt.json"
+      ]
     },
     {
       "issue": 188,

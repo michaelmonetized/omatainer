@@ -290,6 +290,35 @@ fn surfaces_sp1_effect_precision_bank_isolation_buttons_and_assignments_are_inde
 }
 
 #[test]
+fn surfaces_sp1_fx_buttons_and_encoder_operate_the_shared_native_units_and_retained_stereo_tails() {
+    use surface_controls::fx::{Control, Timing};
+    let (_engine, mut rt, mut input) = fixture(surface::pioneer_sp1(), 187);
+    rt.apply(Command::Surface(surface_controls::Input::DjFx { bank: 0, control: Control::Timing(Timing::Manual) }));
+    send(&mut input, &mut rt, &[0xb4, 0, 1]);
+    assert_eq!(rt.surface_status().fx[0].timing, Timing::Beat);
+    assert_eq!(rt.surface_status().fx[0].beats, 1);
+    rt.apply(Command::Surface(surface_controls::Input::DjFx { bank: 0, control: Control::Timing(Timing::Manual) }));
+    rt.apply(Command::Surface(surface_controls::Input::DjFx { bank: 0, control: Control::ManualMs(5.0) }));
+    for (parameter, value) in [(false, 1.0), (true, 0.0)] {
+        rt.apply(Command::Surface(surface_controls::Input::FxValue { bank: 0, slot: 0, parameter, value }));
+    }
+    let other = serde_json::to_value(rt.surface_status().fx[1]).unwrap();
+    send(&mut input, &mut rt, &[0x94, 0x47, 127]);
+    send(&mut input, &mut rt, &[0x84, 0x47, 0]);
+    assert!(rt.surface_status().fx[0].on[0]);
+    for _ in 0..480 { rt.surface.deck(0, [0.0; 2], 24000.0); }
+    assert_eq!(rt.surface.deck(0, [0.2, -0.1], 24000.0), [0.0; 2]);
+    send(&mut input, &mut rt, &[0x94, 0x47, 127]);
+    assert!(!rt.surface_status().fx[0].on[0]);
+    assert_eq!(crate::engine::test_alloc::measure(|| {
+        for frame in 1..=480 {
+            assert_eq!(rt.surface.deck(0, [0.0; 2], 24000.0), if frame == 240 { [0.2, -0.1] } else { [0.0; 2] });
+        }
+    }), Default::default());
+    assert_eq!(serde_json::to_value(rt.surface_status().fx[1]).unwrap(), other);
+}
+
+#[test]
 fn surfaces_sp1_hotloops_all_pad_modes_and_sampler_volume_have_real_engine_targets() {
     let (_engine, mut rt, mut input) = fixture(surface::pioneer_sp1(), 86);
     deck(&mut rt, 0);

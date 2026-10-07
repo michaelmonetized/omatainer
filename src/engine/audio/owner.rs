@@ -731,6 +731,7 @@ impl RtEngine {
             slot.reset(kind);
         }
         if let Some(history) = &mut self.history_measurement { history.reset_dsp(); }
+        self.surface.reset_fx_histories();
         for deck in &mut self.decks {
             deck.playing = false;
             deck.stop_preview(self.sr);

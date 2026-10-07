@@ -2166,6 +2166,14 @@ Choose Hot Cue, Roll, Slice, Sampler, Saved Loop, Auto Loop, Manual Loop, Veloci
 
 Workflow: Prepare a DJ deck.
 
+### DJ FX units
+
+Two units · three slots · independently assigned sources
+
+Assign each unit to Deck A/B, a selected sampler destination, or Master. Several assignments process each source separately; a deck plus Master applies the unit twice. Deck pre/post placement is around the crossfader and leaves PFL before it; sampler placement is around sampler volume, then follows its ordinary track route; master placement is around master volume. Echo follows the musical clock or explicit milliseconds, capped by its prepared two-second history with the applied duration shown. Reverb decay and lowpass cutoff use the same parameter control. Switching a slot or source off fades new wet input over two milliseconds while keeping dry audio and stereo tails. Change placement/destination only with all slots off after tails settle. Choosing another effect explicitly resets that slot history. These live units retain the existing controller banks and do not alter manufacturer addresses.
+
+Workflow: Prepare a DJ deck.
+
 ### Chromatic cue pads
 
 Cue root; three eight-note ranges; original-key reset

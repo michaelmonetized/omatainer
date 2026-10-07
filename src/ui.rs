@@ -27,6 +27,7 @@ pub(crate) mod bpm;
 use bpm::{Bpm, Origin};
 use crate::engine::media_source::FileFingerprint;
 mod fx_controls;
+mod dj_fx;
 mod library_view;
 mod library_layout;
 mod library_backup;
@@ -248,6 +249,7 @@ pub struct App {
     pad_inputs: [u8; 16],
     deck_pad_inputs: deck_pads::Inputs,
     deck_direction: deck_direction::Inputs,
+    dj_fx_open: bool,
     cue_audition: cue_audition::Inputs,
     pitch_inputs: pitch_controls::Inputs,
     shortcut_focus: keyboard::ShortcutFocus,
@@ -404,6 +406,7 @@ impl App {
             pad_inputs: [0; 16],
             deck_pad_inputs: deck_pads::Inputs::new(),
             deck_direction: deck_direction::Inputs::new(),
+            dj_fx_open: false,
             cue_audition: cue_audition::Inputs::new(),
             pitch_inputs: pitch_controls::Inputs::new(),
             shortcut_focus: keyboard::ShortcutFocus::default(),
@@ -943,6 +946,7 @@ impl App {
         self.track_gain_ui(ctx);
         self.session_editor_ui(ctx);
         self.audio_routing_ui(ctx);
+        self.dj_fx_ui(ctx);
         self.piano_roll_ui(ctx);
         self.midi_files_ui(ctx);
         self.audio_clips_ui(ctx);

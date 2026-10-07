@@ -1039,6 +1039,7 @@ impl App {
                             if ui.button(tr!("Project and track templates…")).help(ui, HelpControl::TemplateOpen).clicked() { self.templates.open = true; ui.close(); }
                             if ui.button(tr!("Named versions…")).help(ui, HelpControl::ProjectVersionsOpen).clicked() { self.project_versions.open = true; ui.close(); }
                             if ui.button(tr!("Import from another project…")).help(ui, HelpControl::ProjectImportOpen).clicked() { self.project_import.open = true; ui.close(); }
+                            if ui.button("DJ FX…").help(ui,HelpControl::DjFx).clicked() { self.dj_fx_open=true;ui.close(); }
                             if ui.button(tr!("Tempo and meter…")).help(ui, HelpControl::TimingOpen).clicked() { self.open_timing(); ui.close(); }
                             let response = ui.button(tr!("New project"));
                             help::annotate(ui, &response, help::Control::ProjectNew);

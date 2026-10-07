@@ -419,6 +419,18 @@ Software qualification only. Sizes are runtime state, not saved preparation. Phy
 
 Native headless UI, actual learned MIDI workers and stereo source-reference software qualification. Physical Cue buttons and new listening acceptance remain paused. Existing one-shot Cue and main-cue preparation persistence remain available. Held state is transient and never saved. Preferences schema 17; project 15 and portable shortcuts 2 unchanged.
 
+### Issue #187: implemented
+
+- independent source FX and draining histories: [src/engine/surface_controls/fx.rs](../src/engine/surface_controls/fx.rs) — Deck/sampler/master assignments, exact timing, fader placement and bounded allocation-free stereo tails
+- native routed and legacy mixer integration: [src/engine/audio/routing/render.rs](../src/engine/audio/routing/render.rs) — Post-crossfader deck FX and master pre/post-gain units before shared safety
+- native unit control workflow: [src/ui/dj_fx.rs](../src/ui/dj_fx.rs) — Confirmed assignments, sampler identity, applied timing, wet/bypass and settled placement
+- existing wire-shaped bank regression: [src/engine/midi/surface_tests.rs](../src/engine/midi/surface_tests.rs) — Actual controller-worker FX button/encoder dispatch into shared renderer state without ports
+- Acceptance fixtures: `engine::surface_controls::fx::tests`, `ui::dj_fx::tests`, `engine::midi::surface_tests::surfaces_sp1_fx_buttons_and_encoder_operate_the_shared_native_units_and_retained_stereo_tails`.
+- Evidence: [docs/validation/dj-fx-units.md](../docs/validation/dj-fx-units.md).
+- Evidence: [docs/validation/dj-fx-units-receipt.json](../docs/validation/dj-fx-units-receipt.json).
+
+Linux ARM64 software qualification: two independent live DJ FX units with three serial Echo/Reverb/Filter slots; separate stereo histories for both decks, one explicitly chosen stable sampler destination per unit and Master. Beat-clock or manual echo timing, applied duration, wet/bypass, independent source assignments and defined fader placement are native controls sharing the existing controller banks. Bypass/unassignment fades new wet injection over 2 ms and drains original tails without callback allocation; sampler unassignment retains its original bus, stale/replaced project targets retire safely, source/placement edits require off/settled histories. Dry units use a fast path. Native graph and legacy mixer cut/pause tails, actual OutputCallback, six-rate raw impulses, native egui/AccessKit and recorded wire-shaped mapping dispatch passed. Echo storage supports up to two seconds, with the applied cap shown; after two seconds of silence below 1e-7, inactive histories retire. These are transient live controls like the existing surface banks; no new project version, dependency or manufacturer address. No physical audio/MIDI device, capture, new OS GUI, mapped physical paddle or listening acceptance.
+
 ### Issue #188: implemented
 
 - musical renderer: [src/engine/deck_controls/quantization.rs](../src/engine/deck_controls/quantization.rs) — Fixed pending onset, mapped source time, per-deck divisions and due-sample dispatch
@@ -785,7 +797,7 @@ Music source: FreeToUse public keyless API. Michael excludes other third-party p
 | [#184](https://github.com/michaelmonetized/omatainer/issues/184) | Stream long recordings and deck media with bounded caches | planned |
 | [#185](https://github.com/michaelmonetized/omatainer/issues/185) | Add beat-jump transport and controller pad controls | implemented |
 | [#186](https://github.com/michaelmonetized/omatainer/issues/186) | Implement hold-to-audition and stutter behavior for temporary cues | implemented |
-| [#187](https://github.com/michaelmonetized/omatainer/issues/187) | Add assignable deck DJ-FX units with tempo controls | planned |
+| [#187](https://github.com/michaelmonetized/omatainer/issues/187) | Add assignable deck DJ-FX units with tempo controls | implemented |
 | [#188](https://github.com/michaelmonetized/omatainer/issues/188) | Apply beatgrid quantization to deck cues and loop operations | implemented |
 | [#189](https://github.com/michaelmonetized/omatainer/issues/189) | Support four independently controlled DJ decks | planned |
 | [#190](https://github.com/michaelmonetized/omatainer/issues/190) | Add precise loop boundary editing and beat-based loop movement | implemented |

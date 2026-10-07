@@ -1,4 +1,5 @@
 use super::{Command, RtEngine, View};
+pub(crate) mod fx;
 
 #[derive(Clone, Copy, Debug)]
 pub enum Input {
@@ -23,6 +24,7 @@ pub enum Input {
         control: u8,
         delta: i16,
     },
+    DjFx { bank: u8, control: fx::Control },
     SamplerVolume(f32),
     SamplerPressure {
         source: u64,
@@ -55,6 +57,7 @@ impl Input {
                 control,
                 delta,
             } => bank < 2 && control < 128 && (-64..=63).contains(&delta),
+            Self::DjFx { bank, control } => bank < 2 && control.valid(),
             Self::SamplerVolume(value) => value.is_finite() && (0.0..=1.0).contains(&value),
             Self::SamplerPressure { pad, value, .. } => {
                 pad < 16 && value.is_finite() && (0.0..=1.0).contains(&value)
@@ -100,6 +103,12 @@ pub struct EffectBank {
     pub parameter: [f32; 3],
     pub beats: i8,
     pub assigned: [bool; 2],
+    pub sampler: Option<super::session::Reference>,
+    pub master: bool,
+    pub placement: fx::Placement,
+    pub timing: fx::Timing,
+    pub manual_ms: f32,
+    pub tails: [bool; 4],
 }
 impl Default for EffectBank {
     fn default() -> Self {
@@ -114,6 +123,12 @@ impl Default for EffectBank {
             parameter: [0.5; 3],
             beats: 0,
             assigned: [false; 2],
+            sampler: None,
+            master: false,
+            placement: fx::Placement::PreFader,
+            timing: fx::Timing::Beat,
+            manual_ms: 500.0,
+            tails: [false; 4],
         }
     }
 }
@@ -124,7 +139,10 @@ pub(super) struct State {
     pub sends: [[f32; 2]; super::session::MAX_TRACKS],
     processors: [super::master_fx::MasterSlot; 2],
     send_input: [[f32; 2]; 2],
-    deck_fx: [[[super::master_fx::MasterSlot; 3]; 2]; 2],
+    deck_fx: [[[fx::Processor; 3]; 4]; 2],
+    fx_rate: f32,
+    sampler_slots: [Option<usize>; 2],
+    sampler_history_target: [Option<super::session::Reference>; 2],
     pad_owners: [Option<(u64, Option<u32>, u8)>; super::control::MAX_COMMANDS],
     pad_gain: [f32; 16],
     master_saved: [f32; 3],
@@ -154,7 +172,10 @@ impl State {
             pad_gain: [1.0; 16],
             master_saved: [0.5; 3],
             shift_owners: [None; super::control::MAX_COMMANDS],
-            deck_fx: [prepare_bank(sr)?, prepare_bank(sr)?],
+            deck_fx: [fx::prepare_bank(sr)?, fx::prepare_bank(sr)?],
+            fx_rate: sr,
+            sampler_slots: [None; 2],
+            sampler_history_target: [None; 2],
             track_gain: std::array::from_fn(|_| {
                 let mut ramp = super::mixer_gain::GainPair::default();
                 ramp.prepare([1.0; 2], sr, |left, right| [left, right]);
@@ -201,21 +222,12 @@ impl State {
         }
         output
     }
-    /// Render independent Pioneer effect banks for one assigned deck.
-    /// Takes deck, stereo input and beat duration; returns the serial effect output.
-    pub fn deck(&mut self, deck: usize, mut input: [f32; 2], spb: f64) -> [f32; 2] {
-        for (bank, processors) in self.status.fx.iter().zip(&mut self.deck_fx) {
-            if !bank.assigned[deck] || !bank.on.iter().any(|on| *on) {
-                continue;
-            }
-            for (index, processor) in processors[deck].iter_mut().enumerate() {
-                let wet = if bank.on[index] { bank.wet[index] } else { 0.0 };
-                processor.configure(wet, spb * 2_f64.powi(i32::from(bank.beats)));
-                input = processor.process(input, bank.kinds[index], wet);
-            }
-        }
-        input
+    /// Render independently assigned units before the deck crossfader.
+    /// Takes deck, original stereo frame and musical clock; returns dry plus its own retained wet tails.
+    pub fn deck(&mut self, deck: usize, input: [f32; 2], spb: f64) -> [f32; 2] {
+        self.deck_fx_at(deck, fx::Placement::PreFader, input, spb, self.fx_rate)
     }
+
 }
 
 impl RtEngine {
@@ -245,6 +257,7 @@ impl RtEngine {
                 value,
                 note,
             } => self.apc_input(channel, control, value, note),
+            Input::DjFx { bank, control } => { let _ = self.dj_fx_control(bank, control); },
             Input::SamplerVolume(value) => self.surface.status.sampler_volume = value,
             Input::TrackSend { track, send, value } => {
                 self.surface.sends[usize::from(track)][usize::from(send)] = value
@@ -307,13 +320,13 @@ impl RtEngine {
                             deck[slot].reset(state.kinds[slot]);
                         }
                     }
-                    0 => state.beats = (i16::from(state.beats) + delta).clamp(-4, 3) as i8,
+                    0 => { state.beats = (i16::from(state.beats) + delta).clamp(-4, 3) as i8; state.timing = fx::Timing::Beat; },
                     0x10 => {
                         for parameter in &mut state.parameter {
                             *parameter = (*parameter + f32::from(delta) / 127.0).clamp(0.0, 1.0);
                         }
                     }
-                    0x40 | 0x43 => state.beats = 0,
+                    0x40 | 0x43 => { state.beats = 0; state.timing = fx::Timing::Beat; },
                     0x4c | 0x50 | 0x4e | 0x52 => state.assigned[0] = !state.assigned[0],
                     0x4d | 0x51 | 0x4f | 0x53 => state.assigned[1] = !state.assigned[1],
                     _ => {}
@@ -697,29 +710,4 @@ impl RtEngine {
         }
         status
     }
-}
-
-/// Prepare stereo histories for one effect bank.
-/// Takes the output rate; returns both decks' processors with the published initial parameters.
-fn prepare_bank(
-    sr: f32,
-) -> Result<[[super::master_fx::MasterSlot; 3]; 2], std::collections::TryReserveError> {
-    let mut bank = [
-        [
-            super::master_fx::MasterSlot::try_new(sr)?,
-            super::master_fx::MasterSlot::try_new(sr)?,
-            super::master_fx::MasterSlot::try_new(sr)?,
-        ],
-        [
-            super::master_fx::MasterSlot::try_new(sr)?,
-            super::master_fx::MasterSlot::try_new(sr)?,
-            super::master_fx::MasterSlot::try_new(sr)?,
-        ],
-    ];
-    for deck in &mut bank {
-        for processor in deck {
-            processor.parameter(sr, 0.5);
-        }
-    }
-    Ok(bank)
 }

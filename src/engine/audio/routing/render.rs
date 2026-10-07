@@ -85,7 +85,7 @@ impl Prepared {
                     let slot = usize::from(deck);
                     let pair = deck_pair.get_or_insert_with(|| rt.render_deck_pair());
                     let [left, right] = pair.audio[slot];
-                    let mixed = [left * gains[slot], right * gains[slot]];
+                    let mixed = rt.surface.deck_fx_at(slot,crate::engine::surface_controls::fx::Placement::PostFader,[left * gains[slot],right * gains[slot]],f64::from(rt.sr)*60.0/f64::from(rt.bpm.max(1.0)),rt.sr);
                     if let Some(latency)=&mut self.latency {
                         let aligned=latency.monitor_deck(index,rt.monitor.tap(slot));
                         rt.monitor.aligned_deck(slot,aligned);
@@ -111,7 +111,7 @@ impl Prepared {
                         (generated,Some(preview))
                     }else{(generated,None)};
                     let before = [input[0]+generated[0],input[1]+generated[1]];
-                    let mut output = before;
+                    let mut output = rt.surface.master_fx_at(crate::engine::surface_controls::fx::Placement::PreFader,before,f64::from(rt.sr)*60.0/f64::from(rt.bpm.max(1.0)),rt.sr);
                     for slot in 0..rt.master_fx.len() {
                         let timer = rt.load_profile.start();
                         output =
@@ -123,6 +123,7 @@ impl Prepared {
                     for channel in 0..2 {
                         output[channel] = (output[channel] + preview[channel]) * rt.master;
                     }
+                    output = rt.surface.master_fx_at(crate::engine::surface_controls::fx::Placement::PostFader,output,f64::from(rt.sr)*60.0/f64::from(rt.bpm.max(1.0)),rt.sr);
                     [before, post_fx, output]
                 }
                 Group::Output(_) => {
