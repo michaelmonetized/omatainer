@@ -507,6 +507,7 @@ fn handle_client_with_stop(
             "state_truncated": s.midi.len() > 8 || s.midi.iter().take(8).any(|name| ipc_transport::short_json_text(name, ipc_transport::STATUS_MIDI_NAME_BYTES).len() < name.len())
                 || s.decks.iter().take(2).any(|deck| ipc_transport::short_json_text(&deck.title, ipc_transport::STATUS_DECK_TITLE_BYTES).len() < deck.title.len()),
             "midi_clock": s.midi_clock,
+            "midi_clock_output": commands.clock_output().counters(),
             "midi_routing": commands.midi_routing().summary(),
             "midi_feedback": s.midi_feedback,
             "midi_input": s.midi_input,

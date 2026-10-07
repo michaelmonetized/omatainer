@@ -88,6 +88,7 @@ struct AdmissionShared {
     now_playing: std::sync::Arc<crate::performance_history::now_playing::Shared>,
     midi_learn: std::sync::Arc<super::midi::learn::Shared>,
     midi_routing: std::sync::Arc<super::midi::routing::Shared>,
+    clock_output: std::sync::Arc<super::midi::clock::Shared>,
     performance: super::performance::Handle,
     project_writers: std::sync::atomic::AtomicU64,
     audio_offline: std::sync::atomic::AtomicBool,
@@ -194,6 +195,9 @@ impl CommandReceiver {
         }
     }
 
+    /// Share the bounded output clock queue with an audio graph.
+    /// Takes this receiver; returns its persistent clock state or isolated offline state.
+    pub(crate) fn clock_output(&self) -> std::sync::Arc<super::midi::clock::Shared> {self.shared.as_ref().map_or_else(||std::sync::Arc::new(super::midi::clock::Shared::default()),|shared|shared.clock_output.clone())}
     pub(crate) fn midi_routing(&self) -> std::sync::Arc<super::midi::routing::Shared> {
         self.shared.as_ref().map_or_else(||std::sync::Arc::new(super::midi::routing::Shared::default()),|s|s.midi_routing.clone())
     }
@@ -457,6 +461,9 @@ impl CommandPort {
     /// Access bounded learning and assignment state outside the native callback.
     /// Takes no arguments; returns the shared MIDI dispatch/editor owner.
     pub(crate) fn midi_learn(&self) -> std::sync::Arc<super::midi::learn::Shared> { self.shared.midi_learn.clone() }
+    /// Access clock configuration and status outside the native callback.
+    /// Takes this producer; returns its shared bounded clock scheduler state.
+    pub(crate) fn clock_output(&self) -> &std::sync::Arc<super::midi::clock::Shared> {&self.shared.clock_output}
     pub(crate) fn midi_routing(&self) -> &std::sync::Arc<super::midi::routing::Shared> { &self.shared.midi_routing }
     pub(crate) fn attach_support(&mut self,port:crate::support::worker::Port) {self.support=Some(port);}
     /// IPC/GUI producer use only, never from a renderer or raw MIDI callback.
@@ -520,6 +527,7 @@ impl CommandPort {
             now_playing: std::sync::Arc::new(crate::performance_history::now_playing::Shared::default()),
             midi_learn: std::sync::Arc::new(super::midi::learn::Shared::default()),
             midi_routing: std::sync::Arc::new(super::midi::routing::Shared::default()),
+            clock_output: std::sync::Arc::new(super::midi::clock::Shared::default()),
             performance: super::performance::Handle::default(),
             project_writers: std::sync::atomic::AtomicU64::new(0),
             audio_offline: std::sync::atomic::AtomicBool::new(false),

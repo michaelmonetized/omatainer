@@ -14,7 +14,7 @@ fn text(ui: &mut Ui, label: &str, value: &mut String) {
     });
     help::annotate(ui, &response, HelpControl::MidiRoutePort);
 }
-fn port(ui: &mut Ui, label: &str, value: &mut Endpoint, choices: &[Endpoint]) {
+pub(super) fn port(ui: &mut Ui, label: &str, value: &mut Endpoint, choices: &[Endpoint]) {
     ui.push_id(label, |ui| {
         let combo = egui::ComboBox::from_label(crate::localization::format("Choose {label}", &[format!("{}", label)]))
             .selected_text(&value.name)

@@ -57,6 +57,7 @@ mod timing;
 mod dependencies;
 mod portability;
 mod midi_routing;
+mod midi_clock;
 mod midi_learn;
 mod midi_presets;
 mod play_time;
@@ -983,6 +984,7 @@ impl App {
                     ui.label(d);
                 }
                 self.midi_routing_status_ui(ui,ctx);
+                self.midi_clock_status_ui(ui,ctx);
                 ui.push_id("midi_learn_editor", |ui| self.midi_learn_ui(ui,ctx));
             });
         }

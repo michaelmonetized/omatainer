@@ -12,7 +12,7 @@ impl Endpoint {
     pub fn matches(&self, name: &str, id: &str) -> bool {
         self.name == name && self.id.as_ref().is_none_or(|wanted| wanted == id)
     }
-    pub(super) fn validate(&self) -> Result<(), String> {
+    pub(crate) fn validate(&self) -> Result<(), String> {
         fn text(s: &str) -> bool {
             !s.trim().is_empty() && s.len() <= 1024 && !s.contains(['\0', '\r', '\n'])
         }
@@ -23,7 +23,12 @@ impl Endpoint {
         }
         Ok(())
     }
-    pub(super) fn conflicts(&self, other: &Self) -> bool {
+    /// Identify an incoming port on the same backend device.
+    /// Takes its borrowed name and backend ID; returns whether it could echo this destination's transport without allocating.
+    pub(crate) fn conflicts_port(&self, name: &str, id: &str) -> bool {
+        self.name == name || self.id.as_deref().is_some_and(|own| own == id || alsa_client(own).zip(alsa_client(id)).is_some_and(|(a,b)|a==b))
+    }
+    pub(crate) fn conflicts(&self, other: &Self) -> bool {
         if self.name == other.name {
             return true;
         }

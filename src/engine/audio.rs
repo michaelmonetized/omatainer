@@ -355,6 +355,8 @@ impl OutputCallback {
         slice.fill(0.0);
         if let Some(history) = &mut self.rt.history_measurement { history.begin_output(data.len() / self.channels.max(1)); }
         let sample_rate = self.rt.sr as u32;
+        let first_sample = playback_ns.and_then(|ns| self.rt.audible.instant_at(ns));
+        self.rt.clock_output.begin(sample_rate, data.len() / self.channels.max(1), first_sample);
         self.rt.audible.begin(sample_rate, playback_ns);
         self.rt.process_interleaved(slice, self.channels);
         if let Some((was_playing, remaining, total)) = &mut self.resume_ramp {

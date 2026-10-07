@@ -604,6 +604,7 @@ impl FxKind {
 
 pub struct RtEngine {
     midi_routing: Arc<midi::routing::Shared>,
+    pub(crate) clock_output: midi::clock::Runtime,
     midi_learning: Arc<midi::learn::Shared>,
     midi_output_mask:u128,
     midi_output_budget:usize,
@@ -877,6 +878,7 @@ pub struct Snapshot {
     pub midi_feedback: midi::FeedbackStats,
     pub midi_input: midi::InputStats,
     pub midi_clock: MidiClockInput,
+    pub(crate) midi_clock_output: midi::clock::Counters,
     /// Legacy alias: actual last render-thread CPU divided by callback budget.
     pub cpu: Option<f32>,
     pub audio: audio_metrics::AudioMetrics,
@@ -950,6 +952,7 @@ impl Default for Snapshot {
             midi_input: midi::InputStats::default(),
             midi_clock: MidiClockInput::default(),
             cpu: None,
+            midi_clock_output: midi::clock::Counters::default(),
             audio: audio_metrics::AudioMetrics::default(),
             commands: control::CommandStats::default(),
             submissions: control::SubmissionStats::default(),
@@ -1166,6 +1169,7 @@ impl RtEngine {
             arrangement: arrangement::Playback::new(None,0.0),
             navigation: song_navigation::Runtime::default(),
             midi_routing:cmd_rx.midi_routing(),
+            clock_output:midi::clock::Runtime::new(cmd_rx.clock_output()),
             midi_learning:cmd_rx.midi_learning(),
             midi_output_mask:0,
             midi_output_budget:256,
@@ -1612,6 +1616,8 @@ impl RtEngine {
                 }
             }
             if self.playing && !counting_in && self.conductor.is_some() { self.note_recording.clock += self.last_midi_step; }
+            let clock_beat = self.precise_midi_beat();
+            self.clock_output.frame(midi_position, clock_beat, self.playing && !counting_in, self.transport_epoch, i);
             let mut l = 0.0f32;
             let mut r = 0.0f32;
             let mut cue_l = 0.0f32;
@@ -3546,7 +3552,7 @@ impl Engine {
         let performance_history = rt.history_measurement.as_ref().map(|history| history.handle());
         let audible = rt.audible.handle();
         let audio = audio::start_with_settings(rt, &settings.audio)?;
-        let midi = midi::MidiHub::start_with_routing(tx.clone(), snap.clone(), settings.midi_inputs.clone(),settings.midi_routing.clone())?;
+        let midi = midi::MidiHub::start_with_clock(tx.clone(), snap.clone(), settings.midi_inputs.clone(),settings.midi_routing.clone(),settings.midi_clock.clone())?;
         Ok(Self {
             audible,
             undo,

@@ -335,6 +335,12 @@ impl App {
             if old.midi_routing != self.settings.profile().midi_routing {
                 self.settings.routing_pending=true;
             }
+            if old.midi_clock != self.settings.profile().midi_clock {
+                match self.engine.midi.configure_clock(self.settings.profile().midi_clock.clone()) {
+                    Ok(())=>self.settings.message.push_str(" MIDI clock output change queued."),
+                    Err(error)=>self.settings.message.push_str(&format!(" Saved MIDI clock is not applied: {error}")),
+                }
+            }
         }
         self.poll_midi_preset_import();
         self.poll_library_layout_save();
@@ -496,6 +502,7 @@ impl App {
                             if mode == 1 { multiline(ui, "Selected MIDI input names (one per line)", &mut state.midi_names, HelpControl::PreferenceMidiNames); }
                             profile.midi_inputs = match mode { 0=>model::MidiInputs::All,1=>model::MidiInputs::Selected(state.midi_names.lines().filter(|s|!s.is_empty()).map(str::to_owned).collect()),_=>model::MidiInputs::Disabled };
                             midi_routing::edit(ui,&mut profile.midi_routing,self.engine.midi.routing_status().as_deref());
+                            midi_clock::edit(ui,&mut profile.midi_clock,self.engine.midi.clock_status().as_deref());
                             ui.heading(tr!("Automation and remote control"));
                             ui.checkbox(&mut profile.now_playing.enabled, tr!("Enable now-playing feed")).help(ui, HelpControl::HistoryPublish);
                             ui.horizontal_wrapped(|ui| {
@@ -613,6 +620,8 @@ impl App {
                                 let midi = &preview.current().unwrap().midi_inputs;
                                 ui.label(crate::localization::format("MIDI policy: {midi:?}", &[format!("{:?}", midi)]));
                                 let routes=&preview.current().unwrap().midi_routing;
+                                let clocks=&preview.current().unwrap().midi_clock;
+                                ui.label(format!("Clock output: enabled {} · compensation {} ms · selected outputs {:?}",clocks.enabled,clocks.compensation_ms,clocks.ports));
                                 ui.label({ let __omatainer_args = (&(routes.enabled),&(routes.routes.len()),); crate::localization::format("Explicit track routing: {} · {} configured tracks", &[format!("{}", __omatainer_args.0), format!("{}", __omatainer_args.1)]) });
                                 for route in &routes.routes {ui.label({ let __omatainer_args = (&(route.track+1),&(route.inputs),&(route.output),&(route.output_channel.map(|ch|ch+1)),&(route.thru),&(route.filter),); crate::localization::format("Track {}: inputs {:?} · output {:?} · channel {:?} · live thru {} · filters {:?}", &[format!("{}", __omatainer_args.0), format!("{:?}", __omatainer_args.1), format!("{:?}", __omatainer_args.2), format!("{:?}", __omatainer_args.3), format!("{}", __omatainer_args.4), format!("{:?}", __omatainer_args.5)]) });}
                                 if let Some(status)=self.engine.midi.policy_status() {

@@ -20,6 +20,7 @@ mod feedback;
 pub(crate) mod learn;
 pub(crate) mod presets;
 pub(crate) mod routing;
+pub(crate) mod clock;
 pub(crate) mod device_status;
 pub use handoff::InputStats;
 pub use connections::Retry;
@@ -151,6 +152,7 @@ pub struct MidiHub {
     connections: Option<connections::Manager>,
     input_counters: Arc<handoff::InputCounters>,
     routing: Option<routing::Manager>,
+    clock: Option<clock::Manager>,
     pub log: Arc<Mutex<Vec<String>>>,
 }
 
@@ -219,6 +221,7 @@ impl MidiHub {
             connections: None,
             input_counters: Arc::new(handoff::InputCounters::default()),
             routing: None,
+            clock: None,
             log: Arc::new(Mutex::new(Vec::new())),
         }
     }
@@ -231,6 +234,10 @@ impl MidiHub {
         Self::start_with_routing(cmd,snapshot,policy,routing::Routing::default())
     }
     pub fn start_with_routing(cmd:super::CommandPort,snapshot:Arc<Mutex<super::Snapshot>>,policy:InputPolicy,routes:routing::Routing)->anyhow::Result<Self>{
+        Self::start_with_clock(cmd,snapshot,policy,routes,clock::Config::default())
+    }
+    pub(crate) fn start_with_clock(cmd:super::CommandPort,snapshot:Arc<Mutex<super::Snapshot>>,policy:InputPolicy,routes:routing::Routing,clocks:clock::Config)->anyhow::Result<Self>{
+        clocks.validate().map_err(anyhow::Error::msg)?;
         policy.validate()?;
         // Fail profile validation before a device callback can dispatch it.
         let maps = builtin_maps()?;
@@ -241,10 +248,14 @@ impl MidiHub {
             connections::MidirBackend,
             &snapshot, cmd.clone(), maps, log.clone(),  input_counters.clone(), policy,
         )?;
+        let clock=Some(clock::Manager::start(cmd.clone(),clocks).map_err(anyhow::Error::msg)?);
         let feedback = Some(feedback::Manager::start(Arc::downgrade(&snapshot), cmd, input_counters.clone(), connections.policy_reader())?);
-        Ok(Self { feedback, connections: Some(connections), input_counters, routing, log })
+        Ok(Self { feedback, connections: Some(connections), input_counters, routing, clock, log })
     }
 
+    pub(crate) fn configure_clock(&self,config:clock::Config)->Result<(),String>{self.clock.as_ref().ok_or("MIDI clock output owner unavailable")?.configure(config)}
+    pub(crate) fn clock_status(&self)->Option<Arc<clock::Status>>{self.clock.as_ref().map(clock::Manager::status)}
+    pub(crate) fn cancel_clock(&self)->bool{self.clock.as_ref().is_some_and(clock::Manager::cancel)}
     pub fn configure_routing(&self,routes:routing::Routing)->Result<u64,String>{
         self.routing.as_ref().ok_or("MIDI output/routing owner is unavailable")?.configure(routes)
     }

@@ -6,7 +6,7 @@ Michael resumed physical checks on 2026-10-06. All MPD A/B/C controls were captu
 
 Each issue appears once, after its dependencies. The Code column checks off implemented code, including the existing stack, and does not claim complete acceptance. Accepted requires complete recorded acceptance. The eight provider integrations previously excluded by Michael stay outside this release. No open issue is automatically closed by this checklist.
 
-127 existing stack · 38 implemented · 6 partial · 177 planned · 0 accepted · 8 outside release
+127 existing stack · 39 implemented · 6 partial · 176 planned · 0 accepted · 8 outside release
 
 - [x] High-resolution stereo source peaks with measured rainbow frequency bands, native-rate validation, project reopen and pixel-scaled rendering. [Receipt](../validation/rainbow-waveforms.md)
 
@@ -157,7 +157,7 @@ Each issue appears once, after its dependencies. The Code column checks off impl
 | [x] | [#144](https://github.com/michaelmonetized/omatainer/issues/144) | Make library columns, sorting and view density configurable | implemented | #109 | [receipt](../../docs/validation/issue-144-library-layouts.md) |
 | [x] | [#145](https://github.com/michaelmonetized/omatainer/issues/145) | Expose missing, corrupt, unsupported and read-only track status | implemented | #104 | [receipt](../../docs/validation/issue-145-library-health.md) |
 | [x] | [#146](https://github.com/michaelmonetized/omatainer/issues/146) | Add a reorderable prepare queue for upcoming tracks | implemented | #105 | [receipt](../../docs/validation/issue-146-prepare-queue.md) |
-| [ ] | [#147](https://github.com/michaelmonetized/omatainer/issues/147) | Transmit stable MIDI clock and transport to external instruments | planned | #112, #81 |  |
+| [x] | [#147](https://github.com/michaelmonetized/omatainer/issues/147) | Transmit stable MIDI clock and transport to external instruments | implemented | #112, #81 | [receipt](../../docs/validation/midi-clock.md), [receipt](../../docs/validation/midi-clock-receipt.json) |
 | [x] | [#148](https://github.com/michaelmonetized/omatainer/issues/148) | Deliver a usable MIDI learn editor for performance controls | implemented | #112, #39 | [receipt](../../docs/validation/issue-148-midi-learn.md) |
 | [x] | [#149](https://github.com/michaelmonetized/omatainer/issues/149) | Edit MIDI CC, pitch-bend, program and channel-pressure data in clips | implemented | #110, #112, #111 | [receipt](../../docs/validation/midi-controller-lanes.md) |
 | [ ] | [#150](https://github.com/michaelmonetized/omatainer/issues/150) | Record, edit and render per-note pitch, pressure and timbre expression | planned | #110, #112 |  |

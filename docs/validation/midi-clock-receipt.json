@@ -1,0 +1,963 @@
+{
+  "schema": 1,
+  "platform": "Linux ARM64; actual native audio renderer, clock output worker, production synthetic MIDI input, egui/AccessKit handlers and real preference files; no physical devices opened",
+  "build": {
+    "path": "target/app-backlog/clock-fourth-build.log",
+    "sha256": "417cd3f81aa9e727c6d67ef0d95c2f95f3db10f40395dd717fba781305eed8cf"
+  },
+  "sourceFiles": {
+    "src/engine/audible.rs": "ad7738bfe32301aae49bb18be61afe061e42794dcf24236adcd9563dc10abfa8",
+    "src/engine/audio.rs": "ab1a7d5b6cc833ac90c4b9a03ec7344a1f52e70584489be6ecb55bb2a6ed50de",
+    "src/engine/control.rs": "49b954b11bf60504742d97b7256ee5d1d073aacb02d97191ebf01fa3e605161d",
+    "src/engine/midi.rs": "db799329d062a20d383285d3ebf47ece3eee5eca9a793e94c12242f0df07a0eb",
+    "src/engine/midi/clock.rs": "949e4ba9457b11bc955344087787380096e1a01e0c62e8b69d58032d99713f78",
+    "src/engine/midi/clock/output.rs": "2d8c1f501d4b5590adb46287191955478d1ce4d189b91d5968be86da0b860f6e",
+    "src/engine/midi/clock/runtime.rs": "eb841939c2d173da0114a86850aa9652f8a94d74d6ba48bd255823a36bd4b42d",
+    "src/engine/midi/clock/tests.rs": "2126bea5c2125dce5a75f2b5fde3a87365cfd8fb2fbae2e55c775b75aee2296a",
+    "src/engine/midi/handoff.rs": "67228a3de94721717dc8f5eafe0be7bb7da6510c0140b901efe4e890ea074037",
+    "src/engine/midi/routing/model.rs": "9129eafc666c9b22f7a680e8d700c22ae3054230d5a57113ecefb232662a977c",
+    "src/engine/mod.rs": "306ce0023ca2217f0ebbab5b62ad6766f5d5d5dee4e7e0d5452ee5fe45520aa8",
+    "src/engine/snapshot.rs": "25c419ec318986787f816f44c781aeee35f3c46e9f286284d2fc7c5a74e0fa2c",
+    "src/engine/song_navigation/tests.rs": "b449e37789ff0dc2f9b1282e40c819ae65d8cd9b15e108803f4d795ab4f8cbc0",
+    "src/ipc_follow.rs": "b2527c74bd5126a8f45eb33f143f1440091170838f31edaffa3e7d825f65a8ed",
+    "src/ipc_follow_tests.rs": "e1043f682ac72643896c12e4b8ac9aff4af233a4e04f41a2a5604e6c4c1e9adf",
+    "src/ipc_limits_tests.rs": "1ef1ac6bb1ff71de4268118d35361f961a264ff1964bb0141801b8ea64d0447c",
+    "src/main.rs": "8095bf9c7fe348680fd3f7d73ee309e31ff6e792a89795a7bc07104822b3acfd",
+    "src/preferences/mod.rs": "79a9844b5c4eab5f9be9e0fac14fb10e6ad9c69187c919c7b9770ca893151cb0",
+    "src/preferences/storage.rs": "cb9a374f4b6582a1b662abadfda4914c816bdccf3039ac911d9e4d85adbaeb7c",
+    "src/ui.rs": "ad96d9b102156cd0bf222563ae4c5e3e3b645aa49a76947acd905d6c974f8025",
+    "src/ui/help/catalogue.rs": "a6c67c5e432445c2f31139761afb7fe331bbf3da7facbb86338e8fdf8b28f2f1",
+    "src/ui/midi_clock.rs": "66eba71ffa9ca265773b0f0e26b4e4e507447c4ad72b4db90ff2f552edc18ffc",
+    "src/ui/midi_clock/tests.rs": "2e0c8406812d596c903912d27350fb899aed129a11f39a8055393e1caf262daf",
+    "src/ui/midi_routing.rs": "8919ca9559c54292856a35f16801f6b516175caef144186bbf3a8f07d2d3cf7e",
+    "src/ui/preferences.rs": "061d626161c4ceb11f4f51eb9e3614c26103e99a0b1bfc8e4f852916d60b6317"
+  },
+  "testBinary": {
+    "path": "target/app-backlog/qualification-bin/clock-tests-fourth",
+    "sha256": "77766ffe388fc81d532f09246c19b4f06de831af71ecda22d7ff3ca123239bc3"
+  },
+  "compiledInventory": {
+    "path": "target/app-backlog/clock-fourth-compiled-source-inventory.json",
+    "sha256": "876dd951a3de31a3821736a6c4a84dd929b861817cf69ccddd8d912f7082b846",
+    "baseRevision": "3165ceadc3c8a6e3f0dc85959a9a16882c08105f",
+    "files": 739
+  },
+  "embeddedInputs": {
+    "schema": 1,
+    "baselineRevision": "3165ceadc3c8a6e3f0dc85959a9a16882c08105f",
+    "embeddedInputs": {
+      "README.md": "abab5cb8b9a15a180652402e983142ce2a3baf21f5272fe1c4e9079a5083143f",
+      "licenses/manifest.json": "1e9c6aaa9c9fa68a73c45cb0ebaefa17a637873d1001261a614fa8439300ff8a",
+      "licenses/notices.json": "b15a146c83e362b540c860ae618b80f9ee0150cd9d8d41683a5d3d3fcb85c244"
+    }
+  },
+  "tests": {
+    "core": {
+      "path": "target/app-backlog/clock-fourth-core-tests.log",
+      "sha256": "e5b012d3784b66fa3ab6b2c73af71b86111c15b496178daf5ebc4a71978bada3",
+      "outcome": "ok",
+      "passed": 11,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 1955,
+      "seconds": 8.52
+    },
+    "native": {
+      "path": "target/app-backlog/clock-fourth-native-tests.log",
+      "sha256": "ada584963924eb1c6e36f59475297b3030cbbaaabc2f439e0bb97306273076d1",
+      "outcome": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 1965,
+      "seconds": 0
+    },
+    "status": {
+      "path": "target/app-backlog/clock-fourth-status-tests.log",
+      "sha256": "f7c25038114dddb52711239e1f76cd896468849337de8e5d8742b67b79538e59",
+      "outcome": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 1965,
+      "seconds": 0.01
+    },
+    "bounds": {
+      "path": "target/app-backlog/clock-fourth-bounds-tests.log",
+      "sha256": "0843192cc090710fd0e88455ac100aa5d92470081c045a995b84097356b0578c",
+      "outcome": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 1965,
+      "seconds": 0
+    },
+    "navigation": {
+      "path": "target/app-backlog/clock-fourth-navigation-tests.log",
+      "sha256": "e8054ec08b9fcb26ea3df66920611cffc9fc80ea8af4b3ec6b5c2f357a8050ec",
+      "outcome": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 1965,
+      "seconds": 0.25
+    },
+    "midi": {
+      "path": "target/app-backlog/clock-fourth-midi-tests.log",
+      "sha256": "c71539b9914bff5e93e247a09af57d40be1bca1e19346a5d4aafe3e59daeef93",
+      "outcome": "ok",
+      "passed": 197,
+      "failed": 0,
+      "ignored": 2,
+      "filtered": 1767,
+      "seconds": 46.55
+    },
+    "preferences": {
+      "path": "target/app-backlog/clock-fourth-preferences-tests.log",
+      "sha256": "952318dfcdeee76c604f8a0f4321f8372cd42facba2a3377679c5e0f019bd5f2",
+      "outcome": "ok",
+      "passed": 51,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 1915,
+      "seconds": 5.98
+    },
+    "arrangement": {
+      "path": "target/app-backlog/clock-fourth-arrangement-tests.log",
+      "sha256": "abb390fb68bde68e525fa29b7612d19b3c58196d201acb197059895360c6d621",
+      "outcome": "ok",
+      "passed": 2,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 1964,
+      "seconds": 0.47
+    },
+    "full": {
+      "path": "target/app-backlog/clock-fourth-full-tests.log",
+      "sha256": "3f9e6c3fed4f347668262f5534fa6b8601c925ca3178a48c53108ebf5886d627",
+      "outcome": "ok",
+      "passed": 1922,
+      "failed": 0,
+      "ignored": 44,
+      "filtered": 0,
+      "seconds": 489.43
+    },
+    "manual": {
+      "path": "target/app-backlog/clock-fourth-manual-regenerate.log",
+      "sha256": "7468ef3809d3a5be6fa1923b50178b033fff2b10cabda3d7b51f7c2dc495401b",
+      "outcome": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 1965,
+      "seconds": 0
+    }
+  },
+  "node": {
+    "path": "target/app-backlog/clock-fourth-node-tests.log",
+    "sha256": "bdb261050c9e3e6dfd9bd714650d1a0aef337aa9dc21446cefb33bb6b11d0a77",
+    "passed": 15,
+    "failed": 0
+  },
+  "measuredOutputTiming": {
+    "output": {
+      "path": "target/app-backlog/clock-fourth-output-timing.json",
+      "sha256": "9ceff5b3aeb6015599e244c0d758b72989f5ff2bd2db4b9021b39ebc6c144a6d",
+      "physical_devices_opened": false,
+      "real_decode_egui_iterations": 5019,
+      "schema": 1,
+      "tempos": [
+        {
+          "bpm": 40,
+          "clocks": 24,
+          "delay_ns": [
+            125550,
+            27698,
+            134179,
+            87952,
+            121225,
+            137998,
+            27020,
+            59501,
+            37024,
+            20380,
+            31069,
+            85176,
+            156407,
+            56430,
+            51744,
+            36975,
+            7998,
+            141063,
+            1997596,
+            81775,
+            6089,
+            35945,
+            86468,
+            73616
+          ],
+          "max_delay_ns": 1997596
+        },
+        {
+          "bpm": 73,
+          "clocks": 24,
+          "delay_ns": [
+            85343,
+            79496,
+            115817,
+            137345,
+            94082,
+            46360,
+            83972,
+            117876,
+            72738,
+            199684,
+            68420,
+            61323,
+            98352,
+            61963,
+            44283,
+            105062,
+            164924,
+            3785,
+            67022,
+            52050,
+            79204,
+            13440,
+            32344,
+            96831
+          ],
+          "max_delay_ns": 199684
+        },
+        {
+          "bpm": 120,
+          "clocks": 24,
+          "delay_ns": [
+            69050,
+            10169,
+            131122,
+            116032,
+            156568,
+            14436,
+            141805,
+            143215,
+            116251,
+            137619,
+            63571,
+            30357,
+            140100,
+            104844,
+            91838,
+            88623,
+            114200,
+            34319,
+            115312,
+            17223,
+            28133,
+            83668,
+            57454,
+            70531
+          ],
+          "max_delay_ns": 156568
+        },
+        {
+          "bpm": 137,
+          "clocks": 24,
+          "delay_ns": [
+            37051,
+            119655,
+            121884,
+            133488,
+            110675,
+            77237,
+            33549,
+            82862,
+            127633,
+            70778,
+            78174,
+            109445,
+            84049,
+            75695,
+            84924,
+            150153,
+            75340,
+            99153,
+            8214,
+            12610,
+            23506,
+            89068,
+            31047,
+            17234
+          ],
+          "max_delay_ns": 150153
+        },
+        {
+          "bpm": 180,
+          "clocks": 24,
+          "delay_ns": [
+            109051,
+            45047,
+            20543,
+            69205,
+            84367,
+            13946,
+            44401,
+            136022,
+            114309,
+            102471,
+            144009,
+            10755,
+            11709,
+            91413,
+            78867,
+            41738,
+            22776,
+            133896,
+            5516,
+            56971,
+            75426,
+            48963,
+            127792,
+            71746
+          ],
+          "max_delay_ns": 144009
+        },
+        {
+          "bpm": 240,
+          "clocks": 24,
+          "delay_ns": [
+            48801,
+            48819,
+            4253,
+            63812,
+            38830,
+            18598,
+            29532,
+            75092,
+            65109,
+            19293,
+            63728,
+            114913,
+            73888,
+            11448,
+            45757,
+            12149,
+            70334,
+            146186,
+            158661,
+            68887,
+            120947,
+            527883,
+            40940,
+            66083
+          ],
+          "max_delay_ns": 527883
+        }
+      ]
+    },
+    "regression-output": {
+      "path": "target/app-backlog/clock-fourth-regression-output-timing.json",
+      "sha256": "a6ff3efe7505294bba5f24904520674533b9050224d3b6697968667e72a969e1",
+      "physical_devices_opened": false,
+      "real_decode_egui_iterations": 5167,
+      "schema": 1,
+      "tempos": [
+        {
+          "bpm": 40,
+          "clocks": 24,
+          "delay_ns": [
+            144009,
+            89865,
+            78513,
+            25827,
+            51266,
+            144581,
+            49478,
+            80251,
+            84899,
+            105130,
+            92236,
+            26216,
+            124239,
+            82262,
+            83618,
+            127557,
+            16204,
+            89102,
+            128417,
+            135106,
+            16795,
+            28068,
+            101299,
+            121197
+          ],
+          "max_delay_ns": 144581
+        },
+        {
+          "bpm": 73,
+          "clocks": 24,
+          "delay_ns": [
+            150968,
+            106704,
+            92649,
+            138803,
+            23080,
+            36526,
+            104388,
+            76625,
+            85862,
+            130432,
+            112169,
+            92530,
+            125434,
+            117837,
+            56657,
+            33560,
+            103214,
+            8283,
+            100937,
+            67715,
+            63160,
+            8063,
+            153634,
+            37495
+          ],
+          "max_delay_ns": 153634
+        },
+        {
+          "bpm": 120,
+          "clocks": 24,
+          "delay_ns": [
+            63884,
+            117461,
+            45830,
+            76282,
+            155318,
+            155728,
+            16346,
+            29381,
+            106417,
+            59785,
+            52862,
+            74148,
+            24474,
+            46552,
+            155005,
+            131997,
+            140408,
+            10943,
+            47645,
+            92555,
+            30132,
+            136793,
+            144495,
+            72322
+          ],
+          "max_delay_ns": 155728
+        },
+        {
+          "bpm": 137,
+          "clocks": 24,
+          "delay_ns": [
+            57759,
+            67405,
+            144926,
+            64779,
+            58175,
+            126487,
+            16966,
+            11361,
+            56049,
+            102778,
+            71799,
+            45069,
+            67757,
+            49736,
+            117507,
+            3485,
+            146131,
+            181069,
+            87172,
+            8193,
+            84547,
+            53984,
+            149713,
+            144359
+          ],
+          "max_delay_ns": 181069
+        },
+        {
+          "bpm": 180,
+          "clocks": 24,
+          "delay_ns": [
+            70050,
+            127047,
+            43126,
+            45455,
+            54617,
+            56029,
+            147984,
+            84313,
+            14308,
+            61095,
+            5050,
+            68129,
+            123834,
+            75995,
+            95992,
+            135654,
+            151942,
+            144312,
+            151975,
+            111054,
+            105342,
+            77962,
+            54790,
+            8578
+          ],
+          "max_delay_ns": 151975
+        },
+        {
+          "bpm": 240,
+          "clocks": 24,
+          "delay_ns": [
+            34300,
+            150777,
+            143419,
+            79561,
+            11829,
+            76930,
+            34114,
+            12966,
+            132734,
+            129168,
+            79477,
+            113745,
+            26470,
+            128156,
+            131590,
+            80273,
+            38583,
+            169726,
+            126952,
+            18094,
+            82112,
+            95546,
+            147023,
+            142124
+          ],
+          "max_delay_ns": 169726
+        }
+      ]
+    },
+    "full-output": {
+      "path": "target/app-backlog/clock-fourth-full-output-timing.json",
+      "sha256": "970aad17359e9ec7718b1072007e6f5fb3939b665536a947c31308009af9cd02",
+      "physical_devices_opened": false,
+      "real_decode_egui_iterations": 4979,
+      "schema": 1,
+      "tempos": [
+        {
+          "bpm": 40,
+          "clocks": 24,
+          "delay_ns": [
+            95716,
+            72405,
+            109719,
+            41532,
+            93679,
+            41493,
+            97598,
+            141746,
+            105226,
+            142456,
+            59519,
+            73500,
+            59147,
+            60419,
+            83024,
+            9754,
+            99110,
+            51673,
+            29779,
+            14467,
+            1375705,
+            8719,
+            81908,
+            86430
+          ],
+          "max_delay_ns": 1375705
+        },
+        {
+          "bpm": 73,
+          "clocks": 24,
+          "delay_ns": [
+            124050,
+            72203,
+            70940,
+            99968,
+            16579,
+            27565,
+            149511,
+            32247,
+            83567,
+            149720,
+            69873,
+            118818,
+            109763,
+            20373,
+            43193,
+            71846,
+            43707,
+            23652,
+            143556,
+            27333,
+            65777,
+            41055,
+            129751,
+            53820
+          ],
+          "max_delay_ns": 149720
+        },
+        {
+          "bpm": 120,
+          "clocks": 24,
+          "delay_ns": [
+            28466,
+            34501,
+            10703,
+            111613,
+            110774,
+            96184,
+            5760,
+            88921,
+            157540,
+            27824,
+            142610,
+            58936,
+            18512,
+            127757,
+            110875,
+            88576,
+            126029,
+            84480,
+            58848,
+            84259,
+            64336,
+            97787,
+            83031,
+            102525
+          ],
+          "max_delay_ns": 157540
+        },
+        {
+          "bpm": 137,
+          "clocks": 24,
+          "delay_ns": [
+            19883,
+            104738,
+            131258,
+            99528,
+            151716,
+            154945,
+            121215,
+            33901,
+            22755,
+            156735,
+            104921,
+            23775,
+            39837,
+            126692,
+            151712,
+            24982,
+            97711,
+            105648,
+            49335,
+            52397,
+            67668,
+            137272,
+            153126,
+            21686
+          ],
+          "max_delay_ns": 156735
+        },
+        {
+          "bpm": 180,
+          "clocks": 24,
+          "delay_ns": [
+            151800,
+            720591,
+            95417,
+            95538,
+            117658,
+            67237,
+            144483,
+            54728,
+            97432,
+            30427,
+            10673,
+            27627,
+            22998,
+            145452,
+            82739,
+            135485,
+            67731,
+            68934,
+            167388,
+            6550,
+            117755,
+            152126,
+            119829,
+            25158
+          ],
+          "max_delay_ns": 720591
+        },
+        {
+          "bpm": 240,
+          "clocks": 24,
+          "delay_ns": [
+            84300,
+            58651,
+            122127,
+            74602,
+            67912,
+            149555,
+            145780,
+            25006,
+            152441,
+            121208,
+            9642,
+            67743,
+            64718,
+            147404,
+            53879,
+            21229,
+            116873,
+            148140,
+            126574,
+            59425,
+            30984,
+            73710,
+            57895,
+            81579
+          ],
+          "max_delay_ns": 152441
+        }
+      ]
+    }
+  },
+  "retainedPreliminaryResults": [
+    {
+      "attempt": "first compile",
+      "reason": "Five fixture type errors refused compilation. The unsigned tempo fixture, MIDI byte-slice comparisons and real preference-save variant were corrected before running any tests.",
+      "build": {
+        "path": "target/app-backlog/clock-first-build.log",
+        "sha256": "5af57d1e8e166ae475e8664bda83e0245d1aac4aa2909d42aad0741f31649fb7",
+        "outcome": "compile refused"
+      }
+    },
+    {
+      "attempt": "second focused qualification",
+      "reason": "Eight core checks and one native UI check passed. The final code adds actual renderer tempo-ramp, multiport send completion and callback-loss/emergency qualification. The delay counter was corrected to include completion of all backend sends.",
+      "build": {
+        "path": "target/app-backlog/clock-second-build.log",
+        "sha256": "ff2bc6ac82967e757dd4e1581bc3663c1b655df1ba9000d19eba268238a0b58e"
+      },
+      "testBinary": {
+        "path": "target/app-backlog/qualification-bin/clock-tests-second",
+        "sha256": "5fc26be22fae11d1f79772510b24362ee307d9fa801a299f9965d7d5adedc75d"
+      },
+      "compiledInventory": {
+        "path": "target/app-backlog/clock-second-compiled-source-inventory.json",
+        "sha256": "40a9b7f56cd08c9d678604eb9f200a5d048d0ec33978f747035cfd3db7648d6a"
+      },
+      "tests": {
+        "core": {
+          "path": "target/app-backlog/clock-second-core-tests.log",
+          "sha256": "e70192e44f2bc3180131fe95983671bd5a8a9c75650dc75ad72d667b06f224c8",
+          "outcome": "ok",
+          "passed": 8,
+          "failed": 0,
+          "ignored": 0,
+          "filtered": 1955,
+          "seconds": 5.31
+        },
+        "native": {
+          "path": "target/app-backlog/clock-second-native-tests.log",
+          "sha256": "a2aa3e5f17c77cf5dc53198c4b141f4eb0323b67f8b4e306c74cd8d8ac7ab515",
+          "outcome": "ok",
+          "passed": 1,
+          "failed": 0,
+          "ignored": 0,
+          "filtered": 1962,
+          "seconds": 0.01
+        }
+      },
+      "timing": {
+        "path": "target/app-backlog/clock-second-output-timing.json",
+        "sha256": "9b062988fdc0ea3c9bc25a416218a73e61732e083e2a6ad5dc18df6a02bddfb3"
+      }
+    },
+    {
+      "attempt": "third copied runner",
+      "reason": "The copied runner verified the new executable but still called the old navigation executable. That full run was stopped; a faulty runner-rewrite guard caused one short repeated old run before correction. Both attempts are retained and excluded from clock qualification. The corrected runner declares one verified absolute clock executable for every regression and manual/full invocation.",
+      "wrongExecutable": {
+        "path": "target/app-backlog/qualification-bin/navigation-tests-sixth",
+        "sha256": "ad6f7634938f7f4b50c042f1267cda990581ade63178f02bb7312e0a8a672cac"
+      },
+      "retainedLogs": [
+        {
+          "path": "target/app-backlog/clock-third-wrong-runner-qualification.log",
+          "sha256": "5b7929d2527220209e4eb33be569ca41c4d41d43f7fc22f768c6a5a21d69e47e"
+        },
+        {
+          "path": "target/app-backlog/clock-third-wrong-runner-manual-regenerate.log",
+          "sha256": "89075e0638e61a542a4b42885c795b48c8deec423a478e554556940a439aa64b"
+        },
+        {
+          "path": "target/app-backlog/clock-third-wrong-runner-midi-tests.log",
+          "sha256": "708f63d45cd36022de6aff3ffa77030a101cb42ea918b43c4d72d00288d67154"
+        },
+        {
+          "path": "target/app-backlog/clock-third-wrong-runner-preferences-tests.log",
+          "sha256": "77812062cd82d2fe01636d18257025a2b7bc4f98d1c5ddc23abd780dff2ea204"
+        },
+        {
+          "path": "target/app-backlog/clock-third-wrong-runner-arrangement-tests.log",
+          "sha256": "84c70b692f45d88399db09ffaff55a9221912b83bb7163c83bdc478df8d69f64"
+        },
+        {
+          "path": "target/app-backlog/clock-third-wrong-runner-node-tests.log",
+          "sha256": "31c124052c91b7b112390d38199fb89994ce1fe8663c2bfd1301ac6a918103a6"
+        },
+        {
+          "path": "target/app-backlog/clock-third-wrong-runner-full-tests.log",
+          "sha256": "a01d292a4ddb7105fd50c6faf84fd8b0f14b9be609e7098f9e075cbc30dc0ca9"
+        }
+      ],
+      "secondAttemptLogs": [
+        {
+          "path": "target/app-backlog/clock-third-wrong-runner-second-qualification.log",
+          "sha256": "5b7929d2527220209e4eb33be569ca41c4d41d43f7fc22f768c6a5a21d69e47e"
+        },
+        {
+          "path": "target/app-backlog/clock-third-wrong-runner-second-manual-regenerate.log",
+          "sha256": "bd3465f39e4b969252f89f368364c64f67e0c6a0bc40d428f7bdc6742141770c"
+        },
+        {
+          "path": "target/app-backlog/clock-third-wrong-runner-second-midi-tests.log",
+          "sha256": "5716208c7e30c359bd01443fe0279b1917d65d57075b16d9e405ca660ac9cd30"
+        }
+      ]
+    },
+    {
+      "attempt": "third full qualification",
+      "reason": "Eleven core checks, native UI, all 197 MIDI checks and all 51 preference checks passed. The full suite reported 1920 passes and two failures: an old fixed preference-20 fixture assertion and a real IPC integration fault: ordinary status omitted clock fields that streaming status included. Final code publishes the same live counters in both responses and exercises maximum clock values and bounded errors through the existing cache/allocation/response tests. The native destination status also uses readable labels. The navigation fixture now targets the current preference schema and separately exercises actual preference-20 navigation migration.",
+      "compiledInventory": {
+        "path": "target/app-backlog/clock-third-compiled-source-inventory.json",
+        "sha256": "5e2f20b4ea53f9bb4d87d0b5f13f0e535cf0ba4bfcebe1ea43303d0f2a196dfb"
+      },
+      "testBinary": {
+        "path": "target/app-backlog/qualification-bin/clock-tests-third",
+        "sha256": "d494d0f9b91acbd628f5c09bcd0b5c7797acc0c83ca3f9bf21bebff840478aa4"
+      },
+      "tests": {
+        "core": {
+          "path": "target/app-backlog/clock-third-core-tests.log",
+          "sha256": "e5b012d3784b66fa3ab6b2c73af71b86111c15b496178daf5ebc4a71978bada3",
+          "outcome": "ok",
+          "passed": 11,
+          "failed": 0,
+          "ignored": 0,
+          "filtered": 1955,
+          "seconds": 8.52
+        },
+        "native": {
+          "path": "target/app-backlog/clock-third-native-tests.log",
+          "sha256": "aaaf549da13fda95959841dd49e50e432c480a017ede1765037fc0948520f282",
+          "outcome": "ok",
+          "passed": 1,
+          "failed": 0,
+          "ignored": 0,
+          "filtered": 1965,
+          "seconds": 0.01
+        },
+        "midi": {
+          "path": "target/app-backlog/clock-third-midi-tests.log",
+          "sha256": "ff7460ad48a33bfff77d9274d82cf0cb5f8f4515a53ca5ad4020907b7c322328",
+          "outcome": "ok",
+          "passed": 197,
+          "failed": 0,
+          "ignored": 2,
+          "filtered": 1767,
+          "seconds": 46.41
+        },
+        "preferences": {
+          "path": "target/app-backlog/clock-third-preferences-tests.log",
+          "sha256": "952318dfcdeee76c604f8a0f4321f8372cd42facba2a3377679c5e0f019bd5f2",
+          "outcome": "ok",
+          "passed": 51,
+          "failed": 0,
+          "ignored": 0,
+          "filtered": 1915,
+          "seconds": 5.98
+        },
+        "arrangement": {
+          "path": "target/app-backlog/clock-third-arrangement-tests.log",
+          "sha256": "c10ddc11fd9a3867625463e60b0088dd328fcb0af270f303062ae894afec1e11",
+          "outcome": "ok",
+          "passed": 2,
+          "failed": 0,
+          "ignored": 0,
+          "filtered": 1964,
+          "seconds": 0.5
+        },
+        "full": {
+          "path": "target/app-backlog/clock-third-full-tests.log",
+          "sha256": "6e94013bcc3393bc7d4ddd14ca07363ebd988022cae2a27da702df5ac8067be6",
+          "outcome": "FAILED",
+          "passed": 1920,
+          "failed": 2,
+          "ignored": 44,
+          "filtered": 0,
+          "seconds": 494.03
+        }
+      }
+    },
+    {
+      "attempt": "fourth bounds filter",
+      "reason": "The first exact bounds-test name did not match its module and executed zero tests. It is retained and excluded; the real ipc_server::limits_tests test was discovered from the executable list and passed, including maximum clock counters and the longest error.",
+      "test": {
+        "path": "target/app-backlog/clock-fourth-bounds-zero-filter-preliminary.log",
+        "sha256": "fa4cc97479c5d1f5484b3f8111c9251c76004eb6cfe469a936c79bd07b60f7ea",
+        "outcome": "ok",
+        "passed": 0,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 1966,
+        "seconds": 0
+      }
+    }
+  ],
+  "limits": "Software qualification binds 24 PPQN sample deadlines at 8/44.1/48/96 kHz, signed compensation, native tempo ramps/steps through several callback sizes without renderer heap work, ordered Start/Continue/Song Position/Stop, independently chosen multiport worker output, send completion diagnostics, cancellation/missing destinations, saturation/send failure, callback-loss/emergency Stop attempts and input transport echo guards. Real worker timing uses concurrent FLAC decode and egui rendering at six tempos, records every clock delay and requires none early and worst completion under 5 ms. Preference schema 21 migration/refusal, native port chooser, compensation and actual file reopening are exercised. Count-in does not start external transport; fractional resumes round Song Position down to six-clock units. Fresh start beyond beat 4095.75 refuses. Negative compensation is constrained by callback lookahead. Backend acceptance does not prove physical device receipt or Stop. Physical drum-machine synchronization is unperformed, stage processes untouched, and no hardware acceptance or issue closure is claimed.",
+  "postGeneration": {
+    "node": {
+      "path": "target/app-backlog/clock-postgenerate-node-tests.log",
+      "sha256": "e144161bfe43b72d3aab9c39f4646b0b6c7c2bc486a2123e58f24c67a258cbeb",
+      "passed": 15,
+      "failed": 0
+    },
+    "sourceInventory": {
+      "path": "target/app-backlog/clock-source-inventory.log",
+      "sha256": "75f4e57267333c0504fe5edd51989297a4971ba3b530a7498be89b2e3fd30143"
+    },
+    "capabilityCheck": {
+      "path": "target/app-backlog/clock-capability-check.log",
+      "sha256": "c2895831a60ec6308facb09cfcb0f03454f1eb9bff306569e8cbc17992cde56e"
+    },
+    "checklistCheck": {
+      "path": "target/app-backlog/clock-checklist-check.log",
+      "sha256": "3ddce3293266fb35350053966d1f17437f3843a6c47e8c44a830980e7471bb8f"
+    }
+  }
+}

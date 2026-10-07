@@ -598,6 +598,50 @@
       ],
       "limits": "Merged-source qualification pending. Physical controller actions and listening remain pending. Auto-removal requires a complete 10 ms conservative legacy digital main-output window while playing; paused previews and uncertain/custom-route attribution retain tracks. Queue limited to 4096 tracks and 2 MiB; one hardware capture has the same bounds. Saved crates restore current catalog versions explicitly; transient queue/policy are not project persistence."
     },
+    "147": {
+      "status": "implemented",
+      "paths": [
+        {
+          "kind": "bounded sample-clock scheduler",
+          "file": "src/engine/midi/clock/runtime.rs",
+          "entry": "24 PPQN from actual song sample beats, backend playback timestamp, signed compensation and ordered Start/Continue/Song Position/Stop"
+        },
+        {
+          "kind": "independently selected native outputs",
+          "file": "src/engine/midi/clock/output.rs",
+          "entry": "Sole Midir owner; exact unique ports, bounded deadline heap, send completion metrics, cancellation and explicit recovery after output/watchdog/safety failures"
+        },
+        {
+          "kind": "actual audio callback integration",
+          "file": "src/engine/audio.rs",
+          "entry": "Reported first-frame playback timestamps with visible one-buffer estimate fallback; no audio-thread backend send"
+        },
+        {
+          "kind": "native saved clock controls and sync status",
+          "file": "src/ui/midi_clock.rs",
+          "entry": "Enable, exact port chooser, 1–8 destinations, ±500 ms compensation, prepared/sent/late/fault status, cancel/retry controls"
+        },
+        {
+          "kind": "transport echo protection",
+          "file": "src/engine/midi/handoff.rs",
+          "entry": "Ignore returned transport from active/recent clock output device IDs without affecting normal musical controls"
+        },
+        {
+          "kind": "strict per-profile persistence",
+          "file": "src/preferences/storage.rs",
+          "entry": "Preference 21; disabled legacy defaults, current roundtrip and rejection of injected settings under old headers"
+        }
+      ],
+      "fixtures": [
+        "engine::midi::clock::tests",
+        "ui::midi_clock::tests::native_clock_destination_selection_compensation_and_profile_reopening_use_real_handlers"
+      ],
+      "evidence": [
+        "docs/validation/midi-clock.md",
+        "docs/validation/midi-clock-receipt.json"
+      ],
+      "limits": "Software qualification binds 24 PPQN sample deadlines at 8/44.1/48/96 kHz, signed compensation, native tempo ramps/steps through several callback sizes without renderer heap work, ordered Start/Continue/Song Position/Stop, independently chosen multiport worker output, send completion diagnostics, cancellation/missing destinations, saturation/send failure, callback-loss/emergency Stop attempts and input transport echo guards. Real worker timing uses concurrent FLAC decode and egui rendering at six tempos, records every clock delay and requires none early and worst completion under 5 ms. Preference schema 21 migration/refusal, native port chooser, compensation and actual file reopening are exercised. Count-in does not start external transport; fractional resumes round Song Position down to six-clock units. Fresh start beyond beat 4095.75 refuses. Negative compensation is constrained by callback lookahead. Backend acceptance does not prove physical device receipt or Stop. Physical drum-machine synchronization is unperformed, stage processes untouched, and no hardware acceptance or issue closure is claimed."
+    },
     "148": {
       "status": "implemented",
       "paths": [

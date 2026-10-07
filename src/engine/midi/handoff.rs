@@ -335,7 +335,11 @@ impl InputWorker {
                             }
                         });
                     },
-                    super::routing::packet::Frame::Realtime(status) => { if status == 0xff { self.pairs.clear(); } handle_msg(&[status],self.source,&self.map,&cmd,&self.log,&self.shift,&self.name) },
+                    super::routing::packet::Frame::Realtime(status) => {
+                        if status == 0xff { self.pairs.clear(); }
+                        if matches!(status,0xfa|0xfb|0xfc) && cmd.clock_output().guards_transport_port(&self.name,&self.port_id) { continue; }
+                        handle_msg(&[status],self.source,&self.map,&cmd,&self.log,&self.shift,&self.name)
+                    },
                     super::routing::packet::Frame::Malformed => self.shared.routing.malformed(),
                 }
             }

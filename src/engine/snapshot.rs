@@ -333,6 +333,7 @@ impl Frame {
         }
         target.playing = rt.playing;
         target.midi_clock = rt.midi_clock;
+        target.midi_clock_output = rt.clock_output.counters();
         target.recording = rt.recording;
         target.bpm = rt.bpm;
         target.beat = rt.beat;

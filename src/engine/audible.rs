@@ -73,6 +73,11 @@ impl Writer {
     pub fn now_ns(&self) -> u64 {
         self.handle.now_ns()
     }
+    /// Convert one common playback timestamp to its monotonic instant.
+    /// Takes nanoseconds from the audio timing origin; returns a checked timestamp for other output schedulers.
+    pub(super) fn instant_at(&self, ns: u64) -> Option<Instant> {
+        self.handle.0.origin.checked_add(std::time::Duration::from_nanos(ns))
+    }
     /// Retire timing from a stopped output stream.
     /// Takes this writer; returns with old queued frames unavailable to a replacement stream.
     pub fn restart(&mut self) {

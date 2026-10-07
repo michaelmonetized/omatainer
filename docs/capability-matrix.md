@@ -206,6 +206,20 @@ Source 2ff1d5b passed 1455 ordinary/scene checks and private native faults; its 
 
 Merged-source qualification pending. Physical controller actions and listening remain pending. Auto-removal requires a complete 10 ms conservative legacy digital main-output window while playing; paused previews and uncertain/custom-route attribution retain tracks. Queue limited to 4096 tracks and 2 MiB; one hardware capture has the same bounds. Saved crates restore current catalog versions explicitly; transient queue/policy are not project persistence.
 
+### Issue #147: implemented
+
+- bounded sample-clock scheduler: [src/engine/midi/clock/runtime.rs](../src/engine/midi/clock/runtime.rs) — 24 PPQN from actual song sample beats, backend playback timestamp, signed compensation and ordered Start/Continue/Song Position/Stop
+- independently selected native outputs: [src/engine/midi/clock/output.rs](../src/engine/midi/clock/output.rs) — Sole Midir owner; exact unique ports, bounded deadline heap, send completion metrics, cancellation and explicit recovery after output/watchdog/safety failures
+- actual audio callback integration: [src/engine/audio.rs](../src/engine/audio.rs) — Reported first-frame playback timestamps with visible one-buffer estimate fallback; no audio-thread backend send
+- native saved clock controls and sync status: [src/ui/midi_clock.rs](../src/ui/midi_clock.rs) — Enable, exact port chooser, 1–8 destinations, ±500 ms compensation, prepared/sent/late/fault status, cancel/retry controls
+- transport echo protection: [src/engine/midi/handoff.rs](../src/engine/midi/handoff.rs) — Ignore returned transport from active/recent clock output device IDs without affecting normal musical controls
+- strict per-profile persistence: [src/preferences/storage.rs](../src/preferences/storage.rs) — Preference 21; disabled legacy defaults, current roundtrip and rejection of injected settings under old headers
+- Acceptance fixtures: `engine::midi::clock::tests`, `ui::midi_clock::tests::native_clock_destination_selection_compensation_and_profile_reopening_use_real_handlers`.
+- Evidence: [docs/validation/midi-clock.md](../docs/validation/midi-clock.md).
+- Evidence: [docs/validation/midi-clock-receipt.json](../docs/validation/midi-clock-receipt.json).
+
+Software qualification binds 24 PPQN sample deadlines at 8/44.1/48/96 kHz, signed compensation, native tempo ramps/steps through several callback sizes without renderer heap work, ordered Start/Continue/Song Position/Stop, independently chosen multiport worker output, send completion diagnostics, cancellation/missing destinations, saturation/send failure, callback-loss/emergency Stop attempts and input transport echo guards. Real worker timing uses concurrent FLAC decode and egui rendering at six tempos, records every clock delay and requires none early and worst completion under 5 ms. Preference schema 21 migration/refusal, native port chooser, compensation and actual file reopening are exercised. Count-in does not start external transport; fractional resumes round Song Position down to six-clock units. Fresh start beyond beat 4095.75 refuses. Negative compensation is constrained by callback lookahead. Backend acceptance does not prove physical device receipt or Stop. Physical drum-machine synchronization is unperformed, stage processes untouched, and no hardware acceptance or issue closure is claimed.
+
 ### Issue #148: implemented
 
 - native UI: [src/ui/midi_learn.rs](../src/ui/midi_learn.rs) — MIDI → action/target → Capture → review Add/Replace/Test → Edit/Remove → Save MIDI assignments
@@ -527,7 +541,7 @@ Music source: FreeToUse public keyless API. Michael excludes other third-party p
 | [#144](https://github.com/michaelmonetized/omatainer/issues/144) | Make library columns, sorting and view density configurable | implemented |
 | [#145](https://github.com/michaelmonetized/omatainer/issues/145) | Expose missing, corrupt, unsupported and read-only track status | implemented |
 | [#146](https://github.com/michaelmonetized/omatainer/issues/146) | Add a reorderable prepare queue for upcoming tracks | implemented |
-| [#147](https://github.com/michaelmonetized/omatainer/issues/147) | Transmit stable MIDI clock and transport to external instruments | planned |
+| [#147](https://github.com/michaelmonetized/omatainer/issues/147) | Transmit stable MIDI clock and transport to external instruments | implemented |
 | [#148](https://github.com/michaelmonetized/omatainer/issues/148) | Deliver a usable MIDI learn editor for performance controls | implemented |
 | [#149](https://github.com/michaelmonetized/omatainer/issues/149) | Edit MIDI CC, pitch-bend, program and channel-pressure data in clips | implemented |
 | [#150](https://github.com/michaelmonetized/omatainer/issues/150) | Record, edit and render per-note pitch, pressure and timbre expression | planned |

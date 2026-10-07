@@ -94,6 +94,7 @@ fn subscription_outlives_request_cap_without_accepting_commands_and_releases_its
 fn cached_projection_is_exact_status_and_ignores_large_unrelated_state_without_allocation() {
     let (commands, _receiver) = CommandPort::channel(256);
     commands.midi_routing().maximum_activity_for_test();
+    commands.clock_output().maximum_activity_for_test();
     let mut snapshot = Snapshot::default();
     snapshot.midi = vec!["\u{1}".repeat(8192); 64];
     snapshot.decks = vec![
