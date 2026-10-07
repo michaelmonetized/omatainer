@@ -3342,9 +3342,12 @@
         192,
         203
       ],
-      "state": "planned",
+      "state": "implemented",
       "prs": [],
-      "evidence": []
+      "evidence": [
+        "docs/validation/roll-reverse.md",
+        "docs/validation/roll-reverse-receipt.json"
+      ]
     },
     {
       "issue": 237,
@@ -3355,9 +3358,12 @@
       "dependencies": [
         203
       ],
-      "state": "planned",
+      "state": "implemented",
       "prs": [],
-      "evidence": []
+      "evidence": [
+        "docs/validation/roll-reverse.md",
+        "docs/validation/roll-reverse-receipt.json"
+      ]
     },
     {
       "issue": 238,

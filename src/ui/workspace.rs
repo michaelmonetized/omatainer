@@ -209,6 +209,7 @@ impl App {
             }
             Panel::Decks => {
                 self.release_cue_inputs();
+                self.release_censor_inputs();
                 self.release_pitch_inputs();
                 for deck in 0..DECKS {
                     self.send(Command::DeckTouch {

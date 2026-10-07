@@ -11,6 +11,7 @@ pub(super) enum Target {
     Pad(u8),
     DeckPad { deck: u8, pad: u8 },
     Cue(u8),
+    Censor(u8),
     Pitch(u8),
     Crossfader,
 }
@@ -247,6 +248,7 @@ impl Input {
             .fold(0, |mask, contact| match contact.hit.target {
                 Target::Pad(pad) => mask | (1 << pad),
                 Target::Cue(deck) => mask | (1 << (16 + deck)),
+                Target::Censor(deck) => mask | (1 << (34 + deck)),
                 Target::DeckPad { deck, pad } => mask | (1 << (18 + deck * 8 + pad)),
                 _ => mask,
             })
@@ -256,11 +258,11 @@ impl Input {
     /// Takes the earlier mask and output list; appends changed gates with their attack pressure.
     fn edges(&self, before: u64, changes: &mut Vec<(Target, bool, f32)>) {
         let after = self.gates();
-        for index in 0..18 + DECKS * 8 {
+        for index in 0..18 + DECKS * 9 {
             if (before ^ after) & (1 << index) == 0 {
                 continue;
             }
-            let target = if index < 16 { Target::Pad(index as u8) } else if index < 18 { Target::Cue((index - 16) as u8) } else { Target::DeckPad { deck: ((index - 18) / 8) as u8, pad: ((index - 18) % 8) as u8 } };
+            let target = if index < 16 { Target::Pad(index as u8) } else if index < 18 { Target::Cue((index - 16) as u8) } else if index < 34 { Target::DeckPad { deck: ((index - 18) / 8) as u8, pad: ((index - 18) % 8) as u8 } } else {Target::Censor((index-34) as u8)};
             let on = after & (1 << index) != 0;
             let pressure = self
                 .contacts
@@ -373,7 +375,7 @@ impl Input {
                     .copied()
                 {
                     if self.contacts.len() == MAX_CONTACTS
-                        || (!matches!(hit.target, Target::Pad(_) | Target::Cue(_) | Target::DeckPad { .. })
+                        || (!matches!(hit.target, Target::Pad(_) | Target::Cue(_) | Target::Censor(_) | Target::DeckPad { .. })
                             && self
                                 .contacts
                                 .iter()
@@ -405,7 +407,7 @@ impl Input {
                 Target::Crossfader => {
                     (contact.pos.x - contact.hit.track.left()) / contact.hit.track.width()
                 }
-                Target::Pad(_) | Target::Cue(_) | Target::DeckPad { .. } => continue,
+                Target::Pad(_) | Target::Cue(_) | Target::Censor(_) | Target::DeckPad { .. } => continue,
             };
             if value.is_finite() {
                 faders.push((contact.hit.target, value.clamp(0.0, 1.0)));
@@ -446,11 +448,13 @@ impl App {
             || keyboard::dialogs_block_input(ctx);
         self.guard_cue_inputs(ctx, blocked);
         self.guard_deck_pad_inputs(ctx, blocked);
+        self.guard_censor_inputs(ctx, blocked);
         let (gates, faders) = self.touch_input.finish(ctx, blocked);
         for (target, on, pressure) in gates {
             match target {
                 Target::Pad(pad) => self.set_pad_input_pressure(pad as usize, 16, on, Some(pressure)),
                 Target::Cue(deck) => self.set_cue_input(deck, 4, on, ctx.viewport_id()),
+                Target::Censor(deck) => self.set_censor_input(deck, 4, on, ctx.viewport_id()),
                 Target::DeckPad { deck, pad } => self.set_deck_pad_input(deck, pad, 4, on, pressure, ctx.input(|i| i.modifiers.shift), ctx.viewport_id()),
                 _ => {}
             }
@@ -461,6 +465,7 @@ impl App {
             .retain(|contact| match contact.hit.target {
                 Target::Pad(pad) => self.pad_inputs[pad as usize] & 16 != 0,
                 Target::Cue(deck) => self.cue_audition.owners[usize::from(deck)][4].is_some(),
+                Target::Censor(deck) => self.deck_direction.owners[usize::from(deck)][4].is_some(),
                 Target::DeckPad { deck, pad } => self.deck_pad_inputs.owners[usize::from(deck)][usize::from(pad)][4].is_some(),
                 _ => true,
             });
@@ -472,7 +477,7 @@ impl App {
             match target {
                 Target::Pitch(deck) => self.send(Command::DeckPitch { deck, value }),
                 Target::Crossfader => self.send(Command::Xfader(value)),
-                Target::Pad(_) | Target::Cue(_) | Target::DeckPad { .. } => {}
+                Target::Pad(_) | Target::Cue(_) | Target::Censor(_) | Target::DeckPad { .. } => {}
             }
         }
     }

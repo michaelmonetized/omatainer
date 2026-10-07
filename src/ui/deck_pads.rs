@@ -199,7 +199,9 @@ impl App {
                         } else {
                             format!("{} · {} · fixed pad ID {}", mode.label(), name, pad + 1)
                         };
+                        let description=if mode==Mode::Roll {format!("{description}; {}; {}",if snap.controls.roll_active==Some(pad as u8){"Active roll"}else{"No active roll"},if snap.controls.roll_pending==Some(pad as u8){format!("Queued at beat {:.5}",snap.controls.roll_due.unwrap_or(0.0))}else{"No queued roll".into()})}else{description};
                         accessibility::status(ui, &response, &description);
+                        if mode==Mode::Roll&&snap.controls.roll_pending==Some(pad as u8){ui.painter().rect_stroke(response.rect.shrink(1.0),2.0,st(2.0,t.orange),egui::StrokeKind::Inside);}
                         help::annotate(ui, &response, HelpControl::HotCue);
                         self.deck_pad_gate(ui, deck as u8, pad as u8, &response, mode);
                     }
@@ -353,7 +355,7 @@ fn presentation(
             (
                 format!("{beats} beats"),
                 if mode == Mode::Roll {
-                    snap.controls.roll == Some(pad as u8)
+                    snap.controls.roll_active == Some(pad as u8)
                 } else {
                     snap.loop_on && (snap.loop_len - length).abs() <= 1.0
                 },

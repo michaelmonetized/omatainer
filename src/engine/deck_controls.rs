@@ -22,6 +22,8 @@ mod loop_edit_tests;
 mod quantization_tests;
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod roll_reverse_tests;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -58,6 +60,7 @@ impl Button {
 #[serde(tag = "op", rename_all = "snake_case", deny_unknown_fields)]
 pub enum Control {
     Quantize { enabled: bool, division: u8 },
+    Reverse { enabled: bool },
     Hold { button: Button, on: bool },
     Keylock,
     PitchRange,
@@ -141,6 +144,7 @@ pub struct Status {
     pub cue_held: bool,
     pub beat_jump_size: u8,
     pub reverse: bool,
+    pub reverse_latched: bool,
     pub bleep: bool,
     pub bend: f32,
     pub delete: bool,
@@ -157,6 +161,9 @@ pub struct Status {
     pub slip_return: Option<f64>,
     pub pad_mode: u8,
     pub roll: Option<u8>,
+    pub roll_active: Option<u8>,
+    pub roll_pending: Option<u8>,
+    pub roll_due: Option<f64>,
     pub slice: Option<u8>,
     pub roll_scale: i8,
     pub slice_domain: u8,
@@ -168,6 +175,7 @@ pub struct Status {
 #[derive(Clone, Debug)]
 pub(super) struct State {
     quantize: Option<bool>,
+    reverse_latched: bool,
     quantize_division: u8,
     pending: Option<quantization::Pending>,
     quantize_dispatching: bool,
@@ -227,6 +235,7 @@ impl Default for State {
     fn default() -> Self {
         Self {
             quantize: None,
+            reverse_latched: false,
             quantize_division: 3,
             pending: None,
             quantize_dispatching: false,
@@ -325,8 +334,9 @@ impl State {
             if existing.is_some() {
                 return false;
             }
-            if let Some(empty) = self.owners.iter_mut().find(|owner| owner.is_none()) {
-                *empty = Some((source, key, button));
+            if let Some(empty) = self.owners.iter().position(Option::is_none) {
+                self.owners[..=empty].rotate_right(1);
+                self.owners[0] = Some((source, key, button));
                 self.counts[button.index()] += 1;
                 return true;
             }
@@ -343,7 +353,7 @@ impl State {
     /// Read a signed playback multiplier without changing the pitch slider.
     /// Takes this state; returns direction and temporary pitch bend.
     pub fn multiplier(&self) -> f32 {
-        let direction = if self.held(Button::Reverse) || self.held(Button::Bleep) {
+        let direction = if self.reverse_latched || self.held(Button::Reverse) || self.held(Button::Bleep) {
             -1.0
         } else {
             1.0
@@ -389,6 +399,7 @@ impl State {
         self.pending = None;
         self.quantize_owner_hint = None;
         self.owners.fill(None);
+        self.reverse_latched = false;
         self.counts.fill(0);
         self.forward = None;
         self.performance_forward = None;
@@ -414,7 +425,8 @@ impl State {
             pending: self.pending.map(|pending| pending.status),
             cue_held: self.held(Button::Cue),
             beat_jump_size: self.beat_jump_size,
-            reverse: self.held(Button::Reverse),
+            reverse: self.reverse_latched || self.held(Button::Reverse),
+            reverse_latched: self.reverse_latched,
             bleep: self.held(Button::Bleep),
             bend: (i32::from(self.held(Button::BendUp)) - i32::from(self.held(Button::BendDown)))
                 as f32
@@ -432,7 +444,10 @@ impl State {
             slip_due: self.slip_due,
             slip_return: self.slip_return,
             pad_mode: self.pad_mode,
-            roll: (0..8).find(|&pad| self.held(Button::Roll(pad))),
+            roll: self.owners.iter().flatten().find_map(|owner| if let Button::Roll(pad) = owner.2 {Some(pad)}else{None}),
+            roll_active: self.slicer.active_roll(),
+            roll_pending: self.slicer.pending_roll().map(|pending| pending.0),
+            roll_due: self.slicer.pending_roll().map(|pending| pending.1),
             slice: (0..8).find(|&pad| self.held(Button::Slice(pad))),
             roll_scale: self.roll_scale,
             slice_domain: self.slice_domain,
@@ -447,6 +462,7 @@ impl State {
         self.pending = None;
         self.quantize_owner_hint = None;
         self.owners.fill(None);
+        self.reverse_latched = false;
         self.counts.fill(0);
         self.performance_forward = None;
         self.saved_loop = None;
@@ -536,11 +552,20 @@ impl RtEngine {
             return;
         }
         let index = usize::from(deck);
-        if matches!(control, Control::Hold {button:Button::Reverse|Button::Bleep|Button::Cue|Button::HotCue(_)|Button::Roll(_)|Button::Slice(_),on:true}|Control::BeatJump {..}|Control::CueOnly {..}|Control::LoopToggle|Control::AutoLoopPad {..}|Control::ManualPad {..}|Control::SavedLoop {action:SavedLoopAction::Recall {..},..}) {
+        if let Control::Reverse { enabled } = control {
+            if self.decks[index].controls.reverse_latched == enabled {return;}
+        }
+        if matches!(control, Control::Reverse {..} | Control::Hold {button:Button::Reverse|Button::Bleep|Button::Cue|Button::HotCue(_)|Button::Roll(_)|Button::Slice(_),on:true}|Control::BeatJump {..}|Control::CueOnly {..}|Control::LoopToggle|Control::AutoLoopPad {..}|Control::ManualPad {..}|Control::SavedLoop {action:SavedLoopAction::Recall {..},..}) {
             self.decks[index].transport_generation=self.decks[index].transport_generation.wrapping_add(1);
         }
-        if matches!(control, Control::Hold { button: Button::Reverse | Button::Bleep | Button::BendDown | Button::BendUp | Button::Cue | Button::HotCue(_) | Button::Roll(_) | Button::Slice(_), on: true } | Control::Strip { .. } | Control::BeatJump { .. } | Control::TrackStart) { self.deck_sync_manipulation(index); }
+        if matches!(control, Control::Reverse {..} | Control::Hold { button: Button::Reverse | Button::Bleep | Button::BendDown | Button::BendUp | Button::Cue | Button::HotCue(_) | Button::Roll(_) | Button::Slice(_), on: true } | Control::Strip { .. } | Control::BeatJump { .. } | Control::TrackStart) { self.deck_sync_manipulation(index); }
         match control {
+            Control::Reverse { enabled } => {
+                let d=&mut self.decks[index];
+                d.controls.pending=None;
+                if enabled {d.begin_slip(self.sr,self.bpm);}
+                d.controls.reverse_latched=enabled;
+            }
             Control::Quantize { enabled, division } => {
                 let state = &mut self.decks[index].controls;
                 state.quantize = Some(enabled);

@@ -2774,6 +2774,14 @@ Select Slice pad mode on either deck. Choose a 2–64-beat phrase, Moving to fol
 
 Workflow: Prepare a DJ deck.
 
+### Reverse and censor
+
+Independent native latch and momentary holds
+
+REV toggles reverse until changed; physical reverse holds remain independent. CENSOR reverses temporarily while retaining an advancing forward timeline, then returns on the final local or controller release. Hold mouse, Space, Enter or touch; assistive Click toggles a visible hold and Press Censor/Release Censor are explicit actions. Native key holds end when focus moves. Source, project, safety and deliberate native workspace boundaries retire original holds. Waveform direction and native status are renderer-confirmed; controller feedback shares that state. Active loops wrap backward inside their original bounds; file start clamps without wrapping to the file end. Reverse bypasses tempo-only key processing while retaining the saved requested key settings. Reverse latch is transient and clears at media/project/safety replacement. Roll uses the deck quantization division for onset when enabled, otherwise starts immediately at the actual source position. The newest held roll has priority; release restores the newest remaining hold, and final release resumes the advancing original timeline and loop.
+
+Workflow: Prepare a DJ deck.
+
 ### Slip playback
 
 Independent deck; immediate or musical release

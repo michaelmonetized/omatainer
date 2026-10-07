@@ -21,7 +21,7 @@ impl State {
     /// Read nested ownership without allocating or inspecting input devices.
     /// Takes this state; returns whether any temporary slip button is held.
     fn slip_held(&self) -> bool {
-        self.counts[..2]
+        self.reverse_latched || self.counts[..2]
             .iter()
             .chain(&self.counts[5..])
             .any(|count| *count != 0)

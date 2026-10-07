@@ -104,6 +104,7 @@ impl DeckRt {
             && !self.touching
             && !self.controls.braking
             && self.rate >= 0.0
+            && !self.controls.reverse_latched
             && !self.controls.held(Button::Reverse)
             && !self.controls.held(Button::Bleep)
             && self.controls.saved_loop.is_none()

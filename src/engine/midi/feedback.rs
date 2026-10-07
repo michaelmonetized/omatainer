@@ -441,6 +441,21 @@ mod tests {
         assert!(messages.iter().all(|message| !matches!(message[1], 65..=80)), "LED refresh must never contain motor actions");
     }
     #[test]
+    fn existing_sp1_direction_feedback_uses_actual_renderer_status_without_output_ports() {
+        use crate::engine::{Command,deck_controls::{Button,Control}};
+        let(engine,mut renderer)=crate::engine::Engine::headless_for_test(48000,64);
+        renderer.apply(Command::DeckControl {source:71,deck:0,control:Control::Reverse {enabled:true}});
+        renderer.apply(Command::DeckControl {source:72,deck:1,control:Control::Hold {button:Button::Bleep,on:true}});
+        renderer.publish_for_test();
+        let messages=Surface::Sp1.messages(&engine.snapshot());
+        for expected in [[0x90,0x38,127],[0x90,0x15,0],[0x91,0x38,0],[0x91,0x15,127]] {assert!(messages.contains(&expected),"Missing {expected:?}");}
+        renderer.apply(Command::DeckControl {source:71,deck:0,control:Control::Reverse {enabled:false}});
+        renderer.apply(Command::DeckControl {source:72,deck:1,control:Control::Hold {button:Button::Bleep,on:false}});
+        renderer.publish_for_test();let messages=Surface::Sp1.messages(&engine.snapshot());
+        assert!(messages.contains(&[0x90,0x38,0]));assert!(messages.contains(&[0x91,0x15,0]));
+        assert!(messages.iter().all(|message|message[0]&0xf0==0x90 && message[1]<128 && message[2]<128));
+    }
+    #[test]
     fn ns7_motors_repeat_play_pause_edges_and_stop_for_vinyl_off_or_recovery() {
         let mut snapshot = Snapshot::default();
         snapshot.decks = vec![Default::default(), Default::default()];

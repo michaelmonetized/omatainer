@@ -625,6 +625,28 @@ Software qualification: five-minute 12 kHz reference and 44.1/48/96 kHz referenc
 
 Software qualification: atomic whole-scene tempo/meter and clip switches at exact sample boundaries; independent timestamp/downbeat oracles at 8/44.1/48 kHz and clock oracles additionally at 96 kHz, callbacks 31/257, continuing tracks under Keep, exact Stop releases, disabled/additive/legato semantics, selected-track and held-input ownership, actual recording completion, native odd-meter count-in/rate change, full native meter inheritance including 255/128 and pickup, guarded metadata Undo/Redo/cancellation/stale identity, deletion/reuse/reorder, safety/seek/project replacement, native state 23 real-container reopen and old-header injection refusal, native egui/AccessKit editing/duplication/launch/cancel, bounded consistent socket/follow status and zero unchanged cache heap work. A selected scene tempo/meter replaces future conductor automation with the current flat clock; historical conductor mapping is not retained. Pending launches/active identities never resume on reopen. No physical controller display or new live hardware/audio qualification; independent stage application unchanged. No ticket acceptance or issue closure claimed.
 
+### Issue #236: implemented
+
+- shared held roll renderer: [src/engine/deck_controls/slicer.rs](../src/engine/deck_controls/slicer.rs) — Immediate/current-source or deck-quantized onset, original pending owner, latest-held fallback and advancing release root
+- confirmed native roll state: [src/ui/deck_pads.rs](../src/ui/deck_pads.rs) — Selected beat divisions, actual active roll and separate queued outline/accessible onset
+- Acceptance fixtures: `engine::deck_controls::roll_reverse_tests`, `ui::deck_pads::tests`.
+- Evidence: [docs/validation/roll-reverse.md](../docs/validation/roll-reverse.md).
+- Evidence: [docs/validation/roll-reverse-receipt.json](../docs/validation/roll-reverse-receipt.json).
+
+Linux ARM64 software qualification: held beat-division rolls with per-deck onset timing, original source/key cancellation, newest-owner priority after slot reuse, shared advancing Slip root and original-loop release; independent native reverse latch and source-owned censor with defined first-frame/backward-loop behavior. Actual renderer/OutputCallback PCM, numbered source impulses, decoded WAV/FLAC/MP3, native egui/AccessKit pointer/key/touch/assistive inputs and confirmed waveform direction. Existing SP1 direction feedback bytes generated from actual snapshots without output ports; no NS7 direction LED or new motor address introduced. No new dependency or saved project/profile format. No physical audio/MIDI device, live capture, new OS GUI, listening or stage continuity acceptance; existing independent stage processes/session preserved.
+
+### Issue #237: implemented
+
+- independent reverse latch and shared censor root: [src/engine/deck_controls.rs](../src/engine/deck_controls.rs) — Persistent native latch separate from held sources, safety/media retirement and coherent Slip ownership
+- native direction and censor input owners: [src/ui/deck_direction.rs](../src/ui/deck_direction.rs) — Confirmed latch/status, independent pointer/key/touch/assistive input routes and original-owner retirement
+- explicit waveform direction: [src/ui/waveform.rs](../src/ui/waveform.rs) — Painted renderer direction and accessible source-position description
+- existing feedback regression: [src/engine/midi/feedback.rs](../src/engine/midi/feedback.rs) — Actual reverse/censor snapshot into existing SP1 Note feedback without output port or new NS7 command
+- Acceptance fixtures: `engine::deck_controls::roll_reverse_tests`, `ui::deck_direction::tests`, `engine::midi::feedback::tests::existing_sp1_direction_feedback_uses_actual_renderer_status_without_output_ports`.
+- Evidence: [docs/validation/roll-reverse.md](../docs/validation/roll-reverse.md).
+- Evidence: [docs/validation/roll-reverse-receipt.json](../docs/validation/roll-reverse-receipt.json).
+
+Linux ARM64 software qualification: held beat-division rolls with per-deck onset timing, original source/key cancellation, newest-owner priority after slot reuse, shared advancing Slip root and original-loop release; independent native reverse latch and source-owned censor with defined first-frame/backward-loop behavior. Actual renderer/OutputCallback PCM, numbered source impulses, decoded WAV/FLAC/MP3, native egui/AccessKit pointer/key/touch/assistive inputs and confirmed waveform direction. Existing SP1 direction feedback bytes generated from actual snapshots without output ports; no NS7 direction LED or new motor address introduced. No new dependency or saved project/profile format. No physical audio/MIDI device, live capture, new OS GUI, listening or stage continuity acceptance; existing independent stage processes/session preserved.
+
 ### Issue #240: implemented
 
 - moving/repeating slicer renderer: [src/engine/deck_controls/slicer.rs](../src/engine/deck_controls/slicer.rs) — Exact mapped/source-bounded phrase intervals, source-owned pending onset against independent background, original repeating loop restoration and stable input release ownership
@@ -789,8 +811,8 @@ Music source: FreeToUse public keyless API. Michael excludes other third-party p
 | [#233](https://github.com/michaelmonetized/omatainer/issues/233) | Add DVS signal calibration and diagnostics | planned |
 | [#234](https://github.com/michaelmonetized/omatainer/issues/234) | Save and share DJ effect presets and unit layouts | planned |
 | [#235](https://github.com/michaelmonetized/omatainer/issues/235) | Add instant doubles and deck transfer | planned |
-| [#236](https://github.com/michaelmonetized/omatainer/issues/236) | Add momentary loop-roll pad performance | planned |
-| [#237](https://github.com/michaelmonetized/omatainer/issues/237) | Add reverse playback and momentary censor controls | planned |
+| [#236](https://github.com/michaelmonetized/omatainer/issues/236) | Add momentary loop-roll pad performance | implemented |
+| [#237](https://github.com/michaelmonetized/omatainer/issues/237) | Add reverse playback and momentary censor controls | implemented |
 | [#238](https://github.com/michaelmonetized/omatainer/issues/238) | Add beat-synced sampler playback and output assignments | planned |
 | [#239](https://github.com/michaelmonetized/omatainer/issues/239) | Add scratch banks with instant return to the previous deck track | planned |
 | [#240](https://github.com/michaelmonetized/omatainer/issues/240) | Add moving and fixed-loop slicer pad modes | implemented |

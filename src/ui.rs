@@ -106,6 +106,7 @@ mod loop_editor;
 mod deck_quantization;
 mod cue_audition;
 mod deck_pads;
+mod deck_direction;
 mod deck_sync;
 mod pitch_controls;
 mod command_palette;
@@ -246,6 +247,7 @@ pub struct App {
     pad_held: [bool; 16],
     pad_inputs: [u8; 16],
     deck_pad_inputs: deck_pads::Inputs,
+    deck_direction: deck_direction::Inputs,
     cue_audition: cue_audition::Inputs,
     pitch_inputs: pitch_controls::Inputs,
     shortcut_focus: keyboard::ShortcutFocus,
@@ -401,6 +403,7 @@ impl App {
             pad_held: [false; 16],
             pad_inputs: [0; 16],
             deck_pad_inputs: deck_pads::Inputs::new(),
+            deck_direction: deck_direction::Inputs::new(),
             cue_audition: cue_audition::Inputs::new(),
             pitch_inputs: pitch_controls::Inputs::new(),
             shortcut_focus: keyboard::ShortcutFocus::default(),
@@ -1296,7 +1299,10 @@ impl App {
             });
             self.deck_beat_jump(ui, d as u8, snap.controls.beat_jump_size);
             self.deck_quantization(ui, d as u8, &snap.controls, snap.grid.is_some());
-            self.deck_sync_controls(ui, d as u8, snap);
+            ui.horizontal(|ui| {
+                self.deck_sync_controls(ui, d as u8, snap);
+                self.deck_direction_controls(ui, d as u8, snap);
+            });
             self.deck_loop_editor(ui, d as u8, snap);
         });
     }

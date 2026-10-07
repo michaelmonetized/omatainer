@@ -6,7 +6,7 @@ Michael resumed physical checks on 2026-10-06. All MPD A/B/C controls were captu
 
 Each issue appears once, after its dependencies. The Code column checks off implemented code, including the existing stack, and does not claim complete acceptance. Accepted requires complete recorded acceptance. The eight provider integrations previously excluded by Michael stay outside this release. No open issue is automatically closed by this checklist.
 
-127 existing stack · 52 implemented · 6 partial · 163 planned · 0 accepted · 8 outside release
+127 existing stack · 54 implemented · 6 partial · 161 planned · 0 accepted · 8 outside release
 
 - [x] High-resolution stereo source peaks with measured rainbow frequency bands, native-rate validation, project reopen and pixel-scaled rendering. [Receipt](../validation/rainbow-waveforms.md)
 
@@ -246,8 +246,8 @@ Each issue appears once, after its dependencies. The Code column checks off impl
 | [ ] | [#233](https://github.com/michaelmonetized/omatainer/issues/233) | Add DVS signal calibration and diagnostics | planned | #201 |  |
 | [ ] | [#234](https://github.com/michaelmonetized/omatainer/issues/234) | Save and share DJ effect presets and unit layouts | planned | #187 |  |
 | [ ] | [#235](https://github.com/michaelmonetized/omatainer/issues/235) | Add instant doubles and deck transfer | planned | #189, #131 |  |
-| [ ] | [#236](https://github.com/michaelmonetized/omatainer/issues/236) | Add momentary loop-roll pad performance | planned | #192, #203 |  |
-| [ ] | [#237](https://github.com/michaelmonetized/omatainer/issues/237) | Add reverse playback and momentary censor controls | planned | #203 |  |
+| [x] | [#236](https://github.com/michaelmonetized/omatainer/issues/236) | Add momentary loop-roll pad performance | implemented | #192, #203 | [receipt](../../docs/validation/roll-reverse.md), [receipt](../../docs/validation/roll-reverse-receipt.json) |
+| [x] | [#237](https://github.com/michaelmonetized/omatainer/issues/237) | Add reverse playback and momentary censor controls | implemented | #203 | [receipt](../../docs/validation/roll-reverse.md), [receipt](../../docs/validation/roll-reverse-receipt.json) |
 | [ ] | [#238](https://github.com/michaelmonetized/omatainer/issues/238) | Add beat-synced sampler playback and output assignments | planned | #101, #193, #130 |  |
 | [ ] | [#239](https://github.com/michaelmonetized/omatainer/issues/239) | Add scratch banks with instant return to the previous deck track | planned | #192, #85, #98 |  |
 | [x] | [#240](https://github.com/michaelmonetized/omatainer/issues/240) | Add moving and fixed-loop slicer pad modes | implemented | #192, #134 | [receipt](../../docs/validation/slicer.md), [receipt](../../docs/validation/slicer-receipt.json) |

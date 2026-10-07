@@ -1889,6 +1889,65 @@
       ],
       "limits": "Software qualification: atomic whole-scene tempo/meter and clip switches at exact sample boundaries; independent timestamp/downbeat oracles at 8/44.1/48 kHz and clock oracles additionally at 96 kHz, callbacks 31/257, continuing tracks under Keep, exact Stop releases, disabled/additive/legato semantics, selected-track and held-input ownership, actual recording completion, native odd-meter count-in/rate change, full native meter inheritance including 255/128 and pickup, guarded metadata Undo/Redo/cancellation/stale identity, deletion/reuse/reorder, safety/seek/project replacement, native state 23 real-container reopen and old-header injection refusal, native egui/AccessKit editing/duplication/launch/cancel, bounded consistent socket/follow status and zero unchanged cache heap work. A selected scene tempo/meter replaces future conductor automation with the current flat clock; historical conductor mapping is not retained. Pending launches/active identities never resume on reopen. No physical controller display or new live hardware/audio qualification; independent stage application unchanged. No ticket acceptance or issue closure claimed."
     },
+    "236": {
+      "status": "implemented",
+      "paths": [
+        {
+          "kind": "shared held roll renderer",
+          "file": "src/engine/deck_controls/slicer.rs",
+          "entry": "Immediate/current-source or deck-quantized onset, original pending owner, latest-held fallback and advancing release root"
+        },
+        {
+          "kind": "confirmed native roll state",
+          "file": "src/ui/deck_pads.rs",
+          "entry": "Selected beat divisions, actual active roll and separate queued outline/accessible onset"
+        }
+      ],
+      "fixtures": [
+        "engine::deck_controls::roll_reverse_tests",
+        "ui::deck_pads::tests"
+      ],
+      "evidence": [
+        "docs/validation/roll-reverse.md",
+        "docs/validation/roll-reverse-receipt.json"
+      ],
+      "limits": "Linux ARM64 software qualification: held beat-division rolls with per-deck onset timing, original source/key cancellation, newest-owner priority after slot reuse, shared advancing Slip root and original-loop release; independent native reverse latch and source-owned censor with defined first-frame/backward-loop behavior. Actual renderer/OutputCallback PCM, numbered source impulses, decoded WAV/FLAC/MP3, native egui/AccessKit pointer/key/touch/assistive inputs and confirmed waveform direction. Existing SP1 direction feedback bytes generated from actual snapshots without output ports; no NS7 direction LED or new motor address introduced. No new dependency or saved project/profile format. No physical audio/MIDI device, live capture, new OS GUI, listening or stage continuity acceptance; existing independent stage processes/session preserved."
+    },
+    "237": {
+      "status": "implemented",
+      "paths": [
+        {
+          "kind": "independent reverse latch and shared censor root",
+          "file": "src/engine/deck_controls.rs",
+          "entry": "Persistent native latch separate from held sources, safety/media retirement and coherent Slip ownership"
+        },
+        {
+          "kind": "native direction and censor input owners",
+          "file": "src/ui/deck_direction.rs",
+          "entry": "Confirmed latch/status, independent pointer/key/touch/assistive input routes and original-owner retirement"
+        },
+        {
+          "kind": "explicit waveform direction",
+          "file": "src/ui/waveform.rs",
+          "entry": "Painted renderer direction and accessible source-position description"
+        },
+        {
+          "kind": "existing feedback regression",
+          "file": "src/engine/midi/feedback.rs",
+          "entry": "Actual reverse/censor snapshot into existing SP1 Note feedback without output port or new NS7 command"
+        }
+      ],
+      "fixtures": [
+        "engine::deck_controls::roll_reverse_tests",
+        "ui::deck_direction::tests",
+        "engine::midi::feedback::tests::existing_sp1_direction_feedback_uses_actual_renderer_status_without_output_ports"
+      ],
+      "evidence": [
+        "docs/validation/roll-reverse.md",
+        "docs/validation/roll-reverse-receipt.json"
+      ],
+      "limits": "Linux ARM64 software qualification: held beat-division rolls with per-deck onset timing, original source/key cancellation, newest-owner priority after slot reuse, shared advancing Slip root and original-loop release; independent native reverse latch and source-owned censor with defined first-frame/backward-loop behavior. Actual renderer/OutputCallback PCM, numbered source impulses, decoded WAV/FLAC/MP3, native egui/AccessKit pointer/key/touch/assistive inputs and confirmed waveform direction. Existing SP1 direction feedback bytes generated from actual snapshots without output ports; no NS7 direction LED or new motor address introduced. No new dependency or saved project/profile format. No physical audio/MIDI device, live capture, new OS GUI, listening or stage continuity acceptance; existing independent stage processes/session preserved."
+    },
     "240": {
       "status": "implemented",
       "paths": [

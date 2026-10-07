@@ -534,8 +534,9 @@ pub(super) fn paint(
         ui,
         &response,
         &format!(
-            "{}; {timing}; {}",
+            "{}; {timing}; {}; {}",
             phrase(snap, position.frames),
+            deck_direction::direction(snap),
             snap.hotcue_positions
                 .iter()
                 .enumerate()
@@ -545,6 +546,7 @@ pub(super) fn paint(
                 .join("; ")
         ),
     );
+    painter.text(rect.right_top()+Vec2::new(-3.0,3.0),egui::Align2::RIGHT_TOP,deck_direction::direction(snap),FontId::proportional(theme.text_size(9.0)),theme.fg);
     painter.hline(rect.x_range(), rect.center().y, st(1.6, theme.accent));
     if response.clicked() || response.dragged() {
         if let Some(pointer) = response.interact_pointer_pos() {

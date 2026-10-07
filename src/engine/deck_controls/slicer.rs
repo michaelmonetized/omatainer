@@ -51,8 +51,18 @@ impl State {
             bounds: self.bounds,
             active: self.active.and_then(pad),
             pending: self.pending.and_then(|p| pad(p.owner)),
-            pending_beat: self.pending.map(|p| p.beat),
+            pending_beat: self.pending.filter(|p|matches!(p.owner.2,Button::Slice(_))).map(|p|p.beat),
         }
+    }
+    /// Read the applied roll from its retained input owner.
+    /// Takes this temporary-loop runtime; returns a zero-based Roll pad or no active roll.
+    pub(super) fn active_roll(&self) -> Option<u8> {
+        self.active.and_then(|owner| if let Button::Roll(pad)=owner.2 {Some(pad)}else{None})
+    }
+    /// Read a source-owned roll waiting for its musical onset.
+    /// Takes this temporary-loop runtime; returns pad and due beat without allocating.
+    pub(super) fn pending_roll(&self) -> Option<(u8,f64)> {
+        self.pending.and_then(|pending| if let Button::Roll(pad)=pending.owner.2 {Some((pad,pending.beat))}else{None})
     }
     /// Configure only validated transient slicer settings.
     /// Takes repeating-domain behavior and onset division; changes no source metadata or stored project state.
@@ -179,7 +189,7 @@ impl DeckRt {
     fn activate_temporary_pad(&mut self, owner: Owner, sr: f32, bpm: f32) {
         let (start, end) = match owner.2 {
             Button::Roll(pad) => {
-                let start = self.grid_snap(self.pos, sr, bpm);
+                let start = if self.controls.quantize==Some(true)&&self.playing {self.controls.performance_forward.unwrap_or(self.pos)}else{self.pos};
                 let beats = 2_f64.powi(i32::from(pad) - 5 + i32::from(self.controls.roll_scale));
                 (start, start + self.grid_span(start, beats, sr, bpm))
             }
@@ -215,12 +225,17 @@ impl DeckRt {
         self.controls.slicer.active = Some(owner);
         self.transition_to(start, sr, DeckTransition::Jump);
     }
-    /// Schedule a slice against the advancing background rather than the audible repeat.
+    /// Schedule a slice or roll against the advancing background rather than the audible repeat.
     /// Takes an admitted owner and clock; queues a bounded musical delay or applies an immediate/stopped trigger.
     fn request_temporary_pad(&mut self, owner: Owner, sr: f32, bpm: f32) {
         self.controls.slicer.pending = None;
-        if matches!(owner.2, Button::Slice(_)) && self.playing {
-            if let Some(index) = self.controls.slicer.division {
+        let division=match owner.2 {
+            Button::Slice(_)=>self.controls.slicer.division,
+            Button::Roll(_) if self.controls.quantize==Some(true)=>Some(self.controls.quantize_division),
+            _=>None,
+        };
+        if self.playing {
+            if let Some(index) = division {
                 let beat = self.grid_beat_at(
                     self.controls.performance_forward.unwrap_or(self.pos),
                     sr,
@@ -265,7 +280,6 @@ impl DeckRt {
             .controls
             .owners
             .iter()
-            .rev()
             .flatten()
             .copied()
             .find(|owner| matches!(owner.2, Button::Roll(_) | Button::Slice(_)));
