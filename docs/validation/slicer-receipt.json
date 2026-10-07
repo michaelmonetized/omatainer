@@ -739,5 +739,86 @@
       "reason": "The exact neighboring pad mode-change check passed and the right pitch target reappeared, but its full track remained clipped at wide window size. Egui treats ComboBox width as a minimum, not a maximum; the selected text inherited expanding horizontal layout. The two control rows now use independently sized columns and explicit selected-text truncation, while popup choices keep full accessible labels. This focused round installed no release."
     }
   },
-  "limits": "Linux ARM64 software qualification: independent transient moving/repeating 2–64-beat slicer domains, eight exact original source intervals, repeat subdivisions and explicit immediate/musical onset. Actual producer/renderer, private MIDI worker, numbered stereo PCM, mixed clocks/manual variable grid, independent input owners, deliberate cancellation, shared Slip root and native egui/AccessKit painted ranges with fixed neighboring touch geometry and bounded pad-column width. No project/profile schema or controller address change. No physical audio/MIDI device, live capture, new OS GUI, hardware RGB inspection, human listening or stage continuity acceptance; existing independent stage processes/session remain preserved."
+  "limits": "Linux ARM64 software qualification: independent transient moving/repeating 2–64-beat slicer domains, eight exact original source intervals, repeat subdivisions and explicit immediate/musical onset. Actual producer/renderer, private MIDI worker, numbered stereo PCM, mixed clocks/manual variable grid, independent input owners, deliberate cancellation, shared Slip root and native egui/AccessKit painted ranges with fixed neighboring touch geometry and bounded pad-column width. No project/profile schema or controller address change. No physical audio/MIDI device, live capture, new OS GUI, hardware RGB inspection, human listening or stage continuity acceptance; existing independent stage processes/session remain preserved.",
+  "releaseInstallation": {
+    "schema": 1,
+    "package": {
+      "path": "/home/michael/Projects/omatainer-work/hardware-resurrection/target/app-backlog/release-slicer-qualified",
+      "manifestSha256": "7b46bb7daa2489d8f7146e1d0b0988984a5b16968ce7946d8e8c08d6f69506b7",
+      "revision": "1b9a05236daa83e37574034045ea6c0561ef0f51",
+      "version": "0.1.0+1b9a05236daa",
+      "executableSha256": "ca659198d33b2fb3721f925de242044a0a8b87812d59c79fdac2ab5afd0a0ca1"
+    },
+    "installed": {
+      "schema": 1,
+      "before": "23f6dea7b809e6cda847d243e08d6e0ee0d5fb3494704174ac63f43bd3bacdb0",
+      "after": "ca659198d33b2fb3721f925de242044a0a8b87812d59c79fdac2ab5afd0a0ca1",
+      "installedAt": "2026-10-07T13:10:08.264Z"
+    },
+    "buildInfo": {
+      "arch": "aarch64",
+      "debug_assertions": false,
+      "os": "linux",
+      "pkg_version": "0.1.0",
+      "schema": 1
+    },
+    "applicationProcessesPreserved": [
+      {
+        "pid": 1649895,
+        "executable": "/home/michael/Projects/omatainer-work/hardware-resurrection/target/hardware/pioneer-apc/bin/omatainer",
+        "arguments": [
+          "/home/michael/Projects/omatainer-work/hardware-resurrection/target/hardware/pioneer-apc/bin/omatainer",
+          "--empty-once"
+        ],
+        "sha256": "646aa453a269d7c49feec0f5e88fcac94a030034f051468a82d2828ef05c4915"
+      },
+      {
+        "pid": 3973522,
+        "executable": "/home/michael/.local/bin/omatainer (deleted)",
+        "arguments": [
+          "/home/michael/.local/bin/omatainer",
+          "ctl",
+          "follow"
+        ],
+        "sha256": "23f88a47125de6eb19a7921d64faef6dafed56d3c25debdb89ac04d060d9b2e4"
+      }
+    ],
+    "protectedSessionPreserved": {
+      "path": "/home/michael/Projects/omatainer-work/hardware-resurrection/target/hardware/apc-restart-20261006/session.omat",
+      "sha256": "96e0b2495cdbdc549c324ecf8337fdef5590bdcbfe8916e4f014eb05d1ee827d",
+      "bytes": 162882871
+    },
+    "additionalProcessesAfterInstall": [],
+    "preinstallState": {
+      "master": 0.8188976645469666,
+      "playing": false,
+      "recording": false,
+      "decks": [
+        {
+          "title": "What More Can I Say",
+          "playing": false
+        },
+        {
+          "title": "Public Service Announcement",
+          "playing": false
+        }
+      ]
+    },
+    "postinstallState": {
+      "master": 0.8188976645469666,
+      "playing": false,
+      "recording": false,
+      "decks": [
+        {
+          "title": "What More Can I Say",
+          "playing": false
+        },
+        {
+          "title": "Public Service Announcement",
+          "playing": false
+        }
+      ]
+    },
+    "scope": "Default executable installed for next launch. Previously active independent private GUI and follower processes retained; no hardware device opened or live playback restarted. An unavailable live state is recorded when no GUI was present."
+  }
 }
