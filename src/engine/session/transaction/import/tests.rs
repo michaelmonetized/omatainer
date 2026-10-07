@@ -486,3 +486,48 @@ fn import_preflight_retains_space_for_unjournaled_launches_and_transport_positio
         assert!(serde_json::to_vec(&Some(launch)).unwrap().len() < 96);
     }
 }
+
+#[test]
+fn structural_and_import_edits_retain_latency_at_the_actual_output_rate_through_undo() {
+    use crate::engine::audio::routing::{latency::{Configuration, Report}, model::{Group, Model}, prepared::Prepared};
+    for rate in [44100, 96000] {
+        let (engine, mut rt) = Engine::headless_for_test(rate, 256);
+        let mut model = Model::default();
+        model.latency = Some(Configuration {
+            reserve_micros: 10000,
+            reports: vec![Report { group: Group::Deck(0), external_micros: 0, processing_micros: 7000 }],
+            ..Default::default()
+        });
+        rt.routing = Some(Box::new(Prepared::at_rate(Arc::new(model), &rt.session, rate).unwrap()));
+        let expected_frames = (u64::from(rate) * 7000 + 500000) / 1000000;
+        let check = |rt: &RtEngine| {
+            let status = rt.routing.as_ref().unwrap().latency_status();
+            assert_eq!(status.rate, rate);
+            assert_eq!(u64::from(status.program_frames), expected_frames);
+        };
+        check(&rt);
+        let (request, ack) = Request::structural(capture(&engine, &mut rt), rate, super::super::Structure::Track {
+            name: "Retained clock track".into(), audio: false, position: 0,
+        }).unwrap();
+        engine.send(Command::SessionEdit(request)).unwrap();
+        assert_eq!(test_alloc::measure(|| rt.process(&mut [])), Default::default());
+        assert_eq!(ack.state(), Outcome::Applied);
+        check(&rt);
+        for command in [Command::Undo, Command::Redo, Command::Undo] {
+            assert_eq!(test_alloc::measure(|| rt.apply(command)), Default::default());
+            check(&rt);
+        }
+        let source = capture(&engine, &mut rt);
+        let selected = selection(&source.state);
+        let (request, ack) = Request::import(capture(&engine, &mut rt), &source.state, &source.media, &selected, rate).unwrap();
+        engine.send(Command::SessionEdit(request)).unwrap();
+        assert_eq!(test_alloc::measure(|| rt.process(&mut [])), Default::default());
+        assert_eq!(ack.state(), Outcome::Applied);
+        check(&rt);
+        for command in [Command::Undo, Command::Redo] {
+            assert_eq!(test_alloc::measure(|| rt.apply(command)), Default::default());
+            check(&rt);
+        }
+    }
+    println!("LATENCY_SESSION_EDITS {{\"sample_rates\":2,\"actual_rate_prepared\":true,\"structural_import_undo_redo\":true,\"callback_allocations\":0,\"physical_devices_opened\":false}}");
+}

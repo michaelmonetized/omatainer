@@ -369,7 +369,7 @@ impl Request {
                 generation: before.generation,
                 epoch: checkpoint.epoch,
                 inverse: Some(Box::new(Inverse {
-                    routing: state.routing.as_ref().map(|model| crate::engine::audio::routing::prepared::Prepared::new(model.clone(), &next).map(|graph| Some(Box::new(graph)))).transpose()?,
+                    routing: state.routing.as_ref().map(|model| crate::engine::audio::routing::prepared::Prepared::at_rate(model.clone(), &next, rate).map(|graph| Some(Box::new(graph)))).transpose()?,
                     layout: next,
                     track_name: None,
                     focus: None,
