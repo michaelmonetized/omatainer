@@ -3338,5 +3338,81 @@
     "deadlineChanged": false,
     "assertionsRelaxed": false
   },
-  "limits": "Linux aarch64 software qualification uses actual local files, exact hashes and inode identities, native bundle save/reopen, actual egui/AccessKit controls and independently compared playing PCM. No physical audio/MIDI port or new OS GUI was opened. Storage totals are sampled, and explicitly chosen shared folders may include other projects or overlap. Original recording/render provenance is not inferred from filenames. Inventories stop at 65536 entries, 16 folder levels and 64 GiB. Native archives retain the existing 1 GiB PCM/64 MiB metadata limits. Compaction saves only a reviewed new copy and preserves metadata-sensitive identities; it never replaces the source archive or changes the active renderer. Quarantine retains disk bytes and private durable recovery records. At most 128 recovery batches are inspected. Restore newest first with unchanged version indexes, retained dependencies and owned bytes; occupied paths or later edits refuse restoration without discarding the last copy. Partial moves, failed or uncertain publications keep recoverable files and records. Permanent purge and cross-filesystem destructive moves are not offered. The running app/session are preserved; installation is deferred while the independent GUI remains open. This milestone does not complete the remaining nonhardware backlog or qualify physical controller behavior."
+  "limits": "Linux aarch64 software qualification uses actual local files, exact hashes and inode identities, native bundle save/reopen, actual egui/AccessKit controls and independently compared playing PCM. No physical audio/MIDI port or new OS GUI was opened. Storage totals are sampled, and explicitly chosen shared folders may include other projects or overlap. Original recording/render provenance is not inferred from filenames. Inventories stop at 65536 entries, 16 folder levels and 64 GiB. Native archives retain the existing 1 GiB PCM/64 MiB metadata limits. Compaction saves only a reviewed new copy and preserves metadata-sensitive identities; it never replaces the source archive or changes the active renderer. Quarantine retains disk bytes and private durable recovery records. At most 128 recovery batches are inspected. Restore newest first with unchanged version indexes, retained dependencies and owned bytes; occupied paths or later edits refuse restoration without discarding the last copy. Partial moves, failed or uncertain publications keep recoverable files and records. Permanent purge and cross-filesystem destructive moves are not offered. The running app/session are preserved; installation is deferred while the independent GUI remains open. This milestone does not complete the remaining nonhardware backlog or qualify physical controller behavior.",
+  "releaseInstallation": {
+    "schema": 1,
+    "status": "installed_preserved_followers",
+    "integratedQualification": {
+      "receipt": "docs/validation/project-storage-receipt.json",
+      "frozenInventory": {
+        "path": "target/app-backlog/note-variation-sixteenth-source.json",
+        "sha256": "9bc7fb7b72a0a2f9a3b57562b4fa2c96254753e79b012546e42c0a537fd79b9a",
+        "files": 961
+      },
+      "testBinary": {
+        "path": "target/app-backlog/qualification-bin/note-variation-tests-sixteenth",
+        "sha256": "bf4af9a100a2dcf87c59c0b2bf97adb0323af1d1ca023b8a3572b1c31456d7d8"
+      },
+      "full": {
+        "path": "target/app-backlog/note-variation-sixteenth-full-after-space.log",
+        "sha256": "cf75a908ca5e6147a938b8bfd994765f1e8e3736e755f2cd4da5459050ba7ae9",
+        "outcome": "ok",
+        "passed": 2266,
+        "failed": 0,
+        "ignored": 75,
+        "filtered": 0,
+        "seconds": 713.07
+      },
+      "nativeWorker": {
+        "path": "target/app-backlog/qualification-bin/note-variation-native-worker-sixteenth",
+        "sha256": "9a5922a119a59823b8f5890afb39a51080b275ff95d58dc9a7b44f3b7f52d14f",
+        "bytes": 68759944
+      },
+      "nativeImportWorkflows": 13
+    },
+    "package": {
+      "path": "/home/michael/Projects/omatainer-work/hardware-resurrection/target/app-backlog/release-project-storage-qualified",
+      "manifestSha256": "d24d9fad869e92c4ba914a8f77ccbc06103ed8f81cbeaf658765c3789db650cd",
+      "revision": "399ed43d3d8792cb0e4e65a0a0148270d7e0c53d",
+      "version": "0.1.0+399ed43d3d87",
+      "executableSha256": "f54fe26efd2b4e67664cf9a2bbfe5615b1b9e11a767eeb0244fceac5efc802d1"
+    },
+    "installed": true,
+    "beforeInstalledExecutableSha256": "463d40d467101a704ffffb6e18112a6854e7350c7829e1c041e490babdb8c2c9",
+    "installedExecutableSha256": "f54fe26efd2b4e67664cf9a2bbfe5615b1b9e11a767eeb0244fceac5efc802d1",
+    "installer": {
+      "schema": 1,
+      "before": "463d40d467101a704ffffb6e18112a6854e7350c7829e1c041e490babdb8c2c9",
+      "after": "f54fe26efd2b4e67664cf9a2bbfe5615b1b9e11a767eeb0244fceac5efc802d1",
+      "installedAt": "2026-10-08T09:55:18.690Z"
+    },
+    "buildInfo": {
+      "arch": "aarch64",
+      "debug_assertions": false,
+      "os": "linux",
+      "pkg_version": "0.1.0",
+      "schema": 1
+    },
+    "applicationProcessesPreserved": [
+      {
+        "pid": 2273135,
+        "executable": "/home/michael/.local/bin/omatainer (deleted)",
+        "arguments": [
+          "/home/michael/.local/bin/omatainer",
+          "ctl",
+          "follow"
+        ],
+        "sha256": "3217e4bfce388cac60e0ad7bea4caf83ec0d323f6eb620d4bf3a04d2c09ed69d"
+      }
+    ],
+    "protectedSessionPreserved": {
+      "path": "/home/michael/Projects/omatainer-work/hardware-resurrection/target/hardware/apc-restart-20261006/session.omat",
+      "bytes": 162882871,
+      "sha256": "96e0b2495cdbdc549c324ecf8337fdef5590bdcbfe8916e4f014eb05d1ee827d"
+    },
+    "guiRunningBefore": false,
+    "guiOpened": false,
+    "physicalDevicesOpened": false,
+    "reason": "The default GUI was closed at installation. The supported installer verified and atomically published the exact-source package, preserving its prior executable in the rollback journal. Existing follower image and native session remained unchanged; no GUI, capture or audio/MIDI connection was opened or restarted."
+  }
 }
