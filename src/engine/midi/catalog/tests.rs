@@ -245,6 +245,65 @@ fn live_authenticated_catalog_owner_preserves_pins_and_bundled_rollback() {
     )
     .is_err());
 }
+#[test]
+#[ignore = "Opt-in network-isolated production catalog owner; no physical MIDI or audio opened"]
+fn offline_catalog_owner_preserves_authenticated_cache_pins_and_bundled_rollback() {
+    assert_eq!(
+        std::env::var("OMATAINER_CONTROLLER_CATALOG_OFFLINE_TEST").as_deref(),
+        Ok("1")
+    );
+    let files = Files::new();
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("profiles/1.0.0");
+    let signed = std::fs::read(root.join("catalog.json")).unwrap();
+    let catalog = Catalog::decode(&signed, 1).unwrap();
+    let data: Vec<_> = catalog.profiles.iter().map(|entry| {
+        (entry.file.clone(), std::fs::read(root.join(&entry.file)).unwrap())
+    }).collect();
+    storage::Acquired::publish(&files.0, 0, signed.clone(), data.clone(), &AtomicBool::new(false)).unwrap();
+    let (engine, _) = crate::engine::Engine::headless_for_test(48000, 80);
+    let snapshot = engine.snapshot();
+    let inputs: Vec<_> = bundled().unwrap().iter().enumerate().map(|(index, profile)| {
+        let usb = &profile.usb[0];
+        (format!("{}:0", 24 + index), profile.model.clone(), Some(identity::Device {
+            vendor: usb.vendor, product: usb.product, release: 0x0100, serial: None,
+            topology: format!("offline-fixture-{index}"), port: 0, connection: format!("offline-incarnation-{index}"),
+        }))
+    }).collect();
+    let outputs: Vec<_> = inputs.iter().map(|(id, _, device)| (id.clone(), device.clone())).collect();
+    let registry = make_registry(&files.0);
+    registry.refresh(inputs.clone(), outputs.clone(), &snapshot);
+    assert!(registry.view().devices.iter().all(|device| device.generation == 1));
+    let baseline: Vec<_> = registry.view().devices.iter().map(|device| {
+        (device.id.clone(), device.profile_hash.clone(), device.generation)
+    }).collect();
+    let pins = std::fs::read(files.0.join("instances.json")).unwrap();
+    let before = std::time::Instant::now();
+    registry.acquire(engine.cmd.performance()).unwrap();
+    while registry.view().busy {
+        assert!(before.elapsed() < std::time::Duration::from_secs(15), "Offline request exceeded its deadline");
+        std::thread::sleep(std::time::Duration::from_millis(5));
+    }
+    assert!(registry.view().message.starts_with("Profile acquisition refused"), "Network isolation did not refuse acquisition: {}", registry.view().message);
+    assert_eq!(registry.view().cached_generation, Some(1));
+    assert_eq!(registry.view().previous_generation, Some(0));
+    assert_eq!(std::fs::read(files.0.join("instances.json")).unwrap(), pins);
+    assert_eq!(std::fs::read(files.0.join("latest.json")).unwrap(), signed);
+    for (name, bytes) in data {
+        assert_eq!(std::fs::read(files.0.join("generation-1").join(name)).unwrap(), bytes);
+    }
+    assert_eq!(registry.view().devices.iter().map(|device| {
+        (device.id.clone(), device.profile_hash.clone(), device.generation)
+    }).collect::<Vec<_>>(), baseline);
+    drop(registry);
+    let registry = make_registry(&files.0);
+    registry.refresh(inputs.clone(), outputs.clone(), &snapshot);
+    assert!(registry.view().devices.iter().all(|device| device.generation == 1));
+    registry.request_apply(true, &snapshot).unwrap();
+    registry.refresh(inputs, outputs, &snapshot);
+    assert!(registry.view().devices.iter().all(|device| device.generation == 0));
+    assert_eq!(registry.view().cached_generation, Some(1));
+    assert!(Catalog::decode(&signed, 2).is_err());
+}
 fn apc(topology: &str) -> identity::Device {
     identity::Device {
         vendor: 0x09e8,
