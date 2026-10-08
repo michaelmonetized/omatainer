@@ -167,6 +167,27 @@ fn emergency_output_ramps_then_stays_muted_after_explicit_ack_and_quiet_observat
     assert!(output.nonfinite && output.quiet == 0);
 }
 #[test]
+fn controller_reconnect_never_authorizes_audio_or_clears_recovery() {
+    let handle = Handle::default();
+    handle.set_enabled(true).unwrap();
+    assert!(matches!(handle.controller_change(), Err(Error::Protected)));
+    handle.request_safety(Safety::Stop);
+    assert!(matches!(handle.controller_change(), Err(Error::Protected)));
+    handle.stopped(handle.safety_request().unwrap().0);
+    let permit = handle.controller_change().unwrap();
+    assert!(!permit.valid_for_audio(&handle));
+    assert_eq!(handle.acknowledge_inputs_released(), Err(Error::Changing));
+    assert_eq!(handle.check(&Command::Play, None), Err(Error::Recovery));
+    drop(permit);
+    assert!(handle.status().recovery && handle.status().stopped);
+    assert!(matches!(handle.project_change(), Err(Error::Protected)));
+    assert!(matches!(handle.optional_work(), Err(Error::Protected)));
+    handle.acknowledge_inputs_released().unwrap();
+    assert!(handle.try_recover(|| true));
+    assert!(matches!(handle.controller_change(), Err(Error::Protected)));
+}
+
+#[test]
 fn exclusive_jobs_and_optional_cancellation_close_mode_entry_races() {
     let handle = Handle::default();
     let permit = handle.audio_change().unwrap();

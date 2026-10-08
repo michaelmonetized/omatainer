@@ -142,6 +142,23 @@ fn stream_errors_are_counted_without_logging_or_inventing_dropped_buffers() {
 }
 
 #[test]
+fn longest_callback_keeps_its_cpu_and_device_context_after_shorter_callbacks() {
+    let telemetry = Telemetry::default();
+    assert!(telemetry.read().max_callback.is_none());
+    let counts = test_alloc::measure(|| {
+        telemetry.record_output(Duration::from_millis(8), 256, 44100, Some(3_000_000), 4, Some(Duration::from_millis(6)));
+        telemetry.record_output(Duration::from_millis(2), 512, 48000, None, 2, None);
+    });
+    assert_eq!((counts.allocations, counts.frees), (0, 0));
+    let metrics = telemetry.read();
+    let peak = metrics.max_callback.unwrap();
+    assert_eq!((peak.elapsed_ns, peak.render_cpu_ns, peak.sample_rate, peak.channels, peak.frames), (8_000_000, Some(3_000_000), 44100, 4, 256));
+    assert_eq!(peak.output_latency_ns, Some(6_000_000));
+    assert_eq!(peak.overrun_ns, 8_000_000 - 5_804_988);
+    assert_eq!(metrics.last_callback.unwrap().sample_rate, 48000);
+}
+
+#[test]
 fn coherent_samples_and_monotonic_counters_survive_concurrent_readers() {
     let telemetry = Arc::new(Telemetry::default());
     let writer = telemetry.clone();
@@ -161,6 +178,11 @@ fn coherent_samples_and_monotonic_counters_survive_concurrent_readers() {
         assert!(metrics.callbacks >= previous);
         previous = metrics.callbacks;
         if let Some(sample) = metrics.last_callback {
+            assert_eq!(sample.elapsed_ns, sample.budget_ns * 3);
+            assert_eq!(sample.render_cpu_ns, Some(sample.budget_ns * 2));
+            assert_eq!(sample.overrun_ns, sample.budget_ns * 2);
+        }
+        if let Some(sample) = metrics.max_callback {
             assert_eq!(sample.elapsed_ns, sample.budget_ns * 3);
             assert_eq!(sample.render_cpu_ns, Some(sample.budget_ns * 2));
             assert_eq!(sample.overrun_ns, sample.budget_ns * 2);

@@ -29,6 +29,8 @@ impl CallbackMeasurement {
 pub struct AudioMetrics {
     /// None before the first callback or if this bounded read overlaps a write.
     pub last_callback: Option<CallbackMeasurement>,
+    #[serde(default)]
+    pub max_callback: Option<CallbackMeasurement>,
     pub callbacks: u64,
     pub deadline_overruns: u64,
     pub max_elapsed_ns: u64,
@@ -48,15 +50,9 @@ pub struct AudioMetrics {
 #[derive(Default)]
 pub(super) struct Telemetry {
     pub profiler: super::diagnostics::Profiler,
-    latency: AtomicU64,
-    sample_rate: AtomicU64,
-    channels: AtomicU64,
-    frames: AtomicU64,
+    last: Measurement,
+    longest: Measurement,
     sequence: AtomicU64,
-    elapsed: AtomicU64,
-    budget: AtomicU64,
-    cpu: AtomicU64,
-    overrun: AtomicU64,
     callbacks: AtomicU64,
     overruns: AtomicU64,
     max_elapsed: AtomicU64,
@@ -66,6 +62,44 @@ pub(super) struct Telemetry {
     xruns: AtomicU64,
     realtime_denied: AtomicU64,
     cpu_budget_exhaustions: AtomicU64,
+}
+
+#[derive(Default)]
+struct Measurement {
+    latency: AtomicU64,
+    sample_rate: AtomicU64,
+    channels: AtomicU64,
+    frames: AtomicU64,
+    elapsed: AtomicU64,
+    budget: AtomicU64,
+    cpu: AtomicU64,
+    overrun: AtomicU64,
+}
+impl Measurement {
+    fn store(&self, sample: CallbackMeasurement) {
+        self.latency.store(sample.output_latency_ns.unwrap_or(u64::MAX), Ordering::Relaxed);
+        self.sample_rate.store(u64::from(sample.sample_rate), Ordering::Relaxed);
+        self.channels.store(u64::from(sample.channels), Ordering::Relaxed);
+        self.frames.store(sample.frames as u64, Ordering::Relaxed);
+        self.elapsed.store(sample.elapsed_ns, Ordering::Relaxed);
+        self.budget.store(sample.budget_ns, Ordering::Relaxed);
+        self.cpu.store(sample.render_cpu_ns.unwrap_or(u64::MAX), Ordering::Relaxed);
+        self.overrun.store(sample.overrun_ns, Ordering::Relaxed);
+    }
+    fn read(&self) -> CallbackMeasurement {
+        let cpu = self.cpu.load(Ordering::Relaxed);
+        let latency = self.latency.load(Ordering::Relaxed);
+        CallbackMeasurement {
+            output_latency_ns: (latency != u64::MAX).then_some(latency),
+            sample_rate: self.sample_rate.load(Ordering::Relaxed) as u32,
+            channels: self.channels.load(Ordering::Relaxed) as u16,
+            frames: self.frames.load(Ordering::Relaxed) as usize,
+            elapsed_ns: self.elapsed.load(Ordering::Relaxed),
+            budget_ns: self.budget.load(Ordering::Relaxed),
+            render_cpu_ns: (cpu != u64::MAX).then_some(cpu),
+            overrun_ns: self.overrun.load(Ordering::Relaxed),
+        }
+    }
 }
 
 pub(super) fn nanoseconds(duration: Duration) -> u64 {
@@ -97,22 +131,17 @@ impl Telemetry {
         // One writer, no lock or retry loop. Readers cannot mistake a partial
         // update for a completed callback; missed reads return no sample.
         self.sequence.fetch_add(1, Ordering::AcqRel);
-        self.latency.store(
-            latency.map(nanoseconds).unwrap_or(u64::MAX),
-            Ordering::Relaxed,
-        );
-        self.sample_rate.store(sr as u64, Ordering::Relaxed);
-        self.channels.store(channels as u64, Ordering::Relaxed);
-        self.frames.store(frames as u64, Ordering::Relaxed);
-        self.elapsed.store(elapsed, Ordering::Relaxed);
-        self.budget.store(budget, Ordering::Relaxed);
-        self.cpu.store(cpu.unwrap_or(u64::MAX), Ordering::Relaxed);
-        self.overrun.store(overrun, Ordering::Relaxed);
-        self.callbacks.fetch_add(1, Ordering::Relaxed);
+        let sample = CallbackMeasurement { elapsed_ns: elapsed, budget_ns: budget, render_cpu_ns: cpu,
+            overrun_ns: overrun, output_latency_ns: latency.map(nanoseconds), sample_rate: sr, channels, frames };
+        self.last.store(sample);
+        let first = self.callbacks.fetch_add(1, Ordering::Relaxed) == 0;
         if overrun > 0 {
             self.overruns.fetch_add(1, Ordering::Relaxed);
         }
-        self.max_elapsed.fetch_max(elapsed, Ordering::Relaxed);
+        if first || elapsed > self.max_elapsed.load(Ordering::Relaxed) {
+            self.longest.store(sample);
+            self.max_elapsed.store(elapsed, Ordering::Relaxed);
+        }
         self.max_overrun.fetch_max(overrun, Ordering::Relaxed);
         self.sequence.fetch_add(1, Ordering::Release);
     }
@@ -144,23 +173,14 @@ impl Telemetry {
 
     pub fn read(&self) -> AudioMetrics {
         let before = self.sequence.load(Ordering::Acquire);
-        let cpu = self.cpu.load(Ordering::Relaxed);
-        let latency = self.latency.load(Ordering::Relaxed);
-        let last = CallbackMeasurement {
-            output_latency_ns: (latency != u64::MAX).then_some(latency),
-            sample_rate: self.sample_rate.load(Ordering::Relaxed) as u32,
-            channels: self.channels.load(Ordering::Relaxed) as u16,
-            frames: self.frames.load(Ordering::Relaxed) as usize,
-            elapsed_ns: self.elapsed.load(Ordering::Relaxed),
-            budget_ns: self.budget.load(Ordering::Relaxed),
-            render_cpu_ns: (cpu != u64::MAX).then_some(cpu),
-            overrun_ns: self.overrun.load(Ordering::Relaxed),
-        };
+        let last = self.last.read();
+        let longest = self.longest.read();
         // Acquire fence keeps the data reads before the validation read.
         std::sync::atomic::fence(Ordering::Acquire);
         let after = self.sequence.load(Ordering::Relaxed);
         AudioMetrics {
             last_callback: (before != 0 && before == after && before & 1 == 0).then_some(last),
+            max_callback: (before != 0 && before == after && before & 1 == 0).then_some(longest),
             callbacks: self.callbacks.load(Ordering::Relaxed),
             deadline_overruns: self.overruns.load(Ordering::Relaxed),
             max_elapsed_ns: self.max_elapsed.load(Ordering::Relaxed),

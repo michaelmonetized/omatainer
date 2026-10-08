@@ -282,20 +282,25 @@ impl Handle {
         Writer(&self.0.admission)
     }
     pub fn audio_change(&self) -> Result<ExclusivePermit, Error> {
-        self.exclusive(true)
+        self.exclusive(true, true)
     }
     pub(super) fn project_change(&self) -> Result<ExclusivePermit, Error> {
-        self.exclusive(false)
+        self.exclusive(false, false)
     }
-    fn exclusive(&self, audio: bool) -> Result<ExclusivePermit, Error> {
+    /// Reopen controller ports after a completed safety stop.
+    /// Takes this guard; returns a worker permit without clearing recovery or authorizing audio replacement.
+    pub(super) fn controller_change(&self) -> Result<ExclusivePermit, Error> {
+        self.exclusive(false, true)
+    }
+    fn exclusive(&self, audio: bool, recovery_safe: bool) -> Result<ExclusivePermit, Error> {
         let mut old = self.0.admission.load(Ordering::Acquire);
         loop {
             if old & EXCLUSIVE != 0 {
                 return Err(self.reject(Error::Changing));
             }
             let recovery =
-                old & (RECOVERY | STOPPED) == RECOVERY | STOPPED || self.status().output_muted;
-            if old & (PROTECTED | RECOVERY) != 0 && !(audio && recovery) {
+                old & (RECOVERY | STOPPED) == RECOVERY | STOPPED || (audio && self.status().output_muted);
+            if old & (PROTECTED | RECOVERY) != 0 && !(recovery_safe && recovery) {
                 return Err(self.reject(Error::Protected));
             }
             match self.0.admission.compare_exchange_weak(

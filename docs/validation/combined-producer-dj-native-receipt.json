@@ -2728,5 +2728,585 @@
       "status": "failed before binary publication",
       "error": "E0599: new fixture called History.storage_bytes rather than the existing History.bytes. Assertion corrected; recompile pending."
     }
+  },
+  "routedQualificationThrough60": {
+    "provenance": {
+      "source_revision": "759c127a1397bbbd8010f40c902db4682134aa6b",
+      "compiler_profile": "release tests, opt-level3, codegen-units4, debug0, test unwind",
+      "compiler_flags": [
+        "opt-level=3",
+        "embed-bitcode=no",
+        "codegen-units=4",
+        "metadata=ccce059c87a51535",
+        "extra-filename=-552c0e61ca670d04",
+        "strip=debuginfo"
+      ],
+      "test_sha256": "50a4112e8c21497eb403a89976dc658e682bdb4f677f5791e846a3184c97f454",
+      "inventory_sha256": "40da5bf1b632d55ccb313d47456f60f99990949fd8dee0f439065bb8ba0efb01",
+      "build_log_sha256": "65f4ef01710519ca911d928d5cad12b5b9523d0338d685cda260648896590791"
+    },
+    "focused": [
+      {
+        "name": "routed-positions",
+        "selector": "engine::audio::routing::positions::tests::",
+        "exit": 0,
+        "signal": null,
+        "passed": 7,
+        "failed": 0,
+        "ignored": 0,
+        "seconds": 0.03,
+        "log_sha256": "7be242d46c7101059f45c417baa218cd0d754f89a6f8cb04dd6a972188e60de9"
+      },
+      {
+        "name": "svf-fidelity",
+        "selector": "engine::svf_tests::",
+        "exit": 0,
+        "signal": null,
+        "passed": 4,
+        "failed": 0,
+        "ignored": 0,
+        "seconds": 1.17,
+        "log_sha256": "bd0e82e81aaedac626b7ff238b3e9658417cededb1bd9cf32565c9f533680867"
+      },
+      {
+        "name": "voice-fidelity",
+        "selector": "engine::dsp::voice_pitch_tests::",
+        "exit": 0,
+        "signal": null,
+        "passed": 5,
+        "failed": 0,
+        "ignored": 1,
+        "seconds": 0.46,
+        "log_sha256": "8805cdfdc2ad95500e6cdeab4cc8b1cd24cec88cbac268cc72a19735cd6b259d"
+      },
+      {
+        "name": "audible-fidelity",
+        "selector": "engine::audio::audible_tests::",
+        "exit": 0,
+        "signal": null,
+        "passed": 2,
+        "failed": 0,
+        "ignored": 0,
+        "seconds": 0.7,
+        "log_sha256": "b06a9abdf3c520f490c2ce4b5bfb6a55db1efe594458f1f682449ec4df46f00a"
+      },
+      {
+        "name": "latency-fidelity",
+        "selector": "engine::audio::routing::latency::tests::",
+        "exit": 0,
+        "signal": null,
+        "passed": 13,
+        "failed": 0,
+        "ignored": 0,
+        "seconds": 0.67,
+        "log_sha256": "455d3bf430205a24dfeb6cd4fdfdf8a0f048f321706500208394489dd104556c"
+      },
+      {
+        "name": "live-set-fidelity",
+        "selector": "engine::live_set::tests::",
+        "exit": 0,
+        "signal": null,
+        "passed": 13,
+        "failed": 0,
+        "ignored": 0,
+        "seconds": 2.74,
+        "log_sha256": "9ab94c74e67a1423b2b516cf51bc7b6e30b4ff5c482bf2232e19335d6a5eef50"
+      },
+      {
+        "name": "waveform-ui",
+        "selector": "ui::waveform::tests::",
+        "exit": 0,
+        "signal": null,
+        "passed": 5,
+        "failed": 0,
+        "ignored": 0,
+        "seconds": 0.38,
+        "log_sha256": "ca8a0a4921cc2527f54db60a2ace9927ab6fa20c92cdb89a61752bfb6b2c9b74"
+      }
+    ],
+    "local": {
+      "deadline_pass": true,
+      "heap_pass": true,
+      "callback_budget_ns": 5804988,
+      "phases": [
+        {
+          "phase": "startup",
+          "max_cpu_ns": 1752208,
+          "max_wall_ns": 2022513,
+          "rust_allocations": 0,
+          "rust_frees": 0
+        },
+        {
+          "phase": "cue",
+          "max_cpu_ns": 3423792,
+          "max_wall_ns": 3445189,
+          "rust_allocations": 0,
+          "rust_frees": 0
+        },
+        {
+          "phase": "transition",
+          "max_cpu_ns": 3404499,
+          "max_wall_ns": 3468731,
+          "rust_allocations": 0,
+          "rust_frees": 0
+        }
+      ]
+    },
+    "native": {
+      "baseline_memory": {
+        "process_high_water_kib": 9536,
+        "resident_kib": 9536
+      },
+      "capture_frames": 468224,
+      "capture_window_frames": 882,
+      "device": "original NS7, four-channel ALSA, 44.1 kHz, 512-frame requested buffer",
+      "final_audio": {
+        "backend_errors": 0,
+        "callbacks": 1813,
+        "cpu_budget_exhaustions": 0,
+        "deadline_overruns": 1,
+        "device_lost": 0,
+        "dropped_buffers": null,
+        "last_callback": {
+          "budget_ns": 5804988,
+          "channels": 4,
+          "elapsed_ns": 1696594,
+          "frames": 256,
+          "output_latency_ns": 5192744,
+          "overrun_ns": 0,
+          "render_cpu_ns": 1672127,
+          "sample_rate": 44100
+        },
+        "max_elapsed_ns": 7405548,
+        "max_overrun_ns": 1600560,
+        "realtime_denied": 0,
+        "xruns": 1
+      },
+      "final_expected_tone_amplitudes": [
+        0.0009458031705101014,
+        0.0005992036101629334
+      ],
+      "final_memory": {
+        "process_high_water_kib": 378016,
+        "resident_kib": 377120
+      },
+      "final_opposite_tone_amplitudes": [
+        0.0000020560568752701163,
+        0.0000023827241924739435
+      ],
+      "input_failed": false,
+      "launched_clip_tracks_per_graph": 8,
+      "loaded_decks_per_graph": 2,
+      "measured_ns": 9951659757,
+      "median_window_rms": 0.0004189290026373169,
+      "minimum_window_rms": 0.00005719479124277584,
+      "physical_return": "Master XLR L/R to owner-restored Peavey PV8 USB 7/8, stereo CODEC input",
+      "preloaded_memory": [
+        {
+          "process_high_water_kib": 355248,
+          "resident_kib": 355248
+        },
+        {
+          "process_high_water_kib": 372784,
+          "resident_kib": 372784
+        },
+        {
+          "process_high_water_kib": 381168,
+          "resident_kib": 381168
+        }
+      ],
+      "quiet_windows": 0,
+      "reported_deck_processing_micros": 20000,
+      "resident_pcm_bytes_per_graph": 33554432,
+      "routed": true,
+      "schema": 1,
+      "scope": "Actual production native output owner and three complete graph fades, independent cue admission, captured stereo master continuity in 20 ms windows. Startup metrics retained separately. No physical headphone cue capture, listening, display timing, all-track maximum-polyphony or stage-duration claim.",
+      "status": "failed",
+      "stored_notes_per_graph": 32768,
+      "stored_tracks": 64,
+      "trials": [
+        {
+          "applied": true,
+          "cue_admitted": true,
+          "fade_seconds": 1,
+          "incoming_hz": [
+            473,
+            689
+          ],
+          "initial_priming_seconds": 0.02,
+          "preload_start_ns": 673411260,
+          "ready_ns": 862926440,
+          "settled_ns": 2972387127,
+          "short_unprimed_fade_refused": true,
+          "transition_requested_ns": 1963062035,
+          "trial": 0,
+          "worker_retired": true
+        },
+        {
+          "applied": true,
+          "cue_admitted": true,
+          "fade_seconds": 1,
+          "incoming_hz": [
+            381,
+            583
+          ],
+          "initial_priming_seconds": 0.02,
+          "preload_start_ns": 3972561785,
+          "ready_ns": 4236444737,
+          "settled_ns": 6343018696,
+          "short_unprimed_fade_refused": true,
+          "transition_requested_ns": 5336584165,
+          "trial": 1,
+          "worker_retired": true
+        },
+        {
+          "applied": true,
+          "cue_admitted": true,
+          "fade_seconds": 1,
+          "incoming_hz": [
+            473,
+            689
+          ],
+          "initial_priming_seconds": 0.02,
+          "preload_start_ns": 7343114854,
+          "ready_ns": 7508001792,
+          "settled_ns": 9624977235,
+          "short_unprimed_fade_refused": true,
+          "transition_requested_ns": 8608127678,
+          "trial": 2,
+          "worker_retired": true
+        }
+      ],
+      "warmup_audio": {
+        "backend_errors": 0,
+        "callbacks": 100,
+        "cpu_budget_exhaustions": 0,
+        "deadline_overruns": 0,
+        "device_lost": 0,
+        "dropped_buffers": null,
+        "last_callback": {
+          "budget_ns": 5804988,
+          "channels": 4,
+          "elapsed_ns": 1676010,
+          "frames": 256,
+          "output_latency_ns": 5691610,
+          "overrun_ns": 0,
+          "render_cpu_ns": 1652125,
+          "sample_rate": 44100
+        },
+        "max_elapsed_ns": 1817387,
+        "max_overrun_ns": 0,
+        "realtime_denied": 0,
+        "xruns": 0
+      }
+    },
+    "hubRecovery": {
+      "status": "failed",
+      "mechanism": "Per-port hub disable/enable, actual USB endpoint disappearance and return; no manual cable or measured VBUS claim",
+      "actions_completed": 2,
+      "rounds_completed": 0,
+      "exit": 101,
+      "seconds": 35.39,
+      "phase": "NS7 MIDI input/output return acknowledgment",
+      "phase_boundary": "Inferred from the retained action marker and fixture wait order; source60 did not capture live registry state at timeout",
+      "actuator_sha256": "96525e518173108c95901b4fe895ed588477080342029e22c3f694364f704bf7"
+    },
+    "savedOwner": {
+      "path": "/home/michael/Projects/omatainer-work/producer-dj-completion/target/validation/combined-completion/native-ui/session-backup/pre-routed-60-current.omatainer",
+      "bytes": 162883215,
+      "sha256": "2c5e2e09dfa83e74d80304ed4f34c73a2398d852918393fefd6d2c9d0cab4f5e",
+      "nativeSaveAcknowledged": true,
+      "restored_status": {
+        "accepted": null,
+        "active_scene_name": "",
+        "audio": {
+          "backend_errors": 0,
+          "callbacks": 16636,
+          "cpu_budget_exhaustions": 0,
+          "deadline_overruns": 0,
+          "device_lost": 0,
+          "dropped_buffers": null,
+          "last_callback": {
+            "budget_ns": 5804988,
+            "channels": 4,
+            "elapsed_ns": 273252,
+            "frames": 256,
+            "output_latency_ns": 5328798,
+            "overrun_ns": 0,
+            "render_cpu_ns": 246832,
+            "sample_rate": 44100
+          },
+          "max_elapsed_ns": 1507302,
+          "max_overrun_ns": 0,
+          "realtime_denied": 0,
+          "xruns": 0
+        },
+        "bar": 9727,
+        "beat": 0.21318289637565613,
+        "bpm": 103.96062469482422,
+        "command_status": null,
+        "commands": {
+          "applied": 1,
+          "applied_last_block": 0,
+          "backlog": 0,
+          "budget_exhaustions": 0,
+          "coalesced": 0,
+          "high_water": 1,
+          "received": 1,
+          "received_last_block": 0
+        },
+        "deckA": "What More Can I Say",
+        "deckALoadLocked": false,
+        "deckAPlaying": false,
+        "deckB": "Public Service Announcement",
+        "deckBLoadLocked": false,
+        "deckBPlaying": false,
+        "event": "state",
+        "id": "3336385-1",
+        "latency": {
+          "enabled": false,
+          "history_bytes": 0,
+          "low_latency_monitor": false,
+          "monitor_frames": 0,
+          "priming_frames": 0,
+          "program_frames": 0,
+          "rate": 0,
+          "reserve_frames": 0,
+          "transition_frames": 0
+        },
+        "master_fx": {
+          "types": [
+            "echo",
+            "reverb",
+            "filter"
+          ],
+          "wet": [
+            0.5,
+            0,
+            0
+          ]
+        },
+        "meter": [
+          4,
+          4
+        ],
+        "midi": [
+          "[connected] keyboard + mouse · built-in",
+          "[connected] MIDI input backend · discovery",
+          "[connected] Numark NS7:Numark NS7 MIDI 24:0 · Numark NS7 (original)",
+          "[connected] APC40 mkII:APC40 mkII MIDI 1 28:0 · Akai APC40 mkII",
+          "[connected] Pioneer DDJ-SP1:Pioneer DDJ-SP1 MIDI 1 32:0 · Pioneer DDJ-SP1",
+          "[connected] MPD232:MPD232 Port A 36:0 · Akai MPD232 (LiveLite)",
+          "[disabled] MPD232:MPD232 Port B 36:1 · Class-compliant MIDI",
+          "[disabled] MPD232:MPD232 MIDI 36:2 · Class-compliant MIDI"
+        ],
+        "midi_clock": {
+          "last_source": null,
+          "ticks": 0
+        },
+        "midi_clock_input": {
+          "accepted_ticks": 0,
+          "awaiting_tick": false,
+          "backend_timing": true,
+          "batched_ticks": 0,
+          "config": {
+            "follow_transport": true,
+            "loss": "freewheel",
+            "source": null,
+            "timeout_ms": 500
+          },
+          "estimated_bpm": null,
+          "ignored": 0,
+          "inferred_missing_ticks": 0,
+          "jitter_ms": 0,
+          "locked": false,
+          "lost": null,
+          "needs_transport": false,
+          "overflow": 0,
+          "phase_error_beats": 0,
+          "reacquisitions": 0,
+          "stale": 0,
+          "transport_running": false,
+          "unsupported_bpm": null
+        },
+        "midi_clock_output": {
+          "backend_timing": true,
+          "enabled": false,
+          "error": null,
+          "late": 0,
+          "max_late_ns": 0,
+          "overflow": 0,
+          "position_sixteenths": 0,
+          "running": false,
+          "scheduled": 0,
+          "sent": 0
+        },
+        "midi_feedback": {
+          "connected": 4,
+          "failed": 0,
+          "sent": 532
+        },
+        "midi_input": {
+          "coalesced": 0,
+          "disconnected": 0,
+          "dispatched": 2,
+          "dropped": 0,
+          "oversized": 0,
+          "queued": 2,
+          "received": 2,
+          "resets": 0
+        },
+        "midi_profiles": {
+          "busy": false,
+          "cached_generation": 1,
+          "control_check": null,
+          "initialization_sent": 2,
+          "input_open": 4,
+          "output_failures": 0,
+          "output_open": 4,
+          "physical_inputs": 7,
+          "physical_qualification": "pending",
+          "previous_generation": 0,
+          "profiled_inputs": 4,
+          "ready": true,
+          "schema": 1
+        },
+        "midi_routing": {
+          "enabled": false,
+          "failed": 0,
+          "generation": 1,
+          "overruns": 0,
+          "received": 2,
+          "refused_tracks": 0,
+          "refused_tracks_extended": [
+            0,
+            0
+          ],
+          "sent": 0
+        },
+        "monitor": {
+          "active": false,
+          "available": true,
+          "blend": 0,
+          "channels": [
+            2,
+            3
+          ],
+          "faders": [
+            1,
+            1
+          ],
+          "master": false,
+          "meters": [
+            0,
+            0
+          ],
+          "mix": 0.5,
+          "output_alias": null,
+          "source": "deck_mix",
+          "split": false,
+          "tone": null,
+          "volume": 0
+        },
+        "ok": true,
+        "performance": {
+          "changing": false,
+          "deck_load_locked": [
+            false,
+            false
+          ],
+          "last_rejection": null,
+          "nonfinite_tail": false,
+          "observation_complete": false,
+          "observed_frames": 0,
+          "optional_active": 1,
+          "output_muted": false,
+          "protected": false,
+          "quiet_frames": 0,
+          "recovery": false,
+          "rejected": 0,
+          "safety_applied": 0,
+          "safety_requested": 0,
+          "stopped": false
+        },
+        "pitch_pickup": [
+          {
+            "acquired": false,
+            "physical": null,
+            "sync": false,
+            "target": 0.5
+          },
+          {
+            "acquired": false,
+            "physical": null,
+            "sync": false,
+            "target": 0.5039370059967041
+          }
+        ],
+        "playing": true,
+        "queued_scene_name": "",
+        "recording": false,
+        "scenes": {
+          "active": null,
+          "active_properties": null,
+          "error": null,
+          "pending": null,
+          "timing": null
+        },
+        "state_available": true,
+        "state_truncated": true,
+        "submissions": {
+          "accepted": 1,
+          "coalesced": 0,
+          "last_error": null,
+          "rejected": 0
+        },
+        "sync_aligned": [
+          false,
+          false
+        ],
+        "sync_leader": null,
+        "sync_leader_ready": false,
+        "sync_modes": [
+          "off",
+          "off"
+        ],
+        "sync_target_bpm": [
+          124,
+          124
+        ],
+        "xfader": 0.5275590419769287
+      }
+    },
+    "evidence": [
+      {
+        "private_path": "target/validation/combined-completion/profiles-qualified/60-release/provenance.json",
+        "sha256": "f29495be581fb28d4874549a78dc8d58b27642543c8773aa8e52c2dd9d426608"
+      },
+      {
+        "private_path": "target/validation/combined-completion/profiles-qualified/60-release/focused-results.json",
+        "sha256": "05201ba8d2a0ee5c5b8a47258d94f97d74cf0158ac1af97e10d613fa53a86c1c"
+      },
+      {
+        "private_path": "target/validation/combined-completion/profiles-qualified/60-release/routed-callback-timing.json",
+        "sha256": "9f6f27ec9da5c94cedf2768eb087532846e9e0a7dce7e970282dc871ae413da5"
+      },
+      {
+        "private_path": "target/validation/combined-completion/profiles-qualified/60-release/ns7-routed-transition.log",
+        "sha256": "9c0f9501b218f9dccc82cfc67dcf931cf091e5ea0f0d796a0cde91de965c36ac"
+      },
+      {
+        "private_path": "target/validation/combined-completion/ns7-routed-native-60-release/receipt.json",
+        "sha256": "c5ac6b4f2b7501c3300d9680431ace919518015b26e9bafedec068395ee3614e"
+      },
+      {
+        "private_path": "target/validation/combined-completion/physical-recovery-60-hub/actuator-receipt.json",
+        "sha256": "ae8ebcc28b181abef1d91ef46450f340ac3a8784645377d74db2767b9feef5c6"
+      },
+      {
+        "private_path": "target/validation/combined-completion/physical-recovery-60-hub/fixture.log",
+        "sha256": "c6bb6774ce4bebb3b081c43bdb5dfa2a4d883c90273fb8dbf70bc064361f563e"
+      }
+    ]
   }
 }

@@ -2,11 +2,28 @@ use super::*;
 use crate::engine::{Command, ComposeTarget, Engine, SamplerInstrument, SynthInstrument};
 use std::{path::Path, time::{Duration, Instant}};
 
-fn wait(seconds: u64, mut ready: impl FnMut() -> bool) {
-    let deadline = Instant::now() + Duration::from_secs(seconds);
-    while !ready() {
-        assert!(Instant::now() < deadline, "Physical recovery action or application acknowledgment timed out");
-        std::thread::sleep(Duration::from_millis(10));
+struct Audit<'a> {
+    engine: &'a Engine,
+    audio: &'a AudioOut,
+    directory: &'a Path,
+}
+impl Audit<'_> {
+    fn wait(&self, seconds: u64, phase: &str, mut ready: impl FnMut() -> bool) {
+        let deadline = Instant::now() + Duration::from_secs(seconds);
+        while !ready() {
+            if Instant::now() >= deadline {
+                let output = self.audio.handle.status();
+                let devices = self.engine.midi.profiles().unwrap().view().devices.iter().map(|device|
+                    serde_json::json!({"id":device.id,"instance":device.device.key(),"connection":device.device.connection,
+                        "input_open":device.input_open,"output_open":device.output_open,"reason":device.reason})).collect::<Vec<_>>();
+                let receipt = serde_json::json!({"status":"failed","phase":phase,"audio":self.engine.cmd.audio_metrics(),
+                    "output_phase":format!("{:?}",output.phase),"message":output.message,"devices":devices,
+                    "performance":self.engine.cmd.performance().status(),"midi":self.engine.midi.input_stats()});
+                std::fs::write(self.directory.join(format!("failure-{phase}.json")),serde_json::to_vec_pretty(&receipt).unwrap()).unwrap();
+                panic!("Recovery acknowledgment timed out: {receipt}");
+            }
+            std::thread::sleep(Duration::from_millis(10));
+        }
     }
 }
 
@@ -55,7 +72,8 @@ fn native_physical_usb_recording_recovery_and_two_controller_reconnections() {
     let audio = start_with_settings(rt, &settings).unwrap();
     engine.midi = crate::engine::midi::MidiHub::start(engine.cmd.clone(), engine.snap.clone()).unwrap();
     let registry = engine.midi.profiles().unwrap().clone();
-    wait(30, || { let view = registry.view(); view.ready && !view.busy && !engine.cmd.performance().status().changing
+    let audit = Audit { engine: &engine, audio: &audio, directory: &directory };
+    audit.wait(30, "initial-controllers", || { let view = registry.view(); view.ready && !view.busy && !engine.cmd.performance().status().changing
         && engine.midi.policy_status().is_some_and(|policy| !policy.pending()) && view.devices.iter().filter(|d| d.input_open).count() == 4
         && view.devices.iter().filter(|d| d.output_open).count() == 4 });
     let initial = registry.view();
@@ -70,12 +88,12 @@ fn native_physical_usb_recording_recovery_and_two_controller_reconnections() {
         for command in [Command::ComposeArm { track: 4, scene: 3 }, Command::Play, Command::SamplerPad { pad: 0, on: true }] {
             engine.cmd.send(command).unwrap();
         }
-        wait(5, || { let snapshot = engine.snapshot(); snapshot.playing && snapshot.compose_target == Some(ComposeTarget { track: 4, scene: 3 }) });
+        audit.wait(5, "held-recording", || { let snapshot = engine.snapshot(); snapshot.playing && snapshot.compose_target == Some(ComposeTarget { track: 4, scene: 3 }) });
         let before = engine.midi.input_stats();
         let key = ns7.device.key();
         marker(&directory, "unplug", "NS7", trial, &key);
-        wait(300, || !usb.exists());
-        wait(15, || audio.handle.status().phase == Phase::Offline && !registry.view().devices.iter().any(|d| d.device.key() == key));
+        audit.wait(300, "ns7-usb-removal", || !usb.exists());
+        audit.wait(15, "ns7-owners-offline", || audio.handle.status().phase == Phase::Offline && !registry.view().devices.iter().any(|d| d.device.key() == key));
         let offline = audio.handle.status();
         assert!(offline.recovery.as_ref().unwrap().identity.is_none());
         assert!(engine.cmd.send(Command::Play).is_err());
@@ -86,8 +104,8 @@ fn native_physical_usb_recording_recovery_and_two_controller_reconnections() {
         assert!(missing_reconnect.is_err());
         assert_eq!(audio.handle.status().phase, Phase::Offline);
         marker(&directory, "replug", "NS7", trial, &key);
-        wait(300, || usb.exists());
-        wait(30, || registry.view().devices.iter().any(|d| d.device.key() == key && d.input_open && d.output_open));
+        audit.wait(300, "ns7-usb-return", || usb.exists());
+        audit.wait(30, "ns7-midi-return", || registry.view().devices.iter().any(|d| d.device.key() == key && d.input_open && d.output_open));
         let connected = registry.view();
         let found = connected.devices.iter().find(|d| d.device.key() == key).unwrap();
         assert_ne!(found.device.connection, ns7.device.connection);
@@ -105,7 +123,7 @@ fn native_physical_usb_recording_recovery_and_two_controller_reconnections() {
         assert!(recovery::identity(&plan.device).is_none());
         assert!(engine.cmd.send(Command::Play).is_err());
         engine.cmd.performance().acknowledge_inputs_released().unwrap();
-        wait(5, || !engine.cmd.performance().status().recovery);
+        audit.wait(5, "released-recovery", || !engine.cmd.performance().status().recovery);
         assert!(!engine.snapshot().playing);
         let after = engine.midi.input_stats();
         assert!(after.disconnected > before.disconnected && after.resets > before.resets);
@@ -115,16 +133,16 @@ fn native_physical_usb_recording_recovery_and_two_controller_reconnections() {
             "before_input":before,"after_input":after,"audio":engine.cmd.audio_metrics()}));
     }
     engine.cmd.send(Command::Play).unwrap();
-    wait(5, || engine.snapshot().playing);
+    audit.wait(5, "resumed-clock", || engine.snapshot().playing);
     for trial in 0..2 {
         let key = apc.device.key();
         let before = engine.midi.input_stats();
         marker(&directory, "unplug", "APC40 MkII", trial, &key);
-        wait(300, || !registry.view().devices.iter().any(|d| d.device.key() == key));
+        audit.wait(300, "apc-midi-removal", || !registry.view().devices.iter().any(|d| d.device.key() == key));
         assert!(engine.snapshot().playing);
         assert_eq!(audio.handle.status().phase, Phase::Running);
         marker(&directory, "replug", "APC40 MkII", trial, &key);
-        wait(300, || registry.view().devices.iter().any(|d| d.device.key() == key && d.input_open && d.output_open));
+        audit.wait(300, "apc-midi-return", || registry.view().devices.iter().any(|d| d.device.key() == key && d.input_open && d.output_open));
         let connected = registry.view();
         let found = connected.devices.iter().find(|d| d.device.key() == key).unwrap();
         assert_ne!(found.device.connection, apc.device.connection);
@@ -138,7 +156,7 @@ fn native_physical_usb_recording_recovery_and_two_controller_reconnections() {
             "new_usb_connection":found.device.connection,"playback_continued":true,"before_input":before,"after_input":after,"audio":engine.cmd.audio_metrics()}));
     }
     engine.cmd.send(Command::Stop).unwrap();
-    wait(5, || !engine.snapshot().playing);
+    audit.wait(5, "final-stop", || !engine.snapshot().playing);
     std::fs::write(directory.join("receipt.json"), serde_json::to_vec_pretty(&serde_json::json!({
         "schema":1,"status":"pass","physical_usb_actions":true,"trials":trials,"silent_master":true,
         "boundary":"Actual native audio and MIDI owners; command-initiated held MIDI notes, two physical removals per owned model and native saved-document reopen. NS7 has a placeholder serial: retained identity reconnect is refused; the fixture explicitly reviews and applies the returned NS7 output. MIDI pins are topology-qualified. No unique-unit serial, physical note-button holding, native mouse confirmation, audible performance, host suspend or stage-duration claim.",

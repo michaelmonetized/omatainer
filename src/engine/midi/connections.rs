@@ -98,7 +98,7 @@ impl Manager {
                             Ok(()) => {},
                             Err(crossbeam_channel::RecvTimeoutError::Disconnected) => break,
                             Err(crossbeam_channel::RecvTimeoutError::Timeout) => {
-                                if let Ok(_permit) = worker.cmd.performance().project_change() {
+                                if let Ok(_permit) = worker.cmd.performance().controller_change() {
                                     shared.busy.store(true, Release);
                                     let request = shared.policy.requested();
                                     worker.refresh(&request);

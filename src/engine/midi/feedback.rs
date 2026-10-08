@@ -316,7 +316,7 @@ impl Manager {
                     outputs.retain(|id, output| registry.output(id).is_some_and(|d|d.profile_hash==output.profile_hash && d.device.connection==output.incarnation && (policy.requested_policy.allows(&d.name)||policy.requested_policy.allows(&d.endpoint_name))));
                     if Instant::now() >= discover && !policy.pending() {
                         discover = Instant::now() + Duration::from_secs(2);
-                        if let Ok(_permit) = cmd.performance().project_change() {
+                        if let Ok(_permit) = cmd.performance().controller_change() {
                             if let Ok(probe) = MidiOutput::new("omatainer-feedback-discover") {
                                 let ports = probe.ports();
                                 outputs.retain(|id, _| ports.iter().any(|port| port.id() == *id));

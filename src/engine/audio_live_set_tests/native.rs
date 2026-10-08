@@ -144,6 +144,7 @@ fn native_transition(routed: bool) {
         control.preview.store(true, Ordering::Release);
         std::thread::sleep(Duration::from_secs(1));
         wait(&engine, &output, &directory, "cue-priming", || control.priming_seconds(44100) == 0.0);
+        let cue_audio = engine.cmd.audio_metrics();
         control.preview.store(false, Ordering::Release);
         std::thread::sleep(Duration::from_millis(100));
         let transition_at = origin.elapsed().as_nanos() as u64;
@@ -164,10 +165,12 @@ fn native_transition(routed: bool) {
         });
         assert!(retired.unwrap().is_ok());
         let settled_at = origin.elapsed().as_nanos() as u64;
+        let settled_audio = engine.cmd.audio_metrics();
         std::thread::sleep(Duration::from_secs(1));
         trials.push(serde_json::json!({"trial":trial,"incoming_hz":frequencies,"preload_start_ns":preload_start,
             "ready_ns":prepared_at,"transition_requested_ns":transition_at,"settled_ns":settled_at,"fade_seconds":1.0,
-            "cue_admitted":true,"initial_priming_seconds":initial_priming_seconds,"short_unprimed_fade_refused":routed,"applied":applied,"worker_retired":true}));
+            "cue_admitted":true,"initial_priming_seconds":initial_priming_seconds,"short_unprimed_fade_refused":routed,"applied":applied,"worker_retired":true,
+            "cue_audio":cue_audio,"settled_audio":settled_audio}));
     }
     let measured_end = origin.elapsed().as_nanos() as u64;
     let metrics = engine.cmd.audio_metrics();
