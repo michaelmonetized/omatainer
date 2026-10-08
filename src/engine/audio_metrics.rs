@@ -39,6 +39,8 @@ pub struct AudioMetrics {
     pub xruns: u64,
     #[serde(default)]
     pub realtime_denied: u64,
+    #[serde(default)]
+    pub cpu_budget_exhaustions: u64,
     /// Backend underrun events do not reveal an exact dropped-buffer count.
     pub dropped_buffers: Option<u64>,
 }
@@ -63,6 +65,7 @@ pub(super) struct Telemetry {
     device_lost: AtomicU64,
     xruns: AtomicU64,
     realtime_denied: AtomicU64,
+    cpu_budget_exhaustions: AtomicU64,
 }
 
 pub(super) fn nanoseconds(duration: Duration) -> u64 {
@@ -135,6 +138,10 @@ impl Telemetry {
         true
     }
 
+    /// Record a kernel CPU budget breach on the output callback.
+    /// Takes this telemetry; increments the retained breach counter without allocation or logging.
+    pub fn cpu_budget_exhausted(&self) { self.cpu_budget_exhaustions.fetch_add(1, Ordering::Relaxed); }
+
     pub fn read(&self) -> AudioMetrics {
         let before = self.sequence.load(Ordering::Acquire);
         let cpu = self.cpu.load(Ordering::Relaxed);
@@ -162,6 +169,7 @@ impl Telemetry {
             device_lost: self.device_lost.load(Ordering::Relaxed),
             xruns: self.xruns.load(Ordering::Relaxed),
             realtime_denied: self.realtime_denied.load(Ordering::Relaxed),
+            cpu_budget_exhaustions: self.cpu_budget_exhaustions.load(Ordering::Relaxed),
             dropped_buffers: None,
         }
     }

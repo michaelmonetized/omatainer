@@ -51,6 +51,7 @@ impl App {
                 ui.label({ let __omatainer_args = (&(metrics.deadline_overruns),); crate::localization::format("Deadline overruns: {}", &[format!("{}", __omatainer_args.0)]) })
                     .on_hover_text({ let __omatainer_args = (&(metrics.max_elapsed_ns as f64 / 1e6),&(metrics.max_overrun_ns as f64 / 1e6),); crate::localization::format("Callbacks longer than their buffer duration. Longest callback: {:.2} ms; greatest overrun: {:.2} ms. These count service-time overruns, not measured hardware dropouts.", &[format!("{:.2}", __omatainer_args.0), format!("{:.2}", __omatainer_args.1)]) });
                 ui.label({ let __omatainer_args = (&(metrics.backend_errors),&(metrics.device_lost),); crate::localization::format("Audio errors: {} · device lost: {}", &[format!("{}", __omatainer_args.0), format!("{}", __omatainer_args.1)]) });
+                if metrics.cpu_budget_exhaustions > 0 { ui.label(format!("Audio CPU limit stops: {}", metrics.cpu_budget_exhaustions)); }
                 ui.label(tr!("Dropped buffers: unavailable"))
                     .on_hover_text(tr!("The current CPAL backend does not expose an exact dropped-buffer counter. Overruns and backend errors are reported separately."));
             });
@@ -74,6 +75,7 @@ mod tests {
             }),
             deadline_overruns: 3,
             backend_errors: 1,
+            cpu_budget_exhaustions: 2,
             ..Default::default()
         };
         let ctx = egui::Context::default();
@@ -92,6 +94,7 @@ mod tests {
             "Callback elapsed: 20.00 ms / 10.00 ms budget",
             "Deadline overruns: 3",
             "Audio errors: 1",
+            "Audio CPU limit stops: 2",
             "Dropped buffers: unavailable",
         ] {
             assert!(

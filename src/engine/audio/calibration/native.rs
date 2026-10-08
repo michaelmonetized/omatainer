@@ -98,9 +98,14 @@ where
     f32: cpal::FromSample<T>,
 {
     let channels = plan.channels as usize;
+    let callback_fault = fault.clone();
+    #[cfg(target_os = "linux")]
+    let mut cpu_guard = super::super::cpu_budget::Guard::new();
     device.build_input_stream(
         plan.config(),
         move |data: &[T], _| {
+            #[cfg(target_os = "linux")]
+            if cpu_guard.exceeded() { callback_fault.store(true, Ordering::Release); return; }
             capture.push(
                 data,
                 channels,
@@ -135,9 +140,18 @@ where
     T: cpal::SizedSample + cpal::FromSample<f32>,
 {
     let channels = plan.channels as usize;
+    let callback_fault = fault.clone();
+    #[cfg(target_os = "linux")]
+    let mut cpu_guard = super::super::cpu_budget::Guard::new();
     device.build_output_stream(
         plan.config(),
         move |data: &mut [T], _| {
+            #[cfg(target_os = "linux")]
+            if cpu_guard.exceeded() {
+                callback_fault.store(true, Ordering::Release);
+                data.fill(T::from_sample(0.0));
+                return;
+            }
             if !enabled.load(Ordering::Acquire) || stopped.load(Ordering::Acquire) {
                 for sample in data {
                     *sample = T::from_sample(0.0);
@@ -177,6 +191,8 @@ pub(crate) fn run(
     stopped: Arc<AtomicBool>,
 ) -> Result<Measurement, String> {
     request.validate()?;
+    #[cfg(target_os = "linux")]
+    super::super::cpu_budget::install()?;
     let input_device = config::select_input_exact(&request.input).map_err(|e| e.to_string())?;
     let output_device = config::select_exact(&request.output).map_err(|e| e.to_string())?;
     let probe = Arc::new(Probe::new(request.output.rate, request.level_db)?);

@@ -348,10 +348,21 @@ where
 {
     let channels = usize::from(plan.channels);
     let fault = pipe.shared.clone();
+    #[cfg(target_os = "linux")]
+    super::super::cpu_budget::install()?;
+    #[cfg(target_os = "linux")]
+    let mut cpu_guard = super::super::cpu_budget::Guard::new();
     device
         .build_input_stream(
             plan.config(),
-            move |data: &[T], _| pipe.capture(data, channels, generation),
+            move |data: &[T], _| {
+                #[cfg(target_os = "linux")]
+                if cpu_guard.exceeded() {
+                    pipe.shared.fault.store(true, Ordering::Release);
+                    return;
+                }
+                pipe.capture(data, channels, generation);
+            },
             move |error| {
                 if error.kind() != cpal::ErrorKind::RealtimeDenied {
                     fault.fault.store(true, Ordering::Release);

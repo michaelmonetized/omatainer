@@ -564,6 +564,7 @@ impl<B: Backend> Owner<B> {
             if self.active.as_mut().is_some_and(|active| active.fault.load(Ordering::Acquire)
                 || recovery::boot_time().is_some_and(|now| active.watchdog.lost(now, active.telemetry.read().callbacks)))
             {
+                let cpu_exhausted = self.active.as_ref().is_some_and(|active| active.telemetry.read().cpu_budget_exhaustions > 0);
                 self.recovery = self.active.as_ref().map(|active| recovery::Target {
                     plan: active.plan.clone(), identity: active.identity.clone(),
                 });
@@ -577,8 +578,8 @@ impl<B: Backend> Owner<B> {
                 self.publish(
                     Phase::Offline,
                     self.status.load().requested.clone(),
-                    "Audio output stopped responding. Your project and recorded notes are retained. Reconnect the previous output or preview and confirm another output. Release keys, pads and platters before resuming. Save and Close remain available."
-                        .into(),
+                    format!("{}. Your project and recorded notes are retained. Reconnect the previous output or preview and confirm another output. Release keys, pads and platters before resuming. Save and Close remain available.",
+                        if cpu_exhausted { "Audio output exceeded its real-time CPU limit and was stopped" } else { "Audio output stopped responding" }),
                 );
             }
             self.tick_offline();
@@ -779,6 +780,7 @@ pub(crate) mod tests {
         pub failures: parking_lot::Mutex<std::collections::VecDeque<bool>>,
         pub play_failures: parking_lot::Mutex<std::collections::VecDeque<bool>>,
         pub active_fault: parking_lot::Mutex<Option<Arc<AtomicBool>>>,
+        pub active_telemetry: parking_lot::Mutex<Option<Arc<crate::engine::audio_metrics::Telemetry>>>,
         pub block_open: AtomicBool,
         pub entering_open: AtomicBool,
         pub calibration_mode: AtomicUsize,
@@ -854,6 +856,7 @@ pub(crate) mod tests {
                 return Err("Injected backend open failure".into());
             }
             *self.controls.active_fault.lock() = Some(fault);
+            *self.controls.active_telemetry.lock() = Some(callback.rt.telemetry.clone());
             let stop = Arc::new(AtomicBool::new(false));
             let stopped = stop.clone();
             let controls = self.controls.clone();
