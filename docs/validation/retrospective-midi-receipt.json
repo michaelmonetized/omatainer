@@ -2551,5 +2551,107 @@
     "privacyWorkflow": 1,
     "migrationTest": 1,
     "physicalDevicesOpened": false
+  },
+  "releaseDeployment": {
+    "schema": 1,
+    "integratedQualification": {
+      "receipt": "docs/validation/retrospective-midi-receipt.json",
+      "frozenInventory": {
+        "path": "target/app-backlog/note-variation-twelfth-source.json",
+        "sha256": "eee1b38058c21b3fe94b8bd2fb937fa2b7148e8841413b672f70a04b3806c522",
+        "files": 949
+      },
+      "testBinary": {
+        "path": "target/app-backlog/qualification-bin/note-variation-tests-twelfth",
+        "sha256": "578efbc9372e6633c179c55ab8eebc267505276a7209298855821b30ca952f61"
+      },
+      "full": {
+        "path": "target/app-backlog/note-variation-twelfth-full.log",
+        "sha256": "8b158d37490634965c06ed2c1676d3155dcb03c4de9c6e3c0221629bdbcc9630",
+        "outcome": "ok",
+        "passed": 2241,
+        "failed": 0,
+        "ignored": 74,
+        "filtered": 0,
+        "seconds": 779.17
+      },
+      "nativeWorker": {
+        "path": "target/app-backlog/qualification-bin/note-variation-native-worker-twelfth",
+        "sha256": "6fc72952a23d427a9bb2b81e446b85021932eb20dc0259375c7a5d71cdf51f56",
+        "bytes": 439073048
+      },
+      "nativeImportWorkflows": 12
+    },
+    "status": "ready_installation_deferred_active_app",
+    "package": {
+      "path": "/home/michael/Projects/omatainer-work/hardware-resurrection/target/app-backlog/release-retrospective-midi-qualified",
+      "manifestSha256": "682e61249e23040e6fb5f8aa1fcf668f9302dc3b9733781ca6a13a0c8b82b9b5",
+      "revision": "5cb6c9ac15c2aa1a170c84cfca9442301acf06ac",
+      "version": "0.1.0+5cb6c9ac15c2",
+      "executableSha256": "67442b683f064aabc53dac884221551fdf649902478fa622b02d700c20d13961"
+    },
+    "installed": false,
+    "installedExecutableSha256": "463d40d467101a704ffffb6e18112a6854e7350c7829e1c041e490babdb8c2c9",
+    "buildInfo": {
+      "arch": "aarch64",
+      "debug_assertions": false,
+      "os": "linux",
+      "pkg_version": "0.1.0",
+      "schema": 1
+    },
+    "applicationProcessesPreserved": [
+      {
+        "pid": 151927,
+        "executable": "/home/michael/.local/bin/omatainer",
+        "arguments": [
+          "/home/michael/.local/bin/omatainer",
+          "--empty-once"
+        ],
+        "sha256": "463d40d467101a704ffffb6e18112a6854e7350c7829e1c041e490babdb8c2c9"
+      },
+      {
+        "pid": 2273135,
+        "executable": "/home/michael/.local/bin/omatainer (deleted)",
+        "arguments": [
+          "/home/michael/.local/bin/omatainer",
+          "ctl",
+          "follow"
+        ],
+        "sha256": "3217e4bfce388cac60e0ad7bea4caf83ec0d323f6eb620d4bf3a04d2c09ed69d"
+      },
+      {
+        "pid": 2283849,
+        "executable": "/home/michael/Projects/omatainer-work/producer-dj-completion/target/validation/combined-completion/release-qualified/5/omatainer",
+        "arguments": [
+          "/home/michael/Projects/omatainer-work/producer-dj-completion/target/validation/combined-completion/release-qualified/5/omatainer",
+          "--empty-once"
+        ],
+        "sha256": "6fbf83bc72fde8320a2bd65d05523091ded924ffab89b62ba9ad4ce1ca5e5852"
+      },
+      {
+        "pid": 2347666,
+        "executable": "/home/michael/Projects/omatainer-work/producer-dj-completion/target/validation/combined-completion/release-qualified/5/omatainer",
+        "arguments": [
+          "/home/michael/Projects/omatainer-work/producer-dj-completion/target/validation/combined-completion/release-qualified/5/omatainer",
+          "vst3-worker"
+        ],
+        "sha256": "6fbf83bc72fde8320a2bd65d05523091ded924ffab89b62ba9ad4ce1ca5e5852"
+      },
+      {
+        "pid": 2347676,
+        "executable": "/home/michael/Projects/omatainer-work/producer-dj-completion/target/validation/combined-completion/release-qualified/5/omatainer",
+        "arguments": [
+          "/home/michael/Projects/omatainer-work/producer-dj-completion/target/validation/combined-completion/release-qualified/5/omatainer",
+          "vst3-worker"
+        ],
+        "sha256": "6fbf83bc72fde8320a2bd65d05523091ded924ffab89b62ba9ad4ce1ca5e5852"
+      }
+    ],
+    "protectedSessionPreserved": {
+      "path": "/home/michael/Projects/omatainer-work/hardware-resurrection/target/hardware/apc-restart-20261006/session.omat",
+      "bytes": 162882871,
+      "sha256": "96e0b2495cdbdc549c324ecf8337fdef5590bdcbfe8916e4f014eb05d1ee827d"
+    },
+    "reason": "The default GUI is active. The active application was preserved without attempting executable replacement. The verified package is ready; installation awaits closure of the active app. No GUI, follower, capture, audio or MIDI connection was restarted or opened."
   }
 }
