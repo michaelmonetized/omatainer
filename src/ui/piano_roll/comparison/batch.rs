@@ -8,6 +8,7 @@ struct Input {
     region: Region,
     notes: Vec<MidiNote>,
     controls: control::Controls,
+    context: Option<crate::engine::musical_context::Context>,
 }
 impl Input {
     fn capture(draft: &Draft) -> Self {
@@ -17,12 +18,14 @@ impl Input {
             region: draft.region,
             notes: draft.notes.clone(),
             controls: draft.controls.clone(),
+            context: draft.context,
         }
     }
     fn current(&self, draft: &Draft) -> bool {
         Arc::ptr_eq(&self.baseline, &draft.baseline)
             && self.name == draft.name
             && self.region == draft.region
+            && self.context == draft.context
             && self.notes == draft.notes
             && draft.controls.matches(&self.controls.content(&self.notes))
     }
@@ -118,12 +121,13 @@ impl Batch {
                         if worker_cancel.load(Ordering::Acquire) {
                             return Err("Combined Apply cancelled; drafts retained".into());
                         }
-                        let (request, _, _) = Request::with_lanes(
+                        let (request, _, _) = Request::with_context(
                             input.baseline,
                             input.name,
                             input.region,
                             input.notes,
                             lanes,
+                            input.context,
                         )?;
                         requests.push(request);
                     }

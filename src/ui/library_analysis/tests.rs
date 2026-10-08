@@ -51,7 +51,7 @@ impl Drop for Files {
 }
 struct Gui {
     app: App,
-    rt: RtEngine,
+    rt: Box<RtEngine>,
     ctx: egui::Context,
     nodes: Vec<(NodeId, Node)>,
     time: f64,
@@ -75,7 +75,7 @@ impl Gui {
         ctx.enable_accesskit();
         let mut gui = Self {
             app,
-            rt,
+            rt: Box::new(rt),
             ctx,
             nodes: Vec::new(),
             time: 0.0,

@@ -2,7 +2,7 @@
 //! physical key ownership, worker handles and device connections.
 use super::super::*;
 
-pub const STATE_VERSION: u32 = 32;
+pub const STATE_VERSION: u32 = 33;
 pub const MAX_BANKS: usize = 16;
 pub const MAX_FX_PER_RACK: usize = 128;
 pub const MAX_NOTES_PER_CLIP: usize = 8192;
@@ -14,6 +14,10 @@ pub const MAX_MEDIA_REFS: usize = session::MAX_TRACKS * (session::MAX_SCENES + 6
 #[serde(deny_unknown_fields)]
 pub struct State {
     pub version: u32,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub(crate) musical_context: Option<musical_context::Context>,
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub(crate) sampler_scale: bool,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub(crate) sync_leader: Option<deck_sync::Leader>,
     #[serde(default,skip_serializing_if="Option::is_none")]
@@ -64,6 +68,10 @@ pub struct State {
 #[serde(deny_unknown_fields)]
 struct StateWire {
     version: u32,
+    #[serde(default)]
+    musical_context: Option<musical_context::Context>,
+    #[serde(default)]
+    sampler_scale: bool,
     #[serde(default)]
     sync_leader: Option<deck_sync::Leader>,
     #[serde(default)]
@@ -131,6 +139,13 @@ impl<'de> Deserialize<'de> for State {
                 "Ableton migration requires project state version 30",
             ));
         }
+        if version < 33 && (raw.get("musical_context").is_some() || raw.get("sampler_scale").is_some()
+            || raw.get("tracks").and_then(serde_json::Value::as_array).into_iter().flatten()
+                .flat_map(|track| track.get("clips").and_then(serde_json::Value::as_array).into_iter().flatten())
+                .chain(raw.get("arrangement").and_then(|arrangement| arrangement.get("sources")).and_then(serde_json::Value::as_array).into_iter().flatten().filter_map(|source| source.get("clip")))
+                .any(|clip| clip.get("properties").is_some_and(|properties| properties.get("context").is_some()))) {
+            return Err(serde::de::Error::custom("Song and clip scales require project state version 33"));
+        }
         if version < 29 && raw.get("routing").is_some_and(|r| r.get("plugins").is_some()) { return Err(serde::de::Error::custom("Native plugins require project state version 29")); }
         if version < 28 && raw.get("decks").and_then(serde_json::Value::as_array).is_some_and(|decks| decks.iter().any(|deck| deck.get("key_shift").is_some())) { return Err(serde::de::Error::custom("Independent key shift requires project state version 28")); }
         if version < 26 && (raw.get("tracks").and_then(serde_json::Value::as_array).into_iter().flatten().flat_map(|t|t.get("clips").and_then(serde_json::Value::as_array).into_iter().flatten()).chain(raw.get("arrangement").and_then(|a|a.get("sources")).and_then(serde_json::Value::as_array).into_iter().flatten().filter_map(|s|s.get("clip"))).any(|c|c.get("audio_region").is_some_and(|r|r.get("fades").is_some())) || raw.get("arrangement").and_then(|a|a.get("instances")).and_then(serde_json::Value::as_array).into_iter().flatten().any(|i|["fades","fade_link","crossfade"].into_iter().any(|f|i.get(f).is_some()))) { return Err(serde::de::Error::custom("Audio fades and crossfade links require project state version 26")); }
@@ -196,6 +211,7 @@ impl<'de> Deserialize<'de> for State {
         let wire: StateWire = serde_json::from_value(raw).map_err(serde::de::Error::custom)?;
         Ok(Self {
             version: wire.version,
+            musical_context: wire.musical_context, sampler_scale: wire.sampler_scale,
             sync_leader: wire.sync_leader,
             navigation: wire.navigation,
             arrangement: wire.arrangement,
@@ -474,6 +490,7 @@ impl State {
     pub(crate) fn blank() -> Self {
         Self {
             version: STATE_VERSION,
+            musical_context: None, sampler_scale: false,
             sync_leader: None,
             navigation: None,
             scene_timing: None,
@@ -610,6 +627,7 @@ impl State {
         if self.tracks.is_empty() || self.tracks.len() > session::MAX_TRACKS || self.scene_fx.is_empty() || self.scene_fx.len() > session::MAX_SCENES || self.tracks.iter().any(|t| t.clips.len() != self.scene_fx.len()) { return fail("session dimensions (1–128 tracks, 1–512 scenes)"); }
         if self.version >= 7 && self.session.is_none() {return fail("missing session identity metadata");}
         if let Some(timing) = self.scene_timing { timing.validate()?; if self.version < 23 || self.conductor.is_some() { return fail("scene timing version or conductor conflict"); } }
+        if self.musical_context.is_some_and(|context| !context.valid()) || self.version < 33 && (self.musical_context.is_some() || self.sampler_scale) { return fail("song scale or scale-aware sampler version"); }
         if self.version < 23 && self.session.as_ref().is_some_and(|layout| layout.scenes.iter().chain(&layout.tracks).any(|item| !item.scene.is_default())) { return fail("scene properties version"); }
         if self.version < 7 && (self.tracks.len() != TRACKS || self.scene_fx.len() != SCENES || self.session.is_some()) { return fail("legacy session dimensions or identity"); }
         if let Some(layout) = &self.session {
@@ -963,6 +981,7 @@ impl SavedClip{
     /// Validate one retained clip without constructing a project graph.
     /// Takes the schema and shared media; returns its note and lane budgets or the same native source refusal used by project validation.
     pub(crate) fn validate(&self,version:u32,media:&[Arc<Sample>])->Result<(usize,usize),String>{
+        if self.properties.context.is_some_and(|context| !context.valid()) || version < 33 && self.properties.context.is_some() { return Err("Clip scale requires a valid tonic and project state version 33".into()); }
         if version<21 && !self.properties.launch.is_default(){return Err("Clip launch policy requires project state version 21".into());}
         if version<20 && !self.properties.is_default(){return Err("Clip properties require project state version 20".into());}
         let clip=self;let fail=|name:&str|Err(format!("invalid project {name}"));let reference=|index:usize|index<media.len();let optional=|index:Option<usize>|index.is_none_or(reference);let mut note_ids=std::collections::HashSet::new();let mut midi_bytes=0;let mut note_count=0;

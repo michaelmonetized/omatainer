@@ -26,7 +26,7 @@ impl Drop for Files {
 }
 struct Gui {
     app: App,
-    rt: RtEngine,
+    rt: Box<RtEngine>,
     ctx: egui::Context,
     nodes: Vec<(NodeId, Node)>,
     time: f64,
@@ -47,7 +47,7 @@ impl Gui {
         ctx.enable_accesskit();
         let mut result = Self {
             app: App::with_loader(engine, Theme::default(), None),
-            rt,
+            rt: Box::new(rt),
             ctx,
             nodes: vec![],
             time: 0.0,

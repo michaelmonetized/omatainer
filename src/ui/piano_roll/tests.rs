@@ -5,7 +5,7 @@ use std::time::Duration;
 
 pub(crate) struct Gui {
     pub(crate) app: App,
-    pub(crate) rt: RtEngine,
+    pub(crate) rt: Box<RtEngine>,
     pub(crate) ctx: egui::Context,
     pub(crate) nodes: Vec<(NodeId, Node)>,
     time: f64,
@@ -25,7 +25,7 @@ impl Gui {
         ctx.enable_accesskit();
         let mut gui = Self {
             app,
-            rt,
+            rt: Box::new(rt),
             ctx,
             nodes: Vec::new(),
             time: 0.0,
@@ -776,6 +776,7 @@ fn clip_loop_markers_numeric_view_and_scale_folding_are_real_accessible_controls
 fn draft_operations_keep_existing_identity_and_give_copies_fresh_identity() {
     let baseline = Arc::new(Document {
         track_identity: None, scene_identity: None,
+        context: None, song_context: None,
         lanes: None,
         track: 2,
         scene: 7,

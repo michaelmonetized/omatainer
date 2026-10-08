@@ -7,6 +7,7 @@ mod plugin_midi;
 pub(crate) mod live_set;
 pub(crate) mod midi_edit;
 pub(crate) mod midi_tools;
+pub(crate) mod musical_context;
 pub(crate) mod audio_clip;
 pub(crate) mod arrangement;
 pub(crate) mod song_navigation;
@@ -698,6 +699,8 @@ pub struct RtEngine {
     #[cfg(test)]
     current_sample_frame: u64,
     pub(crate) conductor: Option<Arc<midi_data::Conductor>>,
+    pub(crate) musical_context: Option<musical_context::Context>,
+    pub(crate) sampler_scale: bool,
     mapped_clock: Option<midi_data::ConductorClock>,
     last_midi_step: f64,
     pub quant: f32,
@@ -936,6 +939,10 @@ pub struct Snapshot {
     pub meter_numerator: u8,
     pub meter_denominator: u16,
     pub file_conductor: bool,
+    pub(crate) musical_context: Option<musical_context::Context>,
+    pub(crate) active_scale: musical_context::Active,
+    pub(crate) sampler_scale: bool,
+    pub(crate) sampler_context: Option<musical_context::Context>,
     #[serde(skip)]
     pub(crate) timing: Option<Arc<midi_data::Conductor>>,
     pub master: f32,
@@ -1018,6 +1025,8 @@ impl Default for Snapshot {
             meter_numerator: 4,
             meter_denominator: 4,
             file_conductor: false,
+            musical_context: None, active_scale: musical_context::Active::default(),
+            sampler_scale: false, sampler_context: None,
             timing: None,
             master: 0.85,
             xfader: 0.5,
@@ -1222,6 +1231,8 @@ pub enum Command {
     SamplerAuditionStop { id: u64 },
     SamplerInst(SamplerInstrument),
     SamplerOct(i8),
+    SongContext(Option<musical_context::Context>),
+    SamplerScale(bool),
     OpenFxTrack(u8),
     OpenFxScene(u16),
     CloseFx,
@@ -1316,6 +1327,7 @@ impl RtEngine {
             #[cfg(test)]
             current_sample_frame: 0,
             conductor: None,
+            musical_context: None, sampler_scale: false,
             mapped_clock: None,
             last_midi_step: 0.0,
             quant: 1.0,
@@ -3359,6 +3371,10 @@ impl RtEngine {
                     self.finish_sampler_audition();
                 }
             },
+            Command::SongContext(context) => {
+                if context.is_none_or(musical_context::Context::valid) { self.musical_context = context; }
+            }
+            Command::SamplerScale(enabled) => self.sampler_scale = enabled,
             Command::SamplerInst(i) => {
                 if i.synth().is_some() && self.sampler_poly.offline.is_some() {
                     if !self.undo.can_retire_device(self.sampler_poly.offline.as_ref().unwrap().bytes()) { return; }

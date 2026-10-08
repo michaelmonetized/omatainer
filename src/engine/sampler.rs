@@ -321,10 +321,17 @@ impl RtEngine {
     /// Takes pad, gate and normalized pressure; updates playback and records matching note velocity.
     pub(super) fn apply_sampler_pad(&mut self, pad: u8, on: bool, pressure: f32) {
         let input = InputKey::Pad(pad);
-        let pitch = sampler_pitch(self.sampler_inst, self.sampler_oct, pad);
         let destination = self.compose_target.unwrap_or(ComposeTarget {
             track: self.selected_track, scene: self.selected_scene,
         });
+        let context = musical_context::resolve(self.tracks.get(destination.track).and_then(|track| track.clips.get(destination.scene)).and_then(|clip| clip.properties.context), self.musical_context).context;
+        let pitch = if self.sampler_scale && self.sampler_inst.synth().is_some() {
+            let Some(pitch) = context.and_then(|context| musical_context::pad_pitch(context, self.sampler_oct, pad)) else {
+                if !on { self.release_input(input); self.pad_targets[pad as usize] = None; }
+                return;
+            };
+            pitch
+        } else { sampler_pitch(self.sampler_inst, self.sampler_oct, pad) };
         if on {
             if self.pad_voices[pad as usize].as_ref().is_some_and(|voice| voice.playback.mode == crate::sampler_bank::PlayMode::Toggle) {
                 self.stop_sampler_slot(pad);

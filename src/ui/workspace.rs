@@ -338,6 +338,7 @@ impl App {
     /// Keep transport, safety state and output warnings visible above a detached panel.
     /// Takes its window UI; returns no value and submits ordinary shared commands.
     fn workspace_status(&mut self, ui: &mut Ui) {
+        scale_status::show(ui, &self.snap);
         let status = self.engine.cmd.performance().status();
         ui.horizontal_wrapped(|ui| {
             if ui

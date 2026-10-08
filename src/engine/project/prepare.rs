@@ -48,7 +48,9 @@ impl Prepared {
             fx_wet,
             sampler_bank,
             sampler_inst,
-            sampler_oct
+            sampler_oct,
+            musical_context,
+            sampler_scale
         );
         rt.timeline_anchor = state.timeline_seconds;
         rt.timeline_frames = 0;
@@ -243,6 +245,8 @@ impl Prepared {
             midi_beat,
             midi_beat_reference,
             conductor,
+            musical_context,
+            sampler_scale,
             arrangement,
             navigation,
             migration,

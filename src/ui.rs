@@ -40,6 +40,7 @@ mod input_monitoring;
 use clip_gain::ClipGainEdit;
 use library_view::{LibraryView, Cells};
 mod load_status;
+mod scale_status;
 mod continuous_playback;
 mod key_shift;
 mod slip;
@@ -799,7 +800,9 @@ impl App {
         }
         let identity = crate::engine::sampler_pad::PadIdentity::new(p as u8);
         let name = if self.snap.sampler_inst.synth().is_some() {
-            format!("Pad {}: {} MIDI note {}", p + 1, identity.piano_label(), identity.midi_note(self.snap.sampler_oct))
+            if self.snap.sampler_scale {
+                self.snap.sampler_gate_pitch(p as u8).map_or_else(|| format!("Pad {}: no saved scale pitch",p+1),|pitch|format!("Pad {}: scale MIDI note {}",p+1,pitch))
+            } else { format!("Pad {}: {} MIDI note {}", p + 1, identity.piano_label(), identity.midi_note(self.snap.sampler_oct)) }
         } else { format!("Sample pad {}", p + 1) };
         if self.pad_held[p] {
             active_mark(ui.painter(), r.rect, self.theme.fg);
@@ -1416,6 +1419,11 @@ impl App {
                             }
                         }
                     });
+                let mut follow=self.snap.sampler_scale;
+                let scale=ui.checkbox(&mut follow,"Use saved scale");
+                accessibility::button(ui,&scale,"Use saved scale",Some(follow));
+                if scale.changed(){self.send(Command::SamplerScale(follow));}
+                if follow && self.snap.sampler_context.is_none(){ui.label("Set a song or clip key in the MIDI editor.");}
                 help::annotate(ui, &instrument.response, HelpControl::SamplerInstrument);
                 instrument.response.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::ComboBox, true, "Sampler instrument"));
                 ui.ctx().accesskit_node_builder(instrument.response.id, |node| node.set_value(instrument_label));
@@ -1439,7 +1447,10 @@ impl App {
                         ui.spacing_mut().item_spacing = Vec2::splat(4.0);
                         for column in 0..8u8 {
                             let pad = crate::engine::sampler_pad::PadIdentity::new(row + column);
-                            let label = if piano { pad.piano_label() } else { pad.sample_label() };
+                            let scaled=piano && self.snap.sampler_scale;
+                            let pitch=self.snap.sampler_gate_pitch(row+column);
+                            let scale_label=if scaled {pitch.map_or(String::new(),|pitch|["C","C♯","D","D♯","E","F","F♯","G","G♯","A","A♯","B"][usize::from(pitch%12)].into())}else{String::new()};
+                            let label = if scaled {scale_label.as_str()} else if piano { pad.piano_label() } else { pad.sample_label() };
                             let empty = label.is_empty();
                             let color = t.track_color(column as usize + if row == 0 { 8 } else { 0 });
                             let r = ui.push_id(("sampler-pad", pad.index()), |ui| {
@@ -1449,7 +1460,7 @@ impl App {
                             let identity = if piano && empty {
                                 format!("Pad {} · no piano accidental", pad.number())
                             } else if piano {
-                                format!("{} · pad {} · MIDI note {}", label, pad.number(), pad.midi_note(self.snap.sampler_oct))
+                                format!("{} · pad {} · MIDI note {}", label, pad.number(), pitch.unwrap_or_else(|| pad.midi_note(self.snap.sampler_oct)))
                             } else {
                                 format!("Sample pad {} · bank slot {}", pad.number(), pad.index())
                             };

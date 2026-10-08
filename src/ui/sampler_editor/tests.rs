@@ -60,7 +60,7 @@ impl Drop for Files {
 }
 struct Gui {
     app: App,
-    rt: RtEngine,
+    rt: Box<RtEngine>,
     ctx: egui::Context,
     time: f64,
     nodes: Vec<(NodeId, Node)>,
@@ -79,7 +79,7 @@ impl Gui {
         ctx.enable_accesskit();
         let mut value = Self {
             app,
-            rt,
+            rt: Box::new(rt),
             ctx,
             time: 0.0,
             nodes: vec![],
@@ -955,7 +955,7 @@ fn disconnected_audition_retains_unknown_notice_without_trapping_native_close() 
         EditState::Applied
     );
     let (_replacement_engine, replacement) = Engine::headless_for_test(48_000, 256);
-    drop(std::mem::replace(&mut g.rt, replacement));
+    drop(std::mem::replace(&mut *g.rt, replacement));
     g.render = false;
     assert!(!g.app.engine.cmd.is_connected());
     g.click("Sampler editor: Cancel or close sampler editor");

@@ -22,6 +22,7 @@ struct Original {
     selected: BTreeSet<NoteId>,
     dirty: bool,
     controls_dirty: bool,
+    context: Option<crate::engine::musical_context::Context>,
 }
 struct Preview {
     original: Arc<Original>,
@@ -35,6 +36,7 @@ struct Worker {
     region: Region,
     selected: BTreeSet<NoteId>,
     params: Parameters,
+    context: Option<crate::engine::musical_context::Context>,
 }
 impl Drop for Worker {
     fn drop(&mut self) {
@@ -67,6 +69,7 @@ impl Tools {
                 .parse::<u64>()
                 .map_err(|_| "Seed must be a whole number from 0 through 18446744073709551615")?;
         }
+        if matches!(params.kind, Kind::ScaleTranspose | Kind::Harmony) { params.context = None; }
         Ok(params)
     }
     fn preview(&mut self, draft: &Draft) -> Result<(), String> {
@@ -88,11 +91,12 @@ impl Tools {
                     selected: draft.selected.clone(),
                     dirty: draft.dirty,
                     controls_dirty: draft.controls.dirty,
+                    context: draft.resolved_context().context,
                 })
             },
             |p| p.original.clone(),
         );
-        if draft.region != original.region || draft.selected != original.selected {
+        if draft.region != original.region || draft.selected != original.selected || draft.resolved_context().context != original.context {
             return Err(
                 "Keep or restore this preview before changing its note selection or clip bounds"
                     .into(),
@@ -101,7 +105,8 @@ impl Tools {
         let cancel = Arc::new(AtomicBool::new(false));
         let worker_cancel = cancel.clone();
         let source = original.clone();
-        let params = self.params.clone();
+        let mut params = self.params.clone();
+        if matches!(params.kind, Kind::ScaleTranspose | Kind::Harmony) { params.context = original.context; }
         let worker_params = params.clone();
         let (sender, receiver) = mpsc::sync_channel(1);
         std::thread::Builder::new()
@@ -124,6 +129,7 @@ impl Tools {
             region: draft.region,
             selected: draft.selected.clone(),
             params,
+            context: draft.resolved_context().context,
         });
         self.message = "Preparing the selected notes and their expression…".into();
         Ok(())
@@ -144,6 +150,7 @@ impl Tools {
             || !draft.controls.matches(&worker.guard)
             || worker.region != draft.region
             || worker.selected != draft.selected
+            || worker.context != draft.resolved_context().context
         {
             self.preview = None;
             self.message = "Current draft retained after a stale preview.".into();
@@ -408,7 +415,7 @@ pub(super) fn show(ui: &mut Ui, draft: &mut Draft, theme: &Theme) -> Result<bool
     let mut keep = false;
     egui::CollapsingHeader::new("MIDI transformations").id_salt("midi-tools").show(ui,|ui|{
         ui.label(&tools.message);
-        egui::ComboBox::from_id_salt("midi-tool-kind").selected_text(match tools.params.kind{Kind::Quantize=>"Quantize",Kind::Recombine=>"Recombine",Kind::Velocity=>"Velocity curve",Kind::Stretch=>"Stretch",Kind::Reverse=>"Reverse phrase",Kind::Warp=>"Time curve"}).show_ui(ui,|ui|{for(kind,label)in[(Kind::Quantize,"Quantize"),(Kind::Recombine,"Recombine"),(Kind::Velocity,"Velocity curve"),(Kind::Stretch,"Stretch"),(Kind::Reverse,"Reverse phrase"),(Kind::Warp,"Time curve")]{ui.selectable_value(&mut tools.params.kind,kind,label);}});
+        egui::ComboBox::from_id_salt("midi-tool-kind").selected_text(match tools.params.kind{Kind::Quantize=>"Quantize",Kind::Recombine=>"Recombine",Kind::Velocity=>"Velocity curve",Kind::Stretch=>"Stretch",Kind::Reverse=>"Reverse phrase",Kind::Warp=>"Time curve",Kind::ScaleTranspose=>"Scale degrees",Kind::Harmony=>"Harmony"}).show_ui(ui,|ui|{for(kind,label)in[(Kind::Quantize,"Quantize"),(Kind::Recombine,"Recombine"),(Kind::Velocity,"Velocity curve"),(Kind::Stretch,"Stretch"),(Kind::Reverse,"Reverse phrase"),(Kind::Warp,"Time curve"),(Kind::ScaleTranspose,"Scale degrees"),(Kind::Harmony,"Harmony")]{ui.selectable_value(&mut tools.params.kind,kind,label);}});
         match tools.params.kind {
             Kind::Quantize=>{ui.horizontal_wrapped(|ui|{
                 egui::ComboBox::from_id_salt("midi-tool-grid").selected_text(GRIDS.iter().skip(1).find(|(_,value)|(*value-tools.params.grid).abs()<1e-9).map_or("Custom grid",|(name,_)|*name)).show_ui(ui,|ui|{for(name,value)in GRIDS.iter().skip(1){ui.selectable_value(&mut tools.params.grid,*value,*name);}});
@@ -422,6 +429,12 @@ pub(super) fn show(ui: &mut Ui, draft: &mut Draft, theme: &Theme) -> Result<bool
             Kind::Stretch=>{number(ui,"Stretch factor",&mut tools.params.stretch,0.125,8.0);ui.label("Stretch moves starts and ends around the first selected note. Clip and loop bounds stay fixed.");}
             Kind::Reverse=>{ui.label("Reverse reflects the selected phrase and its expression around its first start and last end. Pitch, note identity and velocity stay attached.");}
             Kind::Warp=>warp(ui,&mut tools,theme),
+            Kind::ScaleTranspose|Kind::Harmony=>{
+                let mut degrees=f64::from(tools.params.degrees);
+                if number(ui,"Scale degrees",&mut degrees,-128.0,128.0){tools.params.degrees=degrees.round()as i16;}
+                check(ui,"Include chromatic notes in scale edit",&mut tools.params.include_chromatic);
+                ui.label("Uses the saved clip scale, or the song scale when inherited. Chromatic notes stay unchanged unless included. Each enabled comparison clip uses its own saved scale.");
+            },
         }
         ui.horizontal_wrapped(|ui|{
             let mode=match tools.params.expression{Expression::PolyPressure=>0,Expression::Lower(_)=>1,Expression::Upper(_)=>2};let mut chosen=mode;

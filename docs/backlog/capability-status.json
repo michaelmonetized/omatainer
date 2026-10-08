@@ -1024,6 +1024,36 @@
       ],
       "limits": "Native headless UI and renderer qualification on Linux aarch64. Installed native release and broader UI regression receipts accompany this batch. No new physical input or PA listening claim. Apply remains guarded against stale clip content and uses the existing project Undo transaction."
     },
+    "168": {
+      "status": "implemented",
+      "paths": [
+        {
+          "kind": "saved song and clip context",
+          "file": "src/engine/musical_context.rs",
+          "entry": "Validated scale degrees, resolved owner provenance, active conflict and explicit participating instrument gates"
+        },
+        {
+          "kind": "bounded scale transformations",
+          "file": "src/engine/midi_tools/scale.rs",
+          "entry": "Captured key, chromatic preservation, owned expression and guarded harmony"
+        },
+        {
+          "kind": "native key and scale editor",
+          "file": "src/ui/piano_roll/scale.rs",
+          "entry": "Explicit saved context, fold/highlight, per-owner shared edits and rhythm participation"
+        }
+      ],
+      "fixtures": [
+        "engine::musical_context",
+        "engine::midi_tools::scale::tests",
+        "ui::piano_roll::scale::tests"
+      ],
+      "evidence": [
+        "docs/validation/saved-musical-context.md",
+        "docs/validation/saved-musical-context-receipt.json"
+      ],
+      "limits": "Linux ARM64 software qualification; no physical ports, capture, OS GUI or listening check. Native schema 33 stores an optional song key, optional per-clip override and explicit instrument participation. Thirteen validated scales use tonic 0–11 and absolute MIDI pitches 0–127; degree edits refuse out-of-range results. Existing chromatic notes stay unchanged unless explicitly included. Current context, captured owner metadata, note/lane bounds and cancellation guard every preview and atomic Apply. Harmony preserves originals and copies uniquely owned poly-pressure; MPE member-channel harmony refuses overlapping additional voices. Instrument participation affects newly pressed pads and retains the original pitch for held releases. Concurrent clips with differing contexts display a conflict without rewriting the song key or notes. This does not implement per-note expression curve editing, note chance, MIDI 2.0 or complete Live-authored migration comparison. Twelve isolated native import workflows were qualified separately; the retained private saved Live Set is a read-only format smoke check."
+    },
     "176": {
       "status": "implemented",
       "paths": [

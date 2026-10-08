@@ -18,7 +18,7 @@ impl Files {
 impl Drop for Files { fn drop(&mut self) { let _ = std::fs::remove_dir_all(&self.0); } }
 struct Gui {
     app: App,
-    rt: RtEngine,
+    rt: Box<RtEngine>,
     ctx: egui::Context,
     nodes: Vec<(NodeId, Node)>,
     time: f64,
@@ -33,7 +33,7 @@ impl Gui {
         app.library_metadata.set_performance(app.engine.cmd.performance().clone());
         app.library_initialized = false;
         let ctx = egui::Context::default(); ctx.enable_accesskit();
-        let mut gui = Self { app, rt, ctx, nodes: vec![], time: 0.0 };
+        let mut gui = Self { app, rt: Box::new(rt), ctx, nodes: vec![], time: 0.0 };
         gui.wait(|gui| !gui.app.library_metadata.active());
         gui.app.library_crates.open = true;
         gui.frame(vec![]); gui.frame(vec![]);

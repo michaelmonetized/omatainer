@@ -16,6 +16,7 @@ mod control;
 mod rhythm;
 mod step;
 mod tools;
+mod scale;
 
 pub(super) struct Editor {
     open: bool,
@@ -71,6 +72,8 @@ struct Draft {
     row_pixels: f32,
     fold: usize,
     root: u8,
+    context: Option<crate::engine::musical_context::Context>,
+    highlight_scale: bool,
     drag: Option<canvas::Drag>,
     steps: Vec<step::Edit>,
     step_record: bool,
@@ -133,6 +136,8 @@ impl Draft {
             },
             notes: baseline.notes.clone(),
             controls: control::Controls::new(baseline.lanes.as_deref()),
+            context: baseline.context,
+            highlight_scale: true,
             baseline,
             selected: BTreeSet::new(),
             dirty: false,
@@ -159,6 +164,9 @@ impl Draft {
             rhythm: rhythm::Generator::default(),
             tools: tools::Tools::default(),
         }
+    }
+    fn resolved_context(&self) -> crate::engine::musical_context::Resolved {
+        crate::engine::musical_context::resolve(self.context, self.baseline.song_context)
     }
     fn snap(&self, value: f64) -> f32 {
         let grid = GRIDS[self.grid].1;
@@ -553,12 +561,13 @@ impl Editor {
             }
             return;
         }
-        if draft.controls.dirty {
+        if draft.controls.dirty || draft.context != draft.baseline.context {
             let baseline = draft.baseline.clone();
             let name = draft.name.clone();
             let notes = draft.notes.clone();
             let region = draft.region;
             let controls = draft.controls.clone();
+            let context = draft.context;
             let project = engine.project.clone();
             let cancel = Arc::new(AtomicBool::new(false));
             let worker_cancel = cancel.clone();
@@ -575,7 +584,7 @@ impl Editor {
                             let captured =
                                 project.capture(&worker_cancel).map_err(|e| e.to_string())?;
                             let (request, ack, next) =
-                                Request::with_lanes(baseline, name, region, notes, lanes)?;
+                                Request::with_context(baseline, name, region, notes, lanes, context)?;
                             Ok((request.guard_metadata(captured, &worker_cancel)?, ack, next))
                         });
                     let _ = sender.send(result);
@@ -725,8 +734,8 @@ impl App {
                                     let draw = ui.checkbox(&mut draft.draw, tr!("Draw notes"));
                                     accessibility::button(ui, &draw, "Draw notes", Some(draft.draw));
                                     help::annotate(ui, &draw, HelpControl::MidiNotes);
-                                    let fold = egui::ComboBox::from_id_salt("midi-fold").selected_text(["All pitches", "Used pitches", "Major scale", "Minor scale"][draft.fold])
-                                        .show_ui(ui, |ui| { for (i, name) in ["All pitches", "Used pitches", "Major scale", "Minor scale"].iter().enumerate() { ui.selectable_value(&mut draft.fold, i, *name); } });
+                                    let fold = egui::ComboBox::from_id_salt("midi-fold").selected_text(["All pitches", "Used pitches", "Major scale", "Minor scale", "Saved scale"][draft.fold])
+                                        .show_ui(ui, |ui| { for (i, name) in ["All pitches", "Used pitches", "Major scale", "Minor scale", "Saved scale"].iter().enumerate() { ui.selectable_value(&mut draft.fold, i, *name); } });
                                     help::annotate(ui, &fold.response, HelpControl::MidiView);
                                     let mut root = draft.root as f64; if number(ui, "Scale root", &mut root, 0.0, 11.0) { draft.root = root.round() as u8; }
                                     number(ui, "Time scroll", &mut draft.view_beat, if editor.comparison.clips.is_empty(){0.0}else{-524_288.0}, 524_288.0);
@@ -812,6 +821,8 @@ impl App {
                             });
                             comparison_action = comparison::view::show(ui,&mut editor.comparison,draft,
                                 (self.snap.selected_track as u8,self.snap.selected_scene as u16),self.snap.session.as_ref().map_or(1,|s|s.tracks.len()),self.snap.session.as_ref().map_or(1,|s|s.scenes.len()));
+                            let scale_editing = !busy && !self.project.committing() && editor.comparison.editing(draft);
+                            scale::show(ui, draft, &self.engine, &self.snap, scale_editing);
                         });
                         accessibility::scrollbars(ui, "MIDI editor controls", &scroll);
                     }

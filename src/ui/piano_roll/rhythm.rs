@@ -36,6 +36,7 @@ pub(super) struct Generator {
     swing: f64,
     gate: f64,
     replace: bool,
+    follow_scale: bool,
     preview: Option<Preview>,
     message: String,
 }
@@ -46,6 +47,7 @@ struct Preview {
     dirty: bool,
     generated: Vec<MidiNote>,
     resulting_region: Region,
+    context: Option<crate::engine::musical_context::Context>,
 }
 impl Default for Generator {
     fn default() -> Self {
@@ -56,6 +58,7 @@ impl Default for Generator {
             swing: 0.0,
             gate: 0.5,
             replace: false,
+            follow_scale: false,
             preview: None,
             message:
                 "Preview writes editable notes into this draft. Apply commits them to the clip."
@@ -192,6 +195,10 @@ impl Generator {
     fn preview(&mut self, draft: &mut Draft) -> Result<(), String> {
         self.ensure_unedited(draft)?;
         let (mut generated, end) = self.generate(draft.cursor.start as f64)?;
+        if self.follow_scale {
+            let context=draft.resolved_context().context.ok_or("Choose a saved clip or song scale before scale-aware generation")?;
+            for note in &mut generated { note.pitch=context.nearest(note.pitch)?; }
+        }
         let (original, region, selected, dirty) = self.preview.as_ref().map_or_else(
             || {
                 (
@@ -230,6 +237,7 @@ impl Generator {
             dirty,
             generated: result.clone(),
             resulting_region: next_region,
+            context: draft.resolved_context().context,
         });
         draft.notes = result;
         draft.region = next_region;
@@ -243,7 +251,7 @@ impl Generator {
         if self
             .preview
             .as_ref()
-            .is_some_and(|p| p.generated != draft.notes || p.resulting_region != draft.region)
+            .is_some_and(|p| p.generated != draft.notes || p.resulting_region != draft.region || p.context != draft.resolved_context().context)
         {
             return Err("Preview notes or loop bounds were edited. Apply those edits before starting another preview; nothing was replaced.".into());
         }
@@ -255,7 +263,7 @@ impl Generator {
             draft.notes = preview.original;
             draft.region = preview.region;
             draft.selected = preview.selected;
-            draft.dirty = preview.dirty || draft.name != draft.baseline.name;
+            draft.dirty = preview.dirty || draft.name != draft.baseline.name || draft.context != draft.baseline.context;
             self.message = "Original draft notes and loop bounds restored.".into();
         }
         Ok(())
@@ -293,6 +301,8 @@ pub(super) fn show(ui: &mut Ui, draft: &mut Draft) -> Result<bool, String> {
             help::annotate(ui, &seed, HelpControl::MidiRhythm);
             number(ui, "Rhythm swing", &mut generator.swing, 0.0, 0.49);
             number(ui, "Rhythm gate", &mut generator.gate, 0.01, 1.0);
+            let scale = ui.checkbox(&mut generator.follow_scale, "Generate rhythm in saved scale");
+            accessibility::button(ui, &scale, "Generate rhythm in saved scale", Some(generator.follow_scale));
             let replace = ui.checkbox(&mut generator.replace, "Replace draft notes");
             accessibility::button(ui, &replace, "Replace draft notes", Some(generator.replace));
             help::annotate(ui, &replace, HelpControl::MidiRhythm);

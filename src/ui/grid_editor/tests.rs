@@ -4,7 +4,7 @@ use egui::accesskit::{Action, ActionData, ActionRequest, Node, NodeId, Role};
 
 pub(in crate::ui) struct Gui {
     pub(in crate::ui) app: App,
-    pub(in crate::ui) rt: RtEngine,
+    pub(in crate::ui) rt: Box<RtEngine>,
     ctx: egui::Context,
     time: f64,
     size: Vec2,
@@ -20,7 +20,7 @@ impl Gui {
         ctx.enable_accesskit();
         let mut value = Self {
             app,
-            rt,
+            rt: Box::new(rt),
             ctx,
             time: 0.0,
             size: Vec2::new(1440.0, 1000.0),
@@ -976,7 +976,7 @@ fn reset_reopen_uses_source_hint_during_snapshot_lag_and_disconnected_request_is
     gui.apply();
     assert!(gui.app.grid_editor.as_ref().unwrap().pending.is_some());
     let (_, other) = Engine::headless_for_test(48_000, 256);
-    drop(std::mem::replace(&mut gui.rt, other));
+    drop(std::mem::replace(&mut *gui.rt, other));
     gui.frame(vec![]);
     let editor = gui.app.grid_editor.as_ref().unwrap();
     assert!(editor.pending.is_none());

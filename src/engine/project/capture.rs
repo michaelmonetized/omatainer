@@ -178,7 +178,9 @@ impl Frame {
             fx_wet,
             sampler_bank,
             sampler_inst,
-            sampler_oct
+            sampler_oct,
+            musical_context,
+            sampler_scale
         );
         target.conductor = rt.conductor.clone();
         target.navigation = rt.navigation.saved.clone();

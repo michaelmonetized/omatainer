@@ -426,6 +426,7 @@ mod tests {
             region: None,
             notes: vec![],
             lanes: None,
+            context: None, song_context: None,
         })
     }
     #[test]

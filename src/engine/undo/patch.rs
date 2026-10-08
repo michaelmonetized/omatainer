@@ -51,6 +51,8 @@ pub(super) struct Global {
     bank: usize,
     instrument: SamplerInstrument,
     octave: i8,
+    musical_context: Option<musical_context::Context>,
+    sampler_scale: bool,
     synth: SynthInstrument,
     offline: Option<Arc<fx::OfflineDevice>>,
     cutoff: f32,
@@ -74,6 +76,8 @@ impl Global {
             bank: rt.sampler_bank,
             instrument: rt.sampler_inst,
             octave: rt.sampler_oct,
+            musical_context: rt.musical_context,
+            sampler_scale: rt.sampler_scale,
             synth: rt.sampler_poly.kind,
             offline: rt.sampler_poly.offline.clone(),
             cutoff: rt.sampler_poly.cutoff,
@@ -87,6 +91,8 @@ impl Global {
         rt.scenes.cancel();
         rt.scenes.timing = self.scene_timing;
         if changed{rt.mapped_clock = None;}
+        rt.musical_context = self.musical_context;
+        rt.sampler_scale = self.sampler_scale;
         rt.quant = self.quant;
         rt.quantize = self.quantize;
         if rt.metronome != self.metronome {

@@ -37,6 +37,7 @@ fn pitches_compared(draft: &Draft, layers: &[Layer<'_>]) -> Vec<u8> {
                 1 => used,
                 2 => used || [0, 2, 4, 5, 7, 9, 11].contains(&degree),
                 3 => used || [0, 2, 3, 5, 7, 8, 10].contains(&degree),
+                4 => used || draft.resolved_context().context.is_none_or(|context| context.contains(*pitch)),
                 _ => true,
             }
         })
@@ -136,7 +137,9 @@ pub(super) fn show_compared(
                 Vec2::new(body.width(), row_pixels),
             ),
             0.0,
-            if black { theme.bg_dark } else { theme.bg },
+            if draft.highlight_scale && draft.resolved_context().context.is_some_and(|context| context.contains(*pitch)) {
+                theme.accent.linear_multiply(0.12)
+            } else if black { theme.bg_dark } else { theme.bg },
         );
         painter.line_segment(
             [Pos2::new(rect.left(), y), Pos2::new(rect.right(), y)],

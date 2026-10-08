@@ -4,7 +4,7 @@ use egui::accesskit::{ActionRequest, Node, NodeId};
 
 struct Gui {
     app: App,
-    rt: RtEngine,
+    rt: Box<RtEngine>,
     ctx: egui::Context,
     time: f64,
     nodes: Vec<(NodeId, Node)>,
@@ -21,7 +21,7 @@ impl Gui {
         ctx.enable_accesskit();
         let mut gui = Self {
             app,
-            rt,
+            rt: Box::new(rt),
             ctx,
             time: 0.0,
             nodes: Vec::new(),

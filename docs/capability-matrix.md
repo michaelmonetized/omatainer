@@ -346,6 +346,17 @@ Linux ARM64 native software qualification. Compare at most 64 captured empty/MID
 
 Native headless UI and renderer qualification on Linux aarch64. Installed native release and broader UI regression receipts accompany this batch. No new physical input or PA listening claim. Apply remains guarded against stale clip content and uses the existing project Undo transaction.
 
+### Issue #168: implemented
+
+- saved song and clip context: [src/engine/musical_context.rs](../src/engine/musical_context.rs) — Validated scale degrees, resolved owner provenance, active conflict and explicit participating instrument gates
+- bounded scale transformations: [src/engine/midi_tools/scale.rs](../src/engine/midi_tools/scale.rs) — Captured key, chromatic preservation, owned expression and guarded harmony
+- native key and scale editor: [src/ui/piano_roll/scale.rs](../src/ui/piano_roll/scale.rs) — Explicit saved context, fold/highlight, per-owner shared edits and rhythm participation
+- Acceptance fixtures: `engine::musical_context`, `engine::midi_tools::scale::tests`, `ui::piano_roll::scale::tests`.
+- Evidence: [docs/validation/saved-musical-context.md](../docs/validation/saved-musical-context.md).
+- Evidence: [docs/validation/saved-musical-context-receipt.json](../docs/validation/saved-musical-context-receipt.json).
+
+Linux ARM64 software qualification; no physical ports, capture, OS GUI or listening check. Native schema 33 stores an optional song key, optional per-clip override and explicit instrument participation. Thirteen validated scales use tonic 0–11 and absolute MIDI pitches 0–127; degree edits refuse out-of-range results. Existing chromatic notes stay unchanged unless explicitly included. Current context, captured owner metadata, note/lane bounds and cancellation guard every preview and atomic Apply. Harmony preserves originals and copies uniquely owned poly-pressure; MPE member-channel harmony refuses overlapping additional voices. Instrument participation affects newly pressed pads and retains the original pitch for held releases. Concurrent clips with differing contexts display a conflict without rewriting the song key or notes. This does not implement per-note expression curve editing, note chance, MIDI 2.0 or complete Live-authored migration comparison. Twelve isolated native import workflows were qualified separately; the retained private saved Live Set is a read-only format smoke check.
+
 ### Issue #176: implemented
 
 - separate monitor bus: [src/engine/monitor.rs](../src/engine/monitor.rs) — Pre-fader PFL, independent level/blend/split, explicit pair and finite routing tone
@@ -837,7 +848,7 @@ Music source: FreeToUse public keyless API. Michael excludes other third-party p
 | [#165](https://github.com/michaelmonetized/omatainer/issues/165) | Edit multiple MIDI clips together with explicit focus and ghost notes | implemented |
 | [#166](https://github.com/michaelmonetized/omatainer/issues/166) | Add per-note chance, velocity ranges and expressive note properties | planned |
 | [#167](https://github.com/michaelmonetized/omatainer/issues/167) | Generate editable rhythmic and Euclidean MIDI patterns | implemented |
-| [#168](https://github.com/michaelmonetized/omatainer/issues/168) | Make keys and scales shared musical context for editing and devices | planned |
+| [#168](https://github.com/michaelmonetized/omatainer/issues/168) | Make keys and scales shared musical context for editing and devices | implemented |
 | [#169](https://github.com/michaelmonetized/omatainer/issues/169) | Exchange editable sessions using an open DAW interchange format | planned |
 | [#170](https://github.com/michaelmonetized/omatainer/issues/170) | Inspect project storage and safely clean unused media | planned |
 | [#171](https://github.com/michaelmonetized/omatainer/issues/171) | Integrate Apple Music only through an authorized DJ playback path | excluded from release |

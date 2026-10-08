@@ -3,7 +3,7 @@ use crate::engine::RtEngine;
 
 struct Gui {
     app: App,
-    rt: RtEngine,
+    rt: Box<RtEngine>,
     ctx: egui::Context,
     time: f64,
 }
@@ -12,7 +12,7 @@ impl Gui {
         let (engine, rt) = Engine::headless_for_test(48_000, 256);
         Self {
             app: App::with_loader(engine, Theme::default(), None),
-            rt,
+            rt: Box::new(rt),
             ctx: egui::Context::default(),
             time: 0.0,
         }

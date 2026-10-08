@@ -21,6 +21,8 @@ pub(crate) struct Document {
     pub region: Option<Region>,
     pub notes: Vec<super::MidiNote>,
     pub lanes: Option<Arc<super::midi_data::Lanes>>,
+    pub context: Option<super::musical_context::Context>,
+    pub song_context: Option<super::musical_context::Context>,
 }
 impl Document {
     pub fn capture(
@@ -49,6 +51,8 @@ impl Document {
             region: clip.region,
             notes: clip.notes.clone(),
             lanes: clip.lanes.clone(),
+            context: clip.properties.context,
+            song_context: captured.state.musical_context,
         }))
     }
     pub fn playback_region(&self) -> Region {
@@ -113,6 +117,7 @@ pub(crate) struct Request {
     pub(super) region: Region,
     pub(super) notes: Vec<super::MidiNote>,
     pub(super) lanes: Option<Arc<super::midi_data::Lanes>>,
+    pub(super) context: Option<super::musical_context::Context>,
     metadata_baseline: Option<super::undo::Checkpoint>,
     pub(super) ack: Ack,
 }
@@ -135,6 +140,19 @@ impl Request {
         mut notes: Vec<super::MidiNote>,
         lanes: Option<Arc<super::midi_data::Lanes>>,
     ) -> Result<(Self, Ack, Arc<Document>), String> {
+        let context = baseline.context;
+        Self::with_context(baseline, name, region, notes, lanes, context)
+    }
+    /// Prepare notes and an explicit saved clip key together.
+    /// Takes captured ownership, musical content and the optional clip override; returns one guarded Apply, acknowledgment and next immutable document.
+    pub fn with_context(
+        baseline: Arc<Document>, mut name: String, region: Region,
+        mut notes: Vec<super::MidiNote>, lanes: Option<Arc<super::midi_data::Lanes>>,
+        context: Option<super::musical_context::Context>,
+    ) -> Result<(Self, Ack, Arc<Document>), String> {
+        if context.is_some_and(|context| !context.valid()) {
+            return Err("Choose a tonic from C through B for the clip's scale".into());
+        }
         if name.len() > 4096
             || notes.len() > super::project::MAX_NOTES_PER_CLIP
             || !region.allows(&notes)
@@ -166,6 +184,7 @@ impl Request {
             region: Some(region),
             notes: notes.clone(),
             lanes: lanes.clone(),
+            context, song_context: baseline.song_context,
         });
         let ack = Ack::new();
         Ok((
@@ -175,6 +194,7 @@ impl Request {
                 region,
                 notes,
                 lanes,
+                context,
                 metadata_baseline: None,
                 ack: ack.clone(),
             },
@@ -193,7 +213,7 @@ impl Request {
     pub fn guard_metadata(mut self, mut captured: super::project::Captured, cancel: &AtomicBool) -> Result<Self, String> {
         let clip = captured.state.tracks.get_mut(self.baseline.track as usize).and_then(|t| t.clips.get_mut(self.baseline.scene as usize)).ok_or("MIDI target no longer exists")?;
         clip.name = self.name.clone(); clip.kind = super::ClipKind::Midi; clip.region = Some(self.region); clip.bars = (self.region.end / 4.0) as f32;
-        clip.notes = self.notes.clone(); clip.lanes = self.lanes.clone();
+        clip.notes = self.notes.clone(); clip.lanes = self.lanes.clone(); clip.properties.context = self.context;
         captured.state.validate(&captured.media).map_err(|e| e.to_string())?;
         struct Size<'a> { bytes: usize, limit: usize, cancel: &'a AtomicBool }
         impl std::io::Write for Size<'_> {
@@ -216,6 +236,7 @@ impl Request {
             && self.baseline.region == Some(self.region)
             && self.baseline.notes == self.notes
             && self.baseline.lanes == self.lanes
+            && self.baseline.context == self.context
     }
 }
 fn valid_note(note: &super::MidiNote) -> bool {
@@ -299,6 +320,9 @@ impl super::RtEngine {
             && clip.region == baseline.region
             && clip.notes == baseline.notes
             && clip.lanes == baseline.lanes
+            && clip.properties.context == baseline.context
+            && self.musical_context == baseline.song_context
+            && request.context.is_none_or(super::musical_context::Context::valid)
             && request.name.len() <= 4096
             && request.notes.len() <= super::project::MAX_NOTES_PER_CLIP
             && request.notes.capacity() <= super::project::MAX_NOTES_PER_CLIP
@@ -334,6 +358,7 @@ impl super::RtEngine {
         clip.kind = super::ClipKind::Midi;
         clip.bars = (request.region.end / 4.0) as f32;
         clip.region = Some(request.region);
+        clip.properties.context = request.context;
         let midi_beat = self.precise_midi_beat();
         self.tracks[t].clip_notes_changed(s, self.beat, midi_beat);
         request.ack.applied();
@@ -554,6 +579,8 @@ mod tests {
             region: clip.region,
             notes: clip.notes.clone(),
             lanes: clip.lanes.clone(),
+            context: clip.properties.context,
+            song_context: rt.musical_context,
         })
     }
     fn tick(rt: &mut super::super::RtEngine) {

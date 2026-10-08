@@ -145,6 +145,7 @@ impl App {
             .resizable(false)
             .frame(egui::Frame::new().fill(self.theme.bg).inner_margin(6.0))
             .show(ctx, |ui| {
+                scale_status::show(ui, &self.snap);
                 if !self.loads.iter().enumerate().any(|(deck, load)| {
                     load.as_ref()
                         .is_some_and(|load| load.text(deck) == self.status)

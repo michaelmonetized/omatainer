@@ -7,6 +7,8 @@ pub(crate) mod preset;
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub(crate) struct Properties {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub context: Option<super::musical_context::Context>,
     pub color: Option<[u8; 3]>,
     pub disabled: bool,
     #[serde(default, skip_serializing_if = "super::clip_launch::Policy::is_default")]
