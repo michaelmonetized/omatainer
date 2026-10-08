@@ -165,3 +165,89 @@ fn native_physical_usb_recording_recovery_and_two_controller_reconnections() {
     drop(audio);
     finish_shutdown();
 }
+
+#[cfg(target_os = "linux")]
+#[test]
+#[ignore = "Requires exclusive powered NS7, all four owned controllers, project-owned XDG directories and OMATAINER_HOST_SUSPEND_DIR; waits for two actual host sleeps longer than five seconds; master output is silent"]
+fn native_host_suspend_retains_recording_and_requires_reviewed_output() {
+    use owner::{finish_shutdown, Phase};
+    let directory = std::path::PathBuf::from(std::env::var_os("OMATAINER_HOST_SUSPEND_DIR").unwrap());
+    assert!(directory.is_absolute() && directory.starts_with(env!("CARGO_MANIFEST_DIR")));
+    for name in ["XDG_CONFIG_HOME", "XDG_STATE_HOME", "TMPDIR"] {
+        assert!(std::path::PathBuf::from(std::env::var_os(name).unwrap()).starts_with(&directory));
+    }
+    std::fs::create_dir_all(&directory).unwrap();
+    let (mut engine, mut rt) = Engine::headless_for_test(44100, 256);
+    for command in [Command::Master(0.0), Command::SamplerInst(SamplerInstrument::Synth(SynthInstrument::Keys))] {
+        engine.cmd.send(command).unwrap();
+    }
+    rt.process(&mut [0.0; 2048]);
+    let settings = crate::preferences::Audio { backend: Some("ALSA".into()), device: Some("hw:CARD=NS7,DEV=0".into()),
+        sample_rate: Some(44100), channels: Some(4), format: Some(crate::preferences::AudioFormat::I32), buffer_frames: Some(512), ..Default::default() };
+    let audio = start_with_settings(rt, &settings).unwrap();
+    engine.midi = crate::engine::midi::MidiHub::start(engine.cmd.clone(), engine.snap.clone()).unwrap();
+    let registry = engine.midi.profiles().unwrap().clone();
+    let audit = Audit { engine: &engine, audio: &audio, directory: &directory };
+    let connected = || {
+        let view = registry.view();
+        view.ready && !view.busy && !engine.cmd.performance().status().changing
+            && engine.midi.policy_status().is_some_and(|policy| !policy.pending())
+            && view.devices.iter().filter(|device| device.input_open).count() == 4
+            && view.devices.iter().filter(|device| device.output_open).count() == 4
+    };
+    audit.wait(30, "initial-controllers", connected);
+    let accepted = audio.handle.status().active.as_ref().unwrap().plan.clone();
+    assert!(recovery::identity(&accepted.device).is_none());
+    let mut trials = Vec::new();
+    for trial in 0..2 {
+        for command in [Command::ComposeArm { track: 4, scene: 3 }, Command::Play, Command::SamplerPad { pad: 0, on: true }] {
+            engine.cmd.send(command).unwrap();
+        }
+        audit.wait(5, "held-recording", || {
+            let snapshot = engine.snapshot();
+            snapshot.playing && snapshot.compose_target == Some(ComposeTarget { track: 4, scene: 3 })
+        });
+        let before_audio = engine.cmd.audio_metrics();
+        let before_boot = recovery::boot_time().unwrap();
+        let before_monotonic = Instant::now();
+        marker(&directory, "suspend-host", "NS7", trial, "");
+        audit.wait(300, "actual-host-sleep", || recovery::boot_time().unwrap().saturating_sub(before_boot)
+            .saturating_sub(before_monotonic.elapsed()) > Duration::from_secs(5));
+        let slept = recovery::boot_time().unwrap().saturating_sub(before_boot).saturating_sub(before_monotonic.elapsed());
+        audit.wait(15, "suspended-output-offline", || audio.handle.status().phase == Phase::Offline);
+        assert!(!engine.snapshot().playing && engine.snapshot().compose_target.is_none());
+        assert!(engine.cmd.send(Command::Play).is_err());
+        let archive = save(&directory, &engine, trial);
+        let refused = audio.handle.reconnect_permitted(Arc::new(AtomicBool::new(false)),
+            audio.handle.performance_permit().unwrap(), audio.handle.status().generation).unwrap_err();
+        assert!(refused.contains("no verifiable physical identity"));
+        assert_eq!(audio.handle.status().phase, Phase::Offline);
+        let (_, reviewed) = config::select(&settings).unwrap();
+        let restored = audio.handle.apply_preview(settings.clone(), reviewed, Arc::new(AtomicBool::new(false))).unwrap();
+        assert_eq!(restored.phase, Phase::Running);
+        let plan = &restored.active.as_ref().unwrap().plan;
+        assert_eq!((plan.device.as_str(), plan.rate, plan.channels, plan.format, plan.buffer),
+            (accepted.device.as_str(), accepted.rate, accepted.channels, accepted.format, accepted.buffer));
+        assert!(engine.cmd.send(Command::Play).is_err());
+        engine.cmd.performance().acknowledge_inputs_released().unwrap();
+        audit.wait(5, "released-recovery", || !engine.cmd.performance().status().recovery);
+        audit.wait(30, "returned-controllers", connected);
+        assert!(!engine.snapshot().playing);
+        let devices = registry.view().devices.iter().map(|device| serde_json::json!({
+            "instance":device.device.key(), "connection":device.device.connection,
+            "input_open":device.input_open, "output_open":device.output_open,
+        })).collect::<Vec<_>>();
+        trials.push(serde_json::json!({"trial":trial,"actual_sleep_ns":slept.as_nanos() as u64,"archive":archive,
+            "before_audio":before_audio,"after_audio":engine.cmd.audio_metrics(),"route_preserved":true,
+            "placeholder_serial_reconnect_refused":true,"explicit_reviewed_fallback":true,
+            "release_acknowledgment_required":true,"automatic_playback":false,"devices":devices}));
+    }
+    std::fs::write(directory.join("receipt.json"), serde_json::to_vec_pretty(&serde_json::json!({
+        "schema":1,"status":"pass","silent_master":true,"trials":trials,
+        "sleep_proof":"CLOCK_BOOTTIME elapsed minus CLOCK_MONOTONIC elapsed exceeds five seconds in each round",
+        "boundary":"Actual host sleep with native audio and MIDI owners, command-initiated held recorded notes, durable native save/reopen and explicitly reviewed recovery. No physical note-button holding, mouse confirmation, listening or stage-duration claim.",
+    })).unwrap()).unwrap();
+    marker(&directory, "complete", "host suspend", 2, "");
+    drop(audio);
+    finish_shutdown();
+}
