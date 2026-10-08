@@ -204,7 +204,7 @@ impl super::super::owner::Backend for BudgetBackend {
         identity: Option<&str>,
     ) -> Result<Self::Stream, String> {
         if std::mem::replace(&mut self.inject, false) {
-            callback.cpu_stall_once = Some((8, Duration::from_millis(30)));
+            callback.cpu_stall_once = Some((32, Duration::from_millis(30)));
         }
         self.native.open(plan, callback, fault, identity)
     }
@@ -305,7 +305,7 @@ fn native_ns7_master_to_peavey_usb_return_channels() {
 #[ignore = "Requires exclusive powered original NS7 and OMATAINER_CPU_BUDGET_DIR under /home; physical output is silent"]
 fn native_ns7_cpu_limit_retains_recording_and_reconnects_only_explicitly() {
     use super::super::owner::{finish_shutdown, start_with, Phase};
-    use crate::engine::{Command, Engine, SamplerInstrument, SynthInstrument};
+    use crate::engine::{Command, ComposeTarget, Engine, SamplerInstrument, SynthInstrument};
     let directory = std::path::PathBuf::from(std::env::var_os("OMATAINER_CPU_BUDGET_DIR").unwrap());
     assert!(directory.starts_with("/home"));
     std::fs::create_dir_all(&directory).unwrap();
@@ -313,20 +313,10 @@ fn native_ns7_cpu_limit_retains_recording_and_reconnects_only_explicitly() {
     for command in [
         Command::Master(0.0),
         Command::SamplerInst(SamplerInstrument::Synth(SynthInstrument::Keys)),
-        Command::ComposeArm { track: 4, scene: 3 },
-        Command::Play,
-        Command::SamplerPad { pad: 0, on: true },
     ] {
         engine.cmd.send(command).unwrap();
     }
     rt.process(&mut [0.0; 2048]);
-    for command in [Command::SamplerPad { pad: 0, on: false }, Command::Stop] {
-        engine.cmd.send(command).unwrap();
-    }
-    rt.process(&mut [0.0; 2048]);
-    let notes = rt.tracks[4].clips[3].notes.clone();
-    assert_eq!(notes.len(), 1);
-    assert!(notes[0].len > 0.0);
     let audio = start_with(
         rt,
         crate::preferences::Audio {
@@ -344,6 +334,28 @@ fn native_ns7_cpu_limit_retains_recording_and_reconnects_only_explicitly() {
         },
     )
     .unwrap();
+    for command in [
+        Command::ComposeArm { track: 4, scene: 3 },
+        Command::Play,
+        Command::SamplerPad { pad: 0, on: true },
+    ] {
+        engine.cmd.send(command).unwrap();
+    }
+    let deadline = Instant::now() + Duration::from_secs(2);
+    loop {
+        let snapshot = engine.snapshot();
+        if snapshot.playing
+            && snapshot.compose_target == Some(ComposeTarget { track: 4, scene: 3 })
+        {
+            break;
+        }
+        assert!(
+            Instant::now() < deadline,
+            "Native recording did not start before CPU exhaustion"
+        );
+        assert_eq!(audio.handle.status().phase, Phase::Running);
+        std::thread::sleep(Duration::from_millis(1));
+    }
     let deadline = Instant::now() + Duration::from_secs(10);
     while audio.handle.status().phase != Phase::Offline {
         assert!(Instant::now() < deadline);
@@ -355,7 +367,11 @@ fn native_ns7_cpu_limit_retains_recording_and_reconnects_only_explicitly() {
     assert_eq!(engine.cmd.audio_metrics().cpu_budget_exhaustions, 1);
     assert!(engine.cmd.send(Command::Play).is_err());
     let captured = engine.project.capture(&AtomicBool::new(false)).unwrap();
-    assert_eq!(captured.state.tracks[4].clips[3].notes, notes);
+    let notes = captured.state.tracks[4].clips[3].notes.clone();
+    assert_eq!(notes.len(), 1);
+    assert!(notes[0].len > 0.0);
+    assert!(!engine.snapshot().playing);
+    assert!(engine.snapshot().compose_target.is_none());
     assert_eq!(captured.state.master, 0.0);
     let path = directory.join("ns7-retained.omat");
     crate::project_file::save(
@@ -396,7 +412,7 @@ fn native_ns7_cpu_limit_retains_recording_and_reconnects_only_explicitly() {
         assert!(Instant::now() < deadline);
         std::thread::sleep(Duration::from_millis(2));
     }
-    let report = serde_json::json!({"device":restored.active.as_ref().unwrap().plan.device,"master":0.0,"injected_callback_cpu_ms":30,"audio":engine.cmd.audio_metrics(),"recovery_message":offline.message,"recorded_notes":notes.len(),"reopened_notes":reopened.state.tracks[4].clips[3].notes.len(),"reconnect_required":true,"input_acknowledgment_required":true,"playing_after_reconnect":engine.snapshot().playing,"analog_listening":false});
+    let report = serde_json::json!({"device":restored.active.as_ref().unwrap().plan.device,"master":0.0,"injected_after_callbacks":32,"injected_callback_cpu_ms":30,"native_recording_and_playback_observed_before_fault":true,"held_note_finalized_after_fault":true,"audio":engine.cmd.audio_metrics(),"recovery_message":offline.message,"recorded_notes":notes.len(),"reopened_notes":reopened.state.tracks[4].clips[3].notes.len(),"reconnect_required":true,"input_acknowledgment_required":true,"playing_after_reconnect":engine.snapshot().playing,"analog_listening":false});
     std::fs::write(
         directory.join("ns7-cpu-recovery.json"),
         serde_json::to_vec_pretty(&report).unwrap(),

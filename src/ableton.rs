@@ -418,7 +418,7 @@ impl Source {
         Ok(())
     }
 }
-/// Read an owned Live 10 or 11 Set without changing its files.
+/// Read an owned Live 10, 11 or 12 Set without changing its files.
 /// Takes an absolute source path, explicit cross-machine path maps and cancellation; returns a validated native draft and its full retained review.
 pub(crate) fn load(
     path: &Path,
@@ -469,9 +469,9 @@ pub(crate) fn load(
         .split('.')
         .next()
         .and_then(|s| s.parse::<u32>().ok());
-    if !matches!(major, Some(10 | 11)) {
+    if !matches!(major, Some(10 | 11 | 12)) {
         return Err(format!(
-            "Saved ALS format {version} is outside the Live 10/11 migration matrix"
+            "Saved ALS format {version} is outside the Live 10/11/12 migration matrix"
         ));
     }
     let source = Source {
@@ -493,6 +493,9 @@ pub(crate) fn load(
     if preset && path.extension().is_none_or(|e|e!="adg" && e!="adv") {return Err("Non-Set content must be an explicitly selected .adg or .adv user device preset".into());}
     let root=presets::normalize(root)?;
     let mut source=source;
+    if major == Some(12) {
+        source.difference("format", "Live 12 playback review", "Source clip transformations, tuning and unrecognized fields remain in the original XML. Native playback of these fields is not matched; use an authorized aligned render when they affect the sound")?;
+    }
     if preset {source.difference("preset","Source device preset","Original device/rack state is retained intact in a fresh track; compatible native relink or explicit replacement is required")?;}
     let imported = convert::convert(root.one("LiveSet")?, source, options, cancel)?;
     if FileFingerprint::from_metadata(&file.metadata().map_err(|e| e.to_string())?) != before

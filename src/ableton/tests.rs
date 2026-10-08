@@ -38,8 +38,8 @@ fn clip(id: u32) -> String {
     )
 }
 #[test]
-fn live_10_and_11_structure_timing_unicode_devices_and_native_round_trip() {
-    for version in [10, 11] {
+fn live_10_11_and_12_structure_timing_unicode_devices_and_native_round_trip() {
+    for version in [10, 11, 12] {
         let fixture = Fixture::new();
         let text = document(version);
         let path = fixture.set(&text);
@@ -74,6 +74,10 @@ fn live_10_and_11_structure_timing_unicode_devices_and_native_round_trip() {
         assert!(!source.devices[1].enabled);
         assert_eq!(source.tracks[0].parent, 8);
         assert_eq!(source.tracks[2].role, "ReturnTrack");
+        assert_eq!(
+            source.differences.iter().any(|difference| difference.feature == "Live 12 playback review"),
+            version == 12
+        );
         assert!(imported.state.tracks[0].synth.offline.is_some());
         let native = fixture.root.join("import.omatainer");
         let bundle = crate::project_file::Bundle {
@@ -128,7 +132,7 @@ fn gzip_crc_members_decompression_and_xml_boundaries_are_enforced() {
         assert!(load(&path, &Default::default(), &AtomicBool::new(false)).is_err());
     }
     for xml in [
-        text.replace("11.0_1", "12.0_1"),
+        text.replace("11.0_1", "13.0_1"),
         text.replace(
             "<LiveSet>",
             "<!DOCTYPE LiveSet SYSTEM 'file:///etc/passwd'><LiveSet>",

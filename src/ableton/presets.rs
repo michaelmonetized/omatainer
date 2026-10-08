@@ -21,7 +21,7 @@ fn contains_instrument(item: &Element) -> bool {
         || item.children.iter().any(contains_instrument)
 }
 /// Preserve a device preset as one independently editable source track.
-/// Takes an owned Live 10/11 preset tree; returns a structural native-import wrapper while leaving original device IDs, nested branches, macros, values and opaque state unchanged.
+/// Takes an owned Live 10/11/12 preset tree; returns a structural native-import wrapper while leaving original device IDs, nested branches, macros, values and opaque state unchanged.
 pub(super) fn normalize(mut root: Element) -> Result<Element, String> {
     if root.children.iter().any(|n| n.name == "LiveSet") {
         return Ok(root);

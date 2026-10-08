@@ -354,7 +354,7 @@ impl App {
             let panel=&mut self.ableton;
             if ui.button("Discover producer libraries").clicked(){panel.library.open=true;}
             ui.add_enabled_ui(enabled&&!panel.busy(),|ui|{
-                let label=ui.label("Owned Live 10/11 Set or saved migration project");
+                let label=ui.label("Owned Live 10/11/12 Set or saved migration project");
                 let changed=ui.add(egui::TextEdit::singleline(&mut panel.path).char_limit(4096).desired_width(f32::INFINITY)).labelled_by(label.id).changed();
                 let label=ui.label("Optional source path prefix");let changed=ui.add(egui::TextEdit::singleline(&mut panel.from).char_limit(4096)).labelled_by(label.id).changed()||changed;
                 let label=ui.label("Replacement folder");let changed=ui.add(egui::TextEdit::singleline(&mut panel.to).char_limit(4096)).labelled_by(label.id).changed()||changed;
