@@ -556,6 +556,71 @@ fn settle_graph(gui:&mut crate::ui::piano_roll::tests::Gui){
 }
 
 #[test]
+#[ignore = "requires the native worker and the locally built licensed Nekobi fixture"]
+fn native_hidden_cc_parameters_leave_sound_controls_editable_and_persistent() {
+    use crate::plugin_host::scanner::Record;
+    let files = crate::engine::media_analysis::tests::Files::new();
+    let root = PathBuf::from(std::env::var_os("OMATAINER_VST3_FIXTURES").unwrap());
+    let (class, saved) = crate::engine::audio::routing::plugin_tests::probe(
+        root.join("dpf-plugins/bin/Nekobi.vst3"), true,
+    );
+    assert!(class.parameters.iter().take(128).any(|p| p.flags & (1 << 4) != 0));
+    let cutoff = class.parameters.iter().find(|p| p.name == "Cutoff").unwrap().id;
+    let mut gui = Gui::new();
+    gui.app.plugins.catalog.records = vec![Record {
+        path: saved.binary.bundle.clone(), binary: Some(saved.binary),
+        classes: vec![class], failure: None,
+    }];
+    gui.app.plugins.selected = Some((0, 0));
+    gui.app.plugins.open = true;
+    gui.frame(vec![]);
+    gui.click("Use as track instrument");
+    settle_graph(&mut gui);
+    gui.app.plugins.open = false;
+    gui.frame(vec![]);
+    gui.click("Review routing change…");
+    gui.click("Apply routing");
+    settle_graph(&mut gui);
+    assert!(gui.app.audio_routing.error.is_none(), "{:?}", gui.app.audio_routing.error);
+    gui.click("Refresh routes");
+    settle_graph(&mut gui);
+    gui.click("Native plugin processors");
+    gui.click("Normalized parameters");
+    assert!(!gui.nodes.iter().any(|(_, n)| n.label().is_some_and(|s| s.starts_with("MIDI Ch."))));
+    gui.action("Cutoff", egui::accesskit::Action::SetValue,
+        Some(egui::accesskit::ActionData::NumericValue(0.625)));
+    let control = gui.rt.routing.as_ref().unwrap().plugins[0].endpoint.as_ref().unwrap().control.clone();
+    let deadline = Instant::now() + Duration::from_secs(10);
+    while control.value(cutoff).is_none_or(|v| (v - 0.625).abs() > 1e-9) {
+        gui.frame(vec![]);
+        assert!(Instant::now() < deadline, "{:?}", control.error());
+        std::thread::sleep(Duration::from_millis(2));
+    }
+    let handle = gui.app.engine.project.clone();
+    let captured = std::thread::spawn(move || handle.capture(&AtomicBool::new(false)));
+    while !captured.is_finished() {
+        gui.frame(vec![]);
+        assert!(Instant::now() < deadline);
+        std::thread::sleep(Duration::from_millis(2));
+    }
+    let captured = captured.join().unwrap().unwrap();
+    let retained = &captured.state.routing.as_ref().unwrap().plugins[0];
+    assert_eq!(retained.parameters.iter().find(|p| p.id == cutoff).unwrap().value, 0.625);
+    assert!(!retained.saved.state.is_empty());
+    let path = files.0.join("Sound control.omatainer");
+    let cancel = AtomicBool::new(false);
+    crate::project_file::save(&path, &crate::project_file::Bundle {
+        state: captured.state, media: captured.media,
+    }, crate::project_file::Overwrite::Never, &Default::default(), &cancel).unwrap();
+    let saved: crate::project_file::Bundle<crate::engine::project::State> =
+        crate::project_file::load(&path, &Default::default(), &cancel).unwrap();
+    let reopened = crate::engine::project::Prepared::from_state(saved.state, saved.media, 48000).unwrap().into_offline();
+    let processor = &reopened.routing.as_ref().unwrap().plugins[0];
+    assert!(processor.error.is_none(), "{:?}", processor.error);
+    assert!((processor.endpoint.as_ref().unwrap().control.value(cutoff).unwrap() - 0.625).abs() < 1e-9);
+}
+
+#[test]
 #[ignore="opens locally built GPL MVerb editor on the real X11 display; requires OMATAINER_VST3_EDITOR_QUALIFY_DIR"]
 fn native_plugin_editor_opens_from_the_routing_widgets_and_closes_without_retiring_audio() {
     use crate::plugin_host::scanner::Record;

@@ -671,8 +671,8 @@ impl App {
                                     ui.horizontal(|ui| {
                                         for (label,open) in [("Open plugin editor",true),("Close plugin editor",false)] { if ui.add_enabled(!self.engine.cmd.performance().protected() && !self.engine.safe_mode() && (!open || control.class.info.has_gui),egui::Button::new(label)).clicked() { let _=self.engine.cmd.send(Command::PluginEditor {namespace:draft.namespace,id:plugin.id,open}); } }
                                     });
-                                    ui.collapsing("Normalized parameters",|ui| { ui.label("Values use the plugin's 0–1 range. The native editor shows its engineering units. Refresh routes to capture editor changes before another graph edit.");
-                                        for parameter in control.class.parameters.iter().filter(|p| !p.is_read_only).take(crate::engine::audio::routing::plugins::MAX_PARAMETERS) {
+                                    ui.collapsing("Normalized parameters",|ui| { ui.label("Values use the plugin's 0–1 range. Up to 128 visible writable controls are shown; the native editor supplies all its controls and engineering units. Refresh routes to capture editor changes before another graph edit.");
+                                        for parameter in control.class.writable_parameters() {
                                             let mut value=control.value(parameter.id).unwrap_or_else(||plugin.parameters.iter().find(|p|p.id==parameter.id).map_or(parameter.value,|p|p.value));
                                             if ui.add_enabled(!control.editing(),egui::Slider::new(&mut value,0.0..=1.0).text(&parameter.name)).changed() {
                                                 if let Some(saved)=plugin.parameters.iter_mut().find(|p|p.id==parameter.id) { saved.value=value; } else if plugin.parameters.len() < crate::engine::audio::routing::plugins::MAX_PARAMETERS { plugin.parameters.push(crate::engine::audio::routing::plugins::Parameter {id:parameter.id,value}); }

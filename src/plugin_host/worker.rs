@@ -119,7 +119,7 @@ fn handle(request: Request, instance: &mut Option<Instance>) -> Result<Response,
                 .map_err(|e| e.to_string())?;
             plugin.start_processing().map_err(|e| e.to_string())?;
             *instance = Some(Instance {
-                parameters: report.parameters.iter().filter(|p|!p.is_read_only).take(128).map(|p|p.id).collect(),
+                parameters: report.writable_parameters().map(|p|p.id).collect(),
                 host,
                 plugin: Arc::new(Mutex::new(plugin)),
                 saved,

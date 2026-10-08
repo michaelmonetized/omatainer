@@ -17,6 +17,7 @@ pub(crate) const MAX_STATE: usize = 8 * 1024 * 1024;
 pub(crate) const MAX_CHANNELS: usize = 32;
 pub(crate) const MAX_BUSES: usize = 8;
 pub(crate) const BLOCK: usize = 256;
+pub(crate) const MAX_CONTROL_PARAMETERS: usize = 128;
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -162,6 +163,12 @@ pub(crate) struct Class {
     pub tail: u32,
 }
 impl Class {
+    /// Select the native sound controls.
+    /// Takes this class; returns up to 128 visible writable parameters in their declared order, excluding hidden MIDI and readonly metadata.
+    pub fn writable_parameters(&self) -> impl Iterator<Item = &vst3_host::Parameter> {
+        self.parameters.iter().filter(|p| !p.is_read_only && p.flags & (1 << 4) == 0)
+            .take(MAX_CONTROL_PARAMETERS)
+    }
     pub fn validate(&self) -> Result<(), String> {
         if self.info.uid.len() != 32
             || !self.info.uid.bytes().all(|b| b.is_ascii_hexdigit())
