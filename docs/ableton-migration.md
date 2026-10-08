@@ -1,8 +1,8 @@
 # Ableton migration matrix 1
 
-Project → Setup → **Import Ableton Live Set…** reviews an owned Live 10/11 Set, `.alc` clip Set, or `.adg`/`.adv` user device preset without changing it. The saved XML format must have `MajorVersion=5` and a `MinorVersion` beginning with 10 or 11. A filename or installed Live version does not establish compatibility. Raw UTF-8 XML and one CRC-checked gzip member are supported.
+Project → Setup → **Import Ableton Live Set…** reviews an owned Live 10/11/12 Set, `.alc` clip Set, or `.adg`/`.adv` user device preset without changing it. The saved XML format must have `MajorVersion=5` and a `MinorVersion` beginning with 10, 11 or 12. A filename or installed Live version does not establish compatibility. Raw UTF-8 XML and one CRC-checked gzip member are supported.
 
-Review track, scene, device and asset counts and every playback difference. Supply an explicit source-prefix/replacement-folder pair for cross-machine media. Acknowledge the report and publish to a new `.omatainer` path. Publication is atomic; an existing destination is refused. The running session remains intact until **Open imported project**, which uses the ordinary unsaved-work decision. Migration metadata uses project state version 32 and retained-source schema 1 or 2; schema 2 retains explicitly selected installed Pack manifests.
+Review track, scene, device and asset counts and every playback difference. Supply an explicit source-prefix/replacement-folder pair for cross-machine media. Acknowledge the report and publish to a new `.omatainer` path. Publication is atomic; an existing destination is refused. The running session remains intact until **Open imported project**, which uses the ordinary unsaved-work decision. Migration metadata uses project state version 36 and retained-source schema 1 or 2; schema 2 retains explicitly selected installed Pack manifests.
 
 | Source feature | Native behavior | Retained or unresolved behavior |
 | --- | --- | --- |

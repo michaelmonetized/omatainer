@@ -919,7 +919,8 @@ fn native_imported_live_set_recovery_preserves_complete_edit_state_and_pcm() {
     fs::DirBuilder::new().mode(0o700).create(&directory).unwrap();
     let digest = |bytes: &[u8]| files::hex(&Sha256::digest(bytes).into());
     let source_digest = digest(&fs::read(&source).unwrap());
-    let original: Bundle<crate::engine::project::State> = project_file::load(&source, &Limits::default(), &no()).unwrap();
+    let original: Bundle<crate::ui::project::Document> = project_file::load(&source, &Limits::default(), &no()).unwrap();
+    original.state.validate().unwrap();
     let state_bytes = journal::json(&original.state).unwrap();
     assert!(state_bytes.len() > 8 * 1024 * 1024);
     let expected = digest(&state_bytes);
@@ -928,13 +929,18 @@ fn native_imported_live_set_recovery_preserves_complete_edit_state_and_pcm() {
     assert!(commit.durable, "{:?}", commit.warning);
     drop(store);
     let candidate = latest(&directory.join("recovery"));
-    let recovered: Recovered<crate::engine::project::State> = recover(&candidate, &no()).unwrap();
+    let recovered: Recovered<crate::ui::project::Document> = recover(&candidate, &no()).unwrap();
+    recovered.bundle.state.validate().unwrap();
     assert_eq!(digest(&journal::json(&recovered.bundle.state).unwrap()), expected);
     assert_eq!(recovered.bundle.media.len(), original.media.len());
     for (a, b) in original.media.iter().zip(&recovered.bundle.media) { assert_sample(a, b); }
     let destination = directory.join("recovered.omatainer");
     project_file::save(&destination, &recovered.bundle, Overwrite::Never, &Limits::default(), &no()).unwrap();
-    let reopened: Bundle<crate::engine::project::State> = project_file::load(&destination, &Limits::default(), &no()).unwrap();
+    let reopened: Bundle<crate::ui::project::Document> = project_file::load(&destination, &Limits::default(), &no()).unwrap();
+    reopened.state.validate().unwrap();
+    let prepared = crate::engine::project::Prepared::from_state(reopened.state.engine.clone(), reopened.media.clone(), 44100).unwrap();
+    drop(prepared);
+    assert_eq!(reopened.media.len(), original.media.len());
     assert_eq!(digest(&journal::json(&reopened.state).unwrap()), expected);
     for (a, b) in original.media.iter().zip(&reopened.media) { assert_sample(a, b); }
     assert_eq!(digest(&fs::read(&source).unwrap()), source_digest);

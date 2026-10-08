@@ -24,7 +24,7 @@ Preferences version 5 migrates versions 1–4, retaining startup performance pro
 
 Quota includes media, records, checkpoints, and staging across sessions. Accounting is logical unique-inode bytes, not allocated filesystem blocks; the UI qualifies last-write accounting and warnings rather than presenting an unmeasured value as zero. Storage exhaustion refuses a new commit and preserves prior recovery. It never deletes another session or the only useful copy to make room. Retirement records intent durably before entering a resumable cleanup namespace; unknown/malformed markers are preserved and reported.
 
-Limits are 8 MiB JSON per record, 64 MiB / 256 records per segment, 128 sessions, 100,000 filesystem entries, and 32 diagnostic rows of at most 2048 UTF-8 bytes. Discovery and retained-generation pruning share a 16 GiB hashed-byte ceiling per pass. Recovery checks the native aggregate 1 GiB PCM / 8 MiB metadata limits before allocating the next sidecar. File verification checks cancellation every 64 KiB; a blocking OS syscall is not claimed interruptible.
+Edit-state JSON uses the native 64 MiB metadata limit. A journal record permits another 64 KiB for its bounded path, asset identities and framing metadata; segments are capped at 65 MiB and 256 records. Other limits are 128 sessions, 100,000 filesystem entries, and 32 diagnostic rows of at most 2048 UTF-8 bytes. Discovery and retained-generation pruning share a 16 GiB hashed-byte ceiling per pass. Recovery checks the native aggregate 1 GiB PCM / 64 MiB metadata limits before allocating the next sidecar. File verification checks cancellation every 64 KiB; a blocking OS syscall is not claimed interruptible.
 
 ## Validation
 
