@@ -69,7 +69,7 @@ extern "C" fn exhausted(signal: i32, info: *mut libc::siginfo_t, context: *mut l
                     libc::syscall(
                         libc::SYS_sched_setscheduler,
                         tid,
-                        libc::SCHED_OTHER,
+                        libc::SCHED_OTHER | (policy & libc::SCHED_RESET_ON_FORK),
                         &priority,
                     )
                 } == 0

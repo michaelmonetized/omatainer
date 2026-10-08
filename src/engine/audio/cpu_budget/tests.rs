@@ -107,7 +107,8 @@ fn native_kernel_cpu_limit_demotes_only_owned_audio_threads() {
             .status()
             .unwrap();
         assert!(promoted.success(), "rtkit promotion refused");
-        let initial_policy = unsafe { libc::sched_getscheduler(0) } & !libc::SCHED_RESET_ON_FORK;
+        let initial_flags = unsafe { libc::sched_getscheduler(0) };
+        let initial_policy = initial_flags & !libc::SCHED_RESET_ON_FORK;
         assert!(matches!(initial_policy, libc::SCHED_FIFO | libc::SCHED_RR));
         let cpu_before = crate::engine::audio_metrics::thread_cpu_ns().unwrap();
         let deadline = Instant::now() + Duration::from_millis(500);
@@ -116,13 +117,18 @@ fn native_kernel_cpu_limit_demotes_only_owned_audio_threads() {
             std::hint::black_box(std::hint::black_box(1.2345_f64).sin());
         }
         let cpu_ns = crate::engine::audio_metrics::thread_cpu_ns().unwrap() - cpu_before;
-        let recovered_policy = unsafe { libc::sched_getscheduler(0) } & !libc::SCHED_RESET_ON_FORK;
+        let recovered_flags = unsafe { libc::sched_getscheduler(0) };
+        let recovered_policy = recovered_flags & !libc::SCHED_RESET_ON_FORK;
         assert_eq!(recovered_policy, libc::SCHED_OTHER);
+        assert_eq!(
+            recovered_flags & libc::SCHED_RESET_ON_FORK,
+            initial_flags & libc::SCHED_RESET_ON_FORK
+        );
         assert!(cpu_ns >= 5_804_000);
         let signal_tid = SIGNAL_TID.load(Ordering::Acquire);
         assert_ne!(signal_tid, 0);
         if scenario == "budget-blocked" {
-            assert_ne!(signal_tid as i64, tid);
+            assert_ne!(signal_tid as i64, tid as i64);
         }
         let directory =
             std::path::PathBuf::from(std::env::var_os("OMATAINER_CPU_BUDGET_DIR").unwrap());
@@ -132,7 +138,7 @@ fn native_kernel_cpu_limit_demotes_only_owned_audio_threads() {
             directory.join(format!("kernel-{scenario}.json")),
             serde_json::to_vec_pretty(&serde_json::json!({
                 "pid":std::process::id(),"tid":tid,"signal_tid":signal_tid,"signal_blocked_on_owned_thread":scenario=="budget-blocked","soft_limit_us":5804,"hard_limit_us":200000,
-                "cpu_ns":cpu_ns,"initial_policy":initial_policy,"recovered_policy":recovered_policy,
+                "cpu_ns":cpu_ns,"initial_policy":initial_policy,"recovered_policy":recovered_policy,"reset_on_fork_preserved":true,
                 "guard_exceeded":guard.as_mut().unwrap().exceeded(),"physical_devices_opened":false,
             }))
             .unwrap(),
