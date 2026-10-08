@@ -319,6 +319,7 @@ impl Manager {
                                         Ok(mut connection) => {
                                             let mut ready = true;
                                             let initialization=match profile.initialization{super::catalog::Initialization::None=>Vec::new(),super::catalog::Initialization::Inquiry=>vec![vec![0xf0,0x7e,0x7f,6,1,0xf7]],super::catalog::Initialization::Apc40Mk2Host41=>surface.initialization()};
+                                            let initialization_sent = !initialization.is_empty();
                                             for message in initialization {
                                                 if connection.send(&message).is_ok() {
                                                     counts.sent.fetch_add(1, Relaxed);
@@ -328,7 +329,7 @@ impl Manager {
                                                     break;
                                                 }
                                             }
-                                            registry.output_result(&port.id(),ready,ready,!ready);
+                                            registry.output_result(&port.id(),ready,ready&&initialization_sent,!ready);
                                             if !ready {
                                                 continue;
                                             }

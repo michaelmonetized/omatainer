@@ -235,7 +235,7 @@ impl Registry {
                         state.available=Some(cache);
                         state.previous=cache_at(&worker_shared.directory,"last-good.json",0).ok();
                         state.view.cached_generation=state.available.as_ref().map(|c|c.catalog.generation);
-                        state.view.previous_generation=state.previous.as_ref().map(|c|c.catalog.generation);
+                        state.view.previous_generation=Some(state.previous.as_ref().map_or(0,|c|c.catalog.generation));
                         state.view.message="Authenticated profiles cached. Apply explicitly while transport and decks are stopped.".into();
                         if let Err(e)=worker_shared.save(&state){state.disk_failed=true;state.view.message=format!("Profile cache saved, instance pins unavailable: {e}");}
                     },

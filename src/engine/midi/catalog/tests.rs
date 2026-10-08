@@ -174,6 +174,77 @@ fn make_registry(root: &Path) -> std::sync::Arc<runtime::Registry> {
     }
     registry
 }
+#[test]
+#[ignore = "Opt-in production HTTPS catalog owner; no physical MIDI or audio opened"]
+fn live_authenticated_catalog_owner_preserves_pins_and_bundled_rollback() {
+    assert_eq!(
+        std::env::var("OMATAINER_CONTROLLER_CATALOG_LIVE_TEST").as_deref(),
+        Ok("1")
+    );
+    let files = Files::new();
+    let registry = make_registry(&files.0);
+    let (engine, _) = crate::engine::Engine::headless_for_test(48000, 80);
+    let snapshot = engine.snapshot();
+    let device = apc("catalog-owner-fixture");
+    let inputs = vec![(
+        "28:0".into(),
+        "Catalog fixture APC".into(),
+        Some(device.clone()),
+    )];
+    let outputs = vec![("28:0".into(), Some(device))];
+    registry.refresh(inputs.clone(), outputs.clone(), &snapshot);
+    let baseline = registry.view().devices[0].profile_hash.clone();
+    assert_eq!(registry.view().devices[0].generation, 0);
+    registry.acquire(engine.cmd.performance()).unwrap();
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(65);
+    while registry.view().busy {
+        assert!(
+            std::time::Instant::now() < deadline,
+            "Live catalog owner deadline"
+        );
+        std::thread::sleep(std::time::Duration::from_millis(20));
+    }
+    let view = registry.view();
+    assert!(view.cached_generation.is_some(), "{}", view.message);
+    assert_eq!(view.previous_generation, Some(0));
+    assert_eq!(view.devices[0].generation, 0);
+    assert_eq!(view.devices[0].profile_hash, baseline);
+    assert_eq!(
+        storage::Acquired::cached(
+            &files
+                .0
+                .join(format!("generation-{}", view.cached_generation.unwrap())),
+            1
+        )
+        .unwrap()
+        .profiles
+        .len(),
+        4
+    );
+    registry.request_apply(false, &snapshot).unwrap();
+    registry.refresh(inputs.clone(), outputs.clone(), &snapshot);
+    assert_eq!(
+        registry.view().devices[0].generation,
+        view.cached_generation.unwrap()
+    );
+    registry.request_apply(true, &snapshot).unwrap();
+    registry.refresh(inputs.clone(), outputs.clone(), &snapshot);
+    assert_eq!(registry.view().devices[0].generation, 0);
+    assert_eq!(registry.view().devices[0].profile_hash, baseline);
+    drop(registry);
+    let registry = make_registry(&files.0);
+    registry.refresh(inputs, outputs, &snapshot);
+    assert!(!registry.view().busy);
+    assert_eq!(registry.view().cached_generation, view.cached_generation);
+    assert_eq!(registry.view().previous_generation, Some(0));
+    assert_eq!(registry.view().devices[0].generation, 0);
+    assert_eq!(registry.view().devices[0].profile_hash, baseline);
+    assert!(Catalog::decode(
+        &std::fs::read(files.0.join("latest.json")).unwrap(),
+        view.cached_generation.unwrap() + 1
+    )
+    .is_err());
+}
 fn apc(topology: &str) -> identity::Device {
     identity::Device {
         vendor: 0x09e8,
