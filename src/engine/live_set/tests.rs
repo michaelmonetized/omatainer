@@ -389,3 +389,25 @@ fn unused_and_zero_gain_unavailable_aliases_do_not_block_a_valid_transition() {
     assert!(handle.applied().is_some());
     assert!(matches!(handle.retire(), Some(Ok(()))));
 }
+
+#[test]
+fn refusal_waits_one_callback_for_a_claimed_request_and_retires_its_permit_off_callback() {
+    let mut live = constant(0.2).rt;
+    let namespace = live.session.namespace;
+    let handle = live.project.live_sets();
+    let control = handle.stage(handle.reserve().unwrap(), routed(-0.3, [0, 1], [4, 5]), namespace,
+        Arc::new(AtomicBool::new(false))).unwrap();
+    live.process_interleaved(&mut [0.0; 768], 6);
+    assert!(control.ready());
+    let permit = live.project.performance().project_change().unwrap();
+    control.phase.compare_exchange(READY, REQUESTED, Ordering::AcqRel, Ordering::Acquire).unwrap();
+    assert_eq!(test_alloc::measure(|| live.process_interleaved(&mut [0.0; 512], 4)), test_alloc::Counts::default());
+    assert_eq!(live.session.namespace, namespace);
+    assert!(handle.retire().is_none());
+    assert!(control.request.try_send(Transition { revision: live.project.revision(), frames: 480, _permit: permit }).is_ok());
+    assert_eq!(test_alloc::measure(|| live.process_interleaved(&mut [0.0; 512], 4)), test_alloc::Counts::default());
+    assert_eq!(live.session.namespace, namespace);
+    assert!(handle.applied().is_none());
+    assert!(matches!(handle.retire(), Some(Err(Error::Invalid(reason))) if reason.contains("unavailable next-set outputs")));
+    assert!(!live.performance.status().changing);
+}

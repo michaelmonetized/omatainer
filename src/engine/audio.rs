@@ -458,6 +458,9 @@ mod tests;
 #[path = "audio/audible_tests.rs"]
 mod audible_tests;
 #[cfg(test)]
+#[path = "audio/physical_recovery_tests.rs"]
+mod physical_recovery_tests;
+#[cfg(test)]
 #[path = "audio_live_set_tests.rs"]
 mod live_set_tests;
 #[cfg(test)]

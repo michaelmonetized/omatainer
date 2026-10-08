@@ -307,6 +307,16 @@ impl RtEngine {
             if let Err(error) = self.project.live_sets().0.applied.try_send(applied) { stage.applied = Some(error.into_inner()); }
         }
         if stage.finished && stage.applied.is_none() {
+            let phase = stage.control.phase.load(Ordering::Acquire);
+            if stage.transition.is_none() {
+                let pending = if phase == REQUESTED {
+                    stage.transition = stage.control.incoming.try_recv().ok();
+                    stage.transition.is_none()
+                } else {
+                    stage.control.phase.compare_exchange(phase, SETTLED, Ordering::AcqRel, Ordering::Acquire).is_err()
+                };
+                if pending { self.live_set = Some(stage); return; }
+            }
             stage.control.phase.store(SETTLED, Ordering::Release);
             if let Err(error) = self.project.live_sets().0.retired.try_send(stage) { self.live_set = Some(error.into_inner()); }
         } else { self.live_set = Some(stage); }
