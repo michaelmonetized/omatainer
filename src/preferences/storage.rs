@@ -113,6 +113,9 @@ pub fn decode(bytes: &[u8]) -> Result<(Preferences, bool), Error> {
         .ok_or_else(|| Error::Invalid("Preferences need an integer version".into()))?;
     let profiles: Vec<_> = if version == 1 { value.get("profile").into_iter().collect() }
         else { value.get("profiles").and_then(|p| p.as_object()).map_or(Vec::new(), |p| p.values().collect()) };
+    if version < 25 && profiles.iter().any(|profile| profile.get("retrospective").is_some()) {
+        return Err(Error::Invalid("Recent MIDI privacy preferences require version 25".into()));
+    }
     if version < 24 && profiles.iter().any(|profile| {
         let sync = |binding: &serde_json::Value| binding.get("action").and_then(|a| a.as_str()).is_some_and(|a| matches!(a, "DeckSyncMode" | "DeckSyncLeader") || a == "DeckPadMode" && binding.get("extra").and_then(|v| v.as_u64()) == Some(8));
         profile.get("midi_learn").and_then(|v| v.get("mappings")).and_then(|v| v.as_array()).is_some_and(|rows| rows.iter().any(|row| row.get("binding").is_some_and(sync)))
@@ -188,12 +191,12 @@ pub fn decode(bytes: &[u8]) -> Result<(Preferences, bool), Error> {
         return Err(Error::Invalid("MIDI presets require preferences version 18".into()));
     }
     let (mut preferences, migrated) = match version {
-        24 => (
+        25 => (
             serde_json::from_slice::<Preferences>(bytes)
                 .map_err(|error| Error::Invalid(format!("Invalid preferences: {error}")))?,
             false,
         ),
-        2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 | 17 | 18 | 19 | 20 | 21 | 22 | 23 => {
+        2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 | 17 | 18 | 19 | 20 | 21 | 22 | 23 | 24 => {
             let mut preferences: Preferences = serde_json::from_slice(bytes).map_err(|error| {
                 Error::Invalid(format!("Invalid version {version} preferences: {error}"))
             })?;
@@ -872,5 +875,28 @@ mod cue_audition_migration_tests {
         assert_eq!(decode(&serde_json::to_vec(&newer).unwrap()).unwrap(),(newer.clone(),false));
         newer.version=16; assert!(decode(&serde_json::to_vec(&newer).unwrap()).is_err());
         let mut too_new=loaded; too_new.version=VERSION+1; assert!(decode(&serde_json::to_vec(&too_new).unwrap()).is_err());
+    }
+}
+
+#[cfg(test)]
+mod retrospective_migration_tests {
+    use super::*;
+    #[test]
+    fn version_twenty_four_migrates_private_history_disabled_and_requires_new_opt_in_header() {
+        let mut old = Preferences::defaults(Path::new("/home/omatainer-test"));
+        old.version = 24;
+        let (loaded, migrated) = decode(&serde_json::to_vec(&old).unwrap()).unwrap();
+        assert!(migrated);
+        assert_eq!(loaded.version, 25);
+        assert!(loaded.profiles.values().all(|profile| profile.retrospective == crate::engine::retrospective::Config::default()));
+        for field in [serde_json::Value::Null, serde_json::json!({"enabled":true,"seconds":120,"events":8192})] {
+            let mut invalid = serde_json::to_value(&old).unwrap();
+            invalid["profiles"]["Studio"]["retrospective"] = field;
+            let error = decode(&serde_json::to_vec(&invalid).unwrap()).unwrap_err().to_string();
+            assert!(error.contains("version 25"), "{error}");
+        }
+        let mut current = loaded;
+        current.profiles.get_mut("Studio").unwrap().retrospective = crate::engine::retrospective::Config { enabled: true, seconds: 60, events: 1024 };
+        assert_eq!(decode(&serde_json::to_vec(&current).unwrap()).unwrap(), (current, false));
     }
 }

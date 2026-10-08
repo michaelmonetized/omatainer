@@ -962,6 +962,7 @@ impl App {
         self.audio_routing_ui(ctx);
         self.dj_fx_ui(ctx);
         self.piano_roll_ui(ctx);
+        self.recent_midi_ui(ctx);
         self.midi_files_ui(ctx);
         self.audio_clips_ui(ctx);
         self.arrangement_ui(ctx);
@@ -1371,6 +1372,10 @@ impl App {
             accessibility::button(ui, &midi, "Edit selected MIDI clip", None);
             help::annotate(ui, &midi, HelpControl::PianoRoll);
             if midi.clicked() { self.open_piano_roll(); }
+            let recent = ui.button("Recent MIDI");
+            accessibility::button(ui, &recent, "Capture recent MIDI", None);
+            help::annotate(ui, &recent, HelpControl::PianoRoll);
+            if recent.clicked() { self.open_recent_midi(); }
             if let Some(target) = self.snap.compose_target {
                 let name = self.snap.tracks.get(target.track).map(|tr| tr.name.as_str()).unwrap_or("track");
                 ui.label(RichText::new({ let __omatainer_args = (&(name),&(target.scene + 1),); crate::localization::format("Compose armed: {} / scene {}", &[format!("{}", __omatainer_args.0), format!("{}", __omatainer_args.1)]) }).color(t.yellow));

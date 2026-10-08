@@ -348,7 +348,7 @@ impl InputWorker {
                                 super::learn::Dispatch::Normal => {},
                             }
                         }
-                        self.shared.routing.input(self.sources,&self.name,&self.port_id,event.routing,packet,&cmd,|allow_live| {
+                        self.shared.routing.input_at(self.sources,&self.name,&self.port_id,event.routing,packet,event.at,&cmd,|allow_live| {
                             if packet.bytes().len()==3 && packet.channel().is_some() {
                                 let frame:[u8;3]=packet.bytes().try_into().unwrap();
                                 if !self.decoder.input_at(&self.map,&frame,&cmd,self.source,event.at) {

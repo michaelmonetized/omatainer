@@ -306,6 +306,18 @@ Extended software implementation on Linux aarch64 under single todo #511. Folder
 
 Local software export/worker/native UI/API qualification; no provider-hosted publishing or new physical listening acceptance. Text/CSV include all entries in history insertion order. M3U8 requires explicit location consent and every played entry to have its exact recorded local file; unavailable entries refuse the entire playlist. Local feed is off by default, removes stale labels, caps requested labels at 512 UTF-8 bytes and never publishes paths. Preferences schema 15; project schema stays 15.
 
+### Issue #162: implemented
+
+- bounded monitored input history: [src/engine/retrospective.rs](../src/engine/retrospective.rs) — Original input timestamps, opt-in fixed ring, reviewed range and ordered ordinary MIDI preparation
+- normal MIDI handoff: [src/engine/midi/handoff.rs](../src/engine/midi/handoff.rs) — Preserve callback time through existing monitored-route admission without opening ports in qualification
+- native capture review: [src/ui/piano_roll/retrospective.rs](../src/ui/piano_roll/retrospective.rs) — Explicit range/source/tempo/loop preview, empty-slot draft, editable normal Apply and one Undo
+- privacy preferences: [src/ui/preferences.rs](../src/ui/preferences.rs) — Native opt-in limits and clear-on-disable, version 25 migration
+- Acceptance fixtures: `engine::retrospective::tests`, `ui::piano_roll::retrospective::tests`, `ui::preferences::tests::recent_midi_privacy_native_cancel_apply_resources_reopen_and_disable_discard_history`, `preferences::storage::retrospective_migration_tests`.
+- Evidence: [docs/validation/retrospective-midi.md](../docs/validation/retrospective-midi.md).
+- Evidence: [docs/validation/retrospective-midi-receipt.json](../docs/validation/retrospective-midi-receipt.json).
+
+Software qualification uses an original timestamped synthetic MIDI trace, the normal bounded input handoff, pure backend fixtures and actual egui/AccessKit widgets. No physical audio or MIDI ports were opened. History is explicitly opt-in for enabled monitored routes, fixed at 1–600 seconds and 256–65536 events; it is never automatically saved. Captured clips are ordinary user-saved MIDI. A disconnected, overwritten, cleared, reconfigured or ambiguously paired range is refused. The selected source/track, range, tempo and loop are explicit; no automatic tempo inference is claimed. The active rig and session are preserved; installation of a new package remains deferred while the independent GUI is open. This does not complete MPE voice ownership or the remaining backlog.
+
 ### Issue #163: implemented
 
 - bounded producer transformations: [src/engine/midi_tools.rs](../src/engine/midi_tools.rs) — Source-precise quantize, independent recombination, velocity/time curves, stretch/reverse and unique expression ownership
@@ -885,7 +897,7 @@ Music source: FreeToUse public keyless API. Michael excludes other third-party p
 | [#159](https://github.com/michaelmonetized/omatainer/issues/159) | Integrate authorized SoundCloud catalog and playlists | excluded from release |
 | [#160](https://github.com/michaelmonetized/omatainer/issues/160) | Integrate an authorized TIDAL DJ account and catalog | excluded from release |
 | [#161](https://github.com/michaelmonetized/omatainer/issues/161) | Implement Link-compatible tempo, phase and start/stop synchronization | planned |
-| [#162](https://github.com/michaelmonetized/omatainer/issues/162) | Recover recent MIDI performances with retrospective capture | planned |
+| [#162](https://github.com/michaelmonetized/omatainer/issues/162) | Recover recent MIDI performances with retrospective capture | implemented |
 | [#163](https://github.com/michaelmonetized/omatainer/issues/163) | Recombine note properties and shape velocity using editable transformation tools | implemented |
 | [#164](https://github.com/michaelmonetized/omatainer/issues/164) | Add quantize, stretch, reverse and tempo-curve MIDI transformations | implemented |
 | [#165](https://github.com/michaelmonetized/omatainer/issues/165) | Edit multiple MIDI clips together with explicit focus and ghost notes | implemented |

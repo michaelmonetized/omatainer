@@ -267,6 +267,11 @@ impl Shared {
         live.sources.push(SourceEntry { sources, endpoint });
         Ok(sources)
     }
+    /// Describe one retained monitored source without opening a port.
+    /// Takes its stable native or track alias; returns the current exact endpoint when still registered.
+    pub(crate) fn source_endpoint(&self, source: u64) -> Option<Endpoint> {
+        self.live.lock().sources.iter().find(|entry| entry.sources.native == source || entry.sources.tracks.contains(&source)).map(|entry| entry.endpoint.clone())
+    }
     pub(crate) fn unregister(&self, native: u64) {
         self.live
             .lock()
@@ -275,8 +280,11 @@ impl Shared {
     }
     pub(crate) fn release(&self, sources: Sources, cmd: &CommandPort) {
         cmd.release_midi_source(sources.native);
+        let at = std::time::Instant::now();
+        cmd.retrospective().disconnect(sources.native, at);
         for (track, source) in sources.tracks.into_iter().enumerate() {
             cmd.release_midi_source(source);
+            cmd.retrospective().disconnect(source, at);
             self.emit_event(
                 track as u8,
                 Packet::new(&[0xb0, 123, 0]).unwrap(),
@@ -376,6 +384,14 @@ impl Shared {
         cmd: &CommandPort,
         controller: impl FnOnce(bool),
     ) {
+        self.input_at(sources, name, id, generation, packet, std::time::Instant::now(), cmd, controller);
+    }
+    /// Dispatch monitored input with its original callback timestamp.
+    /// Takes source ownership, routing generation, packet, time and command/controller destinations; preserves opt-in history without touching audio rendering.
+    pub(crate) fn input_at(
+        &self, sources: Sources, name: &str, id: &str, generation: u64, packet: Packet,
+        at: std::time::Instant, cmd: &CommandPort, controller: impl FnOnce(bool),
+    ) {
         // Serialize dispatch with route publication. A worker cannot enqueue an
         // old onset after that publication's guaranteed source releases.
         let live = self.live.lock();
@@ -392,6 +408,7 @@ impl Shared {
         if !live.config.enabled {
             return;
         }
+        let mut recent = [false; TRACKS];
         for route in &live.config.routes {
             if !route.inputs.iter().any(|i| {
                 i.port.matches(name, id)
@@ -446,6 +463,11 @@ impl Shared {
                         counts.failed.fetch_add(1, Relaxed);
                         continue;
                     }
+                }
+                let track = usize::from(route.track);
+                if !recent[track] {
+                    cmd.retrospective().observe(route.track, sources.tracks[track], at, packet.bytes());
+                    recent[track] = true;
                 }
             }
             counts.routed.fetch_add(1, Relaxed);

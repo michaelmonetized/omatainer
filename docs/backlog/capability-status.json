@@ -921,6 +921,42 @@
       ],
       "limits": "Local software export/worker/native UI/API qualification; no provider-hosted publishing or new physical listening acceptance. Text/CSV include all entries in history insertion order. M3U8 requires explicit location consent and every played entry to have its exact recorded local file; unavailable entries refuse the entire playlist. Local feed is off by default, removes stale labels, caps requested labels at 512 UTF-8 bytes and never publishes paths. Preferences schema 15; project schema stays 15."
     },
+    "162": {
+      "status": "implemented",
+      "paths": [
+        {
+          "kind": "bounded monitored input history",
+          "file": "src/engine/retrospective.rs",
+          "entry": "Original input timestamps, opt-in fixed ring, reviewed range and ordered ordinary MIDI preparation"
+        },
+        {
+          "kind": "normal MIDI handoff",
+          "file": "src/engine/midi/handoff.rs",
+          "entry": "Preserve callback time through existing monitored-route admission without opening ports in qualification"
+        },
+        {
+          "kind": "native capture review",
+          "file": "src/ui/piano_roll/retrospective.rs",
+          "entry": "Explicit range/source/tempo/loop preview, empty-slot draft, editable normal Apply and one Undo"
+        },
+        {
+          "kind": "privacy preferences",
+          "file": "src/ui/preferences.rs",
+          "entry": "Native opt-in limits and clear-on-disable, version 25 migration"
+        }
+      ],
+      "fixtures": [
+        "engine::retrospective::tests",
+        "ui::piano_roll::retrospective::tests",
+        "ui::preferences::tests::recent_midi_privacy_native_cancel_apply_resources_reopen_and_disable_discard_history",
+        "preferences::storage::retrospective_migration_tests"
+      ],
+      "evidence": [
+        "docs/validation/retrospective-midi.md",
+        "docs/validation/retrospective-midi-receipt.json"
+      ],
+      "limits": "Software qualification uses an original timestamped synthetic MIDI trace, the normal bounded input handoff, pure backend fixtures and actual egui/AccessKit widgets. No physical audio or MIDI ports were opened. History is explicitly opt-in for enabled monitored routes, fixed at 1–600 seconds and 256–65536 events; it is never automatically saved. Captured clips are ordinary user-saved MIDI. A disconnected, overwritten, cleared, reconfigured or ambiguously paired range is refused. The selected source/track, range, tempo and loop are explicit; no automatic tempo inference is claimed. The active rig and session are preserved; installation of a new package remains deferred while the independent GUI is open. This does not complete MPE voice ownership or the remaining backlog."
+    },
     "163": {
       "status": "implemented",
       "paths": [

@@ -11,7 +11,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::path::PathBuf;
 
-pub const VERSION: u32 = 24;
+pub const VERSION: u32 = 25;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -184,6 +184,8 @@ pub struct Profile {
     pub midi_inputs: MidiInputs,
     #[serde(default)]
     pub midi_routing: crate::engine::midi::routing::Routing,
+    #[serde(default, skip_serializing_if = "crate::engine::retrospective::Config::is_default")]
+    pub(crate) retrospective: crate::engine::retrospective::Config,
     #[serde(default, skip_serializing_if = "crate::engine::midi::clock::Config::is_default")]
     pub(crate) midi_clock: crate::engine::midi::clock::Config,
     #[serde(default)]
@@ -211,6 +213,7 @@ impl Profile {
             audio: Audio::default(),
             midi_inputs: MidiInputs::All,
             midi_routing: crate::engine::midi::routing::Routing::default(),
+            retrospective: Default::default(),
             midi_clock: crate::engine::midi::clock::Config::default(),
             midi_learn: crate::engine::midi::learn::Config::default(),
             midi_presets: Vec::new(),
@@ -360,6 +363,7 @@ impl Profile {
             .validate()
             .map_err(|error| error.to_string())?;
         self.midi_routing.validate()?;
+        self.retrospective.validate()?;
         self.midi_clock.validate()?;
         self.midi_learn.validate()?;
         crate::engine::midi::presets::validate_bank(&self.midi_presets)?;

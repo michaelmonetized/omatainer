@@ -337,6 +337,12 @@ impl App {
             if old.midi_routing != self.settings.profile().midi_routing {
                 self.settings.routing_pending=true;
             }
+            if old.retrospective != self.settings.profile().retrospective {
+                match self.engine.cmd.retrospective().configure(self.settings.profile().retrospective, Instant::now()) {
+                    Ok(_) => self.settings.message.push_str(" Recent MIDI privacy settings applied; prior history cleared."),
+                    Err(error) => self.settings.message.push_str(&format!(" Saved MIDI history is not applied: {error}")),
+                }
+            }
             if old.midi_clock != self.settings.profile().midi_clock {
                 match self.engine.midi.configure_clock(self.settings.profile().midi_clock.clone()) {
                     Ok(())=>self.settings.message.push_str(" MIDI clock output change queued."),
@@ -506,6 +512,17 @@ impl App {
                             profile.midi_inputs = match mode { 0=>model::MidiInputs::All,1=>model::MidiInputs::Selected(state.midi_names.lines().filter(|s|!s.is_empty()).map(str::to_owned).collect()),_=>model::MidiInputs::Disabled };
                             midi_routing::edit(ui,&mut profile.midi_routing,self.engine.midi.routing_status().as_deref());
                             midi_clock::edit(ui,&mut profile.midi_clock,self.engine.midi.clock_status().as_deref());
+                            ui.heading("Recent MIDI privacy");
+                            ui.checkbox(&mut profile.retrospective.enabled, "Keep recent monitored MIDI input in memory");
+                            ui.horizontal_wrapped(|ui| {
+                                ui.label("History seconds");
+                                let seconds = ui.add(egui::DragValue::new(&mut profile.retrospective.seconds).range(1..=600));
+                                if let Some(value) = accessibility::numeric(ui, &seconds, "Recent MIDI history seconds", f32::from(profile.retrospective.seconds), 1.0, 600.0, 1.0, "") { profile.retrospective.seconds = value.round() as u16; }
+                                ui.label("Maximum retained MIDI events");
+                                let events = ui.add(egui::DragValue::new(&mut profile.retrospective.events).range(256..=65536));
+                                if let Some(value) = accessibility::numeric(ui, &events, "Recent MIDI maximum events", profile.retrospective.events as f32, 256.0, 65536.0, 1.0, "") { profile.retrospective.events = value.round() as u32; }
+                            });
+                            ui.label("Only enabled input routes with Monitor selected enter this history. Clearing or disabling it discards the private buffer. The buffer is never saved; explicitly captured clips can be saved like other clips.");
                             ui.heading(tr!("Automation and remote control"));
                             ui.checkbox(&mut profile.now_playing.enabled, tr!("Enable now-playing feed")).help(ui, HelpControl::HistoryPublish);
                             ui.horizontal_wrapped(|ui| {
