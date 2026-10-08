@@ -214,6 +214,10 @@ fn native_host_suspend_retains_recording_and_requires_reviewed_output() {
         audit.wait(300, "actual-host-sleep", || recovery::boot_time().unwrap().saturating_sub(before_boot)
             .saturating_sub(before_monotonic.elapsed()) > Duration::from_secs(5));
         let slept = recovery::boot_time().unwrap().saturating_sub(before_boot).saturating_sub(before_monotonic.elapsed());
+        std::fs::write(directory.join(format!("sleep-{trial}.json")), serde_json::to_vec_pretty(&serde_json::json!({
+            "trial":trial,"actual_sleep_ns":slept.as_nanos() as u64,"before_audio":before_audio,
+            "after_audio":engine.cmd.audio_metrics(),"output":format!("{:?}",audio.handle.status()),
+        })).unwrap()).unwrap();
         audit.wait(15, "suspended-output-offline", || audio.handle.status().phase == Phase::Offline);
         assert!(!engine.snapshot().playing && engine.snapshot().compose_target.is_none());
         assert!(engine.cmd.send(Command::Play).is_err());
@@ -224,7 +228,10 @@ fn native_host_suspend_retains_recording_and_requires_reviewed_output() {
         assert_eq!(audio.handle.status().phase, Phase::Offline);
         let (_, reviewed) = config::select(&settings).unwrap();
         let restored = audio.handle.apply_preview(settings.clone(), reviewed, Arc::new(AtomicBool::new(false))).unwrap();
-        assert_eq!(restored.phase, Phase::Running);
+        std::fs::write(directory.join(format!("reviewed-output-{trial}.json")), serde_json::to_vec_pretty(&serde_json::json!({
+            "trial":trial,"phase":format!("{:?}",restored.phase),"message":restored.message,"output":format!("{restored:?}"),
+        })).unwrap()).unwrap();
+        assert_eq!(restored.phase, Phase::Running, "{}", restored.message);
         let plan = &restored.active.as_ref().unwrap().plan;
         assert_eq!((plan.device.as_str(), plan.rate, plan.channels, plan.format, plan.buffer),
             (accepted.device.as_str(), accepted.rate, accepted.channels, accepted.format, accepted.buffer));

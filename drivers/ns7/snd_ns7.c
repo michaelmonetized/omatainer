@@ -1026,6 +1026,36 @@ unlock:
 	return result;
 }
 
+/**
+ * ns7_suspend - Stop the shared USB clock before host sleep.
+ * @interface: Owned NS7 interface; only interface zero retires shared transfers.
+ * @message: Kernel sleep request.
+ * Return: Zero after cancelling USB transfers and disconnecting active PCM.
+ */
+static int ns7_suspend(struct usb_interface *interface, pm_message_t message)
+{
+	struct ns7 *chip = usb_get_intfdata(interface);
+	if (!chip || interface->cur_altsetting->desc.bInterfaceNumber != 0)
+		return 0;
+	ns7_pre_reset(interface);
+	mutex_unlock(&chip->audio_mutex);
+	return 0;
+}
+
+/**
+ * ns7_resume - Restore the MIDI clock with interrupted PCM stopped.
+ * @interface: Owned NS7 interface; only interface zero restores shared transfers.
+ * Return: Zero on restored USB transport, otherwise a native USB error.
+ */
+static int ns7_resume(struct usb_interface *interface)
+{
+	struct ns7 *chip = usb_get_intfdata(interface);
+	if (!chip || interface->cur_altsetting->desc.bInterfaceNumber != 0)
+		return 0;
+	mutex_lock(&chip->audio_mutex);
+	return ns7_post_reset(interface);
+}
+
 static ssize_t midi_input_bytes_show(struct device *device,
 				     struct device_attribute *attr,
 				     char *buffer)
@@ -1127,11 +1157,14 @@ static struct usb_driver ns7_driver = {
     .disconnect = ns7_disconnect,
     .pre_reset = ns7_pre_reset,
     .post_reset = ns7_post_reset,
+    .suspend = ns7_suspend,
+    .resume = ns7_resume,
+    .reset_resume = ns7_resume,
     .id_table = ns7_ids,
     .dev_groups = ns7_groups,
 };
 module_usb_driver(ns7_driver);
 MODULE_LICENSE("GPL");
-MODULE_VERSION("0.1.0");
+MODULE_VERSION("0.1.1");
 MODULE_AUTHOR("Omatainer contributors");
 MODULE_DESCRIPTION("Original Numark NS7 vendor USB MIDI and PCM transport");

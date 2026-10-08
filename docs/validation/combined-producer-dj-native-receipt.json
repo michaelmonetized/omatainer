@@ -1076,7 +1076,7 @@
       "xfader": 0.5275590419769287
     }
   },
-  "status": "Source63 passes 2322 ordinary tests and both short native stereo handoffs. Manual NS7/APC USB recovery is qualified on source62. Host suspend, captured waveform timing, updated production installation, extended loaded performance and applicable remaining compatibility criteria are still in progress.",
+  "status": "Source63 passes 2322 ordinary tests and both short native stereo handoffs. Source64 passes 89 selected checks but its first actual s2idle sleep fails reviewed NS7 output recovery after retaining the recording; DDJ-SP1 and MPD232 also disappear during wake. The NS7 driver now implements sleep callbacks; its rebuilt installed module restores both interfaces and exact ALSA preparation after reload. Actual sleep retry, captured waveform timing, updated production installation, extended loaded performance and applicable compatibility criteria remain in progress.",
   "priorCheckpoint": {
     "source": "b028ca05bc9f0172bf16e484d03f343501d510b7",
     "qualificationCommit": "940d959fd9f69e52fb6050975c750d02fadf1813",
@@ -7091,5 +7091,241 @@
       "scope": "Native preparation and saved fixture only. Captured waveform timing has not run. Original owner session restored."
     },
     "scope": "Both actual native routes pass after outgoing-stereo preflight, without claiming the earlier failed startup has a diagnosed cause or the mixer balance has changed. Right return remains weaker. Previous continuity qualification is withdrawn."
+  },
+  "source64": {
+    "provenance": {
+      "source_revision": "a779e531a6bc12fca3a200ae83f0d3ef1454508c",
+      "compiler_profile": "release tests, opt-level3, codegen-units4, debug0, test unwind",
+      "compiler_flags": [
+        "opt-level=3",
+        "embed-bitcode=no",
+        "codegen-units=4",
+        "metadata=ccce059c87a51535",
+        "extra-filename=-552c0e61ca670d04",
+        "strip=debuginfo"
+      ],
+      "test_sha256": "c96afdeb2716841dad24ab8ee241ea2a8359afe8e57ad75febcd86e4da7bc245",
+      "inventory_sha256": "edbd6b0a35ad213eca806ce6213df17e47ee397c00f44b2c4249b0a2758ed0c8",
+      "build_log_sha256": "95efd931e7ff94c30037c5e445573e417a19b098c5d7421d87a09cd2228e61df"
+    },
+    "focused": {
+      "provenance": {
+        "source_revision": "a779e531a6bc12fca3a200ae83f0d3ef1454508c",
+        "compiler_profile": "release tests, opt-level3, codegen-units4, debug0, test unwind",
+        "compiler_flags": [
+          "opt-level=3",
+          "embed-bitcode=no",
+          "codegen-units=4",
+          "metadata=ccce059c87a51535",
+          "extra-filename=-552c0e61ca670d04",
+          "strip=debuginfo"
+        ],
+        "test_sha256": "c96afdeb2716841dad24ab8ee241ea2a8359afe8e57ad75febcd86e4da7bc245",
+        "inventory_sha256": "edbd6b0a35ad213eca806ce6213df17e47ee397c00f44b2c4249b0a2758ed0c8",
+        "build_log_sha256": "95efd931e7ff94c30037c5e445573e417a19b098c5d7421d87a09cd2228e61df"
+      },
+      "results": [
+        {
+          "name": "captured-carriers",
+          "selector": "engine::audio::live_set_tests::native::",
+          "exit": 0,
+          "signal": null,
+          "passed": 2,
+          "failed": 0,
+          "ignored": 2,
+          "seconds": 0.41,
+          "log_sha256": "13e6a0627fbf6edc98cfe9e4d489546c5b53da7a2c0e485f13bb38a903afd9bc"
+        },
+        {
+          "name": "native-scheduling",
+          "selector": "engine::audio::scheduling::linux::tests::",
+          "exit": 0,
+          "signal": null,
+          "passed": 2,
+          "failed": 0,
+          "ignored": 0,
+          "seconds": 0,
+          "log_sha256": "aa0bb77f4a75a2d0a4021372babb075354e7a2e31ffe496d73b41e396cb7ed1b"
+        },
+        {
+          "name": "callback-metrics",
+          "selector": "engine::audio::metrics_tests::",
+          "exit": 0,
+          "signal": null,
+          "passed": 8,
+          "failed": 0,
+          "ignored": 0,
+          "seconds": 0.92,
+          "log_sha256": "117a4645bf0a6de492a682aa7e52f615942250340ce4e9d90d5d6bad00a59158"
+        },
+        {
+          "name": "performance-guard",
+          "selector": "engine::performance::tests::",
+          "exit": 0,
+          "signal": null,
+          "passed": 19,
+          "failed": 0,
+          "ignored": 0,
+          "seconds": 5.24,
+          "log_sha256": "373d4d89dbadc65424d7fe0d0a9e53c3271682520774b1d65093271bacd139a5"
+        },
+        {
+          "name": "midi-policy",
+          "selector": "engine::midi::connections::policy_tests::",
+          "exit": 0,
+          "signal": null,
+          "passed": 9,
+          "failed": 0,
+          "ignored": 0,
+          "seconds": 3.74,
+          "log_sha256": "a1677b15f131bc9246e98b6c8d2d61cb1a578165e79d39db466a333dacd21284"
+        },
+        {
+          "name": "routed-positions",
+          "selector": "engine::audio::routing::positions::tests::",
+          "exit": 0,
+          "signal": null,
+          "passed": 7,
+          "failed": 0,
+          "ignored": 0,
+          "seconds": 0.03,
+          "log_sha256": "889c76e3ee9b65ee3002ada1436bef000af1a86c65dcfad3fd226a925bc989a8"
+        },
+        {
+          "name": "svf-fidelity",
+          "selector": "engine::svf_tests::",
+          "exit": 0,
+          "signal": null,
+          "passed": 4,
+          "failed": 0,
+          "ignored": 0,
+          "seconds": 0.89,
+          "log_sha256": "9e8163188841e364455c9d5ea67ee8bda6c7f91667cb9221a9c3798401f0cd3f"
+        },
+        {
+          "name": "voice-fidelity",
+          "selector": "engine::dsp::voice_pitch_tests::",
+          "exit": 0,
+          "signal": null,
+          "passed": 5,
+          "failed": 0,
+          "ignored": 1,
+          "seconds": 0.44,
+          "log_sha256": "ddb0a0fe9a2d86ec3f41a45405082d6867b646a39be2a6e5316ba9f19c4d56b0"
+        },
+        {
+          "name": "audible-fidelity",
+          "selector": "engine::audio::audible_tests::",
+          "exit": 0,
+          "signal": null,
+          "passed": 2,
+          "failed": 0,
+          "ignored": 0,
+          "seconds": 0.66,
+          "log_sha256": "1a04f31d3622d1e59670afa2052b8fea0adf0d8afa2816ae1a8a3ad0d0540c14"
+        },
+        {
+          "name": "latency-fidelity",
+          "selector": "engine::audio::routing::latency::tests::",
+          "exit": 0,
+          "signal": null,
+          "passed": 13,
+          "failed": 0,
+          "ignored": 0,
+          "seconds": 0.63,
+          "log_sha256": "56da17e2c0f55fb463907c1735306c7cf611bb058e90dcb1c4f3cd42046f53a8"
+        },
+        {
+          "name": "live-set-fidelity",
+          "selector": "engine::live_set::tests::",
+          "exit": 0,
+          "signal": null,
+          "passed": 13,
+          "failed": 0,
+          "ignored": 0,
+          "seconds": 2.82,
+          "log_sha256": "a36b8c0f2c4db95a36471a3665547081ee7f0dcb09f21c191b9a0c145593bca0"
+        },
+        {
+          "name": "waveform-ui",
+          "selector": "ui::waveform::tests::",
+          "exit": 0,
+          "signal": null,
+          "passed": 5,
+          "failed": 0,
+          "ignored": 0,
+          "seconds": 0.38,
+          "log_sha256": "2aa2f68810bbc6e95f36c01c73d2f0846e2c40c1eaa005150f2f482c01ebe06b"
+        }
+      ]
+    },
+    "actualHostSuspend": {
+      "schema": 1,
+      "status": "failed",
+      "source_revision": "a779e531a6bc12fca3a200ae83f0d3ef1454508c",
+      "actual_host_sleep": true,
+      "mode": "s2idle",
+      "entered": "2026-10-08T18:45:24-04:00",
+      "resumed": "2026-10-08T18:48:39-04:00",
+      "approximately_asleep_seconds": 195,
+      "fixture_exit": 101,
+      "reviewed_audio_phase": "Offline",
+      "saved_archive": {
+        "path": "target/validation/combined-completion/host-suspend-64/retained-0.omatainer",
+        "bytes": 10302804,
+        "sha256": "67dcd6281c4dd8e81fb79837f0361a0578e9a039e2d2c7131a84dc8d04857110",
+        "native_reopen": true
+      },
+      "ns7": {
+        "primary": {
+          "alternate": "1",
+          "driver": "/sys/bus/usb/drivers/snd_ns7"
+        },
+        "auxiliary": {
+          "alternate": "0",
+          "driver": null
+        },
+        "exact_alsa_probe": "open: 0 Success\nany: 0 Success\nsettings: 0 Success\nhw_params: -2 No such file or directory\nprepare: -2 No such file or directory\n"
+      },
+      "usb_enumeration_failed": [
+        "DDJ-SP1",
+        "MPD232"
+      ],
+      "old_driver": {
+        "installed_path": "/home/michael/Projects/omatainer-work/hardware-resurrection/target/ns7-driver/snd_ns7.ko",
+        "backup_sha256": "640a86b351a1993396324c2393da84309e2f638c08363601e0f15e22387710f5",
+        "srcversion": "E251E6C876EE79547410C31"
+      },
+      "sleep_systemd_sha256": "429f6308d74edfca242ff9fb78afbdc72263a934fe2f2ee90ee4bd7c81d5cf15",
+      "sleep_kernel_sha256": "3bd7335c587eac165241ad79e8f73494b82b2c3ba206937e4ad81c003e28e0b7",
+      "boundary": "One actual sleep; recording saved/reopened before reviewed output failed. No completed sleep recovery round, second sleep or passing wake qualification."
+    },
+    "correction": {
+      "driver": {
+        "status": "compiled and installed; actual sleep retry pending",
+        "version": "0.1.1",
+        "kernel": "7.1.13-3-2-ARCH",
+        "source_sha256": "0eac486d24a7ffdf33207509274dc75c8a2a83e74493c7b4bfe85a7f5f94dec6",
+        "module_sha256": "f994187f24ec5a7512eef5de31954889522a4c6bac19dc39f3ffd54c666d381e",
+        "srcversion": "F8391E8D4113827F0B47318",
+        "interface_alternates": [
+          {
+            "interface": 0,
+            "alternate": "1",
+            "driver": "/sys/bus/usb/drivers/snd_ns7"
+          },
+          {
+            "interface": 1,
+            "alternate": "1",
+            "driver": "/sys/bus/usb/drivers/snd_ns7"
+          }
+        ],
+        "native_vector_build_log_sha256": "7fd94c5498a605c78cc1df07ff121d6baab52eff35d64d796971c74387b33d07",
+        "install_log_sha256": "20d12ef666d948cce08606d6c58db9df47b7b4c428de3897c6cd0c8f49dfa4f7"
+      },
+      "afterReloadExactAlsaProbe": "open: 0 Success\nany: 0 Success\nsettings: 0 Success\nhw_params: 0 Success\nprepare: 0 Success\n",
+      "actual_sleep_retry": "pending",
+      "improved_fixture_diagnostics": "Sleep and reviewed output status are written before recovery assertions."
+    }
   }
 }
