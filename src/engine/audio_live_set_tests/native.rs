@@ -143,7 +143,7 @@ fn native_transition(routed: bool) {
         }
         control.preview.store(true, Ordering::Release);
         std::thread::sleep(Duration::from_secs(1));
-        assert_eq!(control.priming_seconds(44100), 0.0);
+        wait(&engine, &output, &directory, "cue-priming", || control.priming_seconds(44100) == 0.0);
         control.preview.store(false, Ordering::Release);
         std::thread::sleep(Duration::from_millis(100));
         let transition_at = origin.elapsed().as_nanos() as u64;

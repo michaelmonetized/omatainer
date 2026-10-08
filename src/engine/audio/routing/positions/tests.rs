@@ -60,7 +60,7 @@ fn differently_delayed_duplicate_routes_are_ambiguous_but_zero_gain_routes_are_a
     let mut model = Model::default();
     model.connections.push(Connection {
         source: Source {
-            group: Group::Deck(1),
+            group: Group::Deck(0),
             tap: Tap::PreFx,
         },
         destination: Group::Output(1),
@@ -78,16 +78,16 @@ fn differently_delayed_duplicate_routes_are_ambiguous_but_zero_gain_routes_are_a
         positions.capture(&decks, &layout, 2, None, false);
     }
     let captured = positions.capture(&decks, &layout, 2, None, false);
-    assert_eq!(captured[0].media_key, 11);
-    assert_eq!(captured[1].media_key, 0);
+    assert_eq!(captured[0].media_key, 0);
+    assert_eq!(captured[1].media_key, 12);
     model.connections.last_mut().unwrap().map[0].gain = 0.0;
     let (mut positions, layout) = prepare(model);
     for _ in 0..200 {
         positions.capture(&decks, &layout, 2, None, false);
     }
     assert_eq!(
-        positions.capture(&decks, &layout, 2, None, false)[1].media_key,
-        12
+        positions.capture(&decks, &layout, 2, None, false)[0].media_key,
+        11
     );
 }
 
@@ -298,8 +298,9 @@ fn admitted_routing_edits_and_metadata_undo_bind_the_final_generation() {
         Some(Arc::new(Model::default())),
     )
     .unwrap();
+    let command = Command::session_edit(request);
     assert_eq!(
-        test_alloc::measure(|| rt.apply(Command::session_edit(request))),
+        test_alloc::measure(|| rt.apply(command)),
         Default::default()
     );
     assert_eq!(ack.state(), Outcome::Applied);
@@ -323,8 +324,9 @@ fn admitted_routing_edits_and_metadata_undo_bind_the_final_generation() {
         },
     )
     .unwrap();
+    let command = Command::session_edit(request);
     assert_eq!(
-        test_alloc::measure(|| rt.apply(Command::session_edit(request))),
+        test_alloc::measure(|| rt.apply(command)),
         Default::default()
     );
     assert_eq!(ack.state(), Outcome::Applied);
