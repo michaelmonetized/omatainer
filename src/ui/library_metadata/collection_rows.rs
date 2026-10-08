@@ -3,6 +3,7 @@
 use super::{Arc, LibItem, Weak};
 use crate::library::{Catalog, TrackId, crates::CrateId, smart_crates::Rule};
 use std::collections::HashMap;
+mod search_index;
 
 #[derive(Clone, Copy)]
 struct Entry {
@@ -16,6 +17,8 @@ pub(in crate::ui) struct CollectionRows {
     catalog: Weak<Catalog>,
     entries: HashMap<TrackId, Entry>,
     smart: HashMap<CrateId, SmartMembership>,
+    search:Option<search_index::Index>,
+    search_error:Option<String>,
     manual: HashMap<TrackId, Vec<usize>>,
     #[cfg(test)]
     dropped: std::sync::Mutex<Option<std::sync::mpsc::Sender<std::thread::ThreadId>>>,
@@ -50,6 +53,8 @@ impl CollectionRows {
             }
         }
         let old = previous.and_then(|index|Some((index, index.rows.upgrade()?, index.catalog.upgrade()?)));
+        let prepared_search=search_index::Index::build(rows,catalog,old.as_ref().and_then(|(index,old_rows,old_catalog)|Some((index.search.as_ref()?,old_rows,old_catalog))));
+        let (search,search_error)=match prepared_search {Ok(index)=>(Some(index),None),Err(error)=>(None,Some(error))};
         let mut smart = HashMap::new();
         for node in catalog.crates.nodes() {
             let Some(rule) = &node.smart_rule else { continue };
@@ -88,11 +93,38 @@ impl CollectionRows {
             for member in &node.members { manual.entry(member.clone()).or_default().push(index); }
         }
         Self {
-            rows: Arc::downgrade(rows), catalog: Arc::downgrade(catalog), entries, smart, manual,
+            rows: Arc::downgrade(rows), catalog: Arc::downgrade(catalog), entries, smart, manual, search, search_error,
             #[cfg(test)]
             dropped: std::sync::Mutex::new(None),
         }
     }
+
+    /// Use normalized metadata only for its exact row/catalog publication.
+    /// Takes a compiled query, exact row and live play state; returns None while a matching worker publication is unavailable.
+    pub fn matches_query(&self,query:&crate::library::search::Query,index:usize,played:bool,rows:&Arc<Vec<LibItem>>,catalog:&Arc<Catalog>)->Option<bool> {
+        self.is_for(rows,catalog).then(||self.search.as_ref().map(|search|search.matches(query,index,played))).flatten()
+    }
+    /// Preserve membership after a bounded metadata-only worker update.
+    /// Takes old view and current exact publications; returns changed row positions for an unchanged identity/order pair only.
+    pub fn search_delta(&self,old_rows:&Weak<Vec<LibItem>>,old_catalog:&Weak<Catalog>,rows:&Arc<Vec<LibItem>>,catalog:&Arc<Catalog>)->Option<&[usize]> {
+        self.is_for(rows,catalog).then(||self.search.as_ref()?.delta_for(old_rows,old_catalog)).flatten()
+    }
+    /// Sort exact current rows using full worker-prepared metadata.
+    /// Takes mutable membership and current publications/history/columns; returns false when that exact index is unavailable.
+    pub fn sort_query(&self,indices:&mut [usize],rows:&Arc<Vec<LibItem>>,catalog:&Arc<Catalog>,history:&crate::ui::play_history::History,sorts:[Option<crate::preferences::library_layout::Sort>;2])->bool {
+        let Some(index)=self.search.as_ref().filter(|_|self.is_for(rows,catalog)) else {return false;};
+        if sorts[0].is_some() {indices.sort_by(|a,b|index.compare(*a,*b,rows,history,sorts));}true
+    }
+    /// Insert changed whole-library rows in the same stable metadata order.
+    /// Takes two exact row positions and current publications/history/columns; returns their value order with original row order for equal values.
+    pub fn compare_rows(&self,a:usize,b:usize,rows:&Arc<Vec<LibItem>>,catalog:&Arc<Catalog>,history:&crate::ui::play_history::History,sorts:[Option<crate::preferences::library_layout::Sort>;2])->Option<std::cmp::Ordering> {self.is_for(rows,catalog).then(||self.search.as_ref().map(|index|index.compare(a,b,rows,history,sorts).then_with(||a.cmp(&b)))).flatten()}
+
+    /// Report an explicit retained search index limit for the current publication.
+    /// Takes exact current rows/catalog; exposes an error only for the matching worker result.
+    pub fn search_error(&self,rows:&Arc<Vec<LibItem>>,catalog:&Arc<Catalog>)->Option<&str> {self.is_for(rows,catalog).then(||self.search_error.as_deref()).flatten()}
+    /// Account for the extra prepared metadata owned by this publication.
+    /// Takes no arguments; returns normalized search record and owner bytes, excluding existing identity and crate tables.
+    pub fn search_bytes(&self)->usize {self.search.as_ref().map_or(0,|index|index.bytes())}
 
     /// Reveal direct manual and automatic memberships for one saved track.
     /// Takes its stable identity and exact publication; returns node indices, or None while that publication is unavailable.

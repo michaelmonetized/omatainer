@@ -3,6 +3,8 @@ use crate::engine::midi::learn::{self, Config, Endpoint};
 use crate::engine::midi::{Action, Binding, MsgKind, RelativeSpec};
 
 pub(super) struct Panel {
+    pub(super) profiles:super::midi_profiles::Panel,
+    pub(super) presets: super::midi_presets::Panel,
     binding: Binding,
     endpoint: Option<Endpoint>,
     selected: Option<(u64, usize)>,
@@ -11,6 +13,8 @@ pub(super) struct Panel {
 impl Default for Panel {
     fn default() -> Self {
         Self {
+            profiles:super::midi_profiles::Panel::default(),
+            presets: super::midi_presets::Panel::default(),
             binding: Binding {
                 kind: MsgKind::Note,
                 ch: 0,
@@ -19,6 +23,8 @@ impl Default for Panel {
                 deck: 0,
                 extra: 0,
                 relative: None,
+                controls: None,
+                pair_order: None,
             },
             endpoint: None,
             selected: None,
@@ -29,8 +35,11 @@ impl Default for Panel {
 fn label(action: Action) -> &'static str {
     match action {
         Action::DeckPlay => "Deck Play",
-        Action::DeckCue => "Deck Cue",
+        Action::DeckCue => "Deck set/return Cue",
+        Action::DeckCueHold => "Deck hold Cue audition",
         Action::DeckSync => "Deck Sync",
+        Action::DeckSyncMode => "Deck sync mode",
+        Action::DeckSyncLeader => "Deck sync leader",
         Action::DeckJog => "Deck jog",
         Action::DeckJogTouch => "Deck platter touch",
         Action::DeckPitch => "Deck pitch",
@@ -38,12 +47,26 @@ fn label(action: Action) -> &'static str {
         Action::DeckEqHi => "Deck high EQ",
         Action::DeckEqMid => "Deck mid EQ",
         Action::DeckEqLow => "Deck low EQ",
-        Action::DeckFilter => "Deck filter",
+        Action::DeckFilter => "Deck channel effect knob",
+        Action::DeckChannelEffect => "Deck channel effect type",
         Action::DeckPfl => "Deck headphone cue",
         Action::DeckHotCue => "Deck hot cue",
         Action::DeckLoop4 => "Deck four-beat loop",
         Action::DeckLoopIn => "Deck loop in",
         Action::DeckLoopOut => "Deck loop out",
+        Action::DeckPad => "Deck performance pad",
+        Action::DeckPadMode => "Deck pad mode",
+        Action::DeckPadParameterLeft => "Deck pad parameter left",
+        Action::DeckPadParameterRight => "Deck pad parameter right",
+        Action::DeckPadParameterShiftLeft => "Deck pad shifted parameter left",
+        Action::DeckPadParameterShiftRight => "Deck pad shifted parameter right",
+        Action::DeckSavedLoopRecall => "Deck activate saved loop",
+        Action::DeckSavedLoopSave => "Deck save loop slot",
+        Action::DeckSavedLoopDelete => "Deck delete saved loop",
+        Action::DeckBeatJumpBack => "Deck beat jump backward",
+        Action::DeckBeatJumpForward => "Deck beat jump forward",
+        Action::DeckBeatJumpSmaller => "Deck beat jump smaller",
+        Action::DeckBeatJumpLarger => "Deck beat jump larger",
         Action::DeckLoad => "Deck load",
         Action::DeckLoadLock => "Deck load lock",
         Action::DeckVinyl => "Deck vinyl mode",
@@ -75,9 +98,29 @@ fn label(action: Action) -> &'static str {
         Action::Shift => "Controller Shift",
         Action::FxWet => "Master effect wet",
         Action::FxSelect => "Master effect select",
+        Action::SongLocator => "Song named section",
+        Action::SongPrevious => "Song previous section",
+        Action::SongNext => "Song next section",
+        Action::SongLoop => "Song loop toggle",
+        Action::SongCancel => "Song cancel queued jump",
     }
 }
 fn description(mapping: &learn::Mapping) -> String {
+    if mapping.binding.action == Action::DeckChannelEffect {
+        let target = crate::engine::channel_fx::Kind::from_id(mapping.binding.extra).map_or("Invalid effect", |kind| kind.name());
+        return format!("{} / {} · channel {} · {:?} {} → Deck {} channel effect {target}", mapping.endpoint.name, mapping.endpoint.id, mapping.binding.ch + 1, mapping.binding.kind, mapping.binding.data, (b'A' + mapping.binding.deck) as char);
+    }
+    if learn::sync_mode(mapping.binding.action) {
+        let target = if mapping.binding.action == Action::DeckSyncLeader {
+            crate::engine::deck_sync::Leader::from_id(mapping.binding.extra).map_or("Invalid leader".into(), |leader| format!("Shared leader {}", leader.label()))
+        } else {
+            crate::engine::deck_sync::Mode::from_id(mapping.binding.extra).map_or("Invalid sync mode".into(), |mode| format!("Deck {} sync {}", (b'A' + mapping.binding.deck) as char, mode.label()))
+        };
+        return format!("{} / {} · channel {} · {:?} {} → {target}", mapping.endpoint.name, mapping.endpoint.id, mapping.binding.ch + 1, mapping.binding.kind, mapping.binding.data);
+    }
+    if learn::navigation(mapping.binding.action) {
+        return format!("{} / {} · channel {} · {:?} {} → {}{}",mapping.endpoint.name,mapping.endpoint.id,mapping.binding.ch+1,mapping.binding.kind,mapping.binding.data,label(mapping.binding.action),if mapping.binding.action==Action::SongLocator {format!(" · locator ID {}",mapping.binding.extra)} else {String::new()});
+    }
     format!(
         "{} / {} · channel {} · {:?} {} → {} · target {} / {}",
         mapping.endpoint.name,
@@ -124,6 +167,16 @@ impl App {
         ));
         ui.label(&view.message);
         ui.label(&self.midi_learn.message);
+        for device in &view.devices {
+            if device.pad_modes != 0 {
+                ui.horizontal_wrapped(|ui| {
+                    ui.small(format!("{} pad modes:", device.endpoint.name));
+                    for mode in crate::engine::deck_pads::Mode::CHOICES {
+                        if device.pad_modes & (1 << mode.index()) != 0 { let [r,g,b] = mode.color(); ui.label(egui::RichText::new(mode.label()).color(egui::Color32::from_rgb(r,g,b))); }
+                    }
+                });
+            }
+        }
         if !allowed {
             ui.label(tr!("Leave performance protection or the current project operation before editing MIDI assignments."));
         }
@@ -133,12 +186,13 @@ impl App {
                 .selected_text(tr!(label(previous)))
                 .show_ui(ui, |ui| {
                     for &action in learn::actions() {
-                        ui.selectable_value(
+                        let choice = ui.selectable_value(
                             &mut self.midi_learn.binding.action,
                             action,
                             tr!(label(action)),
-                        )
-                        .help(ui, HelpControl::MidiLearn);
+                        );
+                        if choice.clicked() { ui.close(); }
+                        choice.help(ui, HelpControl::MidiLearn);
                     }
                 })
                 .response
@@ -147,7 +201,9 @@ impl App {
                 let binding = &mut self.midi_learn.binding;
                 binding.kind = learn::kind(binding.action);
                 binding.deck = 0;
-                binding.extra = 0;
+                binding.extra = u16::from(binding.action == Action::SongLocator);
+                binding.controls = None;
+                binding.pair_order = None;
                 binding.relative = (binding.kind == MsgKind::CcRel).then_some(RelativeSpec {
                     encoding: crate::engine::midi::RelativeEncoding::OffsetBinary,
                     scale: if matches!(binding.action, Action::Browse | Action::BrowseCrates) {
@@ -158,7 +214,7 @@ impl App {
                 });
             }
             let binding = &mut self.midi_learn.binding;
-            if binding.action != Action::SamplerSlotStop {
+            if binding.action != Action::SamplerSlotStop && binding.action != Action::DeckSyncLeader && !learn::navigation(binding.action) {
             let mut deck = f32::from(binding.deck) + 1.0;
             preferences::float_control(
                 ui,
@@ -176,19 +232,66 @@ impl App {
             );
             binding.deck = deck.round() as u8 - 1;
             }
+            if binding.action == Action::DeckSyncLeader { binding.deck = 0; }
+            if binding.action == Action::SongLocator {
+                let mut id = f32::from(binding.extra);
+                preferences::float_control(ui, "MIDI target locator ID", &mut id, 1.0, 65535.0, 1.0, "", HelpControl::MidiLearn);
+                binding.extra = id.round() as u16;
+                ui.label("Use the stable ID shown in Arrangement sections. Moving or renaming a section preserves its mapping.");
+            }
             let max = match binding.action {
                 Action::SamplerSlotStop => 16.0,
-                Action::DeckHotCue => 8.0,
+                Action::DeckPad | Action::DeckHotCue | Action::DeckSavedLoopRecall | Action::DeckSavedLoopSave | Action::DeckSavedLoopDelete => 8.0,
                 Action::Scene | Action::Clip => 512.0,
                 Action::TrackFader | Action::TrackMute | Action::TrackSolo | Action::TrackArm | Action::TrackPan | Action::TrackSendA | Action::TrackSendB => 127.0,
                 Action::FxWet | Action::FxSelect => 3.0,
                 _ => 1.0,
             };
+            if binding.action == Action::DeckPadMode {
+                let mode = crate::engine::deck_pads::Mode::from_index(binding.extra as u8).unwrap_or(crate::engine::deck_pads::Mode::HotCue);
+                egui::ComboBox::from_label("MIDI pad mode").selected_text(mode.label()).show_ui(ui, |ui| {
+                    for mode in crate::engine::deck_pads::Mode::CHOICES { ui.selectable_value(&mut binding.extra, u16::from(mode.index()), mode.label()); }
+                });
+            }
+            if binding.action == Action::DeckChannelEffect {
+                use crate::engine::channel_fx::Kind;
+                let kind = Kind::from_id(binding.extra).unwrap_or_default();
+                egui::ComboBox::from_label("MIDI channel effect").selected_text(kind.name()).show_ui(ui, |ui| {
+                    for (id, kind) in Kind::ALL.into_iter().enumerate() {
+                        let choice = ui.selectable_value(&mut binding.extra, id as u16, kind.name());
+                        accessibility::button(ui, &choice, &format!("MIDI channel effect {}", kind.name()), None);
+                        if choice.clicked() { ui.close(); }
+                    }
+                });
+            }
+            if binding.action == Action::DeckSyncMode {
+                use crate::engine::deck_sync::Mode;
+                let mode = Mode::from_id(binding.extra).unwrap_or(Mode::Off);
+                egui::ComboBox::from_label("MIDI sync mode").selected_text(mode.label()).show_ui(ui, |ui| {
+                    for (id, mode) in Mode::ALL.into_iter().enumerate() {
+                        let choice = ui.selectable_value(&mut binding.extra, id as u16, mode.label());
+                        accessibility::button(ui, &choice, &format!("MIDI sync mode {}", mode.label()), None);
+                        if choice.clicked() { ui.close(); }
+                    }
+                });
+            }
+            if binding.action == Action::DeckSyncLeader {
+                use crate::engine::deck_sync::Leader;
+                let leader = Leader::from_id(binding.extra).unwrap_or(Leader::Transport);
+                egui::ComboBox::from_label("MIDI sync leader").selected_text(leader.label()).show_ui(ui, |ui| {
+                    for id in 0..3 {
+                        let leader = Leader::from_id(id).unwrap();
+                        let choice = ui.selectable_value(&mut binding.extra, id, leader.label());
+                        accessibility::button(ui, &choice, &format!("MIDI sync leader {}", leader.label()), None);
+                        if choice.clicked() { ui.close(); }
+                    }
+                });
+            }
             if max > 1.0 {
                 let mut extra = f32::from(binding.extra) + 1.0;
                 preferences::float_control(
                     ui,
-                    if binding.action == Action::SamplerSlotStop { "MIDI target sample slot" } else { "MIDI target cue, scene, track or effect" },
+                    if binding.action == Action::DeckPad { "MIDI deck pad ID" } else if learn::saved_loop(binding.action) { "MIDI saved loop slot ID" } else if binding.action == Action::SamplerSlotStop { "MIDI target sample slot" } else { "MIDI target cue, scene, track or effect" },
                     &mut extra,
                     1.0,
                     max,
@@ -198,18 +301,46 @@ impl App {
                 );
                 binding.extra = extra.round() as u16 - 1;
             }
-            if binding.action == Action::DeckPitch {
-                let mut pitch = binding.kind == MsgKind::Pitch;
-                if ui
-                    .checkbox(&mut pitch, tr!("Capture pitch bend instead of CC"))
-                    .help(ui, HelpControl::MidiLearn)
-                    .changed()
-                {
-                    binding.kind = if pitch { MsgKind::Pitch } else { MsgKind::Cc };
+            if crate::engine::midi::controls::continuous(binding.action) {
+                let previous = binding.kind;
+                ui.label("Message format");
+                let response = egui::ComboBox::from_id_salt("MIDI message format")
+                    .selected_text(match binding.kind { MsgKind::Cc14 => "14-bit CC pair", MsgKind::Pitch => "Pitch bend", MsgKind::CcRel => "Relative CC", _ => "Absolute CC" })
+                    .show_ui(ui, |ui| {
+                        for (kind, label) in [(MsgKind::Cc, "Absolute CC"), (MsgKind::Cc14, "14-bit CC pair"), (MsgKind::Pitch, "Pitch bend"), (MsgKind::CcRel, "Relative CC")] {
+                            if ui.selectable_value(&mut binding.kind, kind, label).clicked() { ui.close(); }
+                        }
+                    });
+                accessibility::button(ui, &response.response, "MIDI message format", None);
+                if previous != binding.kind {
+                    binding.relative = (binding.kind == MsgKind::CcRel).then_some(RelativeSpec { encoding: crate::engine::midi::RelativeEncoding::OffsetBinary, scale: 0.01 });
+                    if binding.kind != MsgKind::Cc14 { binding.pair_order = None; }
                 }
             }
+            if binding.kind == MsgKind::Cc14 {
+                let mut order = binding.pair_order.unwrap_or_default();
+                let before = order;
+                let response = egui::ComboBox::from_id_salt("CC pair order")
+                    .selected_text(match order { crate::engine::midi::PairOrder::MsbFirst => "MSB first (MIDI standard)", crate::engine::midi::PairOrder::LsbFirst => "LSB first (paired)" })
+                    .show_ui(ui, |ui| { for (value, label) in [(crate::engine::midi::PairOrder::MsbFirst, "MSB first (MIDI standard)"), (crate::engine::midi::PairOrder::LsbFirst, "LSB first (paired)")] { if ui.selectable_value(&mut order, value, label).clicked() { ui.close(); } } });
+                accessibility::button(ui, &response.response, "CC pair order", None);
+                if order != before { binding.pair_order = Some(order); }
+            }
+            if crate::engine::midi::controls::continuous(binding.action) || matches!(binding.action, Action::DeckJog | Action::Browse | Action::BrowseCrates) {
+                let before = binding.controls.unwrap_or_default();
+                let mut spec = before;
+                let response = ui.checkbox(&mut spec.invert, "Invert MIDI direction");
+                accessibility::button(ui, &response, "Invert MIDI direction", Some(spec.invert));
+                if crate::engine::midi::controls::continuous(binding.action) {
+                    let max = if matches!(binding.action, Action::DeckGain | Action::TrackFader | Action::Master) { 1.5 } else { 1.0 };
+                    preferences::float_control(ui, "MIDI minimum", &mut spec.min, 0.0, max, 0.01, "", HelpControl::MidiLearn);
+                    preferences::float_control(ui, "MIDI maximum", &mut spec.max, 0.0, max, 0.01, "", HelpControl::MidiLearn);
+                    ui.label("Minimum must be below maximum. Bend center is 0.5. Standard CC pairs retain the coarse byte for fine updates; a new coarse byte clears the fine value. Capture waits for both bytes. Choose reverse order only when your controller sends it.");
+                }
+                if spec != before { binding.controls = Some(spec); }
+            }
             if let Some(relative) = &mut binding.relative {
-                egui::ComboBox::from_label(tr!("Relative encoder format"))
+                let format = egui::ComboBox::from_id_salt("Relative encoder format")
                     .selected_text(format!("{:?}", relative.encoding))
                     .show_ui(ui, |ui| {
                         for (value, text) in [
@@ -217,17 +348,20 @@ impl App {
                                 crate::engine::midi::RelativeEncoding::OffsetBinary,
                                 "Offset binary: 64 is stationary",
                             ),
+                            (crate::engine::midi::RelativeEncoding::SignedBit, "Signed bit: 0/64 stationary; 1 forward, 65 backward"),
                             (
                                 crate::engine::midi::RelativeEncoding::TwosComplement,
                                 "Two's complement: 0 is stationary",
                             ),
                         ] {
-                            ui.selectable_value(&mut relative.encoding, value, tr!(text))
-                                .help(ui, HelpControl::MidiLearn);
+                            let response = ui.selectable_value(&mut relative.encoding, value, tr!(text));
+                            if response.clicked() { ui.close(); }
+                            response.help(ui, HelpControl::MidiLearn);
                         }
                     })
-                    .response
-                    .help(ui, HelpControl::MidiLearn);
+                    ;
+                accessibility::button(ui, &format.response, "Relative encoder format", None);
+                format.response.help(ui, HelpControl::MidiLearn);
                 if matches!(binding.action, Action::Browse | Action::BrowseCrates) {
                     relative.scale = 1.0;
                 } else {
@@ -269,10 +403,9 @@ impl App {
                 })
                 .response
                 .help(ui, HelpControl::MidiLearn);
-            if ui
-                .button(tr!("Capture MIDI control"))
-                .help(ui, HelpControl::MidiLearn)
-                .clicked()
+            if ui.push_id("midi_learn_capture", |ui| {
+                ui.button(tr!("Capture MIDI control")).help(ui, HelpControl::MidiLearn).clicked()
+            }).inner
             {
                 self.midi_learn.message = handle
                     .begin(self.midi_learn.binding, self.midi_learn.endpoint.clone())
@@ -285,7 +418,7 @@ impl App {
         }
         if let Some(capture) = &view.capture {
             ui.label(description(&capture.mapping));
-            let value = if capture.bytes[0] & 0xf0 == 0xe0 {
+            let value = if let Some(value) = capture.value { value } else if capture.bytes[0] & 0xf0 == 0xe0 {
                 u16::from(capture.bytes[1]) | u16::from(capture.bytes[2]) << 7
             } else {
                 u16::from(capture.bytes[2])
@@ -394,6 +527,8 @@ impl App {
                         deck: target.deck,
                         extra: target.extra,
                         relative: target.relative,
+                        controls: target.controls,
+                        pair_order: target.pair_order,
                     };
                     self.apply_learn_config(config);
                 }
@@ -446,6 +581,7 @@ impl App {
                 }
             });
         });
+        self.midi_presets_ui(ui, allowed);
         ui.label(&self.settings.message);
         if self.settings.draft != self.settings.applied {
             ui.label(tr!(
@@ -471,3 +607,6 @@ impl App {
 
 #[cfg(test)]
 mod tests;
+
+#[cfg(test)]
+mod encoder_tests;

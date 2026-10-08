@@ -7,15 +7,22 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Instant;
 
 mod connections;
+pub(crate) mod catalog;
 mod policy;
 mod profile;
 mod handoff;
 mod framing;
 mod relative;
+pub(crate) mod controls;
+pub use controls::Spec as ControlSpec;
+pub use controls::PairOrder;
 mod surface;
 mod feedback;
 pub(crate) mod learn;
+pub(crate) mod presets;
 pub(crate) mod routing;
+pub(crate) mod clock;
+pub(crate) mod clock_input;
 pub(crate) mod device_status;
 pub use handoff::InputStats;
 pub use connections::Retry;
@@ -24,6 +31,7 @@ pub use policy::{InputPolicy, PolicyError, PolicyStatus};
 pub(crate) use connections::test_support as connection_test_support;
 pub use relative::RelativeSpec;
 pub use feedback::Stats as FeedbackStats;
+pub(crate) use feedback::ChannelEffect as ChannelEffectFeedback;
 pub(crate) use relative::RelativeEncoding;
 #[cfg(test)]
 mod profile_tests;
@@ -36,7 +44,9 @@ mod relative_tests;
 
 static NEXT_SOURCE: AtomicU64 = AtomicU64::new(1);
 
-fn next_source_id() -> u64 {
+/// Allocate an independent performance input owner.
+/// Takes no arguments; returns a unique positive ID, or zero after exhaustion.
+pub(crate) fn next_source_id() -> u64 {
     NEXT_SOURCE.fetch_update(Ordering::Relaxed, Ordering::Relaxed, |id|id.checked_add(1)).unwrap_or(0)
 }
 
@@ -44,6 +54,7 @@ fn next_source_id() -> u64 {
 pub enum MsgKind {
     Note,
     Cc,
+    Cc14,
     CcRel,
     Pitch,
 }
@@ -58,13 +69,20 @@ pub struct Binding {
     pub deck: u8,
     pub extra: u16,
     pub relative: Option<RelativeSpec>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub controls: Option<ControlSpec>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub pair_order: Option<PairOrder>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum Action {
     DeckPlay,
     DeckCue,
+    DeckCueHold,
     DeckSync,
+    DeckSyncMode,
+    DeckSyncLeader,
     DeckJog,
     DeckJogTouch,
     DeckPitch,
@@ -73,11 +91,25 @@ pub enum Action {
     DeckEqMid,
     DeckEqLow,
     DeckFilter,
+    DeckChannelEffect,
     DeckPfl,
     DeckHotCue,
     DeckLoop4,
     DeckLoopIn,
     DeckLoopOut,
+    DeckPad,
+    DeckPadMode,
+    DeckPadParameterLeft,
+    DeckPadParameterRight,
+    DeckPadParameterShiftLeft,
+    DeckPadParameterShiftRight,
+    DeckSavedLoopRecall,
+    DeckSavedLoopSave,
+    DeckSavedLoopDelete,
+    DeckBeatJumpBack,
+    DeckBeatJumpForward,
+    DeckBeatJumpSmaller,
+    DeckBeatJumpLarger,
     DeckLoad,
     DeckLoadLock,
     DeckVinyl,
@@ -109,6 +141,11 @@ pub enum Action {
     Shift,
     FxWet,
     FxSelect,
+    SongLocator,
+    SongPrevious,
+    SongNext,
+    SongLoop,
+    SongCancel,
 }
 
 #[derive(Clone, Debug)]
@@ -126,10 +163,12 @@ pub enum UnmappedNotes {
 }
 
 pub struct MidiHub {
+    profiles:Option<Arc<catalog::runtime::Registry>>,
     feedback: Option<feedback::Manager>,
     connections: Option<connections::Manager>,
     input_counters: Arc<handoff::InputCounters>,
     routing: Option<routing::Manager>,
+    clock: Option<clock::Manager>,
     pub log: Arc<Mutex<Vec<String>>>,
 }
 
@@ -137,9 +176,10 @@ pub struct MidiHub {
 pub(crate) struct TestInput { callback: handoff::InputSink, _worker: handoff::InputGuard, counters: Arc<handoff::InputCounters> }
 #[cfg(test)]
 impl TestInput {
-    pub(crate) fn push(&mut self,message:&[u8]) {
+    pub(crate) fn push(&mut self,message:&[u8]) { self.push_at(message,Instant::now()); }
+    pub(crate) fn push_at(&mut self,message:&[u8],at:Instant) {
         let before=self.counters.snapshot().dispatched;
-        let allocation=super::test_alloc::measure(||self.callback.push(message));
+        let allocation=super::test_alloc::measure(||self.callback.push_at(message,at));
         assert_eq!((allocation.allocations,allocation.frees),(0,0));
         let until=Instant::now()+std::time::Duration::from_secs(2);
         while self.counters.snapshot().dispatched==before {assert!(Instant::now()<until,"synthetic input did not dispatch");std::thread::sleep(std::time::Duration::from_millis(1));}
@@ -161,8 +201,11 @@ impl MidiHub {
         if cmd.performance().protected() {return Err("Performance protection excludes MIDI assignment tests".into());}
         if capture.mapping.binding.action==Action::Shift {return Err("Assign Shift and test its following hardware gesture".into());}
         let shift=Arc::new(Mutex::new([false;4]));let bytes=capture.bytes;
-        dispatch(&capture.mapping.binding,capture.source,bytes[0]&0xf0,bytes[2],&bytes,cmd,&shift).map_err(|e|e.to_string())?;
-        if bytes[0]&0xf0==0x90 {let off=[bytes[0]&15|0x80,bytes[1],0];dispatch(&capture.mapping.binding,capture.source,0x80,0,&off,cmd,&shift).map_err(|e|e.to_string())?;}
+        let maps=builtin_maps().map_err(|error|error.to_string())?;
+        let map=pick_map(&maps,&capture.mapping.endpoint.name);
+        let key=Some(pad_key(&map.name,&bytes));
+        dispatch_value_key(&capture.mapping.binding,capture.source,bytes[0]&0xf0,bytes[2],&bytes,cmd,&shift,capture.value,key).map_err(|e|e.to_string())?;
+        if bytes[0]&0xf0==0x90 {let off=[bytes[0]&15|0x80,bytes[1],0];dispatch_value_key(&capture.mapping.binding,capture.source,0x80,0,&off,cmd,&shift,None,key).map_err(|e|e.to_string())?;}
         Ok("Captured action admitted. Check its normal control or load receipt.".into())
     }
 
@@ -194,10 +237,12 @@ impl MidiHub {
     /// Explicit safe startup: no manager, discovery or OS port construction.
     pub(super) fn without_devices() -> Self {
         Self {
+            profiles:None,
             feedback: None,
             connections: None,
             input_counters: Arc::new(handoff::InputCounters::default()),
             routing: None,
+            clock: None,
             log: Arc::new(Mutex::new(Vec::new())),
         }
     }
@@ -210,20 +255,38 @@ impl MidiHub {
         Self::start_with_routing(cmd,snapshot,policy,routing::Routing::default())
     }
     pub fn start_with_routing(cmd:super::CommandPort,snapshot:Arc<Mutex<super::Snapshot>>,policy:InputPolicy,routes:routing::Routing)->anyhow::Result<Self>{
+        Self::start_with_clock(cmd,snapshot,policy,routes,clock::Config::default())
+    }
+    pub(crate) fn start_with_clock(cmd:super::CommandPort,snapshot:Arc<Mutex<super::Snapshot>>,policy:InputPolicy,routes:routing::Routing,clocks:clock::Config)->anyhow::Result<Self>{
+        clocks.validate().map_err(anyhow::Error::msg)?;
         policy.validate()?;
         // Fail profile validation before a device callback can dispatch it.
         let maps = builtin_maps()?;
         let log = Arc::new(Mutex::new(Vec::new()));
         let input_counters = Arc::new(handoff::InputCounters::default());
         let routing=Some(routing::Manager::start(cmd.clone(),routes).map_err(anyhow::Error::msg)?);
+        let directory=crate::startup::Paths::environment()?.preferences.parent().ok_or_else(||anyhow::anyhow!("MIDI preferences directory absent"))?.join("midi/controller-profiles");
+        let profiles=catalog::runtime::Registry::start(directory).map_err(anyhow::Error::msg)?;
         let connections = connections::Manager::start_with_policy(
-            connections::MidirBackend,
+            connections::MidirBackend::new(profiles.clone(),Arc::downgrade(&snapshot),cmd.clone(),surface::mpd232::configured()?),
             &snapshot, cmd.clone(), maps, log.clone(),  input_counters.clone(), policy,
         )?;
-        let feedback = Some(feedback::Manager::start(Arc::downgrade(&snapshot), cmd, input_counters.clone(), connections.policy_reader())?);
-        Ok(Self { feedback, connections: Some(connections), input_counters, routing, log })
+        let clock=Some(clock::Manager::start(cmd.clone(),clocks).map_err(anyhow::Error::msg)?);
+        let feedback = Some(feedback::Manager::start(Arc::downgrade(&snapshot), cmd, input_counters.clone(), connections.policy_reader(),profiles.clone())?);
+        Ok(Self { profiles:Some(profiles),feedback, connections: Some(connections), input_counters, routing, clock, log })
     }
 
+    pub(crate) fn profiles(&self)->Option<&Arc<catalog::runtime::Registry>>{self.profiles.as_ref()}
+    pub(crate) fn apply_profiles(&self,rollback:bool,snapshot:&super::Snapshot)->Result<(),String>{
+        let profiles=self.profiles.as_ref().ok_or("Controller registry unavailable")?;
+        let manager=self.connections.as_ref().ok_or("MIDI connection owner unavailable")?;
+        let policy=manager.policy_status().requested_policy.as_ref().clone();let mut error=None;
+        let result=manager.configure_prepared(policy,||profiles.request_apply(rollback,snapshot).map_err(|e|{error=Some(e);PolicyError::Invalid("Controller change failed review")}));
+        if let Err(e)=result{profiles.abandon_apply();return Err(error.unwrap_or_else(||e.to_string()));}Ok(())
+    }
+    pub(crate) fn configure_clock(&self,config:clock::Config)->Result<(),String>{self.clock.as_ref().ok_or("MIDI clock output owner unavailable")?.configure(config)}
+    pub(crate) fn clock_status(&self)->Option<Arc<clock::Status>>{self.clock.as_ref().map(clock::Manager::status)}
+    pub(crate) fn cancel_clock(&self)->bool{self.clock.as_ref().is_some_and(clock::Manager::cancel)}
     pub fn configure_routing(&self,routes:routing::Routing)->Result<u64,String>{
         self.routing.as_ref().ok_or("MIDI output/routing owner is unavailable")?.configure(routes)
     }
@@ -302,11 +365,20 @@ fn handle_channel(
     dev: &str,
     allow_live: bool,
 ) {
+    handle_channel_value(msg, source, map, cmd, log, shift, dev, allow_live, controls::PairValues::default());
+}
+fn handle_channel_value(
+    msg: &[u8; 3], source: u64, map: &MidiMap, cmd: &super::CommandPort,
+    log: &Arc<Mutex<Vec<String>>>, shift: &Arc<Mutex<[bool; 4]>>, dev: &str,
+    allow_live: bool, paired: controls::PairValues,
+) {
     let st = msg[0];
     let kind_hi = st & 0xF0;
     let ch = st & 0x0F;
     let d1 = msg[1];
     let d2 = msg[2];
+    if let Some(release) = super::deck_pads::wire_release(msg, source) { let _ = cmd.send(Command::DeckPadRelease(release)); }
+    if let Some(release) = super::clip_launch::wire_release(msg, source) { let _ = cmd.send(Command::ClipRelease(release)); }
 
     {
         let mut l = log.lock();
@@ -328,17 +400,17 @@ fn handle_channel(
         }
         let hit = match b.kind {
             MsgKind::Note => kind_hi == 0x90 || kind_hi == 0x80,
-            MsgKind::Cc | MsgKind::CcRel => kind_hi == 0xB0,
+            MsgKind::Cc | MsgKind::Cc14 | MsgKind::CcRel => kind_hi == 0xB0,
             MsgKind::Pitch => kind_hi == 0xE0,
         };
         if !hit {
             continue;
         }
-        if b.kind != MsgKind::Pitch && b.data != d1 {
+        if b.kind != MsgKind::Pitch && b.data != if b.kind == MsgKind::Cc14 { d1 % 32 } else { d1 } {
             continue;
         }
         matched = true;
-        let _ = dispatch(b, source, kind_hi, d2, msg, cmd, shift);
+        let _ = dispatch_value(b, source, kind_hi, d2, msg, cmd, shift, paired.value(b.pair_order));
     }
 
     // Live MIDI notes onto the selected track when no map consumed a note
@@ -366,9 +438,33 @@ fn dispatch(
     cmd: &super::CommandPort,
     shift: &Arc<Mutex<[bool; 4]>>,
 ) -> Result<(), super::SubmissionError> {
+    dispatch_value(b, source, status, d2, msg, cmd, shift, None)
+}
+fn dispatch_value(
+    b: &Binding, source: u64, status: u8, d2: u8, msg: &[u8; 3],
+    cmd: &super::CommandPort, shift: &Arc<Mutex<[bool; 4]>>, paired: Option<u16>,
+) -> Result<(), super::SubmissionError> {
+    dispatch_value_key(b,source,status,d2,msg,cmd,shift,paired,None)
+}
+/// Resolve a controller's physical pad independently of its current note layer.
+/// Takes the reviewed factory map and wire message; returns its normalized SP1 key or ordinary channel/note key.
+fn pad_key(map: &str, message: &[u8; 3]) -> u32 {
+    let channel=message[0]&15;
+    if map == "Pioneer DDJ-SP1" && (7..=10).contains(&channel) { super::deck_pads::sp1_key(channel,message[1]) }
+    else { super::deck_pads::wire_key(channel,message[1]) }
+}
+/// Dispatch one assignment while retaining the controller's original physical key.
+/// Takes the binding, wire values, producer, shift state, paired value and optional normalized key; returns its actual admission result.
+fn dispatch_value_key(
+    b: &Binding, source: u64, status: u8, d2: u8, msg: &[u8; 3],
+    cmd: &super::CommandPort, shift: &Arc<Mutex<[bool; 4]>>, paired: Option<u16>, pad_key: Option<u32>,
+) -> Result<(), super::SubmissionError> {
     let mut failure = None;
     let mut send = |command| { let result = cmd.send(command);if let Err(error) = &result { if failure.is_none() { failure = Some(error.clone()); } } result };
     let pressed = matches!(status, 0x90 | 0xb0) && d2 > 0;
+    if let Some(mut release) = super::deck_pads::wire_release(msg, source) { release.key=pad_key.unwrap_or(release.key); let _ = send(Command::DeckPadRelease(release)); }
+    if let Some(release) = super::clip_launch::wire_release(msg, source) { let _ = send(Command::ClipRelease(release)); }
+    if b.kind == MsgKind::Cc14 && (msg[1] >= 64 || paired.is_none()) { return Ok(()); }
     let rel = match b.kind {
         MsgKind::CcRel => {
             let Some(delta) = b.relative.and_then(|spec| spec.decode(d2)) else {
@@ -378,14 +474,19 @@ fn dispatch(
             if delta == 0.0 {
                 return Ok(());
             }
-            delta
+            b.controls.unwrap_or_default().direction(delta)
         }
+        MsgKind::Cc14 => paired.unwrap() as f32 / 16383.0,
         MsgKind::Pitch => {
             let v = (msg[1] as u16) | ((msg[2] as u16) << 7);
-            (v as f32 - 8192.0) / 8192.0
+            if v <= 8192 { v as f32 / 16384.0 } else { 0.5 + (v - 8192) as f32 / 16382.0 }
         }
         _ => d2 as f32 / 127.0,
     };
+    if b.kind == MsgKind::CcRel && controls::continuous(b.action) {
+        return cmd.send(Command::MidiAdjust(controls::Adjust { binding: *b, delta: rel })).map(|_| ());
+    }
+    let rel = if b.kind != MsgKind::CcRel { b.controls.map_or(rel, |spec| spec.absolute(rel)) } else { rel };
     let deck = b.deck.min((DECKS - 1) as u8);
     match b.action {
         Action::Shift => shift.lock()[deck as usize] = pressed,
@@ -395,8 +496,42 @@ fn dispatch(
         Action::DeckCue if pressed => {
             let _ = send(Command::DeckCue { deck });
         }
+        Action::DeckCueHold => {
+            let _ = send(Command::DeckControl { source, deck, control: super::deck_controls::Control::Hold {
+                button: super::deck_controls::Button::Cue, on: pressed,
+            } });
+        }
         Action::DeckSync if pressed => {
             let _ = send(Command::DeckSync { deck });
+        }
+        Action::DeckSyncMode if pressed => {
+            if let Some(mode) = super::deck_sync::Mode::from_id(b.extra) { let _ = send(Command::DeckSyncMode { deck, mode }); }
+        }
+        Action::DeckSyncLeader if pressed => {
+            if let Some(leader) = super::deck_sync::Leader::from_id(b.extra) { let _ = send(Command::DeckSyncLeader(leader)); }
+        }
+        Action::DeckPad if pressed => {
+            let _ = send(Command::DeckPadPress(super::deck_pads::Press { source, key: pad_key.unwrap_or_else(||super::deck_pads::wire_key(msg[0] & 15, msg[1])), deck, id: b.extra as u8 + 1, mode: None, pressure: f32::from(d2) / 127.0, shifted: shift.lock()[usize::from(deck)] }));
+        }
+        Action::DeckPadMode if pressed => {
+            let _ = send(Command::DeckControl { source, deck, control: super::deck_controls::Control::PadMode { mode: b.extra as u8 } });
+        }
+        Action::DeckPadParameterLeft | Action::DeckPadParameterRight | Action::DeckPadParameterShiftLeft | Action::DeckPadParameterShiftRight if pressed => {
+            let _ = send(Command::DeckPadParameter { source, deck, up: matches!(b.action, Action::DeckPadParameterRight | Action::DeckPadParameterShiftRight), shifted: matches!(b.action, Action::DeckPadParameterShiftLeft | Action::DeckPadParameterShiftRight) });
+        }
+        Action::DeckSavedLoopRecall | Action::DeckSavedLoopSave | Action::DeckSavedLoopDelete if pressed => {
+            let action = match b.action { Action::DeckSavedLoopSave => super::deck_controls::SavedLoopAction::Save, Action::DeckSavedLoopDelete => super::deck_controls::SavedLoopAction::Delete, _ => super::deck_controls::SavedLoopAction::Recall { activate: true } };
+            let _ = send(Command::DeckControl { source, deck, control: super::deck_controls::Control::SavedPad { id: b.extra as u8 + 1, action } });
+        }
+        Action::DeckBeatJumpBack | Action::DeckBeatJumpForward if pressed => {
+            let _ = send(Command::DeckControl { source, deck, control: super::deck_controls::Control::BeatJump {
+                forward: b.action == Action::DeckBeatJumpForward,
+            } });
+        }
+        Action::DeckBeatJumpSmaller | Action::DeckBeatJumpLarger if pressed => {
+            let _ = send(Command::DeckControl { source, deck, control: super::deck_controls::Control::BeatJumpScale {
+                up: b.action == Action::DeckBeatJumpLarger,
+            } });
         }
         Action::DeckJog => {
             let _ = send(Command::DeckJog {
@@ -416,7 +551,7 @@ fn dispatch(
             });
         }
         Action::DeckPitch => {
-            let _ = send(Command::DeckPitch { deck, value: rel });
+            let _ = send(Command::MidiPitch(super::pitch_pickup::Input {source,context:cmd.midi_context(),channel:msg[0]&15,binding:*b,value:rel}));
         }
         Action::DeckGain => {
             let _ = send(Command::DeckGain { deck, value: rel });
@@ -444,6 +579,9 @@ fn dispatch(
         }
         Action::DeckFilter => {
             let _ = send(Command::DeckFilter { deck, value: rel });
+        }
+        Action::DeckChannelEffect if pressed => {
+            if let Some(effect) = super::channel_fx::Kind::from_id(b.extra) { let _ = send(Command::DeckChannelEffect { deck, effect }); }
         }
         Action::DeckPfl if pressed => {
             let _ = send(Command::DeckPfl { deck });
@@ -506,10 +644,9 @@ fn dispatch(
             });
         }
         Action::Clip if pressed => {
-            let _ = send(Command::LaunchClip {
-                track: b.deck.min((super::session::MAX_TRACKS - 1) as u8),
-                scene: b.extra.min((super::session::MAX_SCENES - 1) as u16),
-            });
+            let _ = send(Command::ClipPress(super::clip_launch::Press { source, key: super::clip_launch::wire_key(msg), target: super::clip_launch::Target::Slot {
+                track: b.deck.min((super::session::MAX_TRACKS - 1) as u8), scene: b.extra.min((super::session::MAX_SCENES - 1) as u16), looping: true,
+            }}));
         }
         Action::TrackFader => {
             let _ = send(Command::TrackGain {
@@ -526,6 +663,11 @@ fn dispatch(
         Action::TrackArm if pressed => { let _ = send(Command::Arm { track: b.extra as u8 }); }
         Action::TrackPan => { let _ = send(Command::TrackPan { track: b.extra as u8, value: rel }); }
         Action::TrackSendA | Action::TrackSendB => { let _ = send(Command::Surface(super::surface_controls::Input::TrackSend { track: b.extra as u8, send: u8::from(b.action == Action::TrackSendB), value: rel })); }
+        Action::SongLocator if pressed => { let _ = send(Command::SongNavigation(super::song_navigation::Action::Locator { id:b.extra, grid:super::clip_launch::Grid::Global })); }
+        Action::SongPrevious if pressed => { let _ = send(Command::SongNavigation(super::song_navigation::Action::Previous(super::clip_launch::Grid::Global))); }
+        Action::SongNext if pressed => { let _ = send(Command::SongNavigation(super::song_navigation::Action::Next(super::clip_launch::Grid::Global))); }
+        Action::SongLoop if pressed => { let _ = send(Command::SongNavigation(super::song_navigation::Action::ToggleLoop)); }
+        Action::SongCancel if pressed => { let _ = send(Command::SongNavigation(super::song_navigation::Action::Cancel)); }
         Action::Play if pressed => {
             let _ = send(Command::TogglePlay);
         }
@@ -576,6 +718,8 @@ fn nbind(ch: u8, note: u8, action: Action, deck: u8, extra: u8) -> Binding {
         deck,
         extra: u16::from(extra),
         relative: None,
+        controls: None,
+        pair_order: None,
     }
 }
 fn cbind(ch: u8, cc: u8, action: Action, deck: u8, extra: u8) -> Binding {
@@ -587,6 +731,8 @@ fn cbind(ch: u8, cc: u8, action: Action, deck: u8, extra: u8) -> Binding {
         deck,
         extra: u16::from(extra),
         relative: None,
+        controls: None,
+        pair_order: None,
     }
 }
 fn rbind(ch: u8, cc: u8, action: Action, deck: u8, extra: u8, relative: RelativeSpec) -> Binding {
@@ -598,6 +744,8 @@ fn rbind(ch: u8, cc: u8, action: Action, deck: u8, extra: u8, relative: Relative
         deck,
         extra: u16::from(extra),
         relative: Some(relative),
+        controls: None,
+        pair_order: None,
     }
 }
 
@@ -626,7 +774,7 @@ fn pioneer_ddj_fx() -> MidiMap {
     for deck in 0..2u8 {
         let ch = deck;
         b.push(nbind(ch, 0x0B, Action::DeckPlay, deck, 0));
-        b.push(nbind(ch, 0x0C, Action::DeckCue, deck, 0));
+        b.push(nbind(ch, 0x0C, Action::DeckCueHold, deck, 0));
         b.push(nbind(ch, 0x58, Action::DeckSync, deck, 0));
         b.push(nbind(ch, 0x3F, Action::Shift, deck, 0));
         b.push(nbind(ch, 0x36, Action::DeckJogTouch, deck, 0));
@@ -682,7 +830,7 @@ fn numark_ns7(fx: bool) -> MidiMap {
     for deck in 0..2u8 {
         let ch = deck;
         b.push(nbind(ch, 0x0C, Action::DeckPlay, deck, 0));
-        b.push(nbind(ch, 0x0D, Action::DeckCue, deck, 0));
+        b.push(nbind(ch, 0x0D, Action::DeckCueHold, deck, 0));
         b.push(nbind(ch, 0x0E, Action::DeckSync, deck, 0));
         b.push(nbind(ch, 0x1B, Action::DeckPfl, deck, 0));
         b.push(nbind(ch, 0x17, Action::DeckVinyl, deck, 0));
@@ -790,7 +938,7 @@ fn akai_apc40_mk2() -> MidiMap {
     // with the same eight per-channel CC7 track faders as the original.
     for scene in 0..5u8 {
         for track in 0..8u8 {
-            b.push(nbind(0xff, scene * 8 + track, Action::Clip, track, scene));
+            b.push(nbind(0xff, (4 - scene) * 8 + track, Action::Clip, track, scene));
         }
     }
     MidiMap {

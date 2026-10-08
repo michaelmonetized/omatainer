@@ -9,6 +9,25 @@ use std::sync::{
 };
 use std::time::{Duration, Instant};
 
+#[derive(Clone, Copy, Debug, PartialEq, serde::Serialize)]
+pub(crate) struct ChannelEffect {
+    pub deck: u8,
+    pub kind: crate::engine::channel_fx::Kind,
+    pub name: &'static str,
+    pub knob: f32,
+    pub neutral: bool,
+}
+impl ChannelEffect {
+    /// Expose the applied deck assignment and label to controller feedback consumers.
+    /// Takes renderer-confirmed deck, type and knob; returns fixed feedback data without sending a device command.
+    pub(crate) fn applied(deck: u8, kind: crate::engine::channel_fx::Kind, knob: f32) -> Self {
+        Self { deck, kind, name: kind.name(), knob, neutral: (0.47..=0.53).contains(&knob) }
+    }
+}
+impl Default for ChannelEffect {
+    fn default() -> Self { Self::applied(0, crate::engine::channel_fx::Kind::Filter, 0.5) }
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Surface {
     Sp1,
@@ -41,6 +60,7 @@ impl Surface {
         messages
     }
 
+    #[cfg(test)]
     fn named(name: &str) -> Option<Self> {
         if super::connections::application_port(name) {
             return None;
@@ -148,7 +168,7 @@ impl Surface {
                         let scene_index = scene + if self == Self::ApcMk2 { snapshot.surfaces.scene_offset } else { 0 };
                         let occupied = state
                             .and_then(|state| state.clips.get(scene_index))
-                            .is_some_and(|clip| clip.kind != 0);
+                            .is_some_and(|clip| clip.kind != 0 && !clip.properties.disabled);
                         let playing = occupied
                             && state.is_some_and(|state| state.playing_scene == scene_index as i16);
                         let color = if playing {
@@ -159,7 +179,7 @@ impl Surface {
                             0
                         };
                         messages.push(if self == Self::ApcMk2 {
-                            [0x90, (scene * 8 + track) as u8, color]
+                            [0x90, ((4 - scene) * 8 + track) as u8, color]
                         } else {
                             [0x90 + track as u8, 0x35 + scene as u8, color]
                         });
@@ -219,7 +239,10 @@ pub struct Stats {
 }
 
 struct Output {
-    name: String,
+    incarnation:String,
+    profile_hash:String,
+    port_id:String,
+    registry:Arc<super::catalog::runtime::Registry>,
     surface: Surface,
     connection: MidiOutputConnection,
     values: BTreeMap<(u8, u8), u8>,
@@ -250,6 +273,7 @@ impl Motors {
 
 impl Drop for Output {
     fn drop(&mut self) {
+        self.registry.output_result(&self.port_id,false,false,false);
         match self.surface {
             Surface::Ns7 => {
                 for controller in [66, 76] { let _ = self.connection.send(&[0xb0, controller, 127]); }
@@ -272,6 +296,7 @@ impl Manager {
         cmd: CommandPort,
         input_counters: Arc<super::handoff::InputCounters>,
         policy: impl Fn() -> Arc<PolicyStatus> + Send + 'static,
+        registry:Arc<super::catalog::runtime::Registry>,
     ) -> std::io::Result<Self> {
         let stopped = Arc::new(AtomicBool::new(false));
         let stop = stopped.clone();
@@ -282,15 +307,16 @@ impl Manager {
             .spawn(move || {
                 let mut outputs: BTreeMap<String, Output> = BTreeMap::new();
                 let mut discover = Instant::now();
+                let mut profile_view=None;
                 while !stop.load(Relaxed) {
                     let Some(snapshot) = snapshot.upgrade() else {
                         break;
                     };
                     let policy = policy();
-                    outputs.retain(|_, output| policy.requested_policy.allows(&output.name));
+                    outputs.retain(|id, output| registry.output(id).is_some_and(|d|d.profile_hash==output.profile_hash && d.device.connection==output.incarnation && (policy.requested_policy.allows(&d.name)||policy.requested_policy.allows(&d.endpoint_name))));
                     if Instant::now() >= discover && !policy.pending() {
                         discover = Instant::now() + Duration::from_secs(2);
-                        if let Ok(_permit) = cmd.performance().project_change() {
+                        if let Ok(_permit) = cmd.performance().controller_change() {
                             if let Ok(probe) = MidiOutput::new("omatainer-feedback-discover") {
                                 let ports = probe.ports();
                                 outputs.retain(|id, _| ports.iter().any(|port| port.id() == *id));
@@ -298,13 +324,11 @@ impl Manager {
                                     if outputs.contains_key(&port.id()) {
                                         continue;
                                     }
-                                    let Ok(name) = probe.port_name(&port) else {
-                                        continue;
-                                    };
-                                    let Some(surface) = Surface::named(&name) else {
-                                        continue;
-                                    };
-                                    if !policy.requested_policy.allows(&name) {
+
+                                    let Some(device)=registry.output(&port.id()) else{continue;};
+                                    let profile=device.profile.as_ref().unwrap();
+                                    let surface=match profile.feedback{super::catalog::Driver::Ns7=>Surface::Ns7,super::catalog::Driver::Sp1=>Surface::Sp1,super::catalog::Driver::Apc40Mk2=>Surface::ApcMk2,super::catalog::Driver::Mpd232=>Surface::Mpd232,super::catalog::Driver::Generic=>continue};
+                                    if !policy.requested_policy.allows(&device.name) && !policy.requested_policy.allows(&device.endpoint_name) {
                                         continue;
                                     }
                                     let Ok(midi) = MidiOutput::new("omatainer-feedback") else {
@@ -313,7 +337,9 @@ impl Manager {
                                     match midi.connect(&port, "omatainer-feedback-out") {
                                         Ok(mut connection) => {
                                             let mut ready = true;
-                                            for message in surface.initialization() {
+                                            let initialization=match profile.initialization{super::catalog::Initialization::None=>Vec::new(),super::catalog::Initialization::Inquiry=>vec![vec![0xf0,0x7e,0x7f,6,1,0xf7]],super::catalog::Initialization::Apc40Mk2Host41=>surface.initialization()};
+                                            let initialization_sent = !initialization.is_empty();
+                                            for message in initialization {
                                                 if connection.send(&message).is_ok() {
                                                     counts.sent.fetch_add(1, Relaxed);
                                                 } else {
@@ -322,13 +348,14 @@ impl Manager {
                                                     break;
                                                 }
                                             }
+                                            registry.output_result(&port.id(),ready,ready&&initialization_sent,!ready);
                                             if !ready {
                                                 continue;
                                             }
                                             outputs.insert(
                                                 port.id(),
                                                 Output {
-                                                    name,
+                                                    incarnation:device.device.connection,profile_hash:device.profile_hash,port_id:port.id(),registry:registry.clone(),
                                                     surface,
                                                     connection,
                                                     values: BTreeMap::new(),
@@ -385,6 +412,7 @@ impl Manager {
                             if !failed { output.motors.applied(desired); }
                         }
                         if failed {
+                            registry.output_result(&id,false,false,true);
                             outputs.remove(&id);
                         }
                     }
@@ -394,6 +422,7 @@ impl Manager {
                         connected: outputs.len() as u64,
                     };
                     snapshot.lock().midi_input = input_counters.snapshot();
+                    let view=registry.view();if profile_view.as_ref().is_none_or(|old|!Arc::ptr_eq(old,&view)){snapshot.lock().midi_profiles=registry.receipt();profile_view=Some(view);}
                     std::thread::park_timeout(Duration::from_millis(16));
                 }
                 outputs.clear();
@@ -429,6 +458,22 @@ impl Drop for Manager {
 mod tests {
     use super::*;
     #[test]
+    fn channel_effect_feedback_exposes_actual_assignment_name_position_and_detent_without_wire_commands() {
+        use crate::engine::{channel_fx::Kind, Command, Engine};
+        let (engine, mut renderer) = Engine::headless_for_test(48000, 128);
+        for (deck, kind, knob) in [(0, Kind::Echo, 0.12), (1, Kind::Room, 0.51)] {
+            engine.send(Command::DeckChannelEffect { deck, effect: kind }).unwrap();
+            engine.send(Command::DeckFilter { deck, value: knob }).unwrap();
+        }
+        renderer.process(&mut []); renderer.publish_for_test(); let snapshot = engine.snapshot();
+        for (deck, kind, knob) in [(0, Kind::Echo, 0.12), (1, Kind::Room, 0.51)] {
+            let frame = snapshot.decks[deck].channel_effect_feedback;
+            assert_eq!(frame.deck, deck as u8); assert_eq!(frame.kind, kind); assert_eq!(frame.name, kind.name()); assert_eq!(frame.knob, knob); assert_eq!(frame.neutral, deck == 1);
+            let json = serde_json::to_value(frame).unwrap(); assert_eq!(json["name"], kind.name());
+        }
+        assert_eq!(snapshot.midi_feedback.connected, 0); assert_eq!(snapshot.midi_feedback.sent, 0);
+    }
+    #[test]
     fn ns7_controls_feedback_tracks_keylock_hotcues_loop_and_hardware_switches() {
         let mut snapshot = Snapshot::default(); snapshot.decks = vec![Default::default(), Default::default()];
         snapshot.fader_start = [true, false]; snapshot.xfader_reverse = true;
@@ -439,6 +484,21 @@ mod tests {
         snapshot.decks[0].keylock = false; snapshot.decks[0].hotcues[0] = false;
         let messages = Surface::Ns7.messages(&snapshot); assert!(messages.contains(&[0xb0,16,0])); assert!(messages.contains(&[0xb0,11,0]));
         assert!(messages.iter().all(|message| !matches!(message[1], 65..=80)), "LED refresh must never contain motor actions");
+    }
+    #[test]
+    fn existing_sp1_direction_feedback_uses_actual_renderer_status_without_output_ports() {
+        use crate::engine::{Command,deck_controls::{Button,Control}};
+        let(engine,mut renderer)=crate::engine::Engine::headless_for_test(48000,64);
+        renderer.apply(Command::DeckControl {source:71,deck:0,control:Control::Reverse {enabled:true}});
+        renderer.apply(Command::DeckControl {source:72,deck:1,control:Control::Hold {button:Button::Bleep,on:true}});
+        renderer.publish_for_test();
+        let messages=Surface::Sp1.messages(&engine.snapshot());
+        for expected in [[0x90,0x38,127],[0x90,0x15,0],[0x91,0x38,0],[0x91,0x15,127]] {assert!(messages.contains(&expected),"Missing {expected:?}");}
+        renderer.apply(Command::DeckControl {source:71,deck:0,control:Control::Reverse {enabled:false}});
+        renderer.apply(Command::DeckControl {source:72,deck:1,control:Control::Hold {button:Button::Bleep,on:false}});
+        renderer.publish_for_test();let messages=Surface::Sp1.messages(&engine.snapshot());
+        assert!(messages.contains(&[0x90,0x38,0]));assert!(messages.contains(&[0x91,0x15,0]));
+        assert!(messages.iter().all(|message|message[0]&0xf0==0x90 && message[1]<128 && message[2]<128));
     }
     #[test]
     fn ns7_motors_repeat_play_pause_edges_and_stop_for_vinyl_off_or_recovery() {
@@ -508,6 +568,7 @@ mod tests {
             .collect();
         for (surface, playing_color, loaded_color) in [(Surface::Apc, 1, 5), (Surface::ApcMk2, 21, 13)] {
             let messages = surface.messages(&snapshot);
+            let first_notes = [32, 24, 16, 8, 0];
             assert_eq!(messages.iter().filter(|message| if surface == Surface::ApcMk2 { message[0] == 0x90 && message[1] < 40 } else { (0x90..=0x97).contains(&message[0]) && (0x35..=0x39).contains(&message[1]) }).count(), 40);
             for track in 0..8 {
                 for scene in 0..5 {
@@ -516,7 +577,7 @@ mod tests {
                         else if state.playing_scene == scene as i16 { playing_color }
                         else { loaded_color };
                     let address = if surface == Surface::ApcMk2 {
-                        [0x90, (scene * 8 + track) as u8, expected]
+                        [0x90, first_notes[scene] + track as u8, expected]
                     } else { [0x90 + track as u8, 0x35 + scene as u8, expected] };
                     assert!(messages.contains(&address), "{surface:?}: track {track}, scene {scene}");
                 }
@@ -541,6 +602,37 @@ mod tests {
             Surface::named("Numark NS7:Numark NS7 MIDI 32:0"),
             Some(Surface::Ns7)
         );
+    }
+
+    #[test]
+    fn apc_mk2_grid_feedback_keeps_top_rows_at_high_notes_after_banking() {
+        let mut snapshot = Snapshot::default();
+        snapshot.surfaces.track_offset = 8;
+        snapshot.surfaces.scene_offset = 6;
+        snapshot.tracks = (0..16)
+            .map(|track| crate::engine::TrackSnap {
+                playing_scene: 7,
+                clips: (0..8)
+                    .map(|scene| crate::engine::ClipSnap {
+                        kind: if scene == 6 && track % 2 == 0 || scene == 7 { 1 } else { 0 },
+                        ..Default::default()
+                    })
+                    .collect(),
+                ..Default::default()
+            })
+            .collect();
+        let messages = Surface::ApcMk2.messages(&snapshot);
+        let first_notes = [32, 24, 16, 8, 0];
+        for (row, first_note) in first_notes.iter().enumerate() {
+            for column in 0..8 {
+                let expected = match row {
+                    0 if column % 2 == 0 => 13,
+                    1 => 21,
+                    _ => 0,
+                };
+                assert!(messages.contains(&[0x90, first_note + column, expected]));
+            }
+        }
     }
     #[test]
     fn feedback_uses_documented_led_addresses_and_mirrors_the_sp1_banks() {

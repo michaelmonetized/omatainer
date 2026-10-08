@@ -9,8 +9,9 @@ fn fixture(bars: f32) -> RtEngine {
     rt.quant = 0.0;
     rt.bpm = 120.0;
     rt.beat = 5.375;
-    rt.tracks[1].clips[2] = Clip {
-        lanes: None,
+    rt.tracks[1].clips[2] = Clip { variation: None,
+        properties: Default::default(),
+        audio_region: None, lanes: None,
         region: None,
         kind: ClipKind::Midi,
         name: "Capture".into(),

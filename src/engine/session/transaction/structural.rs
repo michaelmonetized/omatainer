@@ -5,7 +5,8 @@ use std::sync::Arc;
 
 pub(super) fn empty_cell() -> project::SavedClip {
     project::SavedClip {
-        lanes: None,
+        properties: Default::default(),
+        audio_region: None, lanes: None,
         region: None,
         kind: crate::engine::ClipKind::Empty,
         name: String::new(),
@@ -22,16 +23,7 @@ fn duplicate_cell(mut cell: project::SavedClip) -> project::SavedClip {
     cell
 }
 fn prepare_cell(cell: project::SavedClip, media: &[Arc<Sample>]) -> Result<Clip, String> {
-    Ok(Clip {
-        region: cell.region,
-        lanes: cell.lanes.map(|l| l.prepare()).transpose()?,
-        kind: cell.kind,
-        name: cell.name,
-        bars: cell.bars,
-        notes: cell.notes,
-        gain: cell.gain,
-        audio: cell.audio.map(|i| media[i].clone()),
-    })
+    project::prepare::prepare_clip(cell,media)
 }
 fn pin_track(track: &project::Track, media: &[Arc<Sample>], pins: &mut Vec<Arc<Sample>>) {
     pins.extend(track.drums.iter().map(|i| media[*i].clone()));
@@ -84,6 +76,7 @@ impl Request {
                 saved.mute = false;
                 saved.solo = false;
                 saved.armed = false;
+                saved.input_monitor = Some(crate::engine::input_monitor::Mode::Auto);
                 saved.fx.clear();
                 saved.eq = [1.0; 3];
                 saved.synth = project::Synth {
@@ -134,6 +127,7 @@ impl Request {
                 saved.name = name;
                 saved.launch = None;
                 saved.armed = false;
+                saved.input_monitor = Some(crate::engine::input_monitor::Mode::Auto);
                 saved.clips = saved.clips.into_iter().map(duplicate_cell).collect();
                 let color = before.tracks[source].color;
                 Self::prepare_track_change(
@@ -164,7 +158,7 @@ impl Request {
                     .collect();
                 let rack = state.scene_fx[source].clone();
                 let color = before.scenes[source].color;
-                Self::prepare_scene_change(
+                let content = Self::prepare_scene_change(
                     &mut state,
                     &media,
                     &mut next,
@@ -176,7 +170,10 @@ impl Request {
                     rate,
                     &mut pins,
                     &mut fx_storage,
-                )?
+                )?;
+                let destination = match &content { Content::Scene { slot, .. } => *slot, _ => unreachable!() };
+                next.scenes[destination].scene = before.scenes[source].scene;
+                content
             }
         };
         pins.sort_by_key(|sample| Arc::as_ptr(sample) as usize);
@@ -205,7 +202,7 @@ impl Request {
                 generation: before.generation,
                 epoch: checkpoint.epoch,
                 inverse: Some(Box::new(Inverse {
-                    routing: state.routing.as_ref().map(|model| crate::engine::audio::routing::prepared::Prepared::new(model.clone(), &next).map(|graph| Some(Box::new(graph)))).transpose()?,
+                    routing: state.routing.as_ref().map(|model| crate::engine::audio::routing::prepared::Prepared::at_rate(model.clone(), &next, rate).map(|graph| Some(Box::new(graph)))).transpose()?,
                     layout: next,
                     track_name: None,
                     focus: None,

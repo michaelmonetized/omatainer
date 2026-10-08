@@ -1,0 +1,231 @@
+{
+  "schema": 1,
+  "qualifiedAt": "2026-10-08T01:05:50.241Z",
+  "testedBaseRevision": "0d3a5e91229597d28ed59e461ae3ae3b78c996fb",
+  "scope": "Reviewed Live 10/11 format migration, native relink/render/archive restore and project handoff within single issue 511 and PR 510. Full retained scope remains incomplete.",
+  "sourceFiles": {
+    "Cargo.lock": "17e89dcfbbc5d3ac76e053af124013a1c20137f0647d1fdfbdd4db696c9bc835",
+    "Cargo.toml": "df2d2a7b9e989aca058621bc83b8a4989479947695ece538c2168a8ffc6ae471",
+    "src/audio_delivery/tests.rs": "d49024e24996f9d921ffe0b4b04b89710e2d665fa8c361d156898fdb334a8739",
+    "src/engine/arrangement.rs": "64fca101c6d9ffcac4b74fa5daa3f72e6ad67727302f39e1400e9029ec2157b2",
+    "src/engine/arrangement/fades.rs": "ffea96838baa4c455ede20dab22648437f8c4f2c82d50f62e8a8be94d1209567",
+    "src/engine/arrangement/fades/tests.rs": "e04bf3bd29aecdb2bdd787b89f4976bc0e6d5e45553deb1a65c8270b6fc40c0c",
+    "src/engine/arrangement/playback.rs": "bb3483a5fe1bb40eea93a4d6b5825e86623db0ecc7c7a7d7162b4d73acffbfd4",
+    "src/engine/arrangement/prepare.rs": "54d99f42629555ae3fe517a0b4b1c4693d265089b8607e3bfcbe6ca89aea7b4a",
+    "src/engine/arrangement/tests.rs": "d74f07fcd86a3f08c34fc00bbc01719deea7ddd724ff8ae9d46d49c9f377634d",
+    "src/engine/midi/routing/playback/tests.rs": "c657ae9b5b5c1aeaf6a7ef4d4a02407012f074ecc1d35c326e63b8f1201ae034",
+    "src/engine/midi_edit.rs": "f986d40fa4833d34b84cc6456ceeaa9c6f91b4333895793e3fc4b0345529d83e",
+    "src/engine/mod.rs": "4008bc794e2eb512b0d27caed0db1e499f5f8167d71e766db3543ce1847f7bf0",
+    "src/engine/project/capture.rs": "de51003e35cf9b4283f0d67e83a8f8a4ac567d8b83f5767928b3c7600d26dd1d",
+    "src/engine/project/model.rs": "2d25fe32998cc8632e01702a54fb4dd7bab406e1d5938232aca55d53ef888f92",
+    "src/engine/project/prepare.rs": "fc4b2e60ac96c47e1347d4cfd3c95bceaee82224f006e605da9b63c879463254",
+    "src/engine/session/transaction/import.rs": "57a21c74929b023e13b21c84ff04f1bae4bf70c81917dd957e297bd06ef99f1c",
+    "src/engine/snapshot.rs": "ba792e207e9dcc9a34910ba7cd501dfa51a0fb588bab53e5caaf2c9da4d056ce",
+    "src/engine/snapshot/tests.rs": "51ce4957d03df656c37c9128c962ef1f8b27e9f22eff85c659e670bbba6b2602",
+    "src/engine/song_navigation/tests.rs": "e4aba4347618642a52538b626eef0ea07f0a41ab86e8ff50cb2b0f987538370b",
+    "src/interchange_xml.rs": "3afced7e8cbb04ddb4e7c96a6a6a891aac09ac8e68216e01ac71134b1f08cae6",
+    "src/main.rs": "f058c2839bfa6541e6fcd20e53de2881ea3a1f64dcd22408039e27c017181b7d",
+    "src/project_file.rs": "d840a47dc6de353dd14303a3c709f439b352999728302e530fad15d6d92d38a0",
+    "src/ui.rs": "9e62548b4abd15ee6fa4c6ee2a279e706ad2ac0d53a3df63ab7dbd1d7d2d3a31",
+    "src/ui/arrangement.rs": "29101f8c755c83625235a5a7ae54bbc10df7aa175df9bef0e0ee3e9ab2fa601e",
+    "src/ui/help/catalogue.rs": "22f065e7d74c9db60cdf73999966b668a5910a9be8f4dfb8da8186c251fce084",
+    "src/ui/project.rs": "d9e39b07345e66fec70f8d663a91e6c95a3b0cce4d11ddf60f5595d55382a056",
+    "vendor/vst3-host/PATCHES.md": "2ce7ba4b3320915e1e957a18ab325a39b6b9e49c1f90906d80df1f2ce5158141",
+    "vendor/vst3-host/src/plugin.rs": "4c47ea11a7d89160e56f00b3eb21c7cd94dade41bfb6c5896b7c4aedb129ca9a",
+    "src/ableton.rs": "d854fac08a29b19d6d1b60c3248b73256e9568c6da5d2954b3dbccae56fea3b8",
+    "src/ableton/clips.rs": "60ea4d437e2730c01a4a917a43e0d74412d65568542e505ce34276b5b66225e2",
+    "src/ableton/convert.rs": "4b9f1085d5306eab8a57da2b8ca86ad9ede48969c444929851880469bb490de3",
+    "src/ableton/dependencies.rs": "e71b4e8370d90d3048378b3959b250d1e113adbbb892a1f2ab54b81a74383206",
+    "src/ableton/plugins.rs": "16edf5e342e06e88dc13c057dd048699a0f3d6974201d44ea357b15cf166c42c",
+    "src/ableton/process.rs": "fd0e9d28eb8c4a6b3c17982029618c1d61699087909f406a7f5d4c1ff456c2f4",
+    "src/ableton/renders.rs": "5fbfa19c023dfc6f51cb3142c40e1ddc1f74ab58f028302f02fd6985866e9a73",
+    "src/ableton/routing.rs": "ef66924d82f44e73a3d44b3b271bf69bcb42af755f674b6ee994b32eac5e1438",
+    "src/ableton/tests.rs": "1529d463b3c335238f0e6213c48e51c26479e0e0412e83f873fbc4fff2f028b5",
+    "src/ableton/timing.rs": "3cbe700bb6d31401e6650c867a0f389717146fe4352de5196a6895269a8f6dd9",
+    "src/engine/arrangement/clock_tests.rs": "161a6d329337e4757c0a062ef19232416dc4ba8ede38f62b819637966c38d055",
+    "src/engine/session/transaction/import/routing.rs": "0cbfc4428b8f35f42ed0c06631f3d71ccd3e8e8e7aa5076e1de8eaf33f908148",
+    "src/filesystem_worker.rs": "76c416e475453bc69e0a96e6a0084ed5de53a36fb7dd567775dcd9060a52d82d",
+    "src/ui/ableton.rs": "fb3ef10e6914bea1e5fcb21ab2d7259f87a8bcbf657902ef88f25622250e0fc0",
+    "src/ui/ableton/tests.rs": "ef9566e0f553d48f777c300429d63bfb219eb373363f456dec74717b63ddef96"
+  },
+  "binaries": {
+    "omatainer": {
+      "path": "target/validation/combined-completion/ableton-qualified/24/omatainer",
+      "bytes": 485202432,
+      "sha256": "b7a3dc3946f07066677c50546a7f802a339eb48b964023bd12f29c403b78fd6b"
+    },
+    "omatainer-tests": {
+      "path": "target/validation/combined-completion/ableton-qualified/24/omatainer-tests",
+      "bytes": 575227016,
+      "sha256": "6b4ca158024f9a3e160384f3ada036431aa57500a17c280fb532b8422420a509"
+    }
+  },
+  "build": {
+    "platform": "aarch64-unknown-linux-gnu",
+    "rootOptimization": 0,
+    "rootDebugInfo": 0,
+    "jobs": 1,
+    "incremental": false,
+    "testThreadStackBytes": 16777216,
+    "releasePerformanceClaim": false
+  },
+  "logs": {
+    "target/validation/combined-completion/ableton-22-ableton__.log": {
+      "sha256": "776fb257f7b4b29d587be132a0ee3e8a646e3c837c4ec2bf6892f834ca32a9b2",
+      "summaries": [
+        "test result: ok. 10 passed; 0 failed; 7 ignored; 0 measured; 2203 filtered out; finished in 4.53s"
+      ],
+      "successful": true
+    },
+    "target/validation/combined-completion/ableton-22-audio_delivery__.log": {
+      "sha256": "51abf82795ff5615a4c14c8ba974a9e64fe15ae92ac01aa29b277efb5a64e49e",
+      "summaries": [
+        "test result: ok. 16 passed; 0 failed; 1 ignored; 0 measured; 2203 filtered out; finished in 279.35s"
+      ],
+      "successful": true
+    },
+    "target/validation/combined-completion/ableton-22-engine__arrangement__.log": {
+      "sha256": "d95976d2f933e210b72540aab8dbd2c58d7bfafbca5a3f0ee70b5f0bc103c9e0",
+      "summaries": [
+        "test result: ok. 16 passed; 0 failed; 0 ignored; 0 measured; 2204 filtered out; finished in 41.48s"
+      ],
+      "successful": true
+    },
+    "target/validation/combined-completion/ableton-22-engine__midi__routing__.log": {
+      "sha256": "4f8262b90da1153e4aac3812416a95645763b5b9e31f772bff43be00291bf55c",
+      "summaries": [
+        "test result: ok. 29 passed; 0 failed; 1 ignored; 0 measured; 2190 filtered out; finished in 111.84s"
+      ],
+      "successful": true
+    },
+    "target/validation/combined-completion/ableton-22-engine__project__.log": {
+      "sha256": "cba8c143cd0b450b4f1a8e8c5ed6ab6eb05be3afe2c51e6f35632b28d840239b",
+      "summaries": [
+        "test result: ok. 57 passed; 0 failed; 1 ignored; 0 measured; 2162 filtered out; finished in 81.18s"
+      ],
+      "successful": true
+    },
+    "target/validation/combined-completion/ableton-22-engine__session__transaction__import__.log": {
+      "sha256": "ff90c77b0f7cda21678f1731af444ab67c23814c074f3441e29810a54c4217da",
+      "summaries": [
+        "test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 2213 filtered out; finished in 13.76s"
+      ],
+      "successful": true
+    },
+    "target/validation/combined-completion/ableton-22-engine__snapshot__.log": {
+      "sha256": "14c6710521b96ea0f9a7f0270ca0aee9bc6a407c2f691ecbf8a03ad8d0220a02",
+      "summaries": [
+        "test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 2210 filtered out; finished in 6.17s"
+      ],
+      "successful": true
+    },
+    "target/validation/combined-completion/ableton-22-filesystem_worker__.log": {
+      "sha256": "f673f66d263edd8f1abb44521bfb83c36444db980690da732dce7cb5b5f40942",
+      "summaries": [
+        "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 2219 filtered out; finished in 0.19s"
+      ],
+      "successful": true
+    },
+    "target/validation/combined-completion/ableton-22-native-build.log": {
+      "sha256": "d374d377dedf488633838aefb3b966a3ec2017a7db34d444bd8e5313fafae4f2",
+      "summaries": [],
+      "successful": true
+    },
+    "target/validation/combined-completion/ableton-22-native-workflows.log": {
+      "sha256": "1ffc83ac8c5b8aae4dd08a1ea96433f635d66d916be9cd40cfed7856f492cb1e",
+      "summaries": [
+        "test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 2213 filtered out; finished in 5.43s"
+      ],
+      "successful": true
+    },
+    "target/validation/combined-completion/ableton-22-project_file__.log": {
+      "sha256": "3ecb302cada887aeb96645d0733ff002d622a2a337abc3c6ef289566c343ae90",
+      "summaries": [
+        "test result: ok. 9 passed; 0 failed; 1 ignored; 0 measured; 2210 filtered out; finished in 0.13s"
+      ],
+      "successful": true
+    },
+    "target/validation/combined-completion/ableton-22-ui__help__tests__manual_and_catalogue_are_synchronized.log": {
+      "sha256": "58fa7796327ea498a662298189dfd53ba47736f2febf9e8a0901033f1b2c16d7",
+      "summaries": [
+        "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 2219 filtered out; finished in 0.06s"
+      ],
+      "successful": true
+    },
+    "target/validation/combined-completion/ableton-22-ui__project_import__.log": {
+      "sha256": "dc18919b1d0ecb4de30090267e54d054b2656ada5814502bd6cce4fac16a0435",
+      "summaries": [
+        "test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 2214 filtered out; finished in 33.82s"
+      ],
+      "successful": true
+    },
+    "target/validation/combined-completion/ableton-24-ableton__.log": {
+      "sha256": "7c1b94adf59ed2116ee916e77b9d505ebf777d2c8b70c797e664cdd2ec93e2f8",
+      "summaries": [
+        "test result: ok. 10 passed; 0 failed; 8 ignored; 0 measured; 2203 filtered out; finished in 3.98s"
+      ],
+      "successful": true
+    },
+    "target/validation/combined-completion/ableton-24-build.log": {
+      "sha256": "19688c88533a38eee323c655cce879897cbc4d36748381d44c723da1116c3654",
+      "summaries": [],
+      "successful": true
+    },
+    "target/validation/combined-completion/ableton-24-filesystem_worker__.log": {
+      "sha256": "da4f2221ab1b06f5f31689a0c760b252e598efc215998fd03c27f45781882cbb",
+      "summaries": [
+        "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 2220 filtered out; finished in 0.19s"
+      ],
+      "successful": true
+    },
+    "target/validation/combined-completion/ableton-24-native-build.log": {
+      "sha256": "92bc94ffef843f17bb1ac746eb900e0a1b3e26234f5b3e47093f3a0318a364b9",
+      "summaries": [],
+      "successful": true
+    },
+    "target/validation/combined-completion/ableton-24-native-workflows-serial.log": {
+      "sha256": "ad6170d50488ba2f6a86fd1f64cf2be3e47e2bdecccd2d1a6b283b471b9f7f48",
+      "summaries": [
+        "test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 2213 filtered out; finished in 11.57s"
+      ],
+      "successful": true
+    },
+    "target/validation/combined-completion/ableton-24-native-workflows.log": {
+      "sha256": "ca184fb4cd94da887e850b215464fd8f4a4e98d8a64daa0f69b9fc82f823c29e",
+      "summaries": [
+        "test result: FAILED. 6 passed; 2 failed; 0 ignored; 0 measured; 2213 filtered out; finished in 43.21s"
+      ],
+      "successful": false
+    },
+    "target/validation/combined-completion/ableton-24-ui__help__tests__manual_and_catalogue_are_synchronized.log": {
+      "sha256": "34051cadbdc16dcf53dc6e95d90bde2e1a5af11eef6c354d5ef8b735d886ac79",
+      "summaries": [
+        "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 2220 filtered out; finished in 0.05s"
+      ],
+      "successful": true
+    }
+  },
+  "failedTrials": [
+    "Generation 19 formatting recovery parse error corrected before qualification",
+    "Generation 20 native linker Input/output error; generation 21 retry passed",
+    "Generation 23 test-only handoff helper compile errors corrected",
+    "Generation 24 first native workflow group: 6 pass / 2 UI deadlines while linking competed; unchanged serial repeat 8 pass"
+  ],
+  "privateFixtures": {
+    "savedDefaultLive11": {
+      "format": "11.0_433",
+      "tracks": 6,
+      "scenes": 8,
+      "differences": 23,
+      "claim": "Read-only structural smoke only; not authored source comparison"
+    },
+    "pluginFixtureLicense": "Omatainer MIT SDK contract; private GPL Nekobi/MVerb from prior qualification"
+  },
+  "pendingAcceptance": [
+    "Authored Live 10 and 11 reference Sets with nested racks, devices, Packs, routing and plugin authorization variants",
+    "Source-app render and actual listening comparisons",
+    "Producer library and installed Pack discovery",
+    "Authenticated controller profiles and owned powered-hub requalification",
+    "Native installed workflow, physical loopback, audio recovery and live-release criteria"
+  ]
+}

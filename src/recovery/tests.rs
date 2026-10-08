@@ -25,7 +25,7 @@ impl Drop for Root {
     }
 }
 fn sample() -> Arc<Sample> {
-    Arc::new(Sample {
+    Arc::new(Sample { spectrum: None,
         name: "stereo recovery".into(),
         path: "/missing/recovery-original.wav".into(),
         sr: 48_000,
@@ -606,7 +606,7 @@ fn replay_record_byte_and_schema_bounds_reject_bad_tails_and_automatic_rotation_
     assert!(journal::read(&paths[1], &no())
         .unwrap_err()
         .to_string()
-        .contains("64 MiB"));
+        .contains("65 MiB"));
     assert_eq!(latest(&root.0).sequence, 256);
     drop(oversize);
     let mut new = Store::open(&root.0).unwrap();
@@ -618,7 +618,7 @@ fn replay_record_byte_and_schema_bounds_reject_bad_tails_and_automatic_rotation_
         .append(&invalid, meta(1), &config, &no())
         .unwrap_err()
         .to_string()
-        .contains("8 MiB"));
+        .contains(&crate::project_file::DEFAULT_METADATA_LIMIT.to_string()));
     assert!(!new.needs_new_session());
     assert!(segments(&new.path, &no()).unwrap().is_empty());
 }
@@ -847,6 +847,109 @@ fn aggregate_pcm_and_metadata_limits_reject_before_decoding_the_next_asset() {
     let restored: Recovered<State> = recover_with_limits(&candidate, &no(), limits).unwrap();
     assert_eq!(restored.bundle.media.len(), 2);
     assert_sample(&restored.bundle.media[1], &audio);
+}
+
+#[test]
+fn large_native_edit_state_recovers_after_cancelled_and_failed_writes() {
+    let root = Root::new();
+    let audio = sample();
+    let mut original = bundle(1, &audio);
+    original.state.name = "retained Live device state ".repeat(512 * 1024);
+    let native = root.0.join("original.omatainer");
+    project_file::save(&native, &original, Overwrite::Never, &Limits::default(), &no()).unwrap();
+    let before = fs::read(&native).unwrap();
+    let loaded: Bundle<State> = project_file::load(&native, &Limits::default(), &no()).unwrap();
+    let mut store = Store::open(&root.0.join("recovery")).unwrap();
+    store.append(&loaded, meta(1), &Config::default(), &no()).unwrap();
+    let mut edited = loaded;
+    edited.state.notes.push((72, 8.0, 4.0));
+    store.append(&edited, meta(2), &Config::default(), &no()).unwrap();
+    edited.state.notes.push((76, 12.0, 2.0));
+    assert!(matches!(store.append(&edited, meta(3), &Config::default(), &AtomicBool::new(true)), Err(Error::Cancelled)));
+    assert!(store.append_with(&edited, meta(3), &Config::default(), &no(), |phase| {
+        if phase == Phase::RecordHalfWritten { Err(std::io::Error::other("failed large edit write")) } else { Ok(()) }
+    }).is_err());
+    assert!(!store.needs_new_session());
+    drop(store);
+    let candidate = latest(&root.0.join("recovery"));
+    assert_eq!(candidate.sequence, 2);
+    let recovered: Recovered<State> = recover(&candidate, &no()).unwrap();
+    assert_eq!(recovered.bundle.state.name, original.state.name);
+    assert_eq!(recovered.bundle.state.notes, vec![(60, 0.25, 0.75), (67, 2.0, 1.5), (72, 8.0, 4.0)]);
+    assert_sample(&recovered.bundle.media[0], &audio);
+    let destination = root.0.join("recovered.omatainer");
+    project_file::save(&destination, &recovered.bundle, Overwrite::Never, &Limits::default(), &no()).unwrap();
+    let reopened: Bundle<State> = project_file::load(&destination, &Limits::default(), &no()).unwrap();
+    assert_eq!(reopened.state, recovered.bundle.state);
+    assert_sample(&reopened.media[0], &audio);
+    assert_eq!(fs::read(native).unwrap(), before);
+}
+
+#[test]
+fn native_metadata_ceiling_fits_one_bounded_journal_frame_and_rotates() {
+    let root = Root::new();
+    let mut store = Store::open(&root.0).unwrap();
+    let original = Bundle { state: "x".repeat(project_file::DEFAULT_METADATA_LIMIT - 2), media: Vec::new() };
+    assert_eq!(journal::json(&original.state).unwrap().len(), project_file::DEFAULT_METADATA_LIMIT);
+    store.append(&original, meta(1), &Config::default(), &no()).unwrap();
+    let first = segments(&store.path, &no()).unwrap().remove(0);
+    assert!(fs::metadata(&first).unwrap().len() > project_file::DEFAULT_METADATA_LIMIT as u64);
+    assert_eq!(journal::read(&first, &no()).unwrap().records.len(), 1);
+    let next = Bundle { state: "y".repeat(2 * 1024 * 1024), media: Vec::new() };
+    store.append(&next, meta(2), &Config::default(), &no()).unwrap();
+    assert_eq!(segments(&store.path, &no()).unwrap().len(), 2);
+    let session = session_digest(store.session_id());
+    drop(store);
+    let candidate = lookup_exact(&root.0, session, 7, 1, &no()).unwrap().unwrap();
+    let recovered: Recovered<String> = recover(&candidate, &no()).unwrap();
+    assert_eq!(recovered.bundle.state, original.state);
+    let candidate = latest(&root.0);
+    assert_eq!(candidate.sequence, 2);
+    let recovered: Recovered<String> = recover(&candidate, &no()).unwrap();
+    assert_eq!(recovered.bundle.state, next.state);
+}
+
+#[test]
+#[ignore = "Requires an explicit private native Set copy and a new OMATAINER_RECOVERY_RECEIPT_DIR under /home"]
+fn native_imported_live_set_recovery_preserves_complete_edit_state_and_pcm() {
+    use sha2::{Digest, Sha256};
+    let source = PathBuf::from(std::env::var_os("OMATAINER_RECOVERY_NATIVE_PROJECT").unwrap());
+    let directory = PathBuf::from(std::env::var_os("OMATAINER_RECOVERY_RECEIPT_DIR").unwrap());
+    assert!(source.starts_with("/home") && directory.starts_with("/home"));
+    fs::DirBuilder::new().mode(0o700).create(&directory).unwrap();
+    let digest = |bytes: &[u8]| files::hex(&Sha256::digest(bytes).into());
+    let source_digest = digest(&fs::read(&source).unwrap());
+    let original: Bundle<crate::ui::project::Document> = project_file::load(&source, &Limits::default(), &no()).unwrap();
+    original.state.validate().unwrap();
+    let state_bytes = journal::json(&original.state).unwrap();
+    assert!(state_bytes.len() > 8 * 1024 * 1024);
+    let expected = digest(&state_bytes);
+    let mut store = Store::open(&directory.join("recovery")).unwrap();
+    let commit = store.append(&original, meta(1), &Config::default(), &no()).unwrap();
+    assert!(commit.durable, "{:?}", commit.warning);
+    drop(store);
+    let candidate = latest(&directory.join("recovery"));
+    let recovered: Recovered<crate::ui::project::Document> = recover(&candidate, &no()).unwrap();
+    recovered.bundle.state.validate().unwrap();
+    assert_eq!(digest(&journal::json(&recovered.bundle.state).unwrap()), expected);
+    assert_eq!(recovered.bundle.media.len(), original.media.len());
+    for (a, b) in original.media.iter().zip(&recovered.bundle.media) { assert_sample(a, b); }
+    let destination = directory.join("recovered.omatainer");
+    project_file::save(&destination, &recovered.bundle, Overwrite::Never, &Limits::default(), &no()).unwrap();
+    let reopened: Bundle<crate::ui::project::Document> = project_file::load(&destination, &Limits::default(), &no()).unwrap();
+    reopened.state.validate().unwrap();
+    let prepared = crate::engine::project::Prepared::from_state(reopened.state.engine.clone(), reopened.media.clone(), 44100).unwrap();
+    drop(prepared);
+    assert_eq!(reopened.media.len(), original.media.len());
+    assert_eq!(digest(&journal::json(&reopened.state).unwrap()), expected);
+    for (a, b) in original.media.iter().zip(&reopened.media) { assert_sample(a, b); }
+    assert_eq!(digest(&fs::read(&source).unwrap()), source_digest);
+    fs::write(directory.join("receipt.json"), serde_json::to_vec_pretty(&serde_json::json!({
+        "source_sha256": source_digest, "state_sha256": expected, "state_bytes": state_bytes.len(),
+        "media_assets": original.media.len(), "pcm_samples": original.media.iter().map(|s|s.data.len()).sum::<usize>(),
+        "durable": commit.durable, "recovered_sequence": candidate.sequence, "native_reopen": true,
+        "scope": "Actual imported native Set metadata and decoded PCM, isolated private recovery store; original unchanged."
+    })).unwrap()).unwrap();
 }
 
 #[test]

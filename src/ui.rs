@@ -19,22 +19,33 @@ mod library_prepare;
 mod library_tags;
 mod library_annotations;
 mod library_protection;
+mod library_files;
 mod library_smart_crates;
 mod library_crates;
+mod library_playlist;
 mod library_store;
 pub(crate) mod bpm;
 use bpm::{Bpm, Origin};
 use crate::engine::media_source::FileFingerprint;
 mod fx_controls;
+mod dj_fx;
+mod dj_fx_presets;
+mod plugins;
 mod library_view;
 mod library_layout;
 mod library_backup;
 mod library_artwork;
 mod key_hints;
 mod clip_gain;
+mod headphones;
+mod input_monitoring;
 use clip_gain::ClipGainEdit;
 use library_view::{LibraryView, Cells};
 mod load_status;
+mod scale_status;
+mod continuous_playback;
+mod key_shift;
+mod slip;
 mod deck_load_lock;
 mod play_history;
 mod session_history;
@@ -45,13 +56,23 @@ mod track_gain;
 mod waveform;
 mod piano_roll;
 mod midi_files;
+mod audio_clips;
+mod audio_fades;
+mod ableton;
+mod arrangement;
+mod song_navigation;
+mod clip_manager;
+mod clip_launch;
 mod timing;
 mod dependencies;
 mod portability;
 mod midi_routing;
+mod midi_clock;
 mod midi_learn;
+mod midi_profiles;
+mod midi_presets;
 mod play_time;
-mod project;
+pub(crate) mod project;
 mod templates;
 mod project_import;
 mod project_versions;
@@ -71,6 +92,8 @@ mod preferences;
 mod automation;
 mod music_provider;
 mod video;
+mod audio_delivery;
+mod mic_aux;
 mod performance;
 mod background_jobs;
 mod audio_settings;
@@ -85,12 +108,21 @@ use crate::engine::load_receipt::{Media, Receipt};
 mod load_status_tests;
 mod keyboard;
 mod shortcuts;
+mod beat_jump;
+mod loop_editor;
+mod deck_quantization;
+mod cue_audition;
+mod deck_pads;
+mod deck_direction;
+mod deck_sync;
+mod pitch_controls;
 mod command_palette;
 mod touch;
 mod workspace;
 mod help;
 use help::{Control as HelpControl, ContextHelp as _};
 pub(crate) fn validate_shortcuts(profile: &crate::preferences::Profile) -> Result<(), String> { shortcuts::validate(profile) }
+pub(crate) fn migrate_beat_jump_shortcuts(profile: &mut crate::preferences::Profile) { shortcuts::migrate_beat_jump(profile); }
 mod deck_selection;
 use library_scan::LibraryScan;
 
@@ -124,13 +156,20 @@ mod theme_requests;
 mod font_selection_tests;
 
 pub struct App {
+    continuous_playback: continuous_playback::Panel,
+    key_shift: key_shift::Panel,
+    slip: slip::Panel,
+    load_revision: [u64; DECKS],
     support: support::Panel,
     recovery: recovery::Recovery,
     session_history: session_history::Panel,
     settings: preferences::Settings,
+    plugins: crate::plugin_host::scanner::Browser,
     automation_panel: automation::Panel,
     music_provider: music_provider::Panel,
     video: video::Panel,
+    audio_delivery: Box<audio_delivery::Panel>,
+    mic_aux: Box<mic_aux::Panel>,
     automation_network: crate::automation::osc::Manager,
     performance_panel: performance::Panel,
     background_jobs: background_jobs::Panel,
@@ -141,6 +180,7 @@ pub struct App {
     project: project::Projects,
     templates: templates::Templates,
     project_import: project_import::Panel,
+    ableton: ableton::Panel,
     project_versions: project_versions::Panel,
     undo_history: undo::History,
     theme: Theme,
@@ -163,8 +203,10 @@ pub struct App {
     library_tags: library_tags::Panel,
     library_annotations: library_annotations::Panel,
     library_protection: library_protection::Panel,
+    library_files: library_files::Panel,
     smart_crates: library_smart_crates::Panel,
     library_crates: library_crates::Crates,
+    library_playlist: library_playlist::Import,
     library_import_open: bool,
     library_initialized: bool,
     library_close: library_store::Close,
@@ -177,12 +219,18 @@ pub struct App {
     playback_watches: Vec<play_history::Watch>,
     cue_editor: cue_editor::Cues,
     grid_editor: Option<grid_editor::Editor>,
+    loop_settings: [loop_editor::Settings; DECKS],
     track_gain: Option<track_gain::Editor>,
     waveform: waveform::Panel,
     session_editor: session_editor::Editor,
     audio_routing: audio_routing::Panel,
     piano_roll: piano_roll::Editor,
     midi_files: midi_files::Editor,
+    audio_clips: Box<audio_clips::Editor>,
+    arrangement:Box<arrangement::Editor>,
+    song_navigation:song_navigation::Panel,
+    clip_manager:Box<clip_manager::Editor>,
+    clip_launch_holds:clip_launch::Holds,
     timing: timing::Editor,
     dependencies: dependencies::Dependencies,
     portability: portability::Portability,
@@ -208,6 +256,12 @@ pub struct App {
     last_play_idx: usize,
     pad_held: [bool; 16],
     pad_inputs: [u8; 16],
+    deck_pad_inputs: deck_pads::Inputs,
+    deck_direction: deck_direction::Inputs,
+    dj_fx_open: bool,
+    dj_fx_presets: dj_fx_presets::Panel,
+    cue_audition: cue_audition::Inputs,
+    pitch_inputs: pitch_controls::Inputs,
     shortcut_focus: keyboard::ShortcutFocus,
     clip_gain_edit: Option<ClipGainEdit>,
     deck_time: [DeckTimeSettings; DECKS],
@@ -265,15 +319,22 @@ impl App {
         let playback_watches = play_history::initial_watches(&engine);
         let theme_requests = engine.cmd.theme_requests().attach();
         let mut app = Self {
+            continuous_playback: Default::default(),
+            key_shift: Default::default(),
+            slip: Default::default(),
+            load_revision: [0; DECKS],
             support: support::Panel::default(),
             recovery: recovery::Recovery::default(),
             session_history: session_history::Panel::default(),
             audio_settings: audio_settings::Panel::new(engine.audio_handle()),
             audio_routing: audio_routing::Panel::default(),
             settings: preferences::Settings::default(),
+            plugins: Default::default(),
             automation_panel: automation::Panel::default(),
             music_provider: music_provider::Panel::default(),
             video: video::Panel::default(),
+            audio_delivery: Box::default(),
+            mic_aux: Box::default(),
             automation_network: crate::automation::osc::Manager::new(engine.cmd.clone(),engine.snap.clone()),
             performance_panel: performance::Panel::default(),
             background_jobs: background_jobs::Panel::default(),
@@ -283,6 +344,7 @@ impl App {
             project,
             templates: templates::Templates::default(),
             project_import: project_import::Panel::default(),
+            ableton: Default::default(),
             project_versions: project_versions::Panel::default(),
             undo_history: undo::History::default(),
             theme,
@@ -305,8 +367,10 @@ impl App {
             library_tags: library_tags::Panel::default(),
             library_annotations: library_annotations::Panel::default(),
             library_protection: library_protection::Panel::default(),
+            library_files: library_files::Panel::default(),
             smart_crates: library_smart_crates::Panel::default(),
             library_crates: library_crates::Crates::default(),
+            library_playlist: library_playlist::Import::default(),
             library_import_open: false,
             library_initialized: false,
             library_close: library_store::Close::default(),
@@ -317,11 +381,17 @@ impl App {
             playback_watches,
             cue_editor: cue_editor::Cues::default(),
             grid_editor: None,
+            loop_settings: std::array::from_fn(|_| loop_editor::Settings::default()),
             track_gain: None,
             waveform: waveform::Panel::default(),
             session_editor: session_editor::Editor::default(),
             piano_roll: piano_roll::Editor::default(),
             midi_files: midi_files::Editor::default(),
+            audio_clips: Box::default(),
+            arrangement:Box::default(),
+            song_navigation:Default::default(),
+            clip_manager:Box::default(),
+            clip_launch_holds:Default::default(),
             timing: timing::Editor::default(),
             dependencies: dependencies::Dependencies::default(),
             portability: portability::Portability::default(),
@@ -347,6 +417,12 @@ impl App {
             last_play_idx: 0,
             pad_held: [false; 16],
             pad_inputs: [0; 16],
+            deck_pad_inputs: deck_pads::Inputs::new(),
+            deck_direction: deck_direction::Inputs::new(),
+            dj_fx_open: false,
+            dj_fx_presets: Default::default(),
+            cue_audition: cue_audition::Inputs::new(),
+            pitch_inputs: pitch_controls::Inputs::new(),
             shortcut_focus: keyboard::ShortcutFocus::default(),
             clip_gain_edit: None,
             deck_time: [DeckTimeSettings::default(); DECKS],
@@ -420,12 +496,14 @@ impl App {
     }
 
     fn load_source(&mut self, deck: u8, picked: Option<&Selection>) {
+        self.disable_continuous_playback(usize::from(deck),"Manual track load ended continuous playback");
         if self.review_locked_load(deck, picked.cloned()) { return; }
         self.load_source_approved(deck, picked, None);
     }
     /// Prepare one captured library choice.
     /// Takes its target, selected source and optional review; preserves the current deck until renderer application.
     fn load_source_approved(&mut self, deck: u8, picked: Option<&Selection>, approval: Option<crate::engine::performance::DeckApproval>) {
+        self.disable_continuous_playback(usize::from(deck),"Manual track load ended continuous playback");
         if !self.deck_load_allows(deck, approval.as_ref()) { return; }
         self.project.local_edits = self.project.local_edits.wrapping_add(1);
         if deck as usize >= DECKS {
@@ -480,6 +558,7 @@ impl App {
         self.load_reference(deck,LibSource::File(path),name);
     }
     fn load_reference(&mut self, deck:u8,source:LibSource,name:&str) {
+        self.disable_continuous_playback(usize::from(deck),"Manual track load ended continuous playback");
         if self.review_locked_load(deck, Some(Selection { title: name.into(), source: source.clone(), fingerprint: None })) { return; }
         self.load_reference_approved(deck, source, name, None, None);
     }
@@ -630,7 +709,7 @@ impl App {
                     }
                     receipt = match receipt.with_source_level(completion.level) {
                         Ok(receipt) => receipt,
-                        Err(error) => { state.phase = Phase::Failed(error.into()); self.set_load_state(deck, state); continue; },
+                        Err(error) => { state.phase = Phase::Failed(error.into()); self.update_load_state(deck, state); continue; },
                     };
                     if let Some(approval) = state.approval.take() { receipt = receipt.with_deck_approval(approval); }
                     if let Some(generation)=state.deck_generation {receipt=receipt.with_deck_generation(generation);}
@@ -657,7 +736,7 @@ impl App {
                 }
                 Err(error) => state.phase = Phase::Failed(error.to_string()),
             }
-            self.set_load_state(deck, state);
+            self.update_load_state(deck, state);
         }
     }
 
@@ -727,7 +806,9 @@ impl App {
         }
         let identity = crate::engine::sampler_pad::PadIdentity::new(p as u8);
         let name = if self.snap.sampler_inst.synth().is_some() {
-            format!("Pad {}: {} MIDI note {}", p + 1, identity.piano_label(), identity.midi_note(self.snap.sampler_oct))
+            if self.snap.sampler_scale {
+                self.snap.sampler_gate_pitch(p as u8).map_or_else(|| format!("Pad {}: no saved scale pitch",p+1),|pitch|format!("Pad {}: scale MIDI note {}",p+1,pitch))
+            } else { format!("Pad {}: {} MIDI note {}", p + 1, identity.piano_label(), identity.midi_note(self.snap.sampler_oct)) }
         } else { format!("Sample pad {}", p + 1) };
         if self.pad_held[p] {
             active_mark(ui.painter(), r.rect, self.theme.fg);
@@ -801,12 +882,14 @@ impl App {
         #[cfg(test)]
         std::thread::sleep(self.diagnostics.ui_delay);
         self.shortcut_focus.begin_frame(ctx);
+        self.clip_launch_releases(ctx);
         self.touch_input.begin(ctx);
         accessibility::begin_frame(ctx);
         self.undo_history.begin_frame(ctx, &self.engine.undo);
         if !self.project.committing() {
             self.poll_ui_requests();
             self.poll_library_scan();
+            self.poll_dj_libraries();
             ctx.request_repaint_after(std::time::Duration::from_millis(500));
         } else { keyboard::block_for_dialog(ctx); }
         let submissions = self.engine.cmd.stats();
@@ -816,22 +899,31 @@ impl App {
         }
         self.poll_recovery();
         self.poll_preferences(ctx);
+        self.poll_plugins();
         self.poll_audio_settings(ctx);
         self.poll_theme(ctx);
         if !self.project.committing() { self.poll_loads(); }
         self.snap = self.engine.snapshot();
+        self.poll_continuous_playback();
         self.poll_music_provider();
         self.poll_video(ctx);
+        self.poll_audio_delivery(ctx);
         self.confirm_project_snapshot();
         self.poll_undo();
         self.poll_piano_roll();
         self.poll_midi_files();
+        self.poll_audio_clips();
+        self.poll_arrangement();
+        self.poll_clip_manager();
         self.timing.poll(&self.engine);
+        self.plugins_ui(ctx);
         self.poll_dependencies();
         self.poll_portability();
         self.poll_templates();
         self.project_import.poll();
+        self.ableton.poll();
         self.project_versions.poll();
+        self.dj_fx_presets.poll(&self.snap);
         self.poll_sampler_editor();
         self.poll_library_backup(ctx);
         self.poll_library_analysis();
@@ -840,7 +932,7 @@ impl App {
         self.poll_named_crates();
         self.poll_prepare_queue();
         self.poll_session_history();
-        let animating = self.snap.playing || self.snap.decks.iter().any(|d| d.playing || d.platter.is_some());
+        let animating = self.snap.playing || self.snap.decks.iter().any(|d| d.playing || d.previewing || d.platter.is_some());
         if let Some(p) = ctx.input(|i| {
             (!self.project.committing() && self.project.dialog_is_closed()).then(|| i.raw.dropped_files.iter().find_map(|f| f.path.clone())).flatten()
         }) {
@@ -875,13 +967,19 @@ impl App {
         self.track_gain_ui(ctx);
         self.session_editor_ui(ctx);
         self.audio_routing_ui(ctx);
+        self.dj_fx_ui(ctx);
         self.piano_roll_ui(ctx);
+        self.recent_midi_ui(ctx);
         self.midi_files_ui(ctx);
+        self.audio_clips_ui(ctx);
+        self.arrangement_ui(ctx);
+        self.clip_manager_ui(ctx);
         self.timing_ui(ctx);
         self.dependencies_ui(ctx);
         self.portability_ui(ctx);
         self.templates_ui(ctx);
         self.project_import_ui(ctx);
+        self.ableton_ui(ctx);
         self.project_versions_ui(ctx);
         self.sampler_editor_ui(ctx);
         self.library_analysis_ui(ctx);
@@ -890,7 +988,12 @@ impl App {
         self.library_tags_ui(ctx);
         self.library_annotations_ui(ctx);
         self.library_protection_ui(ctx);
+        self.library_files_ui(ctx);
         self.named_crates_ui(ctx);
+        self.continuous_playback_ui(ctx);
+        self.key_shift_ui(ctx);
+        self.slip_ui(ctx);
+        self.playlist_import_ui(ctx);
         self.smart_crates_ui(ctx);
         self.session_history_ui(ctx);
         self.load_status(ctx);
@@ -911,6 +1014,7 @@ impl App {
                 });
         }
         self.help_panel(ctx);
+        if let Some(profiles)=self.engine.midi.profiles(){profiles.finish_when_unsafe(&self.snap,self.midi_open);}
         if self.midi_open {
             egui::Window::new(tr!("midi")).id(egui::Id::new("midi")).vscroll(true).max_height(self.theme.window_height(ctx)).show(ctx, |ui| {
                 let busy = self.engine.midi.connections_busy();
@@ -937,14 +1041,18 @@ impl App {
                 for d in &self.snap.midi {
                     ui.label(d);
                 }
+                self.controller_profiles_ui(ui,ctx);
                 self.midi_routing_status_ui(ui,ctx);
-                self.midi_learn_ui(ui,ctx);
+                self.midi_clock_status_ui(ui,ctx);
+                ui.push_id("midi_learn_editor", |ui| self.midi_learn_ui(ui,ctx));
             });
         }
         if !self.midi_open {self.engine.cmd.midi_learn().close();}
         self.automation_ui(ctx);
         self.music_provider_ui(ctx);
         self.video_ui(ctx);
+        self.audio_delivery_ui(ctx);
+        self.mic_aux_ui(ctx);
         self.preferences_ui(ctx);
         self.library_layout_ui(ctx);
         self.audio_settings_ui(ctx);
@@ -981,6 +1089,8 @@ impl App {
 impl App {
     fn handle_keys(&mut self, ctx: &egui::Context) {
         let viewport=ctx.viewport_id();
+        self.release_cue_keys(ctx);
+        self.guard_pitch_inputs(ctx);
         // A bound function-key Help action is safe in text/dialog contexts.
         // Letter and punctuation bindings keep the ordinary typing protection.
         let help = ctx.input_mut(|input| {
@@ -997,14 +1107,16 @@ impl App {
         }
         ctx.input(|i| {
             for ev in &i.events {
-                if let egui::Event::Key { key, pressed: true, repeat, modifiers: mods, .. } = ev {
+                if let egui::Event::Key { key, pressed, repeat, modifiers: mods, .. } = ev {
+                    if !pressed { self.release_cue_key(viewport, *key); continue; }
                     if Some(*key) == command_palette::chord(self.settings.profile()) && mods.ctrl && mods.shift && !mods.alt && !mods.mac_cmd && !repeat {
                         self.command_palette.open(viewport);
                         return;
                     }
                     if *key == Key::Comma && mods.ctrl && !mods.alt && !mods.shift && !repeat { self.settings.open = true; }
                     if let Some(action) = shortcuts::lookup_with(self.settings.profile(), *key, *mods, *repeat) {
-                        self.dispatch_shortcut(action);
+                        if let shortcuts::Action::Cue(deck) = action { self.press_cue_key(viewport, *key, deck); }
+                        else { self.dispatch_shortcut(action); }
                     }
                 }
             }
@@ -1103,9 +1215,9 @@ impl App {
                 .help_detail(ui, HelpControl::PitchLock, &status).clicked() {
                 self.send(Command::DeckKeylock { deck: d as u8 });
             }
-            let fader_h = (h - sq * 2.0 - 8.0).max(t.target_size(48.0)).min((ui.clip_rect().height() - 8.0).max(t.target_size(24.0)));
+            let fader_h = (h - sq * 2.0 - 28.0).max(t.target_size(48.0)).min((ui.clip_rect().height() - 8.0).max(t.target_size(24.0)));
             let span = [8.0, 16.0, 50.0][snap.pitch_range.min(2) as usize];
-            if let Some(v) = fader(ui, t, snap.pitch, span, snap.meter, t.accent, sq, fader_h, d as u8) {
+            if let Some(v) = fader(ui, t, snap.pitch, span, snap.meter, t.accent, sq, fader_h, d as u8, snap.pitch_pickup) {
                 self.send(Command::DeckPitch { deck: d as u8, value: v });
             }
             let lab = ["8", "16", "50"][snap.pitch_range.min(2) as usize];
@@ -1115,6 +1227,7 @@ impl App {
             if range.clicked() {
                 self.send(Command::DeckPitchRange { deck: d as u8 });
             }
+            self.deck_bend_controls(ui,d as u8,snap);
         });
     }
 
@@ -1124,34 +1237,12 @@ impl App {
             ui.spacing_mut().item_spacing = Vec2::splat(3.0);
             ui.set_width((cell + 4.0) * 4.0 + 9.0);
             ui.set_min_height(wave_h);
-            for row in 0..2 {
-                ui.horizontal(|ui| {
-                    ui.spacing_mut().item_spacing = Vec2::splat(3.0);
-                    for c in 0..4 {
-                        let i = row * 4 + c;
-                        let on = snap.hotcues.get(i).copied().unwrap_or(false);
-                        let name = snap.cue_styles[i].name.as_str();
-                        let text = if name.is_empty() { format!("{}", i + 1) }
-                            else { format!("{}\n{}", i + 1, cue_editor::short_name(name, 5)) };
-                        let r = sq_btn(ui, t, &text, on, cue_editor::color(t, snap.cue_styles[i], i), cell);
-                        let label = cue_editor::label(i, snap.cue_styles[i]);
-                        accessibility::button(ui, &r, &label, Some(on));
-                        accessibility::status(ui, &r, &cue_editor::description(snap, i));
-                        let alternative = accessibility::actions(ui, &r, &["Set or jump to cue", "Delete cue", "Edit cue names and colors"]);
-                        help::annotate(ui, &r, HelpControl::HotCue);
-                        if alternative == Some(2) { self.open_cue_editor(d); }
-                        else if r.clicked() || alternative.is_some() {
-                            self.send(Command::DeckHotCue {
-                                deck: d as u8,
-                                pad: i as u8,
-                                del: alternative.map(|action| action == 1).unwrap_or_else(|| ui.input(|i| i.modifiers.shift)),
-                            });
-                        }
-                    }
-                });
-            }
+            self.deck_pad_grid(ui, t, d, snap, cell);
             ui.horizontal_wrapped(|ui| {
-                if ui.small_button(tr!("cues…")).help(ui, HelpControl::CueEditor).clicked() { self.open_cue_editor(d); }
+                let cues = ui.small_button(tr!("cues…"));
+                accessibility::button(ui, &cues, "Cue editor", None);
+                help::annotate(ui, &cues, HelpControl::CueEditor);
+                if cues.clicked() { self.open_cue_editor(d); }
                 let grid = ui.small_button(tr!("grid…"));
                 accessibility::button(ui, &grid, "Beatgrid editor", None);
                 help::annotate(ui, &grid, HelpControl::GridEditor);
@@ -1213,6 +1304,7 @@ impl App {
                 self.send(Command::DeckPlay { deck: d as u8 });
             }
             ui.horizontal(|ui| {
+            self.deck_cue_audition(ui, d as u8, snap.frames > 0.0);
             ui.push_id(("deck-time", d), |ui| {
                 let button = ui.button(RichText::new(self.deck_time[d].button_label()).size(t.text_size(11.0))).help(ui, HelpControl::DeckTime);
                 egui::Popup::menu(&button)
@@ -1235,6 +1327,13 @@ impl App {
             accessibility::focus(ui, &response);
             if response.changed() { self.send(Command::DeckLoadLock { deck: d as u8, enabled: locked }); }
             });
+            self.deck_beat_jump(ui, d as u8, snap.controls.beat_jump_size);
+            self.deck_quantization(ui, d as u8, &snap.controls, snap.grid.is_some());
+            ui.horizontal(|ui| {
+                self.deck_sync_controls(ui, d as u8, snap);
+                self.deck_direction_controls(ui, d as u8, snap);
+            });
+            self.deck_loop_editor(ui, d as u8, snap);
         });
     }
 
@@ -1242,9 +1341,9 @@ impl App {
         ui.vertical(|ui| {
             ui.spacing_mut().item_spacing = Vec2::splat(4.0);
             ui.set_width(sq);
-            let q = self.snap.quantize;
+            let q = snap.controls.quantize;
             if sq_btn(ui, t, "Q", q, t.yellow, sq).help(ui, HelpControl::Quantize).clicked() {
-                self.send(Command::ToggleQuant);
+                self.send(Command::DeckControl { source: 0, deck: d as u8, control: crate::engine::deck_controls::Control::Quantize { enabled: !q, division: snap.controls.quantize_division } });
             }
             let io = sq_btn(ui, t, "I/O", snap.loop_on, t.accent, sq).help(ui, HelpControl::LoopBounds);
             let alternative = accessibility::actions(ui, &io, &["Loop in", "Loop out"]);
@@ -1261,7 +1360,9 @@ impl App {
                 self.send(Command::DeckLoopHalf { deck: d as u8 });
             }
             if sq_btn(ui, t, "↻", snap.loop_on, t.magenta, sq).help(ui, HelpControl::Reloop).clicked() {
-                self.send(Command::DeckReloop { deck: d as u8 });
+                if snap.loop_len >= 64.0 {
+                    self.send(Command::DeckControl { source: 0, deck: d as u8, control: crate::engine::deck_controls::Control::Reloop });
+                } else { self.send(Command::DeckReloop { deck: d as u8 }); }
             }
             if sq_btn(ui, t, "⇄", snap.sync, t.green, sq).help(ui, HelpControl::Match).clicked() {
                 self.send(Command::DeckMatch);
@@ -1279,6 +1380,10 @@ impl App {
             accessibility::button(ui, &midi, "Edit selected MIDI clip", None);
             help::annotate(ui, &midi, HelpControl::PianoRoll);
             if midi.clicked() { self.open_piano_roll(); }
+            let recent = ui.button("Recent MIDI");
+            accessibility::button(ui, &recent, "Capture recent MIDI", None);
+            help::annotate(ui, &recent, HelpControl::PianoRoll);
+            if recent.clicked() { self.open_recent_midi(); }
             if let Some(target) = self.snap.compose_target {
                 let name = self.snap.tracks.get(target.track).map(|tr| tr.name.as_str()).unwrap_or("track");
                 ui.label(RichText::new({ let __omatainer_args = (&(name),&(target.scene + 1),); crate::localization::format("Compose armed: {} / scene {}", &[format!("{}", __omatainer_args.0), format!("{}", __omatainer_args.1)]) }).color(t.yellow));
@@ -1327,6 +1432,11 @@ impl App {
                             }
                         }
                     });
+                let mut follow=self.snap.sampler_scale;
+                let scale=ui.checkbox(&mut follow,"Use saved scale");
+                accessibility::button(ui,&scale,"Use saved scale",Some(follow));
+                if scale.changed(){self.send(Command::SamplerScale(follow));}
+                if follow && self.snap.sampler_context.is_none(){ui.label("Set a song or clip key in the MIDI editor.");}
                 help::annotate(ui, &instrument.response, HelpControl::SamplerInstrument);
                 instrument.response.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::ComboBox, true, "Sampler instrument"));
                 ui.ctx().accesskit_node_builder(instrument.response.id, |node| node.set_value(instrument_label));
@@ -1350,7 +1460,10 @@ impl App {
                         ui.spacing_mut().item_spacing = Vec2::splat(4.0);
                         for column in 0..8u8 {
                             let pad = crate::engine::sampler_pad::PadIdentity::new(row + column);
-                            let label = if piano { pad.piano_label() } else { pad.sample_label() };
+                            let scaled=piano && self.snap.sampler_scale;
+                            let pitch=self.snap.sampler_gate_pitch(row+column);
+                            let scale_label=if scaled {pitch.map_or(String::new(),|pitch|["C","C♯","D","D♯","E","F","F♯","G","G♯","A","A♯","B"][usize::from(pitch%12)].into())}else{String::new()};
+                            let label = if scaled {scale_label.as_str()} else if piano { pad.piano_label() } else { pad.sample_label() };
                             let empty = label.is_empty();
                             let color = t.track_color(column as usize + if row == 0 { 8 } else { 0 });
                             let r = ui.push_id(("sampler-pad", pad.index()), |ui| {
@@ -1360,7 +1473,7 @@ impl App {
                             let identity = if piano && empty {
                                 format!("Pad {} · no piano accidental", pad.number())
                             } else if piano {
-                                format!("{} · pad {} · MIDI note {}", label, pad.number(), pad.midi_note(self.snap.sampler_oct))
+                                format!("{} · pad {} · MIDI note {}", label, pad.number(), pitch.unwrap_or_else(|| pad.midi_note(self.snap.sampler_oct)))
                             } else {
                                 format!("Sample pad {} · bank slot {}", pad.number(), pad.index())
                             };
@@ -1384,6 +1497,7 @@ impl App {
             ui.horizontal_wrapped(|ui| {
                 self.named_crate_selector(ui);
                 if ui.button("layout…").help(ui, HelpControl::LibraryLayouts).clicked() { self.library_layout.open=true; }
+                if ui.button("continuous…").help(ui,HelpControl::ContinuousPlayback).clicked() {self.continuous_playback.open=true;}
                 let mut all = self.library_view.search_all;
                 let scope = ui.checkbox(&mut all, tr!("Search all library"));
                 help::annotate(ui, &scope, HelpControl::CrateSearchScope);
@@ -1402,6 +1516,7 @@ impl App {
                 if ui.button(tr!("analyze…")).help(ui, HelpControl::LibraryAnalysis).clicked() { self.library_analysis.open = true; }
                 if ui.button(tr!("annotations…")).help(ui, HelpControl::TrackAnnotations).clicked() { self.library_annotations.open = true; }
                 if ui.button(tr!("locks…")).help(ui,HelpControl::PreparationLocks).clicked() {self.library_protection.open=true;}
+                if ui.button("files…").clicked() {self.library_files.open=true;}
                 if ui.button(tr!("tags…")).help(ui, HelpControl::TagEditor).clicked() { self.library_tags.open = true; }
                 self.deck_selectors(ui);
                 if ui.button(tr!("library…")).help(ui, HelpControl::Library).clicked() { self.library_import_open = true; }
@@ -1418,6 +1533,8 @@ impl App {
                 if load_b.clicked() {
                     self.load_sel(1);
                 }
+                if ui.button("key shift…").help(ui,HelpControl::KeyShift).clicked() { self.key_shift.open=true; }
+                if ui.button("slip…").help(ui,HelpControl::SlipPlayback).clicked() { self.slip.open=true; }
                 ui.label(RichText::new(if self.library_layout.live.current().primary.is_some() { "custom column sort" } else if self.library_crates.selected.as_ref().and_then(|id|self.library_metadata.catalog.crates.node(id)).is_some_and(|node|node.smart_rule.is_none() && node.annotation_rule.is_none()) { "manual crate order" } else { "published catalog order" }).size(t.text_size(10.0)).color(t.muted));
                 ui.label(RichText::new(tr!("metadata: inspect tags…")).size(t.text_size(10.0)).color(t.muted)).on_hover_text(key_hints::HELP);
                 let progress = self.library_scan.label();
@@ -1463,7 +1580,7 @@ impl App {
             let performance=self.engine.cmd.performance().clone();
             let artwork_allowed=!self.engine.safe_mode();
             #[cfg(test)] { self.library_view.stats.rendered = 0; self.library_view.stats.formatted = 0; }
-            let mut scroll = egui::ScrollArea::both().id_salt("crate-rows").scroll_source(egui::scroll_area::ScrollSource { drag: ui.input(|input| input.any_touches()), ..Default::default() }).animated(!t.reduced_motion).auto_shrink([false, false]).horizontal_scroll_offset(self.library_view.horizontal_offset);
+            let mut scroll = egui::ScrollArea::both().id_salt("crate-rows").scroll_source(egui::scroll_area::ScrollSource { drag: ui.input(|input| input.any_touches()), ..Default::default() }).animated(!t.reduced_motion).min_scrolled_height(0.0).auto_shrink([false, false]).horizontal_scroll_offset(self.library_view.horizontal_offset);
             if let Some(offset) = self.library_view.pending_offset.take() {
                 scroll = scroll.vertical_scroll_offset(offset);
             }
@@ -1637,7 +1754,7 @@ impl App {
                         ui.horizontal(|ui| {
                             ui.spacing_mut().item_spacing = Vec2::splat(gap);
                             let on = self.snap.playing && self.snap.tracks.iter().any(|tr| tr.playing_scene == sc as i16 && !tr.clip_pending);
-                            let queued = self.snap.tracks.iter().any(|tr| tr.playing_scene == sc as i16 && tr.clip_pending);
+                            let queued = self.snap.scenes.pending.is_some_and(|pending| layout.resolves(crate::engine::session::Axis::Scene, sc, pending.scene)) || self.snap.tracks.iter().any(|tr| tr.playing_scene == sc as i16 && tr.clip_pending || tr.clip_queued==Some(sc as u16));
                             let (hr, _) = ui.allocate_exact_size(Vec2::new(scene_w, row_h), Sense::hover());
                             let hresp = ui.interact(hr, egui::Id::new(("session-scene",layout.namespace,layout.scenes[sc].id.0)), Sense::click());
                             let scene_color=layout.scenes[sc].color.map(|c|Color32::from_rgb(c[0],c[1],c[2])).unwrap_or(t.accent);
@@ -1646,7 +1763,9 @@ impl App {
                             ui.painter().with_clip_rect(hr).text(hr.center(), egui::Align2::CENTER_CENTER, &format!("{} {} {}", if queued { "Q" } else if on { ">" } else { "[]" }, display_scene+1,layout.scenes[sc].name), FontId::proportional(t.text_size(11.0)), t.fg);
                             grid_gained_focus |= hresp.gained_focus();
                             accessibility::button(ui, &hresp, &format!("Scene {}: Toggle playback", display_scene + 1), Some(on));
-                            accessibility::status(ui,&hresp,&layout.scenes[sc].name);
+                            let scene_status = format!("{}; {}; {}", layout.scenes[sc].name, session_editor::scene_properties::describe(layout.scenes[sc].scene), if queued { "queued" } else if on { "playing" } else { "stopped" });
+                            accessibility::status(ui,&hresp,&scene_status);
+                            hresp.clone().on_hover_text(&scene_status);
                             let action = accessibility::actions(ui, &hresp, &["Toggle scene", "Add scene", "Open scene effects", "Restart scene", "Edit scene"]);
                             help::annotate(ui, &hresp, HelpControl::Scene);
                             if action == Some(4) { self.send(Command::Select {track:self.snap.selected_track,scene:sc}); self.session_editor.open=true; self.session_editor.select_axis(crate::engine::session::Axis::Scene); }
@@ -1667,10 +1786,13 @@ impl App {
                             let tr = usize::from(layout.track_order[display_track]);
                                 let clip = self.snap.tracks.get(tr).and_then(|x| x.clips.get(sc));
                                 let filled = clip.map(|c| c.kind != 0).unwrap_or(false);
-                                let queued = self.snap.tracks.get(tr).is_some_and(|x| x.playing_scene == sc as i16 && x.clip_pending);
+                                let scene_queued = self.snap.scenes.pending.is_some_and(|pending| layout.resolves(crate::engine::session::Axis::Scene, sc, pending.scene) && clip.is_some_and(|clip| !clip.properties.disabled && (filled || !pending.additive && pending.properties.empty == crate::engine::scene::Empty::Stop)));
+                                let queued = scene_queued || self.snap.tracks.get(tr).is_some_and(|x| x.playing_scene == sc as i16 && x.clip_pending || x.clip_queued==Some(sc as u16));
                                 let playing = self.snap.playing && self.snap.tracks.get(tr).is_some_and(|x| x.playing_scene == sc as i16 && !x.clip_pending);
+                                let stopping=playing && self.snap.tracks.get(tr).is_some_and(|x|x.clip_stopping);
                                 let looping = self.snap.tracks.get(tr).map(|x| x.clip_looping).unwrap_or(false);
-                                let color = layout.tracks[tr].color.map(|c| Color32::from_rgb(c[0],c[1],c[2])).unwrap_or_else(||t.track_color(tr));
+                                let color = clip.and_then(|c|c.properties.color).or(layout.tracks[tr].color).map(|c| Color32::from_rgb(c[0],c[1],c[2])).unwrap_or_else(||t.track_color(tr));
+                                let disabled = clip.is_some_and(|c|c.properties.disabled);
                                 let (rect, _) = ui.allocate_exact_size(Vec2::new(col_w, row_h), Sense::hover());
                                 let resp = ui.interact(rect, egui::Id::new(("session-clip",layout.namespace,layout.tracks[tr].id.0,layout.scenes[sc].id.0)), Sense::click());
                                 let fill = if playing {
@@ -1689,7 +1811,7 @@ impl App {
                                 );
                                 if filled {
                                     let name = clip.map(|c| c.name.as_str()).unwrap_or("");
-                                    let label = format!("{} {name}", if queued { "Q" } else if playing { ">" } else { "[]" });
+                                    let label = format!("{} {name}", if disabled {"Off"}else if stopping {"Stop queued"}else if queued { "Q" } else if playing { ">" } else { "[]" });
                                     ui.painter_at(rect).text(
                                         rect.center(),
                                         egui::Align2::CENTER_CENTER,
@@ -1704,16 +1826,22 @@ impl App {
                                 }
                                 grid_gained_focus |= resp.gained_focus();
                                 accessibility::button(ui, &resp, &format!("Clip track {} scene {}: {}", display_track + 1, display_scene + 1, clip.map(|c| c.name.as_str()).filter(|name| !name.is_empty()).unwrap_or("Empty")), Some(playing));
-                                accessibility::status(ui, &resp, &format!("{}; {}", if queued { "Queued" } else if playing { "Playing" } else { "Stopped" }, if looping { "Looping" } else { "One shot" }));
-                                let labels: &[&str] = if filled { &["Launch once", "Launch loop", "Arm compose", "Edit clip gain"] } else { &["Launch once", "Launch loop", "Arm compose"] };
+                                accessibility::status(ui, &resp, &format!("{}; {}", if disabled {"Disabled"}else if stopping {"Stopping"}else if queued { "Queued" } else if playing { "Playing" } else { "Stopped" }, if looping { "Looping" } else { "One shot" }));
+                                let mode=clip.map_or(crate::engine::clip_launch::Mode::Trigger,|c|c.properties.launch.mode);
+                                let clip_level=clip.map(|c|c.gain).unwrap_or(1.0);
+                                let labels: &[&str] = if filled { &["Launch once", "Launch loop", "Arm compose", "Edit clip gain", "Edit audio clip", "Manage clip", "Press configured clip", "Release configured clip", "Cancel queued clip transition"] } else { &["Launch once", "Launch loop", "Arm compose", "Edit clip gain", "Import audio clip", "Manage clip", "Press configured clip", "Release configured clip", "Cancel queued clip transition"] };
                                 let action = accessibility::actions(ui, &resp, labels);
+                                let configured=self.clip_launch_input(&resp,tr,sc,mode,filled&&!disabled,action);
                                 help::annotate(ui, &resp, HelpControl::Clip);
-                                if resp.clicked() || matches!(action, Some(0 | 2 | 3)) {
-                                    if action == Some(3) || action.is_none() && ui.input(|i| i.modifiers.alt) {
+                                if resp.clicked()&&!configured || matches!(action, Some(0 | 2 | 3 | 4 | 5)) {
+                                    if action == Some(5) {self.open_clip_manager(tr,sc);}
+                                    else if action == Some(4) || action.is_none() && ui.input(|i| i.modifiers.alt && i.modifiers.shift) {
+                                        self.open_audio_clip(tr as u8, sc as u16);
+                                    } else if action == Some(3) || action.is_none() && ui.input(|i| i.modifiers.alt) {
                                         if filled {
                                             self.clip_gain_edit = Some(ClipGainEdit {
                                                 track: tr as u8, scene: sc as u16,
-                                                value: clip.map(|c| c.gain).unwrap_or(1.0),
+                                                value: clip_level,
                                                 target: layout.reference(crate::engine::session::Axis::Track,tr).zip(layout.reference(crate::engine::session::Axis::Scene,sc)),
                                             });
                                         }
@@ -2150,7 +2278,7 @@ fn vertical_wave(ui: &mut Ui, t: &Theme, snap: &crate::engine::DeckSnap, col: Co
     waveform::paint(ui, t, snap, col, Vec2::new(w,h), crate::preferences::waveforms::Zoom::default(), waveform::playhead(snap, None), on_seek);
 }
 
-fn fader(ui: &mut Ui, t: &Theme, value: f32, span: f32, meter: f32, col: Color32, width: f32, height: f32, deck: u8) -> Option<f32> {
+fn fader(ui: &mut Ui, t: &Theme, value: f32, span: f32, meter: f32, col: Color32, width: f32, height: f32, deck: u8, pickup: crate::engine::pitch_pickup::Status) -> Option<f32> {
     let (rect, resp) = ui.allocate_exact_size(Vec2::new(width, height), Sense::click_and_drag());
     let p = ui.painter();
     let track = Rect::from_center_size(rect.center(), Vec2::new(7.0, rect.height() - 8.0));
@@ -2158,11 +2286,15 @@ fn fader(ui: &mut Ui, t: &Theme, value: f32, span: f32, meter: f32, col: Color32
     p.rect_filled(track, 3.0, t.bg_darker);
     let mh = track.height() * meter.clamp(0.0, 1.0);
     p.rect_filled(Rect::from_min_max(Pos2::new(track.right() + 2.0, track.bottom() - mh), Pos2::new(track.right() + 5.0, track.bottom())), 1.0, t.trace(t.green, t.level_contrast));
+    if pickup.physical.is_some() && !pickup.acquired {
+        let y=track.bottom()-pickup.target.clamp(0.0,1.0) as f32*track.height();
+        p.line_segment([Pos2::new(rect.left(),y),Pos2::new(rect.right(),y)],st(2.0,t.orange));
+    }
     let y = track.bottom() - value.clamp(0.0, 1.0) * track.height();
     p.rect_filled(Rect::from_center_size(Pos2::new(rect.center().x, y), Vec2::new(16.0, 7.0)), 2.0, col);
     let alternate = accessibility::numeric(ui, &resp, "Pitch", (value * 2.0 - 1.0) * span, -span, span, 0.1, "%")
         .map(|percent| (percent / span + 1.0) * 0.5);
-    accessibility::status(ui, &resp, &format!("Signal activity {:.0}% (smoothed, not a peak or clipping meter)", meter.clamp(0.0, 1.0) * 100.0));
+    accessibility::status(ui, &resp, &format!("{} · Signal activity {:.0}% (smoothed, not a peak or clipping meter)", pitch_controls::pickup_label(pickup,span), meter.clamp(0.0, 1.0) * 100.0));
     help::annotate(ui, &resp, HelpControl::Pitch);
     if let Some(pos) = mouse.position(&resp) {
         return Some((1.0 - (pos.y - track.top()) / track.height()).clamp(0.0, 1.0));

@@ -12,7 +12,7 @@ fn arp(mix: f32) -> RtEngine {
         scene: 0,
         notes: [60, 64, 67]
             .into_iter()
-            .map(|pitch| MidiNote {
+            .map(|pitch| MidiNote { variation: None,
                 channel:0,release_vel:64,source_timing:None, id: crate::engine::midi_edit::NoteId::new(), muted: false,
                 pitch,
                 start: 0.0,

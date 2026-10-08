@@ -1,0 +1,544 @@
+{
+  "schema": 1,
+  "build": {
+    "path": "target/app-backlog/navigation-sixth-build.log",
+    "sha256": "0e7811fbf4fce0d4797b88d9b579eb08177bc2daad6eaa3d7caabdfb0b4923bc"
+  },
+  "platform": "Linux ARM64; native renderer, production synthetic MIDI input workers, egui/AccessKit/keyboard handlers and actual .omat and MIDI preference/preset persistence; physical devices unopened",
+  "sourceFiles": {
+    "src/engine/audio/routing/record/delivery/tests.rs": "4d0a0f73e118b413c1a7bdec070c1c0f60e831a0592dff6464bf756e424ed7c2",
+    "src/engine/clip_launch.rs": "977dc66e7435605bfbfbf5f5afc3fd3774f86a058bfdaaae820f7d5092ee6299",
+    "src/engine/clip_launch/tests.rs": "98a618c4dfdf9faba98c3b2fa20f131f8459534d4b7f658224c3bbd47fb8cc4a",
+    "src/engine/control.rs": "c4bc9e235ce98db77864f46ce54284f5e6ece3fa97c7ba9707a807ae84f95c2c",
+    "src/engine/midi.rs": "5aa6692c7038a63e6a924e234949965e60c21e24ef96a6556c7325bcbe57cd9f",
+    "src/engine/midi/learn.rs": "3ee633dfd2d5d58a5d1db22c003ed341716fae89d1ac0bf15a72769eded78201",
+    "src/engine/midi/presets.rs": "f8a10308667dc3033a0a9ea1ae6312a0672eac6819ccfb5a7cbf36ef2bb8e90f",
+    "src/engine/midi/presets/tests.rs": "762bf2b20a448bbe1aa8f9af6bd8a53046bdc1902361656eaeadd59c362fbda6",
+    "src/engine/midi/profile.rs": "d1cd63abeb51b0e873245a3e80b55428456eaa30cd24fe4cd3abeaa908ea5da9",
+    "src/engine/midi/routing/playback/tests.rs": "75cb297cd7f9ae85597381ddda5210b7f1300723e9b60c692321f0da081c7d35",
+    "src/engine/mod.rs": "a79b7893513adb3a76e32a88efe1c0bd1e26cfd6aeb0a1f88df6d605d50acf29",
+    "src/engine/performance.rs": "49e8d9e4d31fa66b910172c23cc5b2b09cee33a7eac3bcb3d638ff565c528e39",
+    "src/engine/project/capture.rs": "998b7ac830c46888bc6ba4a49ab2a04473aabe30fa29f03c2739115e2adaf2d7",
+    "src/engine/project/model.rs": "977ca8579cbb35bcef96592c3a421cd73bfd38aae3fb03e79a695a74b7b5ed0f",
+    "src/engine/project/prepare.rs": "218fa0cd01d9a6697d49bc444158f2829fea83ea4c1f75aff680ab9b34ec6f46",
+    "src/engine/snapshot.rs": "1f6b35e39f52c412e224946d525905a72f2e950c93c534715c1df8114097b70d",
+    "src/engine/song_navigation.rs": "fe7c6ffb0b7aabf78e0f50006745778af7125ed9318173a8ed9f872d093c101f",
+    "src/engine/song_navigation/edit.rs": "e688c2661c40cfe7c989039d7aa43742b778ec5931d1ec99bc711099bb8fdd05",
+    "src/engine/song_navigation/metadata.rs": "9481ad7f31d13d2641d2d0894fca082705759f521f6796d73fdfba3a21f7d1b8",
+    "src/engine/song_navigation/playback.rs": "fdd03ce3fddf1823d1eae78bc110c284f106e25a80f38d4cf6247590e7cea34e",
+    "src/engine/song_navigation/tests.rs": "753720f1ba16402694ea6dc4fb96e12286d3ad5b48aff553afb4d11fcc40a830",
+    "src/engine/undo/capture.rs": "73f563f9e0b3f73240fd2604877e7d7801cb7a7142a8ea393f1d71d9f3765461",
+    "src/engine/undo/mod.rs": "7efcf4fb233fef151b0ba66a569e2e79bd6c096feebc11caa18d9b96417101e4",
+    "src/engine/undo/patch.rs": "f431f654155ddc682795cdb0cd3b9fc037948ff08458932c2e19ee2a23e3edb6",
+    "src/engine/undo/song_navigation.rs": "4d8a719b1f1d710b65d45749db65d7ca105b9c5ae43f5008a0f5ddf17985a295",
+    "src/engine/video_transport.rs": "6f958747dede79d26bbef4f9b8b09049ed6ab5b754b8409cd0131223efdbaf24",
+    "src/preferences/mod.rs": "ccb07051d26520304f50828a65b6799427528f9d3c50ce43bbacf9de7162d011",
+    "src/preferences/storage.rs": "033489893df9e284499aa5184ec861c31727e8171888b34ab9e7152d952c3717",
+    "src/ui.rs": "68cf7a331513bf3c00eabf2310d12706538bf17bc4e4e91f033d3e61eca83eb3",
+    "src/ui/arrangement.rs": "ac9e1f14be95f48f0c2e04cac1200ae08f77b628b098dccf426103a7f2ad6a0f",
+    "src/ui/help/catalogue.rs": "cf92d68d962da954e812bf87e1e1c3acb385c9f07cf757acdc12f8e937e7ce55",
+    "src/ui/midi_learn.rs": "172753a6ed6633b2fd6cadef247dfe5f6ef4816c4c38568da1a778a4eb07c8e0",
+    "src/ui/song_navigation.rs": "12c108e00cbd89aef895cef7fbbe8311fa99b31df1267139114970dca5769c21",
+    "src/ui/song_navigation/tests.rs": "2b6bec2f43efaa21145d31999355f9a2af098a09a159c1ee7d60cd1a1a183c4f",
+    "src/ui/song_navigation/worker.rs": "a23a218a06f5604a400a5098828cf0b9e6ce0e370102b75cb84189e0292ec0ed"
+  },
+  "testBinary": {
+    "path": "target/app-backlog/qualification-bin/navigation-tests-sixth",
+    "sha256": "ad6f7634938f7f4b50c042f1267cda990581ade63178f02bb7312e0a8a672cac"
+  },
+  "compiledInventory": {
+    "path": "target/app-backlog/navigation-sixth-compiled-source-inventory.json",
+    "sha256": "4a0de214d5788e796f9ca949ccdddab18377867a7c765a0920daaa8a7a155395",
+    "baseRevision": "f5c0cdbc6cdf8fa769ec9b7cc795bd6dcf3a3071",
+    "files": 733
+  },
+  "embeddedInputs": {
+    "schema": 1,
+    "baselineRevision": "f5c0cdbc6cdf8fa769ec9b7cc795bd6dcf3a3071",
+    "embeddedInputs": {
+      "README.md": "abab5cb8b9a15a180652402e983142ce2a3baf21f5272fe1c4e9079a5083143f",
+      "licenses/manifest.json": "5deddb1e4988c8276c3cb07f5bbd6b1e7ff8047e231a4a3f1821017be646661c",
+      "licenses/notices.json": "b15a146c83e362b540c860ae618b80f9ee0150cd9d8d41683a5d3d3fcb85c244"
+    }
+  },
+  "tests": {
+    "core": {
+      "path": "target/app-backlog/navigation-sixth-core-tests.log",
+      "sha256": "8aeb56fea94d4123dff0fe028038af277b17e67ac95b1fe6924314d75352d1c4",
+      "outcome": "ok",
+      "passed": 11,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 1943,
+      "seconds": 2.64
+    },
+    "native": {
+      "path": "target/app-backlog/navigation-sixth-native-tests.log",
+      "sha256": "86030865cabb83016e7f5b610c6cbc706499a476897559351183391ace6053c0",
+      "outcome": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 1953,
+      "seconds": 0.5
+    },
+    "chase": {
+      "path": "target/app-backlog/navigation-sixth-chase-tests.log",
+      "sha256": "39ba95bac6a0738d6beb506a58f091a7411049dd8329ad9cb1091abfaab1d602",
+      "outcome": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 1953,
+      "seconds": 0.12
+    },
+    "recorder": {
+      "path": "target/app-backlog/navigation-sixth-recorder-tests.log",
+      "sha256": "e2f21721f4c8eb7ca90908f902fce681f7b79a75610684f845022c71f3a6d7f0",
+      "outcome": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 1953,
+      "seconds": 0.41
+    },
+    "legacy-launch": {
+      "path": "target/app-backlog/navigation-sixth-legacy-launch-tests.log",
+      "sha256": "688f22485da8ea1681b20490425774bc9f50a880ac1a384481a563f7d24b1ad3",
+      "outcome": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 1953,
+      "seconds": 0.07
+    },
+    "midi": {
+      "path": "target/app-backlog/navigation-sixth-midi-tests.log",
+      "sha256": "e10e80daa2436ae29d04d55dfe68c54524c903595b2ce033101c668e809e30bd",
+      "outcome": "ok",
+      "passed": 186,
+      "failed": 0,
+      "ignored": 2,
+      "filtered": 1766,
+      "seconds": 37.76
+    },
+    "preferences": {
+      "path": "target/app-backlog/navigation-sixth-preferences-tests.log",
+      "sha256": "7c0ea9577e7eb31f377b8b694c83988f6e0b41bcdd275ae4f030e0a2dcaf4699",
+      "outcome": "ok",
+      "passed": 51,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 1903,
+      "seconds": 5.84
+    },
+    "arrangement": {
+      "path": "target/app-backlog/navigation-sixth-arrangement-tests.log",
+      "sha256": "7e9353aa6f212139484dd3b24a1785f181e7838ff23244255e374e5bb7c4bc2c",
+      "outcome": "ok",
+      "passed": 2,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 1952,
+      "seconds": 0.47
+    },
+    "full": {
+      "path": "target/app-backlog/navigation-sixth-full-tests.log",
+      "sha256": "5f1a451b3735c062bb97d1af2b751a21cde9e06758a1fe352f0a0ae9bd40712c",
+      "outcome": "ok",
+      "passed": 1910,
+      "failed": 0,
+      "ignored": 44,
+      "filtered": 0,
+      "seconds": 479.07
+    },
+    "manual": {
+      "path": "target/app-backlog/navigation-sixth-manual-regenerate.log",
+      "sha256": "bd3465f39e4b969252f89f368364c64f67e0c6a0bc40d428f7bdc6742141770c",
+      "outcome": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 1953,
+      "seconds": 0
+    }
+  },
+  "node": {
+    "path": "target/app-backlog/navigation-sixth-node-tests.log",
+    "sha256": "ba19e982b21e19c8d122be9aba4c990f8cfafb473e94a183ecf0d056d54afab8",
+    "passed": 15,
+    "failed": 0
+  },
+  "retainedPreliminaryResults": [
+    {
+      "attempt": "first",
+      "reason": "The integration build refused UI tests that called a sibling-private engine helper. The tests now read the real published snapshot; access was not widened.",
+      "build": {
+        "path": "target/app-backlog/navigation-first-build.log",
+        "sha256": "38e388152b525fa97896fb7cf2f696aa6a186b11703248b265534975e007834a",
+        "outcome": "compile refused"
+      }
+    },
+    {
+      "attempt": "second",
+      "reason": "Compilation refused a preferences test missing its required home path. The fixture now passes an explicit path under /home.",
+      "build": {
+        "path": "target/app-backlog/navigation-second-build.log",
+        "sha256": "c67a2475b37f8502d1de587202424f66ad2620c800f8cbddc05a605f73d626bd",
+        "outcome": "compile refused"
+      },
+      "compiledInventory": {
+        "path": "target/app-backlog/navigation-second-compiled-source-inventory.json",
+        "sha256": "daa68f3108be316341ef4549618d41e8f8e3d2fbf467ca23a4c070e47fbc7e6f"
+      }
+    },
+    {
+      "attempt": "third",
+      "reason": "Seven core checks plus native UI and MIDI chase passed. Two fixtures failed: fractional frame counts had been rounded down, and the recording fixture had never made the empty slot recordable. Final fixtures use the next complete sample and a real MIDI slot. Final code also retains locator allocation counters through Undo, canonicalizes signed zero and clears a pending jump when tempo makes its destination exceed the native time limit.",
+      "build": {
+        "path": "target/app-backlog/navigation-third-build.log",
+        "sha256": "2750d0dc6231dff5b92c43d611e5d247a0f1e5ebceb6ce5d2265afb0974de97e",
+        "outcome": "passed"
+      },
+      "compiledInventory": {
+        "path": "target/app-backlog/navigation-third-compiled-source-inventory.json",
+        "sha256": "1ce7a32b7a6f909863b33f53990de1cbcfb07768b07c1ea39d8a2cc095bf4504"
+      },
+      "testBinary": {
+        "path": "target/app-backlog/qualification-bin/navigation-tests-third",
+        "sha256": "fa3973395ba489e6863d46d576d32de47713901ea364e8d6c7c144733113fabe"
+      },
+      "tests": {
+        "core": {
+          "path": "target/app-backlog/navigation-third-core-tests.log",
+          "sha256": "35a8609a9a3e1480fdef01c5e0c134a341d3d6a7447e96b3260134834223816d",
+          "outcome": "FAILED",
+          "passed": 7,
+          "failed": 2,
+          "ignored": 0,
+          "filtered": 1943,
+          "seconds": 1.85
+        },
+        "native": {
+          "path": "target/app-backlog/navigation-third-native-tests.log",
+          "sha256": "1cd021ed781bcde32390ab330bbfa23759f0a87525841fe4236ce289f43062cd",
+          "outcome": "ok",
+          "passed": 1,
+          "failed": 0,
+          "ignored": 0,
+          "filtered": 1951,
+          "seconds": 0.56
+        },
+        "chase": {
+          "path": "target/app-backlog/navigation-third-chase-tests.log",
+          "sha256": "452abc9083287e9ff0a380657def21853c539fc5df62f0ebc6ec03c8f8356e19",
+          "outcome": "ok",
+          "passed": 1,
+          "failed": 0,
+          "ignored": 0,
+          "filtered": 1951,
+          "seconds": 0.16
+        }
+      }
+    },
+    {
+      "attempt": "fourth",
+      "reason": "All 11 core checks, native UI and state chase passed. The MIDI regression reported one old all-actions preset fixture targeting section ID 0. The final fixture uses valid stable ID 1; the complete regression and full suite are rerun.",
+      "tests": {
+        "core": {
+          "path": "target/app-backlog/navigation-fourth-core-tests.log",
+          "sha256": "837f8d0e322131dd0eb37433170b2c6edc25ad408599d4951d23ece6b9855199",
+          "outcome": "ok",
+          "passed": 11,
+          "failed": 0,
+          "ignored": 0,
+          "filtered": 1943,
+          "seconds": 2.61
+        },
+        "native": {
+          "path": "target/app-backlog/navigation-fourth-native-tests.log",
+          "sha256": "4ba537248ead1ab60e30a9ffda6dbcc4e6dd56ef635adf6e9a4acf81a2ba25a2",
+          "outcome": "ok",
+          "passed": 1,
+          "failed": 0,
+          "ignored": 0,
+          "filtered": 1953,
+          "seconds": 0.53
+        },
+        "chase": {
+          "path": "target/app-backlog/navigation-fourth-chase-tests.log",
+          "sha256": "39ba95bac6a0738d6beb506a58f091a7411049dd8329ad9cb1091abfaab1d602",
+          "outcome": "ok",
+          "passed": 1,
+          "failed": 0,
+          "ignored": 0,
+          "filtered": 1953,
+          "seconds": 0.12
+        },
+        "midi": {
+          "path": "target/app-backlog/navigation-fourth-midi-tests.log",
+          "sha256": "ca357bb21840d779585b97f44ef4fd63f69545638bd3bd21e8606c55837ee06e",
+          "outcome": "FAILED",
+          "passed": 185,
+          "failed": 1,
+          "ignored": 2,
+          "filtered": 1766,
+          "seconds": 37.58
+        }
+      },
+      "compiledInventory": {
+        "path": "target/app-backlog/navigation-fourth-compiled-source-inventory.json",
+        "sha256": "f59e170ae1912060ea71fcb5825270652af29406cde8a9800d4960600597a99c"
+      },
+      "testBinary": {
+        "path": "target/app-backlog/qualification-bin/navigation-tests-fourth",
+        "sha256": "45f2314e8206e08562f134dc533abad413ab9be51ae7a09a0a1a36d0b7b0bf12"
+      }
+    },
+    {
+      "attempt": "fifth runner",
+      "reason": "The copied runner still referred to the fourth private executable. The resulting old-fixture failure is retained without attributing it to fifth source. Standalone fifth execution and debugger inspection passed. The runner now verifies the fifth executable digest before any regression.",
+      "wrongExecutable": {
+        "path": "target/app-backlog/qualification-bin/navigation-tests-fourth",
+        "sha256": "45f2314e8206e08562f134dc533abad413ab9be51ae7a09a0a1a36d0b7b0bf12"
+      },
+      "test": {
+        "path": "target/app-backlog/navigation-fifth-wrong-binary-midi-tests.log",
+        "sha256": "9eb06535353555a74dbe2cdd02adc66edeaf363155d1af6cc9acdbab9b2a47b8",
+        "outcome": "FAILED",
+        "passed": 185,
+        "failed": 1,
+        "ignored": 2,
+        "filtered": 1766,
+        "seconds": 37.87
+      },
+      "standalone": {
+        "path": "target/app-backlog/navigation-fifth-portable-standalone.log",
+        "sha256": "c565275c96f4ac4edfc49d4a867131d479b76a1ef00dd5eaa9ee11adfc82a98d",
+        "outcome": "ok",
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 1953,
+        "seconds": 0
+      }
+    },
+    {
+      "attempt": "fifth full suite",
+      "reason": "Full suite found an old fixed clip-schema assertion, a stale generated manual and one recording activation timeout. The clip fixture now tests current schema and schema 21 compatibility; the manual is regenerated before qualification. The recording fixture now surfaces early writer failures; its standalone pass and the original timeout remain recorded without claiming a discovered production fault.",
+      "testBinary": {
+        "path": "target/app-backlog/qualification-bin/navigation-tests-fifth",
+        "sha256": "db269337111d215ec9d70a924bc400784cdabc4f817dc89f9a20108ca2df5b11"
+      },
+      "tests": {
+        "core": {
+          "path": "target/app-backlog/navigation-fifth-core-tests.log",
+          "sha256": "740311af29b4578c1b8c78192d73fd813d1b63eb9595e0c23c6bb234e6dabbfb",
+          "outcome": "ok",
+          "passed": 11,
+          "failed": 0,
+          "ignored": 0,
+          "filtered": 1943,
+          "seconds": 2.62
+        },
+        "native": {
+          "path": "target/app-backlog/navigation-fifth-native-tests.log",
+          "sha256": "21990acc81840a8d53e7e3634aacd7b855a2205803ff99b8d563269d013790e5",
+          "outcome": "ok",
+          "passed": 1,
+          "failed": 0,
+          "ignored": 0,
+          "filtered": 1953,
+          "seconds": 0.49
+        },
+        "chase": {
+          "path": "target/app-backlog/navigation-fifth-chase-tests.log",
+          "sha256": "5641069dbd9a9699459ed3d9b6234239a9edc460d3a1af681941084f509b303f",
+          "outcome": "ok",
+          "passed": 1,
+          "failed": 0,
+          "ignored": 0,
+          "filtered": 1953,
+          "seconds": 0.11
+        },
+        "midi": {
+          "path": "target/app-backlog/navigation-fifth-midi-tests.log",
+          "sha256": "6372a65df541a6e15cd5f10c7f86b698246feb1cecc0ab33c352c2b47a4819af",
+          "outcome": "ok",
+          "passed": 186,
+          "failed": 0,
+          "ignored": 2,
+          "filtered": 1766,
+          "seconds": 37.79
+        },
+        "preferences": {
+          "path": "target/app-backlog/navigation-fifth-preferences-tests.log",
+          "sha256": "c03cb87aba7fda59c65f4413b7658be4a66ccd88f8d4a08ebc63eb0be07c00ab",
+          "outcome": "ok",
+          "passed": 51,
+          "failed": 0,
+          "ignored": 0,
+          "filtered": 1903,
+          "seconds": 5.97
+        },
+        "arrangement": {
+          "path": "target/app-backlog/navigation-fifth-arrangement-tests.log",
+          "sha256": "8b609bc1d17202ac3a44f8d30f8fbbd657edab6701646eab56af4d441cfebe04",
+          "outcome": "ok",
+          "passed": 2,
+          "failed": 0,
+          "ignored": 0,
+          "filtered": 1952,
+          "seconds": 0.45
+        },
+        "full": {
+          "path": "target/app-backlog/navigation-fifth-full-tests.log",
+          "sha256": "98dfe075be8470b9b16b91a9d94fdb8dbeac732767e47321d2362bd6df5be503",
+          "outcome": "FAILED",
+          "passed": 1907,
+          "failed": 3,
+          "ignored": 44,
+          "filtered": 0,
+          "seconds": 531
+        }
+      },
+      "standalone": {
+        "path": "target/app-backlog/navigation-fifth-recorder-standalone.log",
+        "sha256": "152ca28b80bd08caaa635eb9020d49f7fb6f95fb33d56cddc72d26d73c741e34",
+        "outcome": "ok",
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 1953,
+        "seconds": 0.33
+      },
+      "manualRegenerated": {
+        "path": "target/app-backlog/navigation-fifth-manual-regenerate-after-failure.log",
+        "sha256": "36718e1a27a2aaaa6a9ce01933c35089cf0fc199d834c13925fb6f9b7b9e3f7e",
+        "outcome": "ok",
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 1953,
+        "seconds": 0.01
+      }
+    }
+  ],
+  "qualificationPreflight": {
+    "reason": "The inherited encoder input inventory predated its committed source-manifest refresh. Navigation inputs were rebound to the immutable prebuild HEAD; a Git read buffer was raised for notices before tests started.",
+    "attempts": [
+      {
+        "path": "target/app-backlog/navigation-fourth-qualification-preflight.log",
+        "sha256": "6ce20dfe9730da17e9c146955b22016de13db9a0b5df159a7c615985d3afe849"
+      },
+      {
+        "path": "target/app-backlog/navigation-fourth-qualification-buffer.log",
+        "sha256": "731f8e9f18ce70587cc6d3b2ad0122d6d76aa110e31772d4f4f01e5e325a8da8"
+      }
+    ]
+  },
+  "limits": "No physical controller or audio device was opened. Metadata edits during playback/recording, Ack/stale/cancel/Undo/Redo, monotonic section IDs through Undo and native reopening, exact PCM jump samples, loop timing through tempo/meter changes, actual recording-take completion with physical owner preservation, MIDI clip clear/state chase, production learned press/release and actual native editor/keyboard controls are software-qualified. Section metadata editing follows existing Studio/performance-protection admission. Pending jumps are not saved; saved braces and loop state wait for Play. DJ deck transport remains separate. Build inputs and preliminary failures are retained.",
+  "postGeneration": {
+    "node": {
+      "path": "target/app-backlog/navigation-postgenerate-node-tests.log",
+      "sha256": "42518ba9e42cc6db93146db31f2593dd3e13123e540333ffc5481649f336ff36",
+      "passed": 15,
+      "failed": 0
+    },
+    "capabilityCheck": {
+      "path": "target/app-backlog/navigation-capability-check.log",
+      "sha256": "c2895831a60ec6308facb09cfcb0f03454f1eb9bff306569e8cbc17992cde56e"
+    },
+    "checklistCheck": {
+      "path": "target/app-backlog/navigation-checklist-check.log",
+      "sha256": "3ddce3293266fb35350053966d1f17437f3843a6c47e8c44a830980e7471bb8f"
+    },
+    "sourceInventory": {
+      "path": "target/app-backlog/navigation-source-inventory.log",
+      "sha256": "e08aef217b5285a82e53f9c1e9eebb30d5c2039c621b5a68b4a113d32f8d4127",
+      "files": 754,
+      "unchangedDependencyRecords": true
+    }
+  },
+  "installation": {
+    "schema": 1,
+    "package": {
+      "path": "/home/michael/Projects/omatainer-work/hardware-resurrection/target/app-backlog/release-song-navigation-qualified",
+      "manifestSha256": "ed4442dc82b6b757a2b440e2666ebcb496d87ee62cf11dc85c02b3738358e573",
+      "revision": "5df547ac0d05008086d33a5c05976c89758c2a4e",
+      "version": "0.1.0+5df547ac0d05",
+      "executableSha256": "d7755d959bf11fa0173855820c2ecb43dccb3270fc74d633b617c3e89a788137"
+    },
+    "installed": {
+      "schema": 1,
+      "before": "570902e75b3b28f7d1d8e4fcdeb78805f275f0ec239f7b637611920e36d03c62",
+      "after": "d7755d959bf11fa0173855820c2ecb43dccb3270fc74d633b617c3e89a788137",
+      "installedAt": "2026-10-07T00:39:46.923Z"
+    },
+    "buildInfo": {
+      "arch": "aarch64",
+      "debug_assertions": false,
+      "os": "linux",
+      "pkg_version": "0.1.0",
+      "schema": 1
+    },
+    "applicationProcessesPreserved": [
+      {
+        "pid": 1649895,
+        "executable": "/home/michael/Projects/omatainer-work/hardware-resurrection/target/hardware/pioneer-apc/bin/omatainer",
+        "arguments": [
+          "/home/michael/Projects/omatainer-work/hardware-resurrection/target/hardware/pioneer-apc/bin/omatainer",
+          "--empty-once"
+        ],
+        "sha256": "646aa453a269d7c49feec0f5e88fcac94a030034f051468a82d2828ef05c4915"
+      },
+      {
+        "pid": 3973522,
+        "executable": "/home/michael/.local/bin/omatainer (deleted)",
+        "arguments": [
+          "/home/michael/.local/bin/omatainer",
+          "ctl",
+          "follow"
+        ],
+        "sha256": "23f88a47125de6eb19a7921d64faef6dafed56d3c25debdb89ac04d060d9b2e4"
+      }
+    ],
+    "additionalProcessesAfterInstall": [],
+    "preinstallState": {
+      "master": 0.8188976645469666,
+      "playing": false,
+      "recording": false,
+      "decks": [
+        {
+          "title": "What More Can I Say",
+          "playing": false
+        },
+        {
+          "title": "Public Service Announcement",
+          "playing": false
+        }
+      ]
+    },
+    "postinstallState": {
+      "master": 0.8188976645469666,
+      "playing": false,
+      "recording": false,
+      "decks": [
+        {
+          "title": "What More Can I Say",
+          "playing": false
+        },
+        {
+          "title": "Public Service Announcement",
+          "playing": false
+        }
+      ]
+    },
+    "scope": "Default executable installed for next launch. Previously active independent private GUI and follower processes retained; no hardware device opened or live playback restarted. An unavailable live state is recorded when no GUI was present."
+  },
+  "releaseEmbeddedInputs": {
+    "README.md": "abab5cb8b9a15a180652402e983142ce2a3baf21f5272fe1c4e9079a5083143f",
+    "licenses/manifest.json": "1e9c6aaa9c9fa68a73c45cb0ebaefa17a637873d1001261a614fa8439300ff8a",
+    "licenses/notices.json": "b15a146c83e362b540c860ae618b80f9ee0150cd9d8d41683a5d3d3fcb85c244"
+  }
+}

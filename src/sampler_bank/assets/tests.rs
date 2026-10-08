@@ -13,7 +13,7 @@ fn wait(mut condition: impl FnMut() -> bool) {
     }
 }
 fn sample(frames: usize) -> Arc<Sample> {
-    Arc::new(Sample {
+    Arc::new(Sample { spectrum: None,
         name: "Fixture".into(),
         path: String::new(),
         sr: 16_000,

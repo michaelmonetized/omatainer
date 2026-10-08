@@ -149,6 +149,7 @@ pub(super) struct Processor {
     pub(super) hop: usize,
     weights: Box<[f32]>,
     radius: f64,
+    output_sr: f64,
     fence: Option<f64>,
     started: bool,
     #[cfg(test)]
@@ -171,6 +172,7 @@ impl Processor {
             hop,
             weights,
             radius: SEARCH_SECONDS * output_sr as f64,
+            output_sr: output_sr as f64,
             fence: Some(0.0),
             started: false,
             #[cfg(test)]
@@ -285,7 +287,7 @@ impl Processor {
         {
             self.full_search_count = self.full_search_count.wrapping_add(1);
         }
-        let radius = self.radius * step;
+        let radius = self.radius * step.max(f64::from(source.audio.sr) / self.output_sr);
         let score = |candidate: f64| -> f64 {
             if self.fence.is_some_and(|fence| candidate < fence)
                 || (!(source.loop_on && source.loop_len > 1.0)

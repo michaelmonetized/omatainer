@@ -5,7 +5,7 @@ use std::time::{Duration, Instant};
 
 pub(super) fn sample(name: &str) -> DecodedAudio {
     DecodedAudio {
-        sample: crate::engine::dsp::Sample {
+        sample: crate::engine::dsp::Sample { spectrum: None,
             name: name.into(),
             sr: 48000,
             ch: 1,
@@ -396,9 +396,30 @@ fn equivalent_active_and_pending_decodes_coalesce_without_changing_the_request_i
     let first=loader.request(0,"same".into()).unwrap();seen.recv_timeout(Duration::from_secs(3)).unwrap();
     for _ in 0..100 {assert_eq!(loader.request(0,"same".into()).unwrap().id,first.id);}
     let pending=loader.request(1,"other".into()).unwrap();assert_eq!(loader.request(1,"other".into()).unwrap().id,pending.id);
-    resume.send(()).unwrap();seen.recv_timeout(Duration::from_secs(3)).unwrap();resume.send(()).unwrap();
-    assert_eq!(ready(&loader,0).token.id,first.id);assert_eq!(ready(&loader,1).token.id,pending.id);
+    resume.send(()).unwrap();seen.recv_timeout(Duration::from_secs(3)).unwrap();
+    assert_eq!(ready(&loader,0).token.id,first.id);
+    resume.send(()).unwrap();assert_eq!(ready(&loader,1).token.id,pending.id);
     assert_eq!(calls.load(Ordering::Acquire),2);
+}
+
+#[test]
+fn completed_decks_return_together_without_loss_and_are_taken_once() {
+    let loader=Loader::with_decoder(|path,_|Ok(sample(path.to_str().unwrap()))).unwrap();
+    let first=loader.request(0,"first deck".into()).unwrap();
+    let second=loader.request(1,"second deck".into()).unwrap();
+    let until=Instant::now()+Duration::from_secs(3);
+    loop {
+        if loader.shared.state.lock().unwrap().ready.iter().all(Option::is_some) {break;}
+        assert!(Instant::now()<until,"both decoders must publish a ready batch");
+        std::thread::sleep(Duration::from_millis(1));
+    }
+    let [first_done,second_done]=loader.take_ready();
+    let first_done=first_done.unwrap();let second_done=second_done.unwrap();
+    assert_eq!(first_done.token.id,first.id);assert_eq!(first_done.token.deck,0);assert!(first_done.token.is_current());
+    assert_eq!(second_done.token.id,second.id);assert_eq!(second_done.token.deck,1);assert!(second_done.token.is_current());
+    assert_eq!(first_done.result.unwrap().sample.name,"first deck");
+    assert_eq!(second_done.result.unwrap().sample.name,"second deck");
+    assert!(loader.take_ready().iter().all(Option::is_none));
 }
 
 #[test]

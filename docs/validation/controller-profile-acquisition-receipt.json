@@ -1,0 +1,150 @@
+{
+  "schema": 1,
+  "recorded_at": "2026-10-08T04:33:58.240Z",
+  "scope": "Controller acquisition and software recovery; combined acceptance remains pending",
+  "platform": "aarch64-linux",
+  "release": "https://github.com/michaelmonetized/omatainer/releases/tag/controller-profiles-1.0.0",
+  "generation": 1,
+  "source_base": "1136a1ce5096456e01b382d7a2aa5604b3df7a90",
+  "sources": [
+    {
+      "path": "src/engine/midi/catalog.rs",
+      "sha256": "14263d3ca7bd9c4f06890caa6ca38c7beb85bd33e005f9217c4592f8b770d3ab"
+    },
+    {
+      "path": "src/engine/midi/catalog/runtime.rs",
+      "sha256": "d36c87148e83c3f1fa434f4c9122c68c847ab7483374c085f61d80b73d5cf3f3"
+    },
+    {
+      "path": "src/engine/midi/catalog/storage.rs",
+      "sha256": "a902e5ead5bd2b7e739857d004e0233c4f24d6dce472ebd03eeb1ace73b1db09"
+    },
+    {
+      "path": "src/engine/midi/catalog/identity.rs",
+      "sha256": "cc0a6c8fd6e655f237754408e27ab92ed37afa7fa1a214c632c18b2ad54633c6"
+    },
+    {
+      "path": "src/engine/midi/catalog/tests.rs",
+      "sha256": "c6e40b3b572e1101588c35e54f5761b83d1a0755c6bde2f687fbb7522da61758"
+    },
+    {
+      "path": "src/engine/midi/connections.rs",
+      "sha256": "e46e74cb48382439fcd5b2b25404fd87e7e7f9583d519240c0586516ef60ddf9"
+    },
+    {
+      "path": "src/engine/midi/handoff.rs",
+      "sha256": "52186ad4e4121a70baa5820d3d3bf972158989dc186a98c0c3bc9e03fc867cc2"
+    },
+    {
+      "path": "src/ui/midi_profiles.rs",
+      "sha256": "9133216e93f1d199284b6b8741ce7b7def4b8735cc9126a4ce43e1086e23a5ec"
+    },
+    {
+      "path": "profiles/README.md",
+      "sha256": "b2dd0b8ed971186fdc8a84d77ca19542be820e06b7187fa43c05a7aa796b517b"
+    }
+  ],
+  "assets": {
+    "catalog": "870c827e19226cd5f129cf8469ee693f7eea6ed46876061c2730caadcb6600cf",
+    "signed_catalog_matches": true,
+    "assets": [
+      {
+        "file": "akai-apc40-mkii-1.0.0.json",
+        "bytes": 10184,
+        "sha256": "46682fb61abca2df01a4035a6b24a816ed2df91496e51ba3d7b45d27d630b175",
+        "matches": true,
+        "mode": "600"
+      },
+      {
+        "file": "akai-mpd232-livelite-1.0.0.json",
+        "bytes": 13383,
+        "sha256": "bcddb28407043229a65b6627d52232c24fa14063c7ba185b0138ddd6ae9268cf",
+        "matches": true,
+        "mode": "600"
+      },
+      {
+        "file": "numark-ns7-original-1.0.0.json",
+        "bytes": 8334,
+        "sha256": "86a87cd341ba8295bb0e19afea5a4c450729cef3e0cbdd474409e685dcb8b09f",
+        "matches": true,
+        "mode": "600"
+      },
+      {
+        "file": "pioneer-ddj-sp1-1.0.0.json",
+        "bytes": 10787,
+        "sha256": "24bce6d2cfa82ce9a5f72fc7237e898acfdfa1b59bf63c5b43a8235fe86baa3a",
+        "matches": true,
+        "mode": "600"
+      }
+    ]
+  },
+  "test_runs": [
+    {
+      "executable_sha256": "07bd566e417d4b04aea7f430253999ff8e108e1c5a080ddc6c658b31dafe0642",
+      "checks": [
+        {
+          "private_log": "profiles-22-live-catalog.log",
+          "sha256": "f858a11d9e805283c057308b17a445cc2ced87a06e7ac477be5150a0017c8252",
+          "passed": 1,
+          "failed": 0,
+          "ignored": 0,
+          "seconds": 6.05
+        }
+      ]
+    },
+    {
+      "executable_sha256": "8f09a579fe0a355a3b63b8142bcf5e2b7ae5627051b58476dff3ec208803772b",
+      "network": "bwrap isolated network namespace; localhost refusal proxy; no physical audio or MIDI",
+      "checks": [
+        {
+          "private_log": "profiles-25-offline-catalog.log",
+          "sha256": "534bf39071ce58b37071623d8a4f25bc1411b447b14cc96801e0bfc13633fe48",
+          "passed": 1,
+          "failed": 0,
+          "ignored": 0,
+          "seconds": 4.73
+        },
+        {
+          "private_log": "profiles-25-catalog.log",
+          "sha256": "3daa0b7502ac54e4a1ac2e28db6cc3720c47ca0dda62e34b03e4b767131fb9e5",
+          "passed": 13,
+          "failed": 0,
+          "ignored": 3,
+          "seconds": 24.82
+        }
+      ]
+    }
+  ],
+  "installed_acquisition": {
+    "executable_sha256": "9f9feb61a614e7bdcec85e6fcbe2375232aaa6d47b04ecc2443c1ad041591d08",
+    "native_panel_sha256": "96477f0c2ec64c4543a6ec784c7acc0cc6caa70f130eb10d95642cd2e1a4ce0b",
+    "native_apply_sha256": "73ebe542e390d8c7afafc18c6e7a2d9033edc402f510e16b2d257cc1e9ee640a",
+    "acquisition_kept_bundled_pins": true,
+    "stopped_apply_connected_profiles": 4,
+    "mpd_local_override_preserved": true
+  },
+  "installed_reopen": {
+    "source": "1136a1ce5096456e01b382d7a2aa5604b3df7a90",
+    "executable_sha256": "463d40d467101a704ffffb6e18112a6854e7350c7829e1c041e490babdb8c2c9",
+    "status_sha256": "ff94c4856f26a2d4e07485e4bc75af321c441df946a2f03c2e05befaa825998f",
+    "busy": false,
+    "cached_generation": 1,
+    "control_check": null,
+    "initialization_sent": 2,
+    "input_open": 4,
+    "output_failures": 0,
+    "output_open": 4,
+    "physical_inputs": 7,
+    "physical_qualification": "pending",
+    "previous_generation": 0,
+    "profiled_inputs": 4,
+    "ready": true,
+    "schema": 1
+  },
+  "pending": [
+    "current installed physical control and light sequence",
+    "owned device reconnection during performance",
+    "physical loopback and listening",
+    "full retained issue 511 acceptance"
+  ]
+}

@@ -96,7 +96,7 @@ fn ramping_click() -> (Arc<crate::engine::dsp::Sample>, Grid, Vec<f64>) {
         grid = grid.with_anchor(beat as f64, time).unwrap();
     }
     (
-        Arc::new(crate::engine::dsp::Sample {
+        Arc::new(crate::engine::dsp::Sample { spectrum: None,
             name: "Original ramping click".into(),
             sr,
             ch: 1,
@@ -224,7 +224,7 @@ fn synced_loop_wrap_preserves_fractional_beats_at_opposing_segment_tempos() {
         .unwrap()
         .with_anchor(8.0, 12.6)
         .unwrap();
-    let audio = Arc::new(crate::engine::dsp::Sample {
+    let audio = Arc::new(crate::engine::dsp::Sample { spectrum: None,
         name: "Extreme segments".into(),
         sr: 8_000,
         ch: 1,

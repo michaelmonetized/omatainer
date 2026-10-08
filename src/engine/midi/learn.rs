@@ -31,7 +31,10 @@ pub(crate) fn actions() -> &'static [Action] {
     &[
         Action::DeckPlay,
         Action::DeckCue,
+        Action::DeckCueHold,
         Action::DeckSync,
+        Action::DeckSyncMode,
+        Action::DeckSyncLeader,
         Action::DeckJog,
         Action::DeckJogTouch,
         Action::DeckPitch,
@@ -40,11 +43,25 @@ pub(crate) fn actions() -> &'static [Action] {
         Action::DeckEqMid,
         Action::DeckEqLow,
         Action::DeckFilter,
+        Action::DeckChannelEffect,
         Action::DeckPfl,
         Action::DeckHotCue,
         Action::DeckLoop4,
         Action::DeckLoopIn,
         Action::DeckLoopOut,
+        Action::DeckPad,
+        Action::DeckPadMode,
+        Action::DeckPadParameterLeft,
+        Action::DeckPadParameterRight,
+        Action::DeckPadParameterShiftLeft,
+        Action::DeckPadParameterShiftRight,
+        Action::DeckSavedLoopRecall,
+        Action::DeckSavedLoopSave,
+        Action::DeckSavedLoopDelete,
+        Action::DeckBeatJumpBack,
+        Action::DeckBeatJumpForward,
+        Action::DeckBeatJumpSmaller,
+        Action::DeckBeatJumpLarger,
         Action::DeckLoad,
         Action::DeckLoadLock,
         Action::DeckVinyl,
@@ -76,8 +93,30 @@ pub(crate) fn actions() -> &'static [Action] {
         Action::Shift,
         Action::FxWet,
         Action::FxSelect,
+        Action::SongLocator,
+        Action::SongPrevious,
+        Action::SongNext,
+        Action::SongLoop,
+        Action::SongCancel,
     ]
 }
+/// Identify bindings introduced with native song navigation.
+/// Takes an action; returns whether its persistence requires MIDI preset version 3 and preferences version 20.
+pub(crate) fn navigation(action: Action) -> bool {
+    matches!(action, Action::SongLocator | Action::SongPrevious | Action::SongNext | Action::SongLoop | Action::SongCancel)
+}
+/// Identify actions addressing stable saved loop IDs.
+/// Takes an action; returns whether it needs MIDI preset 4 and preference 22 persistence.
+pub(crate) fn saved_loop(action: Action) -> bool { matches!(action, Action::DeckSavedLoopRecall | Action::DeckSavedLoopSave | Action::DeckSavedLoopDelete) }
+
+/// Identify the shared deck pad surface assignments.
+/// Takes an action; returns whether its persistence requires preset 5 and preference 23.
+pub(crate) fn deck_pad(action: Action) -> bool { matches!(action, Action::DeckPad | Action::DeckPadMode | Action::DeckPadParameterLeft | Action::DeckPadParameterRight | Action::DeckPadParameterShiftLeft | Action::DeckPadParameterShiftRight) }
+
+/// Identify explicit shared sync assignments.
+/// Takes an action; returns whether its persistence requires preset 6 and preferences 24.
+pub(crate) fn sync_mode(action: Action) -> bool { matches!(action, Action::DeckSyncMode | Action::DeckSyncLeader) }
+
 /// Choose the required MIDI message class for a performance action.
 /// Takes an action; returns Note, absolute CC, or explicitly decoded relative CC.
 pub(crate) fn kind(action: Action) -> MsgKind {
@@ -106,16 +145,14 @@ pub(crate) fn kind(action: Action) -> MsgKind {
 fn class(kind: MsgKind) -> u8 {
     match kind {
         MsgKind::Note => 0x90,
-        MsgKind::Cc | MsgKind::CcRel => 0xb0,
+        MsgKind::Cc | MsgKind::Cc14 | MsgKind::CcRel => 0xb0,
         MsgKind::Pitch => 0xe0,
     }
 }
 /// Detect overlapping channel and controller addresses.
 /// Takes two bindings; returns true when the same wire message can reach both.
 fn address(first: &Binding, second: &Binding) -> bool {
-    class(first.kind) == class(second.kind)
-        && (first.ch == second.ch || first.ch == 0xff || second.ch == 0xff)
-        && (first.kind == MsgKind::Pitch || first.data == second.data)
+    super::profile::overlaps(first, second)
 }
 /// Match a complete message against a reviewed address.
 /// Takes a binding and three wire bytes; returns whether it owns that message.
@@ -127,7 +164,8 @@ fn hit(binding: &Binding, msg: &[u8; 3]) -> bool {
     };
     class(binding.kind) == message
         && (binding.ch == msg[0] & 15 || binding.ch == 0xff)
-        && (binding.kind == MsgKind::Pitch || binding.data == msg[1])
+        && (binding.kind == MsgKind::Pitch || binding.data == msg[1]
+            || binding.kind == MsgKind::Cc14 && binding.data + 32 == msg[1])
 }
 /// Validate a learned action before it can replace any input behavior.
 /// Takes a binding; refuses invalid target slots or incompatible wire encoding.
@@ -137,7 +175,7 @@ pub(crate) fn validate_binding(binding: &Binding) -> Result<(), String> {
     }
     let expected = kind(binding.action);
     if binding.kind != expected
-        && !(binding.action == Action::DeckPitch && binding.kind == MsgKind::Pitch)
+        && !(super::controls::continuous(binding.action) && matches!(binding.kind, MsgKind::Cc | MsgKind::Cc14 | MsgKind::CcRel | MsgKind::Pitch))
     {
         return Err("Message type cannot operate this action".into());
     }
@@ -186,12 +224,14 @@ pub(crate) struct Capture {
     pub mapping: Mapping,
     pub source: u64,
     pub bytes: [u8; 3],
+    pub value: Option<u16>,
     pub conflicts: Vec<Binding>,
 }
 #[derive(Clone, Debug)]
 pub(crate) struct Device {
     pub source: u64,
     pub endpoint: Endpoint,
+    pub pad_modes: u16,
 }
 #[derive(Clone, Debug)]
 pub(crate) struct View {
@@ -218,6 +258,7 @@ struct State {
 }
 pub(crate) struct Shared {
     pub revision: AtomicU64,
+    cancellation: AtomicU64,
     pub ordered: AtomicBool,
     state: Mutex<State>,
 }
@@ -225,6 +266,7 @@ impl Default for Shared {
     fn default() -> Self {
         Self {
             revision: AtomicU64::new(0),
+            cancellation: AtomicU64::new(1),
             ordered: AtomicBool::new(false),
             state: Mutex::new(State::default()),
         }
@@ -236,6 +278,14 @@ pub(super) enum Dispatch {
     Binding(Binding),
 }
 impl Shared {
+    /// Fence deferred performance work without taking the editor lock.
+    /// Takes this MIDI owner; returns the current monotonic cancellation epoch.
+    pub(in crate::engine) fn cancellation_epoch(&self) -> u64 { self.cancellation.load(Ordering::Acquire) }
+    /// Retire deferred performance work before input ownership changes.
+    /// Takes this MIDI owner; advances its epoch, saturating permanently if exhausted.
+    pub(in crate::engine) fn retire_pending(&self) {
+        let _ = self.cancellation.fetch_update(Ordering::AcqRel, Ordering::Acquire, |epoch| epoch.checked_add(1));
+    }
     #[cfg(test)]
     pub(super) fn with_editor_lock_for_test(&self, work: impl FnOnce()) {
         let _held = self.state.lock();
@@ -243,16 +293,33 @@ impl Shared {
     }
 
     fn advance(&self) -> Result<u64, String> {
-        self.revision
+        let revision = self.revision
             .fetch_update(Ordering::AcqRel, Ordering::Acquire, |r| r.checked_add(1))
             .map(|r| r + 1)
-            .map_err(|_| "MIDI assignment revision exhausted".into())
+            .map_err(|_| "MIDI assignment revision exhausted".to_string())?;
+        self.retire_pending();
+        Ok(revision)
     }
     /// Publish validated saved mappings outside the native callback.
     /// Takes the complete configuration; returns the new input revision or leaves the current one intact.
     pub(crate) fn configure(&self, config: Config) -> Result<u64, String> {
         config.validate()?;
         let mut state = self.state.lock();
+        self.configure_locked(&mut state, config)
+    }
+    /// Apply an exact-port replacement only while its reviewed owners still match.
+    /// Takes the config revision, connected source, port and candidate; returns a revision or preserves current mappings.
+    pub(crate) fn configure_reviewed(&self, revision: u64, source: u64, port: &Endpoint, config: Config) -> Result<u64, String> {
+        config.validate()?;
+        let mut state = self.state.lock();
+        if self.revision.load(Ordering::Acquire) != revision || state.armed.is_some() || state.capture.is_some()
+            || state.devices.iter().filter(|device| &device.endpoint == port).count() != 1
+            || !state.devices.iter().any(|device| device.source == source && &device.endpoint == port) {
+            return Err("MIDI review changed or its exact port reconnected; review again".into());
+        }
+        self.configure_locked(&mut state, config)
+    }
+    fn configure_locked(&self, state: &mut State, config: Config) -> Result<u64, String> {
         if state.config == config && state.armed.is_none() && state.capture.is_none() {
             return Ok(self.revision.load(Ordering::Acquire));
         }
@@ -262,7 +329,7 @@ impl Shared {
         state.config = config;
         state.armed = None;
         state.capture = None;
-        self.refresh_ordered(&state);
+        self.refresh_ordered(state);
         state.message =
             "Learned assignments applied; built-in mappings handle other messages.".into();
         Ok(revision)
@@ -326,7 +393,14 @@ impl Shared {
         View {
             revision: self.revision.load(Ordering::Acquire),
             config: state.config.clone(),
-            devices: state.devices.clone(),
+            devices: state.devices.iter().map(|device| {
+                let mut device = device.clone();
+                for row in state.config.mappings.iter().filter(|row| row.endpoint == device.endpoint) {
+                    if row.binding.action == Action::DeckPadMode { device.pad_modes |= 1 << row.binding.extra; }
+                }
+                if device.pad_modes == 0 && state.config.mappings.iter().any(|row| row.endpoint == device.endpoint && row.binding.action == Action::DeckPad) { device.pad_modes = 1; }
+                device
+            }).collect(),
             armed: state.armed.is_some(),
             capture: state.capture.clone(),
             message: state.message.clone(),
@@ -354,20 +428,28 @@ impl Shared {
     /// Register an opened input with the editor.
     /// Takes its source, device name and port id; retains at most 256 bounded endpoint identities.
     pub(super) fn connected(&self, source: u64, name: &str, id: &str) {
+        self.connected_modes(source, name, id, 0);
+    }
+    /// Register declared controller pad modes alongside its exact input port.
+    /// Takes source, endpoint and reviewed supported-mode mask; exposes portable mode names and colors in the editor.
+    pub(super) fn connected_modes(&self, source: u64, name: &str, id: &str, pad_modes: u8) {
         let mut state = self.state.lock();
         if state.devices.len() < 256 && name.len() <= 256 && id.len() <= 256 {
             state.devices.push(Device {
                 source,
+                pad_modes: u16::from(pad_modes),
                 endpoint: Endpoint {
                     name: name.into(),
                     id: id.into(),
                 },
             });
+            self.retire_pending();
         }
     }
     /// Retire an input and its uncommitted capture.
     /// Takes the source id; retains installed mappings for an explicit exact-port reconnect.
     pub(super) fn disconnected(&self, source: u64) {
+        self.retire_pending();
         let mut state = self.state.lock();
         let endpoint = state
             .devices
@@ -425,6 +507,12 @@ impl Shared {
         map: &MidiMap,
         revision: u64,
     ) -> Dispatch {
+        self.input_value_at(source, name, id, msg, map, revision, super::controls::PairValues::default())
+    }
+    pub(super) fn input_value_at(
+        &self, source: u64, name: &str, id: &str, msg: &[u8; 3],
+        map: &MidiMap, revision: u64, paired: super::controls::PairValues,
+    ) -> Dispatch {
         let mut state = self.state.lock();
         if self.revision.load(Ordering::Acquire) != revision {
             return Dispatch::Consume;
@@ -457,9 +545,13 @@ impl Shared {
                 && state.devices.iter().any(|device| device.source == source)
         });
         if capture {
+            if state.armed.as_ref().is_some_and(|armed| armed.binding.kind == MsgKind::Cc14) {
+                if msg[1] >= 64 { return Dispatch::Normal; }
+                if !paired.complete(state.armed.as_ref().unwrap().binding.pair_order) { return Dispatch::Consume; }
+            }
             let mut binding = state.armed.take().unwrap().binding;
             binding.ch = channel;
-            binding.data = if status == 0xe0 { 0 } else { msg[1] };
+            binding.data = if status == 0xe0 { 0 } else if binding.kind == MsgKind::Cc14 { msg[1] % 32 } else { msg[1] };
             if state
                 .devices
                 .iter()
@@ -492,6 +584,7 @@ impl Shared {
                 mapping: Mapping { endpoint, binding },
                 source,
                 bytes: *msg,
+                value: (binding.kind == MsgKind::Cc14).then(|| paired.value(binding.pair_order).unwrap()),
                 conflicts,
             });
             state.message="Message captured. Review its exact port, channel, address and action before assignment.".into();
@@ -515,7 +608,8 @@ impl Shared {
                         .into();
                 return Dispatch::Consume;
             }
-            Dispatch::Binding(mapping.binding)
+            if mapping.binding.kind == MsgKind::Cc14 && paired.value(mapping.binding.pair_order).is_none() { Dispatch::Consume }
+            else { Dispatch::Binding(mapping.binding) }
         } else {
             Dispatch::Normal
         }

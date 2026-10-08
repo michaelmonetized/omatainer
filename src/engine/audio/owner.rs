@@ -216,6 +216,7 @@ struct Active<S> {
     fault: Arc<AtomicBool>,
     plan: config::Plan,
     callback_floor: u64,
+    cpu_budget_floor: u64,
     identity: Option<String>,
     telemetry: Arc<crate::engine::audio_metrics::Telemetry>,
     watchdog: recovery::Watchdog,
@@ -291,6 +292,7 @@ impl<B: Backend> Owner<B> {
         let enabled = Arc::new(AtomicBool::new(false));
         let fault = Arc::new(AtomicBool::new(false));
         let callback_floor = graph.telemetry.read().callbacks;
+        let cpu_budget_floor = graph.telemetry.read().cpu_budget_exhaustions;
         let telemetry = graph.telemetry.clone();
         graph.cmd_rx.set_audio_offline(false);
         graph.monitor.output(&plan);
@@ -347,6 +349,7 @@ impl<B: Backend> Owner<B> {
             fault,
             plan,
             callback_floor,
+            cpu_budget_floor,
             identity,
             telemetry,
             watchdog,
@@ -564,6 +567,7 @@ impl<B: Backend> Owner<B> {
             if self.active.as_mut().is_some_and(|active| active.fault.load(Ordering::Acquire)
                 || recovery::boot_time().is_some_and(|now| active.watchdog.lost(now, active.telemetry.read().callbacks)))
             {
+                let cpu_exhausted = self.active.as_ref().is_some_and(|active| active.telemetry.read().cpu_budget_exhaustions > active.cpu_budget_floor);
                 self.recovery = self.active.as_ref().map(|active| recovery::Target {
                     plan: active.plan.clone(), identity: active.identity.clone(),
                 });
@@ -577,8 +581,8 @@ impl<B: Backend> Owner<B> {
                 self.publish(
                     Phase::Offline,
                     self.status.load().requested.clone(),
-                    "Audio output stopped responding. Your project and recorded notes are retained. Reconnect the previous output or preview and confirm another output. Release keys, pads and platters before resuming. Save and Close remain available."
-                        .into(),
+                    format!("{}. Your project and recorded notes are retained. Reconnect the previous output or preview and confirm another output. Release keys, pads and platters before resuming. Save and Close remain available.",
+                        if cpu_exhausted { "Audio output exceeded its real-time CPU limit and was stopped" } else { "Audio output stopped responding" }),
                 );
             }
             self.tick_offline();
@@ -731,6 +735,7 @@ impl RtEngine {
             slot.reset(kind);
         }
         if let Some(history) = &mut self.history_measurement { history.reset_dsp(); }
+        self.surface.reset_fx_histories();
         for deck in &mut self.decks {
             deck.playing = false;
             deck.stop_preview(self.sr);
@@ -778,6 +783,7 @@ pub(crate) mod tests {
         pub failures: parking_lot::Mutex<std::collections::VecDeque<bool>>,
         pub play_failures: parking_lot::Mutex<std::collections::VecDeque<bool>>,
         pub active_fault: parking_lot::Mutex<Option<Arc<AtomicBool>>>,
+        pub active_telemetry: parking_lot::Mutex<Option<Arc<crate::engine::audio_metrics::Telemetry>>>,
         pub block_open: AtomicBool,
         pub entering_open: AtomicBool,
         pub calibration_mode: AtomicUsize,
@@ -853,6 +859,7 @@ pub(crate) mod tests {
                 return Err("Injected backend open failure".into());
             }
             *self.controls.active_fault.lock() = Some(fault);
+            *self.controls.active_telemetry.lock() = Some(callback.rt.telemetry.clone());
             let stop = Arc::new(AtomicBool::new(false));
             let stopped = stop.clone();
             let controls = self.controls.clone();
@@ -1226,7 +1233,7 @@ pub(crate) mod tests {
     fn same_rate_stop_and_explicit_resume_rebuilds_midi_and_arp_without_render_allocation() {
         for arp in [false, true] {
             let (_engine, mut rt) = Engine::headless_for_test(48000, 256);
-            rt.tracks[1].clips[0].notes = vec![crate::engine::MidiNote {
+            rt.tracks[1].clips[0].notes = vec![crate::engine::MidiNote { variation: None,
                 channel:0,release_vel:64,source_timing:None, id: crate::engine::midi_edit::NoteId::new(), muted: false,
                 pitch: 60,
                 start: 0.0,

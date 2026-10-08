@@ -115,6 +115,7 @@ impl Cells {
 #[derive(Default, Clone, Copy, Debug)]
 pub(super) struct ViewStats {
     pub rebuilds: usize,
+    pub updates:usize,
     pub examined: usize,
     pub rendered: usize,
     pub formatted: usize,
@@ -226,41 +227,46 @@ impl App {
             view.played_filter = parsed.as_ref().is_ok_and(|query|query.uses_play_history());
             view.played_revision = played_revision;
             view.annotation_error = parsed.as_ref().err().cloned().unwrap_or_default();
+            let row_index=self.library_metadata.collection_rows();
+            let incremental=(!query_changed && !scope_changed && !crate_changed && !played_changed && !order_changed && selected_crate.is_none())
+                .then(||row_index.search_delta(&view.library,&view.catalog,&self.library,&self.library_metadata.catalog)).flatten();
+            let index_error=row_index.search_error(&self.library,&self.library_metadata.catalog).filter(|_|!self.lib_filter.trim().is_empty());
+            if view.annotation_error.is_empty() {if let Some(error)=index_error {view.annotation_error=error.into();}}
             let empty_annotations = crate::library::annotations::Annotations::default();
-            let indices = Arc::make_mut(&mut view.indices);
-            indices.clear();
-            let matches = |item: &LibItem| {
-                let track = self.library_metadata.catalog.track(&item.source);
-                let fields = track.map_or(&empty_annotations, |track| &track.annotations);
-                let version = track.and_then(|track|track.versions.iter().find(|version|version.fingerprint==item.fingerprint));
-                let key = crate::musical_key::effective(version,&item.key,track.is_some_and(|track|track.locks.metadata)).0;
-                parsed.as_ref().is_ok_and(|query|query.matches(crate::library::search::Row {
-                    title: &item.title, artist: &item.artist, key: &key,
-                    bpm: item.bpm.value(), seconds: item.length,
-                    played: self.last_played.get(item).or(item.last_play).is_some(), annotations: fields,
+            let matches = |index:usize| {
+                let item=&self.library[index];
+                let played=self.last_played.get(item).or(item.last_play).is_some();
+                parsed.as_ref().is_ok_and(|query|index_error.is_none() && row_index.matches_query(query,index,played,&self.library,&self.library_metadata.catalog).unwrap_or_else(||{
+                    let track=self.library_metadata.catalog.track(&item.source);
+                    let fields=track.map_or(&empty_annotations,|track|&track.annotations);
+                    let version=track.and_then(|track|track.versions.iter().find(|version|version.fingerprint==item.fingerprint));
+                    let key=crate::musical_key::effective(version,&item.key,track.is_some_and(|track|track.locks.metadata)).0;
+                    query.matches(crate::library::search::Row {title:&item.title,artist:&item.artist,key:&key,bpm:item.bpm.value(),seconds:item.length,played,annotations:fields})
                 }))
             };
-            view.unavailable = 0;
-            if let Some(node) = selected_crate.as_ref().and_then(|id| self.library_metadata.catalog.crates.node(id)) {
-                let rows = self.library_metadata.collection_rows();
-                if node.smart_rule.is_some() {
-                    if let Some(members) = rows.smart_rows(&node.id, &self.library, &self.library_metadata.catalog) {
-                        indices.extend(members.iter().copied().filter(|index|matches(&self.library[*index])));
-                    } else { view.annotation_error = "Smart crate membership is preparing for the current library".into(); }
-                } else if let Some(rule) = &node.annotation_rule {
-                    indices.extend(self.library.iter().enumerate().filter_map(|(index, item)|
-                        (matches(item) && self.library_metadata.catalog.track(&item.source).is_some_and(|track|rule.matches(&track.annotations))).then_some(index)));
-                } else {
-                for member in &node.members {
-                    if let Some(index) = rows.row(member, &self.library, &self.library_metadata.catalog) {
-                        if matches(&self.library[index]) { indices.push(index); }
-                    } else { view.unavailable += 1; }
-                }
-                }
+            let indices=Arc::make_mut(&mut view.indices);
+            view.unavailable=0;
+            if let Some(changed)=incremental {
+                for &index in changed {if let Some(position)=indices.iter().position(|row|*row==index) {indices.remove(position);}}
+                for &index in changed {if matches(index) {let position=if sorts[0].is_none() {indices.binary_search(&index).unwrap_err()} else {indices.binary_search_by(|other|row_index.compare_rows(*other,index,&self.library,&self.library_metadata.catalog,&self.last_played,sorts).expect("exact index admitted the metadata delta")).unwrap_or_else(|position|position)};indices.insert(position,index);}}
             } else {
-                indices.extend(self.library.iter().enumerate().filter_map(|(index, item)| matches(item).then_some(index)));
+                indices.clear();
+                if let Some(node)=selected_crate.as_ref().and_then(|id|self.library_metadata.catalog.crates.node(id)) {
+                    if node.smart_rule.is_some() {
+                        if let Some(members)=row_index.smart_rows(&node.id,&self.library,&self.library_metadata.catalog) {indices.extend(members.iter().copied().filter(|index|matches(*index)));}
+                        else {view.annotation_error="Smart crate membership is preparing for the current library".into();}
+                    } else if let Some(rule)=&node.annotation_rule {
+                        indices.extend(self.library.iter().enumerate().filter_map(|(index,item)|
+                            (matches(index)&&self.library_metadata.catalog.track(&item.source).is_some_and(|track|rule.matches(&track.annotations))).then_some(index)));
+                    } else {
+                        for member in &node.members {
+                            if let Some(index)=row_index.row(member,&self.library,&self.library_metadata.catalog) {if matches(index){indices.push(index);}}
+                            else {view.unavailable+=1;}
+                        }
+                    }
+                } else {indices.extend((0..self.library.len()).filter(|index|matches(*index)));}
+                if !row_index.sort_query(indices,&self.library,&self.library_metadata.catalog,&self.last_played,sorts) {library_layout::sort::order(indices,&self.library,&self.library_metadata.catalog,&self.last_played,sorts);}
             }
-            library_layout::sort::order(indices, &self.library, &self.library_metadata.catalog, &self.last_played, sorts);
             view.sorts = sorts;
             view.generation = view.generation.checked_add(1).expect("library view generation exhausted");
             let find = |source: &LibSource| {
@@ -315,8 +321,9 @@ impl App {
             view.last_played_index = self.last_play_idx;
             #[cfg(test)]
             {
-                view.stats.rebuilds += 1;
-                view.stats.examined += self.library.len();
+                view.stats.rebuilds += usize::from(incremental.is_none());
+                view.stats.updates += usize::from(incremental.is_some());
+                view.stats.examined += incremental.map_or(self.library.len(),|changed|changed.len());
             }
         }
     }

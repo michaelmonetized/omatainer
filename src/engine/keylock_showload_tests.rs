@@ -25,7 +25,7 @@ pub(super) fn workload_observed(rate: u32, frames: usize, ratio: f32, blocks: us
     // Identical non-silent media and origins align both decks' expensive hops.
     // This original procedural source is a timing stressor, not listening proof.
     let (drums, harmony) = demo_stems(48_000, 124.0);
-    let audio = Arc::new(Sample {
+    let audio = Arc::new(Sample { spectrum: None,
         name: "Original procedural simultaneous-search stress".into(),
         sr: 48_000,
         ch: 2,
@@ -205,6 +205,16 @@ pub(super) fn workload_observed(rate: u32, frames: usize, ratio: f32, blocks: us
             })
         && !rt.has_held_project_notes();
     rt.undo.publish();
+    let history = engine.undo.view();
+    let original_prefixes = rt.tracks.iter().enumerate().all(|(track, t)| {
+        t.clips[0].notes.len() >= 1024
+            && t.clips[0].notes.iter().take(1024).enumerate().all(|(n, note)| {
+                note.pitch == 36 + ((n + track * 5) % 48) as u8
+                    && note.start == n as f32 * 0.125
+                    && note.len == 0.45
+                    && note.vel == 45 + (n % 55) as u8
+            })
+    });
     let deadline = frames as u64 * 1_000_000_000 / rate as u64;
     json!({"samples":{"callback_wall_ns":wall,"render_cpu_ns":render_cpu,"full_callback_thread_cpu_ns":full_cpu},
         "metrics":{"allocations":allocations,"frees":frees,"rejected_commands":rejected,
@@ -213,10 +223,16 @@ pub(super) fn workload_observed(rate: u32, frames: usize, ratio: f32, blocks: us
             "render_cpu_deadline_exceedances":render_cpu.iter().filter(|v|**v>deadline).count(),
             "full_cpu_deadline_exceedances":full_cpu.iter().filter(|v|**v>deadline).count()},
         "checks":{"finite_output":finite,"nonzero_output":energy>0.0,"original_notes_intact":originals,
-            "exact_recorded_notes":recorded,"all_commands_applied":parameters_applied&&engine.cmd.len()==0&&engine.undo.view().failures==0,
+            "exact_recorded_notes":recorded,"all_commands_applied":parameters_applied&&engine.cmd.len()==0&&history.failures==0,
             "both_locked_at_fixed_ratio":locked,"coincident_search_hops":synchronized&&searches[0]>0&&searches==hops&&coincident_search_callbacks>0},
         "observations":{"searches_per_deck":searches,"analysis_hops_per_deck":hops,
-            "coincident_search_callbacks":coincident_search_callbacks,"quantized_audio_hash":format!("{hash:016x}")}})
+            "coincident_search_callbacks":coincident_search_callbacks,"quantized_audio_hash":format!("{hash:016x}"),
+            "original_note_prefixes_intact":original_prefixes,
+            "note_counts_per_track":rt.tracks.iter().map(|t|t.clips[0].notes.len()).collect::<Vec<_>>(),
+            "expected_added_notes":expected_added,"actual_added_notes":rt.tracks[1].clips[0].notes.len().saturating_sub(1024),
+            "parameters_applied":parameters_applied,"pending_commands":engine.cmd.len(),
+            "history_failures":history.failures,"history_failure":history.failure.map(|failure|failure.label()),
+            "history_bytes":history.bytes,"retired_bytes":history.retired_bytes,"history_budget":history.budget}})
 }
 
 #[test]
@@ -227,8 +243,9 @@ fn showload_fixture_uses_two_locked_decks_and_preserves_exact_recording() {
         (96_000, 256, 1.5, 32),
     ] {
         let measured = workload(rate, frames, ratio, blocks);
+        let summary = json!({"checks":measured["checks"],"metrics":measured["metrics"],"observations":measured["observations"]});
         for (name, value) in measured["checks"].as_object().unwrap() {
-            assert_eq!(value, true, "{rate}/{frames}/{ratio}: {name}: {measured}");
+            assert_eq!(value, true, "{rate}/{frames}/{ratio}: {name}: {summary}");
         }
         for name in ["allocations", "frees", "rejected_commands"] {
             assert_eq!(measured["metrics"][name], 0);

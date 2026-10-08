@@ -61,7 +61,7 @@ fn key(
 }
 /// Order present values while keeping unavailable metadata last.
 /// Takes two optional values and the chosen direction; returns their deterministic comparison.
-fn optional<T>(
+pub(in crate::ui) fn optional<T>(
     a: &Option<T>,
     b: &Option<T>,
     descending: bool,

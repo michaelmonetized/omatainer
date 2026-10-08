@@ -13,6 +13,8 @@ categories = ["multimedia::audio"]
 ab_glyph = "0.2"
 anyhow = "1"
 arc-swap = "1.7"
+alsa = "=0.11.0"
+ring = "=0.17.14"
 cpal = "=0.18.2"
 crossbeam-channel = "0.5"
 eframe = { version = "0.32", default-features = true }
@@ -23,6 +25,8 @@ icu_casemap = "=2.3.0"
 image = { version = "=0.25.10", default-features = false, features = ["png", "jpeg"] }
 midir = "=0.11.0"
 parking_lot = "0.12"
+quick-xml = "=0.41.0"
+flate2 = "=1.1.10"
 rtrb = "0.3"
 serde = { version = "1", features = ["derive", "rc"] }
 sha2 = "=0.10.9"
@@ -33,6 +37,7 @@ walkdir = "2"
 lofty = { version = "=0.24.0", default-features = false }
 ureq = { version = "=3.4.2", default-features = false, features = ["rustls"] }
 url = "=2.5.8"
+vst3-host = { version = "=0.9.0", default-features = false }
 
 [profile.dev]
 opt-level = 1
@@ -46,6 +51,7 @@ panic = "abort"
 accesskit_unix = "=0.15.0"
 
 [patch.crates-io]
+vst3-host = { path = "vendor/vst3-host" }
 symphonia-format-riff = { path = "vendor/symphonia-format-riff" }
 egui-winit = { path = "vendor/egui-winit" }
 

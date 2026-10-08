@@ -1,6 +1,9 @@
 use crate::engine::RtEngine;
 pub mod calibration;
 pub mod config;
+#[cfg(target_os = "linux")]
+mod cpu_budget;
+mod scheduling;
 pub(crate) mod graph;
 #[cfg(target_os = "linux")]
 pub(crate) mod jack;
@@ -63,6 +66,8 @@ impl owner::Backend for Native {
     ) -> Result<Self::Stream, String> {
         #[cfg(target_os = "linux")]
         if plan.backend == jack::BACKEND { return jack::output(plan, callback, fault).map(NativeStream::Jack); }
+        #[cfg(target_os = "linux")]
+        cpu_budget::install()?;
         let device = config::select_exact(plan).map_err(|e| e.to_string())?;
         if identity
             .is_some_and(|expected| recovery::identity(&plan.device).as_deref() != Some(expected))
@@ -73,6 +78,7 @@ impl owner::Backend for Native {
         }
         let cfg = plan.config();
         let errors = callback.rt.telemetry.clone();
+        let callback_fault = fault.clone();
         let discontinuity = Arc::new(AtomicBool::new(false));
         let output_discontinuity = discontinuity.clone();
         let error = move |e: cpal::Error| {
@@ -87,7 +93,7 @@ impl owner::Backend for Native {
         };
         macro_rules! build {
             ($type:ty) => {
-                build::<$type>(&device, &cfg, callback, error, output_discontinuity)
+                scheduling::open(|| build::<$type>(&device, &cfg, callback, error, output_discontinuity, callback_fault))
                     .map(NativeStream::Alsa)
                     .map_err(|e| e.to_string())
             };
@@ -165,14 +171,29 @@ fn build<T>(
     mut callback: OutputCallback,
     err_fn: impl Fn(cpal::Error) + Send + 'static,
     discontinuity: Arc<AtomicBool>,
+    fault: Arc<AtomicBool>,
 ) -> Result<cpal::Stream, cpal::Error>
 where
     T: cpal::SizedSample + cpal::FromSample<f32>,
     f64: cpal::FromSample<T>,
 {
+    #[cfg(target_os = "linux")]
+    let mut cpu_guard = cpu_budget::Guard::new();
+    #[cfg(target_os = "linux")]
+    let mut exhausted = false;
     device.build_output_stream(
         cfg.clone(),
         move |data: &mut [T], info| {
+            #[cfg(target_os = "linux")]
+            if cpu_guard.exceeded() {
+                if !exhausted && cpu_guard.cpu_exhausted() {
+                    exhausted = true;
+                    callback.rt.telemetry.cpu_budget_exhausted();
+                }
+                fault.store(true, Ordering::Release);
+                data.fill(T::from_sample(0.0));
+                return;
+            }
             if discontinuity.swap(false, Ordering::AcqRel) {
                 callback.rt.audible.restart();
                 callback.resume_ramp = Some((0, 0, 1));
@@ -236,6 +257,8 @@ pub(crate) struct OutputCallback {
     conversion_delay: std::time::Duration,
     #[cfg(test)]
     stall_once: Option<(u32, std::time::Duration)>,
+    #[cfg(test)]
+    cpu_stall_once: Option<(u32, std::time::Duration)>,
 }
 
 impl OutputCallback {
@@ -260,6 +283,8 @@ impl OutputCallback {
             conversion_delay: std::time::Duration::ZERO,
             #[cfg(test)]
             stall_once: None,
+            #[cfg(test)]
+            cpu_stall_once: None,
         }
     }
 
@@ -285,6 +310,8 @@ impl OutputCallback {
             conversion_delay: std::time::Duration::ZERO,
             #[cfg(test)]
             stall_once: None,
+            #[cfg(test)]
+            cpu_stall_once: None,
         }
     }
 
@@ -355,6 +382,9 @@ impl OutputCallback {
         slice.fill(0.0);
         if let Some(history) = &mut self.rt.history_measurement { history.begin_output(data.len() / self.channels.max(1)); }
         let sample_rate = self.rt.sr as u32;
+        let first_sample = playback_ns.and_then(|ns| self.rt.audible.instant_at(ns));
+        self.rt.clock_output.begin(sample_rate, data.len() / self.channels.max(1), first_sample);
+        self.rt.clock_input.begin(sample_rate, data.len() / self.channels.max(1), first_sample);
         self.rt.audible.begin(sample_rate, playback_ns);
         self.rt.process_interleaved(slice, self.channels);
         if let Some((was_playing, remaining, total)) = &mut self.resume_ramp {
@@ -396,7 +426,18 @@ impl OutputCallback {
         for (destination, source) in data.iter_mut().zip(slice) {
             *destination = T::from_sample(*source);
         }
+        #[cfg(test)]
+        if let Some((remaining, duration)) = &mut self.cpu_stall_once {
+            if *remaining == 0 {
+                let start = super::audio_metrics::thread_cpu_ns().unwrap();
+                while super::audio_metrics::thread_cpu_ns().unwrap() - start < duration.as_nanos() as u64 {
+                    std::hint::black_box(std::hint::black_box(1.2345_f64).sin());
+                }
+                self.cpu_stall_once = None;
+            } else { *remaining -= 1; }
+        }
         self.rt.routing_pipe.meters(data, self.channels);
+        self.rt.routing_pipe.recorder.converted(data, self.channels);
         if let Some(history) = &mut self.rt.history_measurement { history.converted(data, self.channels); }
         self.rt.audible.finish();
         self.rt.telemetry.record_output(
@@ -417,6 +458,9 @@ mod tests;
 #[cfg(test)]
 #[path = "audio/audible_tests.rs"]
 mod audible_tests;
+#[cfg(test)]
+#[path = "audio/physical_recovery_tests.rs"]
+mod physical_recovery_tests;
 #[cfg(test)]
 #[path = "audio_live_set_tests.rs"]
 mod live_set_tests;

@@ -315,7 +315,7 @@ impl Drop for Files {
 }
 struct Gui {
     app: App,
-    rt: RtEngine,
+    rt: Box<RtEngine>,
     ctx: egui::Context,
     time: f64,
     close_commands: usize,
@@ -326,7 +326,7 @@ impl Gui {
         let (engine, rt) = Engine::headless_for_test(48_000, 256);
         Self {
             app: App::with_loader(engine, Theme::default(), None),
-            rt,
+            rt: Box::new(rt),
             ctx: egui::Context::default(),
             time: 0.0,
             close_commands: 0,
@@ -409,7 +409,7 @@ impl Gui {
         self.app.send(Command::SetNotes {
             track: 0,
             scene: 0,
-            notes: vec![MidiNote {
+            notes: vec![MidiNote { variation: None,
                 channel:0,release_vel:64,source_timing:None, id: crate::engine::midi_edit::NoteId::new(), muted: false,
                 pitch: 61,
                 start: 0.25,
@@ -1672,7 +1672,7 @@ fn native_save_open_cancel_preserve_non_latin_drive_paths_and_combining_project_
     let name="Cafe\u{301} / Straße / 東京 / مشروع";
     let layout=gui.rt.session.clone();
     let (edit,ack)=crate::engine::session::Request::metadata(&layout,gui.app.engine.undo.checkpoint().epoch,crate::engine::session::Action::Rename {axis:crate::engine::session::Axis::Track,id:layout.tracks[0].id,name:name.into()}).unwrap();
-    gui.app.engine.send(Command::SessionEdit(edit)).unwrap();gui.rt.process(&mut []);assert_eq!(ack.state(),crate::engine::midi_edit::Outcome::Applied);
+    gui.app.engine.send(Command::session_edit(edit)).unwrap();gui.rt.process(&mut []);assert_eq!(ack.state(),crate::engine::midi_edit::Outcome::Applied);
     gui.save_as_ui(&path);let bytes=std::fs::read(&path).unwrap();
     let saved=crate::project_file::load::<Document>(&path,&Limits::default(),&AtomicBool::new(false)).unwrap();assert_eq!(saved.state.engine.tracks[0].name,name);
     gui.menu("Open project…");gui.enter_path(&path);gui.click_label("Cancel");assert_eq!(gui.rt.tracks[0].name,name);assert_eq!(std::fs::read(&path).unwrap(),bytes);

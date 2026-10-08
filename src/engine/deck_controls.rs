@@ -1,8 +1,29 @@
 use super::{Command, DeckTransition, RtEngine};
 use serde::{Deserialize, Serialize};
 use std::time::Instant;
+mod beat_jump;
+mod loop_edit;
+mod quantization;
+mod saved;
+mod cue_loops;
+mod slip;
+mod slicer;
+pub use slicer::Status as SlicerStatus;
+pub(crate) use saved::Action as SavedLoopAction;
+pub use quantization::{PendingStatus, QuantizedAction};
+pub(crate) use quantization::DIVISIONS as QUANTIZE_DIVISIONS;
+#[cfg(test)]
+mod beat_jump_tests;
+#[cfg(test)]
+mod cue_audition_tests;
+#[cfg(test)]
+mod loop_edit_tests;
+#[cfg(test)]
+mod quantization_tests;
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod roll_reverse_tests;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -38,6 +59,8 @@ impl Button {
 #[derive(Clone, Copy, Debug, Serialize, Deserialize)]
 #[serde(tag = "op", rename_all = "snake_case", deny_unknown_fields)]
 pub enum Control {
+    Quantize { enabled: bool, division: u8 },
+    Reverse { enabled: bool },
     Hold { button: Button, on: bool },
     Keylock,
     PitchRange,
@@ -45,15 +68,28 @@ pub enum Control {
     LoopMode,
     LoopButton { index: u8 },
     LoopToggle,
+    SavedLoop { #[serde(with = "loop_edit::media_key")] media_key: u64, id: u8, action: SavedLoopAction },
+    SavedPad { id: u8, action: SavedLoopAction },
+    CueOnly { #[serde(with = "loop_edit::media_key")] media_key: u64, pad: u8 },
     LoopSelect,
     Reloop,
     LoopScale { double: bool },
     LoopShift { forward: bool },
+    LoopBounds { #[serde(with = "loop_edit::media_key")] media_key: u64, start_seconds: f64, end_seconds: f64 },
+    LoopMove { #[serde(with = "loop_edit::media_key")] media_key: u64, beats: f64 },
+    LoopLength { #[serde(with = "loop_edit::media_key")] media_key: u64, beats: f64 },
+    BeatJump { forward: bool },
+    BeatJumpSize { index: u8 },
+    BeatJumpScale { up: bool },
     Tap,
     StartTime { value: f32 },
     StopTime { value: f32 },
     TrackStart,
     Slip,
+    SlipSettings { enabled: bool, division: Option<u8> },
+    SlicerSettings { repeating: bool, domain: u8, repeat: u8, division: Option<u8> },
+    PitchPads { #[serde(with = "loop_edit::media_key")] media_key: u64, cue: u8, range: u8 },
+    PitchReset { #[serde(with = "loop_edit::media_key")] media_key: u64 },
     PadMode { mode: u8 },
     Parameter { mode: u8, up: bool, shifted: bool },
     HotLoop { pad: u8, clear: bool },
@@ -66,10 +102,24 @@ impl Control {
     /// Takes this control; returns whether its indices and values are supported.
     pub fn valid(self) -> bool {
         match self {
+            Self::SlicerSettings {domain,repeat,division,..} => (1..=6).contains(&domain) && repeat<=3 && division.is_none_or(|index|usize::from(index)<QUANTIZE_DIVISIONS.len()),
+            Self::SlipSettings {division,..} => division.is_none_or(|index|usize::from(index)<QUANTIZE_DIVISIONS.len()),
+            Self::Quantize { division, .. } => usize::from(division) < QUANTIZE_DIVISIONS.len(),
             Self::Strip { value } | Self::StartTime { value } | Self::StopTime { value } => {
                 value.is_finite() && (0.0..=1.0).contains(&value)
             }
+            Self::SavedLoop { media_key, id, action } => media_key != 0 && (1..=8).contains(&id) && action.valid(),
+            Self::SavedPad { id, action } => (1..=8).contains(&id) && matches!(action, SavedLoopAction::Save | SavedLoopAction::Recall { .. } | SavedLoopAction::Delete),
+            Self::CueOnly { media_key, pad } => media_key != 0 && pad < 8,
             Self::LoopButton { index } => index < 4,
+            Self::LoopBounds { media_key, start_seconds, end_seconds } => media_key != 0
+                && start_seconds.is_finite() && end_seconds.is_finite()
+                && start_seconds >= 0.0 && end_seconds > start_seconds,
+            Self::LoopMove { media_key, beats } => media_key != 0 && beats.is_finite()
+                && beats.abs() > 0.0 && beats.abs() <= 16384.0,
+            Self::LoopLength { media_key, beats } => media_key != 0 && beats.is_finite()
+                && (0.125..=64.0).contains(&beats),
+            Self::BeatJumpSize { index } => usize::from(index) < BEAT_JUMP_SIZES.len(),
             Self::Hold {
                 button: Button::HotCue(pad),
                 ..
@@ -80,15 +130,25 @@ impl Control {
             }
             | Self::HotLoop { pad, .. } => pad < 8,
             Self::AutoLoopPad { pad } | Self::ManualPad { pad } => pad < 8,
-            Self::PadMode { mode } | Self::Parameter { mode, .. } => mode < 8,
+            Self::PitchPads { media_key, cue, range } => media_key != 0 && cue < 8 && range < 3,
+            Self::PitchReset { media_key } => media_key != 0,
+            Self::PadMode { mode } | Self::Parameter { mode, .. } => super::deck_pads::Mode::from_index(mode).is_some(),
             _ => true,
         }
     }
 }
 
+pub(crate) const BEAT_JUMP_SIZES: [f32; 10] = [0.125, 0.25, 0.5, 1.0, 2.0, 4.0, 8.0, 16.0, 32.0, 64.0];
+
 #[derive(Clone, Copy, Debug, Default, Serialize)]
 pub struct Status {
+    pub quantize: bool,
+    pub quantize_division: u8,
+    pub pending: Option<PendingStatus>,
+    pub cue_held: bool,
+    pub beat_jump_size: u8,
     pub reverse: bool,
+    pub reverse_latched: bool,
     pub bleep: bool,
     pub bend: f32,
     pub delete: bool,
@@ -99,25 +159,49 @@ pub struct Status {
     pub stop_seconds: f32,
     pub braking: bool,
     pub slip: bool,
+    pub slip_release: Option<u8>,
+    pub slip_position: Option<f64>,
+    pub slip_due: Option<f64>,
+    pub slip_return: Option<f64>,
     pub pad_mode: u8,
+    pub pitch_cue: u8,
+    pub pitch_range: u8,
+    pub pitch_pad: Option<u8>,
+    pub pitch_semitones: Option<i8>,
     pub roll: Option<u8>,
+    pub roll_active: Option<u8>,
+    pub roll_pending: Option<u8>,
+    pub roll_due: Option<f64>,
     pub slice: Option<u8>,
     pub roll_scale: i8,
     pub slice_domain: u8,
+    pub slice_quant: u8,
+    pub slicer: SlicerStatus,
     pub hotloops: [bool; 8],
 }
 
 #[derive(Clone, Debug)]
 pub(super) struct State {
-    owners: [Option<(u64, Button)>; super::control::MAX_COMMANDS],
+    quantize: Option<bool>,
+    reverse_latched: bool,
+    quantize_division: u8,
+    pending: Option<quantization::Pending>,
+    quantize_dispatching: bool,
+    cue_only: bool,
+    quantize_owner_hint: Option<(u64, Option<u32>, Button)>,
+    beat_jump_size: u8,
+    owners: [Option<(u64, Option<u32>, Button)>; super::control::MAX_COMMANDS],
     counts: [u16; 30],
     pub forward: Option<f64>,
-    preview: Option<(u64, Button)>,
+    preview: Option<(u64, Option<u32>, Button)>,
     delete: bool,
     delete_used: bool,
     auto_loop: bool,
     auto_button: Option<u8>,
     loops: [Option<(f64, f64)>; 8],
+    loop_styles: [super::cue_metadata::Style; 8],
+    loop_order: [u8; 8],
+    cue_loops: [Option<u8>; 8],
     selected: usize,
     edit: u8,
     edit_ticks: Option<i64>,
@@ -131,10 +215,21 @@ pub(super) struct State {
     pub braking: bool,
     pub brake_rate: f32,
     slip: bool,
+    slip_release: Option<u8>,
+    slip_loop: Option<(bool,f64,f64)>,
+    slip_beat: f64,
+    slip_interrupted: bool,
+    slip_due: Option<f64>,
+    slip_return: Option<f64>,
     pub pad_mode: u8,
+    pub(in crate::engine) pitch_cue: u8,
+    pub(in crate::engine) pitch_range: u8,
+    pub(in crate::engine) pitch_pad: Option<u8>,
+    pub(in crate::engine) pitch_semitones: Option<i8>,
     pub roll_scale: i8,
     slice_domain: u8,
     slice_quant: u8,
+    slicer: slicer::State,
     performance_forward: Option<f64>,
     saved_loop: Option<(bool, f64, f64)>,
     slip_forward: Option<f64>,
@@ -142,12 +237,23 @@ pub(super) struct State {
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub(super) struct LoopHistory {
     loops: [Option<(f64, f64)>; 8],
+    loop_styles: [super::cue_metadata::Style; 8],
+    loop_order: [u8; 8],
+    cue_loops: [Option<u8>; 8],
     selected: usize,
     auto_button: Option<u8>,
 }
 impl Default for State {
     fn default() -> Self {
         Self {
+            quantize: None,
+            reverse_latched: false,
+            quantize_division: 3,
+            pending: None,
+            quantize_dispatching: false,
+            cue_only: false,
+            quantize_owner_hint: None,
+            beat_jump_size: 5,
             owners: [None; super::control::MAX_COMMANDS],
             counts: [0; 30],
             forward: None,
@@ -157,6 +263,9 @@ impl Default for State {
             auto_loop: false,
             auto_button: None,
             loops: [None; 8],
+            loop_styles: [Default::default(); 8],
+            loop_order: [1, 2, 3, 4, 5, 6, 7, 8],
+            cue_loops: [None; 8],
             selected: 0,
             edit: 0,
             edit_ticks: None,
@@ -170,10 +279,21 @@ impl Default for State {
             braking: false,
             brake_rate: 0.0,
             slip: false,
+            slip_release: None,
+            slip_loop: None,
+            slip_beat: 0.0,
+            slip_interrupted: false,
+            slip_due: None,
+            slip_return: None,
             pad_mode: 0,
+            pitch_cue: 0,
+            pitch_range: 1,
+            pitch_pad: None,
+            pitch_semitones: None,
             roll_scale: 0,
             slice_domain: 3,
             slice_quant: 0,
+            slicer: Default::default(),
             performance_forward: None,
             saved_loop: None,
             slip_forward: None,
@@ -186,6 +306,9 @@ impl State {
     pub fn loop_history(&self) -> LoopHistory {
         LoopHistory {
             loops: self.loops,
+            loop_styles: self.loop_styles,
+            loop_order: self.loop_order,
+            cue_loops: self.cue_loops,
             selected: self.selected,
             auto_button: self.auto_button,
         }
@@ -193,7 +316,11 @@ impl State {
     /// Restore loop selection without reviving held performance buttons.
     /// Takes the captured loop state; replaces banks and clears any stale edge-edit baseline.
     pub fn restore_loops(&mut self, history: LoopHistory) {
+        self.pending = None;
         self.loops = history.loops;
+        self.loop_styles = history.loop_styles;
+        self.loop_order = history.loop_order;
+        self.cue_loops = history.cue_loops;
         self.selected = history.selected;
         self.auto_button = history.auto_button;
         self.edit = 0;
@@ -204,30 +331,42 @@ impl State {
     pub fn held(&self, button: Button) -> bool {
         self.counts[button.index()] > 0
     }
+    /// Check one original hold without borrowing another input's ownership.
+    /// Takes source, raw key and action; returns whether that exact gesture is still admitted.
+    pub(in crate::engine) fn owns(&self, source: u64, key: Option<u32>, button: Button) -> bool {
+        self.owners.iter().any(|owner| *owner == Some((source, key, button)))
+    }
+    /// Recognize a selected or directly held slicer gesture.
+    /// Takes this state; returns whether slicer setting changes must retire source-owned performance work.
+    fn using_slicer(&self) -> bool {self.pad_mode==2||(0..8).any(|pad|self.held(Button::Slice(pad)))}
     /// Turn a held Cue preview into continued playback.
-    /// Takes this state; returns whether an NS7 preview owned the transport.
+    /// Takes this state; returns whether a held Cue preview owned the transport.
     pub fn latch_preview(&mut self) -> bool {
         self.preview.take().is_some()
     }
     /// Retain or release exactly one button owner.
-    /// Takes source, button and pressed state; returns whether the ownership changed.
-    fn hold(&mut self, source: u64, button: Button, on: bool) -> bool {
+    /// Takes source, optional raw pad key, button and pressed state; returns whether the ownership changed.
+    fn hold(&mut self, source: u64, key: Option<u32>, button: Button, on: bool) -> bool {
         let existing = self
             .owners
             .iter()
-            .position(|owner| *owner == Some((source, button)));
+            .position(|owner| *owner == Some((source, key, button)));
         if on {
             if existing.is_some() {
                 return false;
             }
-            if let Some(empty) = self.owners.iter_mut().find(|owner| owner.is_none()) {
-                *empty = Some((source, button));
+            if let Some(empty) = self.owners.iter().position(Option::is_none) {
+                self.owners[..=empty].rotate_right(1);
+                self.owners[0] = Some((source, key, button));
                 self.counts[button.index()] += 1;
                 return true;
             }
         } else if let Some(index) = existing {
             self.owners[index] = None;
             self.counts[button.index()] -= 1;
+            if self.pending.is_some_and(|pending| pending.owner == Some((source, key, button))) {
+                self.pending = None;
+            }
             return true;
         }
         false
@@ -235,7 +374,7 @@ impl State {
     /// Read a signed playback multiplier without changing the pitch slider.
     /// Takes this state; returns direction and temporary pitch bend.
     pub fn multiplier(&self) -> f32 {
-        let direction = if self.held(Button::Reverse) || self.held(Button::Bleep) {
+        let direction = if self.reverse_latched || self.held(Button::Reverse) || self.held(Button::Bleep) {
             -1.0
         } else {
             1.0
@@ -249,6 +388,7 @@ impl State {
     /// Arm a bounded transport acceleration or brake.
     /// Takes Play state, prior velocity and output rate; returns no value.
     pub fn transport(&mut self, playing: bool, velocity: f32, sr: f32) {
+        if !playing { self.pending = None; self.interrupt_slip(); }
         self.braking = !playing && self.stop > 0.0;
         self.brake_rate = velocity;
         let seconds = if playing { self.start } else { self.stop };
@@ -277,12 +417,18 @@ impl State {
     /// Clear performance gestures during a safety stop.
     /// Takes this state; returns no value and retains knob preferences and loop slots.
     pub fn release(&mut self) {
+        self.pending = None;
+        self.quantize_owner_hint = None;
         self.owners.fill(None);
+        self.reverse_latched = false;
+        self.pitch_pad = None;
+        self.pitch_semitones = None;
         self.counts.fill(0);
         self.forward = None;
         self.performance_forward = None;
         self.saved_loop = None;
-        self.slip_forward = None;
+        self.interrupt_slip();
+        self.slicer.clear();
         self.preview = None;
         self.auto_button = None;
         self.delete = false;
@@ -297,7 +443,13 @@ impl State {
     /// Takes this state; returns the UI and feedback values.
     pub fn status(&self) -> Status {
         Status {
-            reverse: self.held(Button::Reverse),
+            quantize: self.quantize == Some(true),
+            quantize_division: self.quantize_division,
+            pending: self.pending.map(|pending| pending.status),
+            cue_held: self.held(Button::Cue),
+            beat_jump_size: self.beat_jump_size,
+            reverse: self.reverse_latched || self.held(Button::Reverse),
+            reverse_latched: self.reverse_latched,
             bleep: self.held(Button::Bleep),
             bend: (i32::from(self.held(Button::BendUp)) - i32::from(self.held(Button::BendDown)))
                 as f32
@@ -310,23 +462,47 @@ impl State {
             stop_seconds: self.stop,
             braking: self.braking,
             slip: self.slip,
+            slip_release: self.slip_release,
+            slip_position: self.slip_forward,
+            slip_due: self.slip_due,
+            slip_return: self.slip_return,
             pad_mode: self.pad_mode,
-            roll: (0..8).find(|&pad| self.held(Button::Roll(pad))),
+            pitch_cue: self.pitch_cue,
+            pitch_range: self.pitch_range,
+            pitch_pad: self.pitch_pad,
+            pitch_semitones: self.pitch_semitones,
+            roll: self.owners.iter().flatten().find_map(|owner| if let Button::Roll(pad) = owner.2 {Some(pad)}else{None}),
+            roll_active: self.slicer.active_roll(),
+            roll_pending: self.slicer.pending_roll().map(|pending| pending.0),
+            roll_due: self.slicer.pending_roll().map(|pending| pending.1),
             slice: (0..8).find(|&pad| self.held(Button::Slice(pad))),
             roll_scale: self.roll_scale,
             slice_domain: self.slice_domain,
+            slice_quant: self.slice_quant,
+            slicer: self.slicer.status(),
             hotloops: self.loops.map(|slot| slot.is_some()),
         }
     }
     /// Discard loop banks and preview clocks when source media changes.
     /// Takes this state; returns no value and retains physical knob/switch settings.
     pub fn media_changed(&mut self) {
+        self.pending = None;
+        self.quantize_owner_hint = None;
         self.owners.fill(None);
+        self.reverse_latched = false;
+        self.pitch_cue = 0;
+        self.pitch_pad = None;
+        self.pitch_semitones = None;
         self.counts.fill(0);
         self.performance_forward = None;
         self.saved_loop = None;
-        self.slip_forward = None;
+        self.interrupt_slip();
+        self.slicer.clear();
         self.loops.fill(None);
+        self.cue_loops.fill(None);
+        self.cue_only = false;
+        self.loop_styles.fill(Default::default());
+        self.loop_order = [1, 2, 3, 4, 5, 6, 7, 8];
         self.auto_button = None;
         self.selected = 0;
         self.edit = 0;
@@ -343,6 +519,7 @@ impl super::DeckRt {
     /// Retire temporary pad loops before clearing their owners.
     /// Takes this deck; restores its prior loop and clears all held performance gestures.
     pub(super) fn release_performance_controls(&mut self) {
+        self.leave_slicer();
         if let Some((on, start, len)) = self.controls.saved_loop.take() {
             self.loop_on = on;
             self.loop_start = start;
@@ -366,30 +543,21 @@ impl RtEngine {
             .as_ref()
             .map_or(f64::from(self.sr), |audio| f64::from(audio.sr))
             / f64::from(self.sr);
-        if let Some(position) = &mut d.controls.performance_forward {
-            if d.playing {
-                *position += step;
-            }
-            if let Some((true, start, len)) = d.controls.saved_loop.filter(|(_, _, len)| *len > 1.0)
-            {
-                if *position >= start + len {
-                    *position = start + (*position - start).rem_euclid(len);
+        let position=d.controls.performance_forward.unwrap_or(d.pos);
+        let next=if d.sync {d.grid_position_at(d.grid_beat_at(position,self.sr,self.bpm)+f64::from(d.sync_bpm)/(60.0*f64::from(self.sr)),self.sr,self.bpm)} else {position+step};
+        let beat_step=d.grid_beats_between(position,next,self.sr,self.bpm).max(0.0);
+        d.tick_slicer(beat_step,self.sr,self.bpm);
+        if d.controls.performance_forward.is_some() && d.playing {
+            let mut next=next;
+            if let Some((true,start,len))=d.controls.saved_loop.filter(|(_,_,len)|*len>1.0) {
+                if next>=start+len {
+                    if d.sync {let first=d.grid_beat_at(start,self.sr,self.bpm);let last=d.grid_beat_at(start+len,self.sr,self.bpm);let excess=d.grid_beats_between(start+len,next,self.sr,self.bpm);next=if last>first {d.grid_position_at(first+excess.rem_euclid(last-first),self.sr,self.bpm)}else{start+(next-start).rem_euclid(len)};}
+                    else {next=start+(next-start).rem_euclid(len);}
                 }
             }
+            d.controls.performance_forward=Some(next);
         }
-        let scratching = d.touching
-            || d.follows_spindle()
-                && d.spindle
-                    .as_ref()
-                    .is_some_and(super::spindle::Playback::scratching);
-        if d.controls.slip && scratching && d.playing {
-            let position = d.controls.slip_forward.get_or_insert(d.pos);
-            *position += step;
-        } else if let Some(position) = d.controls.slip_forward.take() {
-            if d.playing {
-                d.transition_to(position, self.sr, DeckTransition::Jump);
-            }
-        }
+        d.tick_slip(step,self.sr,self.bpm);
     }
     /// Measure the actual audience output for the NS7's master meter mode.
     /// Takes the emitted stereo frame; updates two bounded envelopes without allocation.
@@ -402,88 +570,75 @@ impl RtEngine {
             };
         }
     }
+    /// Retrigger a chromatic pad's retained cue immediately without deleting or launching a linked loop.
+    /// Takes its original source, key, deck, cue and gate; temporarily scopes cue behavior and retains ordinary hold/release ownership.
+    pub(in crate::engine) fn pitch_cue_hold(&mut self, source: u64, key: u32, deck: u8, cue: u8, on: bool) {
+        let index = usize::from(deck);
+        let state = &mut self.decks[index].controls;
+        let prior = (state.quantize, state.cue_only, state.delete);
+        state.quantize = Some(false); state.cue_only = true; state.delete = false;
+        self.deck_control_owned(source, deck, Control::Hold { button: Button::HotCue(cue), on }, Some(key));
+        let state = &mut self.decks[index].controls;
+        state.quantize = prior.0; state.cue_only = prior.1; state.delete = prior.2;
+    }
     /// Apply one source-owned controller gesture.
     /// Takes the source, deck and validated control; updates transport or delegates persistent edits to ordinary commands.
     pub(super) fn deck_control(&mut self, source: u64, deck: u8, control: Control) {
+        self.deck_control_owned(source, deck, control, None);
+    }
+    /// Apply an independently owned pad gesture.
+    /// Takes source, deck, validated control and optional physical key; retains its exact release identity.
+    pub(super) fn deck_control_owned(&mut self, source: u64, deck: u8, control: Control, key: Option<u32>) {
         if usize::from(deck) >= super::DECKS || !control.valid() {
             return;
         }
         let index = usize::from(deck);
+        if let Control::Reverse { enabled } = control {
+            if self.decks[index].controls.reverse_latched == enabled {return;}
+        }
+        if matches!(control, Control::Reverse {..} | Control::Hold {button:Button::Reverse|Button::Bleep|Button::Cue|Button::HotCue(_)|Button::Roll(_)|Button::Slice(_),on:true}|Control::BeatJump {..}|Control::CueOnly {..}|Control::LoopToggle|Control::AutoLoopPad {..}|Control::ManualPad {..}|Control::SavedLoop {action:SavedLoopAction::Recall {..},..}) {
+            self.decks[index].transport_generation=self.decks[index].transport_generation.wrapping_add(1);
+        }
+        if matches!(control, Control::Reverse {..} | Control::Hold { button: Button::Reverse | Button::Bleep | Button::BendDown | Button::BendUp | Button::Cue | Button::HotCue(_) | Button::Roll(_) | Button::Slice(_), on: true } | Control::Strip { .. } | Control::BeatJump { .. } | Control::TrackStart) { self.deck_sync_manipulation(index); }
         match control {
+            Control::Reverse { enabled } => {
+                let d=&mut self.decks[index];
+                d.controls.pending=None;
+                if enabled {d.begin_slip(self.sr,self.bpm);}
+                d.controls.reverse_latched=enabled;
+            }
+            Control::Quantize { enabled, division } => {
+                let state = &mut self.decks[index].controls;
+                state.quantize = Some(enabled);
+                state.quantize_division = division;
+                state.pending = None;
+            }
+            Control::BeatJumpSize { index: size } => self.decks[index].controls.beat_jump_size = size,
+            Control::BeatJumpScale { up } => {
+                let size = &mut self.decks[index].controls.beat_jump_size;
+                *size = if up { size.saturating_add(1).min((BEAT_JUMP_SIZES.len() - 1) as u8) }
+                    else { size.saturating_sub(1) };
+            }
+            Control::BeatJump { forward } => self.decks[index].beat_jump(forward, self.sr, self.bpm),
             Control::Hold { button, on } => {
                 let d = &mut self.decks[index];
-                if !d.controls.hold(source, button, on) {
+                if on && matches!(button, Button::Cue | Button::HotCue(_)) && d.audio.is_none() { return; }
+                if !d.controls.hold(source, key, button, on) {
                     return;
                 }
+                if on && matches!(button, Button::Reverse | Button::Bleep | Button::Roll(_) | Button::Slice(_)) {
+                    d.controls.pending = None;
+                }
+                if on && State::slip_button(button) && !d.controls.delete {d.begin_slip(self.sr,self.bpm);}
                 match button {
-                    Button::Roll(_) | Button::Slice(_) => {
-                        if on && d.controls.saved_loop.is_none() {
-                            d.controls.saved_loop = Some((d.loop_on, d.loop_start, d.loop_len));
-                            d.controls.performance_forward = Some(d.pos);
-                        }
-                        let active = if on {
-                            Some(button)
-                        } else {
-                            d.controls
-                                .owners
-                                .iter()
-                                .rev()
-                                .flatten()
-                                .map(|(_, button)| *button)
-                                .find(|button| matches!(button, Button::Roll(_) | Button::Slice(_)))
-                        };
-                        if let Some(button) = active {
-                            let (start, beats) = match button {
-                                Button::Roll(pad) => (
-                                    d.grid_snap(d.pos, self.sr, self.bpm),
-                                    2_f32.powi(
-                                        i32::from(pad) - 5 + i32::from(d.controls.roll_scale),
-                                    ),
-                                ),
-                                Button::Slice(pad) => {
-                                    let domain = 2_f64.powi(i32::from(d.controls.slice_domain));
-                                    let beat = d.grid_beats_between(
-                                        0.0,
-                                        d.controls.performance_forward.unwrap_or(d.pos),
-                                        self.sr,
-                                        self.bpm,
-                                    );
-                                    let start = (beat / domain).floor() * domain
-                                        + f64::from(pad) * domain / 8.0;
-                                    (
-                                        d.grid_span(0.0, start, self.sr, self.bpm),
-                                        (domain
-                                            / 8.0
-                                            / 2_f64.powi(i32::from(d.controls.slice_quant)))
-                                            as f32,
-                                    )
-                                }
-                                _ => unreachable!(),
-                            };
-                            d.loop_start = start;
-                            d.loop_len = d
-                                .grid_span(start, f64::from(beats), self.sr, self.bpm)
-                                .max(2.0);
-                            d.loop_on = true;
-                            d.transition_to(start, self.sr, DeckTransition::Jump);
-                        } else {
-                            if let Some((on, start, len)) = d.controls.saved_loop.take() {
-                                d.loop_on = on;
-                                d.loop_start = start;
-                                d.loop_len = len;
-                            }
-                            if let Some(position) = d.controls.performance_forward.take() {
-                                d.transition_to(position, self.sr, DeckTransition::Jump);
-                            }
-                        }
-                    }
+                    Button::Roll(_) | Button::Slice(_) => d.temporary_pad((source,key,button),on,self.sr,self.bpm),
                     Button::Bleep => {
                         if d.controls.held(Button::Bleep) {
                             if d.controls.forward.is_none() {
                                 d.controls.forward = Some(d.pos);
                             }
                         } else if let Some(position) = d.controls.forward.take() {
-                            d.transition_to(position, self.sr, DeckTransition::Jump);
+                            if d.controls.slip_forward.is_none() {d.transition_to(position, self.sr, DeckTransition::Jump);}
                         }
                     }
                     Button::Delete => {
@@ -510,12 +665,14 @@ impl RtEngine {
                             let deleting = d.controls.delete;
                             let set = d.hotcues[usize::from(pad)].set;
                             let paused = !d.playing;
+                            d.controls.quantize_owner_hint = Some((source, key, button));
                             self.apply(Command::DeckHotCue {
                                 deck,
                                 pad,
                                 del: deleting,
                             });
                             let d = &mut self.decks[index];
+                            d.controls.quantize_owner_hint = None;
                             if deleting {
                                 d.controls.delete_used = true;
                                 if !d.controls.held(Button::Delete) {
@@ -524,22 +681,22 @@ impl RtEngine {
                             } else if paused && set {
                                 d.playing = false;
                                 d.preview_position = Some(d.pos);
-                                d.controls.preview = Some((source, button));
+                                d.controls.preview = Some((source, key, button));
                             }
                         } else if d.playing {
-                            self.apply(Command::DeckCue { deck });
+                            if d.controls.slip_forward.is_some() {let position=d.cue_quantized_position(d.cue_pos,self.sr,self.bpm);d.transition_to(position,self.sr,DeckTransition::Jump);}else{self.apply(Command::DeckCue { deck });}
                         } else if d.preview_position.is_none() {
                             self.apply(Command::DeckCue { deck });
                             let d = &mut self.decks[index];
                             let position = d.cue_pos;
                             d.transition_to(position, self.sr, DeckTransition::Jump);
                             d.preview_position = Some(position);
-                            d.controls.preview = Some((source, button));
+                            d.controls.preview = Some((source, key, button));
                         }
                     }
                     _ => {}
                 }
-                if !matches!(button, Button::Cue | Button::HotCue(_) | Button::Delete) {
+                if !matches!(button, Button::Cue | Button::HotCue(_) | Button::Delete | Button::BendDown | Button::BendUp) {
                     self.decks[index].fade_from_last_output(self.sr);
                 }
             }
@@ -566,9 +723,37 @@ impl RtEngine {
             }
             Control::TrackStart => self.apply(Command::DeckSeek { deck, frac: 0.0 }),
             Control::StartTime { value } => self.decks[index].controls.start = value * 4.0,
-            Control::Slip => self.decks[index].controls.slip = !self.decks[index].controls.slip,
-            Control::PadMode { mode } => self.decks[index].controls.pad_mode = mode,
+            Control::Slip => {let state=&mut self.decks[index].controls;state.slip=!state.slip;if !state.slip {state.interrupt_slip();}else{state.slip_interrupted=false;}},
+            Control::SlipSettings {enabled,division} => {let state=&mut self.decks[index].controls;let was_enabled=state.slip;state.slip=enabled;state.slip_release=division;state.slip_due=None;state.slip_return=None;if !enabled {state.interrupt_slip();}else if !was_enabled {state.slip_interrupted=false;}},
+            Control::PitchPads { media_key, cue, range } => {
+                if self.decks[index].history_key != media_key || !self.decks[index].hotcues[usize::from(cue)].set { return; }
+                self.cancel_deck_pads(index);
+                self.decks[index].controls.pitch_cue = cue;
+                self.decks[index].controls.pitch_range = range;
+            }
+            Control::PitchReset { media_key } => {
+                if self.decks[index].history_key != media_key || self.decks[index].audio.is_none() { return; }
+                self.cancel_deck_pads(index);
+                self.apply(Command::DeckKeyShift(super::key_shift::Request { deck, media: media_key, semitones: 0, enable_lock: false }));
+            }
+            Control::PadMode { mode } => {
+                if self.decks[index].controls.pad_mode != mode {
+                    if self.decks[index].controls.pad_mode==2 {self.decks[index].controls.interrupt_slip();}
+                    self.cancel_deck_pads(index);
+                    self.decks[index].leave_slicer();
+                    self.decks[index].controls.pad_mode = mode;
+                    self.decks[index].controls.slicer.arm();
+                }
+            },
+            Control::SlicerSettings {repeating,domain,repeat,division} => {
+                if self.decks[index].controls.using_slicer() {
+                    self.decks[index].controls.interrupt_slip();self.cancel_deck_pads(index);self.decks[index].leave_slicer();
+                }
+                let d=&mut self.decks[index];d.controls.slice_domain=domain;d.controls.slice_quant=repeat;
+                d.controls.slicer.configure(repeating,division);
+            },
             Control::Parameter { mode, up, shifted } => {
+                if mode==2 && self.decks[index].controls.using_slicer() {self.decks[index].controls.interrupt_slip();self.cancel_deck_pads(index);self.decks[index].leave_slicer();self.decks[index].controls.slicer.arm();}
                 let controls = &mut self.decks[index].controls;
                 let delta = if up { 1 } else { -1 };
                 match mode {
@@ -576,6 +761,7 @@ impl RtEngine {
                         controls.roll_scale = (controls.roll_scale + delta).clamp(-3, 3)
                     }
                     2 => {
+                        controls.slicer.invalidate_bounds();
                         if !shifted {
                             controls.slice_quant = (i16::from(controls.slice_quant)
                                 + i16::from(delta))
@@ -585,6 +771,12 @@ impl RtEngine {
                                 + i16::from(delta))
                             .clamp(1, 6) as u8;
                         }
+                    }
+                    8 => {
+                        let current = controls.pitch_cue;
+                        let range = if shifted { controls.pitch_range } else { (i16::from(controls.pitch_range) + i16::from(delta)).clamp(0, 2) as u8 };
+                        let cue = if shifted { (1..=8).map(|step| (i16::from(current) + i16::from(delta) * step).rem_euclid(8) as u8).find(|cue| self.decks[index].hotcues[usize::from(*cue)].set).unwrap_or(current) } else { current };
+                        self.deck_control(source, deck, Control::PitchPads { media_key: self.decks[index].history_key, cue, range });
                     }
                     4 | 6 if !shifted => self.apply(Command::DeckControl {
                         source,
@@ -606,10 +798,14 @@ impl RtEngine {
                 }
             }
             Control::HotLoop { pad, clear } => {
+                if !clear { self.deck_sync_manipulation(index); }
                 let d = &mut self.decks[index];
                 let slot = usize::from(pad);
                 if clear {
                     d.controls.loops[slot] = None;
+                    d.sync_cue_loop_positions();
+                    d.controls.loop_styles[slot] = Default::default();
+                    d.publish_preparation();
                     return;
                 }
                 if let Some((start, len)) = d.controls.loops[slot] {
@@ -628,11 +824,18 @@ impl RtEngine {
                     } else {
                         d.grid_span(start, 4.0, self.sr, self.bpm)
                     };
+                    let len = len.min(d.audio.as_ref().map_or(0.0, |audio| audio.frames() as f64) - start);
+                    if start < 0.0 || len < 64.0 { return; }
                     d.controls.loops[slot] = Some((start, len));
+                    d.sync_cue_loop_positions();
                     d.loop_on = true;
                     d.loop_start = start;
                     d.loop_len = len;
                 }
+                d.controls.selected = slot;
+                d.transition_to(d.loop_start, self.sr, DeckTransition::Jump);
+                d.publish_preparation();
+                self.project.edited();
             }
             Control::AutoLoopPad { pad } => {
                 let beats = 2_f32
@@ -650,7 +853,7 @@ impl RtEngine {
                 2 => self.remember_controller_loop(index),
                 3 | 7 => {
                     let d = &mut self.decks[index];
-                    d.controls.selected = (d.controls.selected + if pad == 3 { 7 } else { 1 }) % 8;
+                    d.controls.next_loop(pad == 7);
                     d.controls.edit = 0;
                     d.controls.edit_ticks = None;
                     if let Some((start, len)) = d.controls.loops[d.controls.selected] {
@@ -708,6 +911,7 @@ impl RtEngine {
                     let bpm = (60.0 * (count - 1) as f64 / seconds).clamp(40.0, 300.0);
                     let origin = d.grid.map_or(0.0, |grid| grid.downbeat());
                     if let Ok(grid) = super::beatgrid::Grid::new(origin, bpm) {
+                        d.controls.pending = None;
                         d.grid = Some(grid);
                         d.publish_preparation();
                         self.project.edited();
@@ -716,6 +920,7 @@ impl RtEngine {
             }
             Control::LoopMode => {
                 let c = &mut self.decks[index].controls;
+                c.pending = None;
                 c.auto_loop = !c.auto_loop;
                 c.auto_button = None;
                 c.edit = 0;
@@ -727,14 +932,12 @@ impl RtEngine {
                     if d.loop_on && d.controls.auto_button == Some(button) {
                         d.clear_loop();
                         d.controls.loops[d.controls.selected] = None;
+                        d.sync_cue_loop_positions();
+                        d.controls.loop_styles[d.controls.selected] = Default::default();
                         d.controls.auto_button = None;
                     } else {
                         d.loop_on = true;
-                        d.loop_start = if self.quantize && d.grid.is_some() {
-                            d.grid_snap(d.pos, self.sr, self.bpm)
-                        } else {
-                            d.pos
-                        };
+                        d.loop_start = d.loop_quantized_position(d.pos, self.quantize && d.grid.is_some(), self.sr, self.bpm);
                         d.loop_len =
                             d.grid_span(d.loop_start, f64::from(1 << button), self.sr, self.bpm);
                         d.controls.auto_button = Some(button);
@@ -775,6 +978,15 @@ impl RtEngine {
                 }
                 self.remember_controller_loop(index);
             }
+            Control::SavedLoop { id, action, .. } => self.saved_loop_action(index, id, action),
+            Control::SavedPad { .. } => {},
+            Control::CueOnly { media_key, pad } => {
+                if self.decks[index].history_key != media_key || !self.decks[index].hotcues[usize::from(pad)].set || self.decks[index].controls.saved_loop.is_some() { return; }
+                self.decks[index].controls.cue_only = true;
+                self.decks[index].loop_on = false;
+                self.apply(Command::DeckHotCue { deck, pad, del: false });
+                self.decks[index].controls.cue_only = false;
+            },
             Control::LoopToggle => {
                 if self.decks[index].loop_len <= 1.0 {
                     self.apply(Command::DeckLoop { deck, beats: 4.0 });
@@ -789,12 +1001,13 @@ impl RtEngine {
                 }
             }
             Control::LoopSelect => {
+                self.decks[index].controls.pending = None;
                 self.remember_controller_loop(index);
                 let d = &mut self.decks[index];
                 d.controls.edit = 0;
                 d.controls.edit_ticks = None;
                 d.controls.auto_button = None;
-                d.controls.selected = (d.controls.selected + 1) % d.controls.loops.len();
+                d.controls.next_loop(true);
                 if let Some((start, length)) = d.controls.loops[d.controls.selected] {
                     d.loop_start = start;
                     d.loop_len = length;
@@ -806,6 +1019,7 @@ impl RtEngine {
                 self.project.edited();
             }
             Control::Reloop => {
+                if self.decks[index].loop_len > 1.0 { self.deck_sync_manipulation(index); }
                 let d = &mut self.decks[index];
                 if d.loop_len > 1.0 {
                     d.loop_on = true;
@@ -831,24 +1045,12 @@ impl RtEngine {
                 self.remember_controller_loop(index);
             }
             Control::LoopShift { forward } => {
-                let d = &mut self.decks[index];
-                if d.loop_len > 1.0 {
-                    let frames = d.audio.as_ref().map_or(0.0, |a| a.frames() as f64);
-                    let next = d.loop_start + d.loop_len * if forward { 1.0 } else { -1.0 };
-                    if next >= 0.0 && next + d.loop_len <= frames {
-                        let shift = next - d.loop_start;
-                        d.loop_start = next;
-                        d.transition_to(
-                            if d.loop_on { d.pos + shift } else { d.pos },
-                            self.sr,
-                            DeckTransition::Jump,
-                        );
-                        d.publish_preparation();
-                        self.project.edited();
-                    }
-                }
-                self.remember_controller_loop(index);
+                let d = &self.decks[index];
+                let beats = d.grid_beats_between(d.loop_start, d.loop_start + d.loop_len, self.sr, self.bpm)
+                    * if forward { 1.0 } else { -1.0 };
+                self.edit_deck_loop(index, Control::LoopMove { media_key: d.history_key, beats });
             }
+            control @ (Control::LoopBounds { .. } | Control::LoopMove { .. } | Control::LoopLength { .. }) => self.edit_deck_loop(index, control),
         }
     }
     /// Keep the selected manual loop available for later relooping.
@@ -863,9 +1065,11 @@ impl RtEngine {
                 d.loop_on = false;
             }
         }
-        if d.loop_len > 1.0 {
+        if d.loop_start.is_finite() && d.loop_start >= 0.0 && d.loop_len.is_finite() && d.loop_len >= 64.0
+            && d.audio.as_ref().is_some_and(|audio| d.loop_start + d.loop_len <= audio.frames() as f64) {
             d.controls.loops[d.controls.selected] = Some((d.loop_start, d.loop_len));
         }
+        d.sync_cue_loop_positions();
         d.publish_preparation();
     }
     /// Fine tune a selected loop edge using physical encoder movement.

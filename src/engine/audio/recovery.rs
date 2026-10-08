@@ -40,11 +40,16 @@ fn physical(device: &Path) -> Option<Vec<String>> {
     let device = device.canonicalize().ok()?;
     for parent in device.ancestors() {
         if parent.join("idVendor").exists() {
+            let serial = text(parent.join("serial"))?;
+            if serial.eq_ignore_ascii_case("no serial number")
+                || text(parent.join("product")).is_some_and(|product| serial.eq_ignore_ascii_case(&product)) {
+                return None;
+            }
             return Some(vec![
                 "usb".into(),
                 text(parent.join("idVendor"))?,
                 text(parent.join("idProduct"))?,
-                text(parent.join("serial"))?,
+                serial,
                 device
                     .ancestors()
                     .take_while(|path| *path != parent)
@@ -263,6 +268,11 @@ mod tests {
             identity_at("hw:CARD=Renamed,DEV=0", &sound).as_ref(),
             Some(&first)
         );
+        std::fs::write(usb.join("product"), "Studio Interface").unwrap();
+        for placeholder in ["no serial number", "NO SERIAL NUMBER", "Studio Interface", "studio interface", "   "] {
+            std::fs::write(usb.join("serial"), placeholder).unwrap();
+            assert!(identity_at("hw:CARD=Renamed,DEV=0", &sound).is_none(), "Placeholder {placeholder:?} cannot identify a physical unit");
+        }
         std::fs::remove_file(usb.join("serial")).unwrap();
         assert!(identity_at("hw:CARD=Renamed,DEV=0", &sound).is_none());
         assert!(identity_at("default", &sound).is_none());

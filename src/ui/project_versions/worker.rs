@@ -12,7 +12,21 @@ pub(in crate::ui) struct Record {
     pub fingerprint: FileFingerprint,
 }
 pub(super) enum Task {
+    InspectStorage {
+        roots: crate::project_versions::storage::Roots,
+    },
+    ReviewCompact {
+        source: PathBuf,
+        destination: PathBuf,
+    },
+    ApplyCompact {
+        id: String,
+    },
     List,
+    ListCleanup,
+    RestoreCleanup {
+        id: String,
+    },
     Snapshot {
         name: String,
         notes: String,
@@ -36,16 +50,26 @@ pub(super) enum Task {
     },
 }
 pub(super) struct Job {
-    pub root: PathBuf,
+    pub root: Option<PathBuf>,
     pub task: Task,
     pub work: WorkPermit,
 }
 pub(super) enum Event {
+    StorageInspected(String),
+    CompactReviewed(String, String),
+    CompactExpired(String),
     Listed(Vec<Entry>),
+    CleanupListed(Vec<crate::project_versions::cleanup::Saved>),
     Compared(Record, u64, project::UiState, String),
     PruneReviewed(Review),
     Published(Option<Vec<Entry>>, String),
     Failed(String),
+}
+struct PendingCompact {
+    id: String,
+    draft: crate::project_versions::storage::Compacted,
+    work: WorkPermit,
+    _running: crate::background::Running,
 }
 pub(super) struct Worker {
     pub jobs: Sender<Job>,
@@ -94,7 +118,19 @@ impl Worker {
         std::thread::Builder::new()
             .name("project-versions".into())
             .spawn(move || {
-                while let Ok(job) = incoming.recv() {
+                let mut pending = None::<PendingCompact>;
+                loop {
+                    if pending.as_ref().is_some_and(|p| p.work.cancelled()) {
+                        let id = pending.take().unwrap().id;
+                        if done.send(Event::CompactExpired(id)).is_err() {
+                            break;
+                        }
+                    }
+                    let job = match incoming.recv_timeout(Duration::from_millis(20)) {
+                        Ok(job) => job,
+                        Err(crossbeam_channel::RecvTimeoutError::Timeout) => continue,
+                        Err(crossbeam_channel::RecvTimeoutError::Disconnected) => break,
+                    };
                     #[cfg(test)]
                     {
                         let gate = thread_hooks.lock().take();
@@ -104,7 +140,7 @@ impl Worker {
                         }
                     }
                     let cancel = job.work.cancel();
-                    let result = perform(job, &handle, &cancel);
+                    let result = perform(job, &handle, &cancel, &mut pending);
                     if cancel.load(Ordering::Acquire) {
                         let _ = handle.retire_cancelled_capture(&cancel);
                     }
@@ -130,11 +166,80 @@ fn warning(outcome: crate::project_file::SaveOutcome) -> String {
         }
     }
 }
-fn perform(job: Job, handle: &Handle, cancel: &AtomicBool) -> Result<Event, String> {
+fn perform(
+    job: Job,
+    handle: &Handle,
+    cancel: &AtomicBool,
+    pending: &mut Option<PendingCompact>,
+) -> Result<Event, String> {
     let Job { root, task, work } = job;
     if cancel.load(Ordering::Acquire) {
         return Err("Version operation cancelled".into());
     }
+    let task = match task {
+        Task::InspectStorage { roots } => {
+            let ticket = work.background(
+                crate::background::Kind::Prepare,
+                format!("storage-inspect:{:?}", roots.archive),
+                1536 * crate::background::MIB,
+            )?;
+            let _running = ticket.enter(|| work.cancelled())?;
+            let store = root
+                .as_ref()
+                .map(|root| Store::open(root, false, cancel))
+                .transpose()?;
+            return Ok(Event::StorageInspected(
+                crate::project_versions::storage::inspect(store.as_ref(), &roots, cancel)?,
+            ));
+        }
+        Task::ReviewCompact {
+            source,
+            destination,
+        } => {
+            *pending = None;
+            let ticket = work.background(
+                crate::background::Kind::Prepare,
+                format!("compact:{}", source.display()),
+                1536 * crate::background::MIB,
+            )?;
+            let running = ticket.enter(|| work.cancelled())?;
+            let draft = crate::project_versions::storage::compact(source, destination, cancel)?;
+            let id = format!("{:x?}", crate::engine::midi_edit::NoteId::new().words());
+            let description = draft.description();
+            *pending = Some(PendingCompact {
+                id: id.clone(),
+                draft,
+                work,
+                _running: running,
+            });
+            return Ok(Event::CompactReviewed(id, description));
+        }
+        Task::ApplyCompact { id } => {
+            if !pending.as_ref().is_some_and(|p| p.id == id) {
+                return Err("Compaction review expired; review again".into());
+            }
+            let reviewed = pending.take().unwrap();
+            if reviewed.work.cancelled() {
+                return Err("Compaction review was cancelled; original preserved".into());
+            }
+            let outcome = reviewed.draft.publish(&reviewed.work.cancel(), || {
+                let commit = work.commit().map_err(|e| e.to_string())?;
+                if reviewed.work.cancelled() {
+                    return Err("Compaction review was cancelled; original preserved".into());
+                }
+                Ok(commit)
+            })?;
+            return Ok(Event::Published(
+                None,
+                format!(
+                    "Saved compacted copy to {}. Original archive and active playback preserved.{}",
+                    reviewed.draft.destination.display(),
+                    warning(outcome)
+                ),
+            ));
+        }
+        task => task,
+    };
     if let Task::Branch { record, path } = task {
         let bundle = reviewed(&record, cancel)?;
         let _commit = work.commit().map_err(|e| e.to_string())?;
@@ -156,9 +261,42 @@ fn perform(job: Job, handle: &Handle, cancel: &AtomicBool) -> Result<Event, Stri
             ),
         ));
     }
+    let root = root.ok_or("Choose a version storage folder")?;
+    let ticket = matches!(
+        task,
+        Task::ListCleanup
+            | Task::RestoreCleanup { .. }
+            | Task::PreviewPrune { .. }
+            | Task::Prune { .. }
+    )
+    .then(|| {
+        work.background(
+            crate::background::Kind::Prepare,
+            format!("version-cleanup:{}", root.display()),
+            1536 * crate::background::MIB,
+        )
+    })
+    .transpose()?;
+    let _running = ticket
+        .as_ref()
+        .map(|ticket| ticket.enter(|| work.cancelled()))
+        .transpose()?;
     let mut store = Store::open(&root, matches!(task, Task::Snapshot { .. }), cancel)?;
     match task {
         Task::List => Ok(Event::Listed(store.entries().to_vec())),
+        Task::ListCleanup => Ok(Event::CleanupListed(
+            crate::project_versions::cleanup::inspect(&store, cancel)?,
+        )),
+        Task::RestoreCleanup { id } => {
+            let outcome =
+                crate::project_versions::cleanup::restore(&mut store, &id, cancel, || {
+                    work.commit().map_err(|e| e.to_string())
+                })?;
+            Ok(Event::Published(
+                Some(store.entries().to_vec()),
+                format!("Restored cleanup {id}.{}", warning(outcome)),
+            ))
+        }
         Task::Snapshot {
             name,
             notes,
@@ -237,17 +375,20 @@ fn perform(job: Job, handle: &Handle, cancel: &AtomicBool) -> Result<Event, Stri
         Task::Prune { review } => {
             let result =
                 store.prune(review, cancel, || work.commit().map_err(|e| e.to_string()))?;
-            Ok(Event::Published(
-                Some(store.entries().to_vec()),
-                format!(
-                    "Pruned {} versions and reclaimed {} shared audio files.{}",
-                    result.removed,
-                    result.reclaimed_audio,
-                    result.warning.map(|w| format!(" {w}")).unwrap_or_default()
-                ),
-            ))
+            let recovery = result
+                .recovery_id
+                .map(|id| format!(" Recovery: {id}."))
+                .unwrap_or_default();
+            let message = match result.warning {
+                Some(warning) => format!("Removed {} version references; files are preserved for recovery.{recovery} {warning}", result.removed),
+                None => format!("Removed {} version references and quarantined {} shared audio files. Quarantine retains disk bytes.{recovery}", result.removed, result.reclaimed_audio),
+            };
+            Ok(Event::Published(Some(store.entries().to_vec()), message))
         }
-        Task::Branch { .. } => unreachable!(),
+        Task::Branch { .. }
+        | Task::InspectStorage { .. }
+        | Task::ReviewCompact { .. }
+        | Task::ApplyCompact { .. } => unreachable!(),
     }
 }
 
@@ -290,6 +431,25 @@ pub(super) fn compare(
         let scene = |slot: usize| format!("{:x?}/{}", layout.namespace, layout.scenes[slot].id.0);
         let mut labels = BTreeMap::new();
         let mut out: [BTreeMap<String, Value>; 4] = std::array::from_fn(|_| BTreeMap::new());
+        if let Some(song) = &state.arrangement {
+            let mut song = serde_json::to_value(song).map_err(|e| e.to_string())?;
+            for (index, source) in state
+                .arrangement
+                .as_ref()
+                .unwrap()
+                .sources
+                .iter()
+                .enumerate()
+            {
+                song["sources"][index]["clip"]["audio"] =
+                    json!(source.clip.audio.and_then(|i| hashes.get(i)));
+            }
+            labels.insert(
+                "Arrangement song".into(),
+                "Shared song sources and placements".into(),
+            );
+            out[1].insert("Arrangement song".into(), song);
+        }
         for &slot in &layout.track_order {
             let slot = slot as usize;
             let track = &state.tracks[slot];
@@ -297,7 +457,7 @@ pub(super) fn compare(
             let key = format!("Track [{:x?}/{}]", layout.namespace, item.id.0);
             labels.insert(key.clone(), format!("Track: {}", item.name));
             out[0].insert(key.clone(), json!({"name":item.name,"color":item.color,"position":layout.track_order.iter().position(|s| *s as usize == slot)}));
-            out[2].insert(key.clone(), json!({"bus":scene(track.scene_bus),"gain":track.gain,"pan":track.pan,"mute":track.mute,"solo":track.solo,"armed":track.armed}));
+            out[2].insert(key.clone(), json!({"bus":scene(track.scene_bus),"gain":track.gain,"pan":track.pan,"mute":track.mute,"solo":track.solo,"armed":track.armed,"input_monitor":track.input_monitor}));
             out[3].insert(key.clone(), json!({"instrument":track.synth,"kind":track.kind,"effects":track.fx,"eq":track.eq,"drums":track.drums.map(|i| hashes.get(i))}));
             for &s in &layout.scene_order {
                 let mut clip =
@@ -315,7 +475,7 @@ pub(super) fn compare(
         for (i, deck) in state.decks.iter().enumerate() {
             decks[i]["audio"] = json!(deck.audio.and_then(|i| hashes.get(i)));
         }
-        out[2].insert("Master and decks".into(), json!({"master":state.master,"xfader":state.xfader,"curve":state.xfader_curve,"cue":state.cue_mix,"decks":decks}));
+        out[2].insert("Master and decks".into(), json!({"master":state.master,"xfader":state.xfader,"curve":state.xfader_curve,"cue":state.cue_mix,"mic_aux":state.mic_aux,"decks":decks}));
         let mut banks = serde_json::to_value(&state.banks).map_err(|e| e.to_string())?;
         for (i, bank) in state.banks.iter().enumerate() {
             banks[i]["media"] = json!(bank.media.map(|i| i.and_then(|i| hashes.get(i))));

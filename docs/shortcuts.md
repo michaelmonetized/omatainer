@@ -27,9 +27,17 @@ that fallback is shown as the supported egui key name. Capture does not promise
 OS-wide shortcuts or interception of clipboard/IME keys handled by the platform.
 
 Use the Preferences import/export path with Export bindings only to write a
-version 1 JSON document for the edited profile. It contains only overrides and the
+version 2 JSON document for the edited profile. It contains only overrides and the
 performance shortcut switch. Existing destinations are refused. Import bindings
 into draft validates bounded JSON, unknown actions, reserved keys and collisions;
 then it changes only that profile's draft bindings. Preview/Apply persists them.
 All file work uses the existing cancellable preferences worker and atomic export
 publication; device names, paths and other preferences are absent from the bundle.
+
+Version 1 bundles remain readable. Preferences version 16 and shortcut bundle
+version 2 add selected-deck beat jump actions. Migration preserves existing key
+owners and disables any conflicting new default. Configure that jump action in
+Preferences to choose another key. Older document headers cannot carry new jump
+action IDs.
+
+Hold the visible deck CUE button, focused Space/Enter or A/L to audition from pause. Release returns to the main cue; Play during the hold continues playback. Cue while playing stops and returns. MIDI Learn exposes Deck hold Cue audition separately from the existing one-shot Set/return Cue. Independent local and controller holds release separately. [Cue audition details](validation/cue-audition.md).

@@ -13,6 +13,10 @@ pub(crate) struct Lanes {
     pub end_tick: u64,
     pub messages: Vec<Message>,
     pub meta: Vec<Meta>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub labels: Vec<super::Label>,
+    #[serde(skip)]
+    pub(crate) state: Vec<super::StateLane>,
     #[serde(skip)]
     cached_bytes: usize,
 }
@@ -22,10 +26,14 @@ impl PartialEq for Lanes {
             && self.end_tick == other.end_tick
             && self.messages == other.messages
             && self.meta == other.meta
+            && self.labels == other.labels
     }
 }
 impl Eq for Lanes {}
 impl Lanes {
+    pub(crate) fn prepared(&self) -> bool {
+        self.cached_bytes != 0 && self.cached_bytes <= MAX_LANE_BYTES
+    }
     pub fn new(
         ppqn: u16,
         end_tick: u64,
@@ -49,6 +57,8 @@ impl Lanes {
             end_tick,
             messages,
             meta,
+            labels: Vec::new(),
+            state: Vec::new(),
             cached_bytes: 0,
         }
         .prepare_with_cancel(cancel)
@@ -56,12 +66,21 @@ impl Lanes {
     pub fn prepare(&self) -> Result<Arc<Self>, String> {
         self.prepare_with_cancel(&mut || false)
     }
+    /// Prepare named controller lanes.
+    /// Takes bounded source messages, metadata and device labels; returns validated immutable state and seek indexes.
+    pub fn named(ppqn: u16, end_tick: u64, messages: Vec<Message>, meta: Vec<Meta>, labels: Vec<super::Label>) -> Result<Arc<Self>, String> {
+        Self::named_with_cancel(ppqn, end_tick, messages, meta, labels, &mut || false)
+    }
+    pub fn named_with_cancel(ppqn: u16, end_tick: u64, messages: Vec<Message>, meta: Vec<Meta>, labels: Vec<super::Label>, cancel: &mut impl FnMut() -> bool) -> Result<Arc<Self>, String> {
+        Self { ppqn, end_tick, messages, meta, labels, state: Vec::new(), cached_bytes: 0 }.prepare_with_cancel(cancel)
+    }
     fn prepare_with_cancel(&self, cancel: &mut impl FnMut() -> bool) -> Result<Arc<Self>, String> {
         if cancel() {
             return Err("MIDI operation cancelled".into());
         }
         let mut result = self.clone();
         result.cached_bytes = 0;
+        result.state.clear();
         result.messages.shrink_to_fit();
         result.messages.sort_unstable_by_key(|m| (m.tick, m.order));
         result.meta.shrink_to_fit();
@@ -70,6 +89,10 @@ impl Lanes {
                 bytes.shrink_to_fit();
             }
         }
+        result.labels.shrink_to_fit();
+        for label in &mut result.labels { label.name.shrink_to_fit(); }
+        result.validate_with_cancel(cancel)?;
+        result.state = super::control::index(&result.messages);
         result.validate_with_cancel(cancel)?;
         result.cached_bytes = result.bytes();
         Ok(Arc::new(result))
@@ -81,6 +104,10 @@ impl Lanes {
         std::mem::size_of::<Self>()
             + self.messages.capacity() * std::mem::size_of::<Message>()
             + self.meta.capacity() * std::mem::size_of::<Meta>()
+            + self.labels.capacity() * std::mem::size_of::<super::Label>()
+            + self.labels.iter().map(|label| label.name.capacity()).sum::<usize>()
+            + self.state.capacity() * std::mem::size_of::<super::StateLane>()
+            + self.state.iter().map(|lane| lane.points.capacity() * std::mem::size_of::<super::StatePoint>()).sum::<usize>()
             + self
                 .meta
                 .iter()
@@ -99,8 +126,14 @@ impl Lanes {
             || self.end_tick > u64::from(self.ppqn) * 262144
             || self.messages.len() + self.meta.len() > crate::midi_file::MAX_EVENTS
             || self.bytes() > MAX_LANE_BYTES
+            || self.labels.len() > 4096
+            || self.labels.iter().any(|label| label.channel >= 16 || !label.control.valid() || label.name.is_empty() || label.name.len() > 256 || label.name.chars().any(char::is_control))
         {
             return Err("MIDI source lanes exceed PPQN, time, event or 16 MiB limits".into());
+        }
+        let mut names = std::collections::BTreeSet::new();
+        if self.labels.iter().any(|label| !names.insert((label.channel, &label.control))) {
+            return Err("A controller or patch has more than one device label".into());
         }
         // The same writer validates all supported statuses/meta values and
         // ordering. This runs on preparation workers, never in the callback.
@@ -463,6 +496,26 @@ impl Conductor {
                 as f32,
             meter,
         )
+    }
+    /// Find the next pickup-aware group of bars without creating a list.
+    /// Takes a quarter-note position and a positive group size; returns the first matching boundary at or after it.
+    pub fn next_bar_boundary(&self, beat: f64, group: u32) -> f64 {
+        let epsilon = super::super::midi_schedule::BEAT_EPSILON;
+        let group = f64::from(group.max(1));
+        let mut bar = 1.0;
+        for (index, meter) in self.meters.iter().enumerate() {
+            let origin = if index == 0 { self.native.map_or(0.0, |s| s.pickup) } else { meter.tick as f64 / f64::from(self.ppqn) };
+            let next = self.meters.get(index + 1).map_or(f64::INFINITY, |m| m.tick as f64 / f64::from(self.ppqn));
+            let length = f64::from(meter.numerator) * 4.0 / f64::from(1u32 << meter.denominator_power);
+            let first = ((beat - origin - epsilon) / length).ceil().max(0.0);
+            let aligned = first + (1.0 - bar - first).rem_euclid(group);
+            let boundary = origin + aligned * length;
+            if boundary < next - epsilon { return boundary; }
+            let count = (next - origin) / length;
+            let rounded = count.round();
+            bar += if ((count - rounded) * length).abs() <= epsilon { rounded } else { count.ceil() };
+        }
+        beat
     }
     pub fn meta(&self) -> Vec<Meta> {
         let tempos = self.tempos.iter().enumerate().map(|(i, p)| Meta {

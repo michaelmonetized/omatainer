@@ -28,7 +28,7 @@ pub(crate) fn track() -> Track {
     }
 }
 pub(crate) fn audio() -> Arc<crate::engine::dsp::Sample> {
-    Arc::new(crate::engine::dsp::Sample {
+    Arc::new(crate::engine::dsp::Sample { spectrum: None,
         name: "Own test tone".into(),
         path: String::new(),
         sr: 48000,

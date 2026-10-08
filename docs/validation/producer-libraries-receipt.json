@@ -1,0 +1,190 @@
+{
+  "schema": 1,
+  "qualifiedAt": "2026-10-08T01:27:19.344Z",
+  "testedBaseRevision": "ccc84101fe866554839ad3509c378f60e85dd6cb",
+  "scope": "Producer libraries, original user-preset retention, explicit installed Pack relinking and native UI within combined issue 511 / PR 510; retained release acceptance remains open.",
+  "sourceFiles": {
+    "src/ableton.rs": "a374b3304c83630117c40dc8bb0654e68786d7f2f3a07ae65edec9a1f4946cac",
+    "src/ableton/convert.rs": "473be08aae83b1d029672f14b4de9e332a0404e094870371bf0b8e0af1eb84a7",
+    "src/ableton/dependencies.rs": "127c5129792b6e503861752841fb4898617cc64de4e62ace2a216f96948ca0e1",
+    "src/ableton/plugins.rs": "290c970e001128327a568f5919835bc0855fd607ac67a6c7909a10500546cc1a",
+    "src/ableton/tests.rs": "d351e5c4d4c7a727b65a5d516b853b676652fe15ee6a63d6421c0d581dbecd2d",
+    "src/dj_library.rs": "c0a8eb6132582ac4d0e4f177bf54908554f3e1630611c71c1fbc450ccb08f7f2",
+    "src/engine/project/model.rs": "50da6ea870e1ce78651b5046e4214f8fe791403ffbecd7e96c130dd24dad8052",
+    "src/engine/session/transaction/import.rs": "8db13a803693466c0ec7e1287fc8d35d0ed2bb83e33e00f50f398fb00575b539",
+    "src/interchange_xml.rs": "58191c2bb8622550a89ee2e81d89a01db344bf5e960bf8e10b78d6d485b62b62",
+    "src/main.rs": "2eb6823b2f252734a1697807829bc4e0b01fc9cbc4d034dc673f6eb1fb0b2241",
+    "src/ui/ableton.rs": "28d11d101b36cb24e40c3927e06f46f4ddea19f01ace679874bd1b2666ba8dac",
+    "src/ui/ableton/tests.rs": "f2ade8e50ffdbb358aa6ae0ce86247c097b03247544f4bcfbe254f3b03a0f6bb",
+    "src/ui/library_crates/tests.rs": "dde55b057364971d99d7052f99b1d999d8e346e5e281c7d7435c0e9a031eaf68",
+    "src/ableton/presets.rs": "2f07e4acea0593af1f1673a976ed79d1d55a45a919273c501927fbcc1da40332",
+    "src/producer_library.rs": "d9133d1c1c5ea302bc9f3ca1c61de91a5def784f3753e9089f2adbd5ac9f1797",
+    "src/producer_library/manifest.rs": "19c38045bb9846bc1a9875220b22c2860a6fd1f54b2c6a238e1881fbeaff49bd",
+    "src/producer_library/tests.rs": "4773f640cb51bb0b17769cef516e5973283d355729225406777b50dd8dacd260",
+    "src/ui/ableton/library.rs": "4d6f6cfbcee55783d71a0dbb09292c1f172582c455a84caa1954f986aa3db306",
+    "src/ui/ableton/library/tests.rs": "1be6082c022e5e725ee8be869d1e08e896db63d76e050459227c36ecad31cb87"
+  },
+  "binaries": {
+    "nativeWorker": {
+      "path": "target/validation/combined-completion/producer-qualified/3/omatainer",
+      "sha256": "a658d416d849614ad6321b9358b7095f834fc5ba4980e4738525353c7ee185a9",
+      "bytes": 485626424
+    },
+    "finalTests": {
+      "path": "target/validation/combined-completion/producer-qualified/5/omatainer-tests",
+      "sha256": "b4c51c0cc0f8a3679a2ebbb155f483a9e4c64d740b45725593e82d0c28b3c906",
+      "bytes": 576097648
+    }
+  },
+  "build": {
+    "platform": "aarch64-unknown-linux-gnu",
+    "rootOptimization": 0,
+    "rootDebugInfo": 0,
+    "jobs": 1,
+    "incremental": false,
+    "releasePerformanceClaim": false,
+    "productionWorkerGeneration": 3,
+    "finalTestGeneration": 5,
+    "interveningChanges": "Test helpers and additional tests; production metadata contains its original source-inventory snapshot"
+  },
+  "logs": {
+    "target/validation/combined-completion/producer-1-build.log": {
+      "sha256": "418caab78e9b8503a6da1f9447d1843c5f4d42a106ded55dd60a80d18a119ffb",
+      "summaries": [],
+      "failed": true
+    },
+    "target/validation/combined-completion/producer-3-ableton__.log": {
+      "sha256": "abb3167f94da79ba5d01473baf8eaf3d428b54248e3431e46f5b0bffe396ace0",
+      "summaries": [
+        "test result: ok. 10 passed; 0 failed; 8 ignored; 0 measured; 2209 filtered out; finished in 7.09s"
+      ],
+      "failed": false
+    },
+    "target/validation/combined-completion/producer-3-build.log": {
+      "sha256": "337b686b64c78a3c2d79aace40f7f7ee4af1af6d9c6a9076e4569d8c6437d305",
+      "summaries": [],
+      "failed": false
+    },
+    "target/validation/combined-completion/producer-3-dj_library__.log": {
+      "sha256": "f5796b050630073f2b0617b5ff9b9253ad8efcf278887f0ad2f89d5fa9e4bf3e",
+      "summaries": [
+        "test result: ok. 4 passed; 0 failed; 1 ignored; 0 measured; 2222 filtered out; finished in 0.76s"
+      ],
+      "failed": false
+    },
+    "target/validation/combined-completion/producer-3-engine__session__transaction__import__.log": {
+      "sha256": "36c92f55dd717dc791cbc488faa4f279747644892ac6c3131c91255b8ddb1bdd",
+      "summaries": [
+        "test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 2220 filtered out; finished in 17.37s"
+      ],
+      "failed": false
+    },
+    "target/validation/combined-completion/producer-3-native-build.log": {
+      "sha256": "3e76893dfa40bf296c6f525d6863bf1896e38796e493765ee58d590c57ad866a",
+      "summaries": [],
+      "failed": false
+    },
+    "target/validation/combined-completion/producer-3-native-migration.log": {
+      "sha256": "e26740ab46ab2a9aa826e3b75ae5dc589e13568387d92164e6f698e726560495",
+      "summaries": [
+        "test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 2219 filtered out; finished in 9.77s"
+      ],
+      "failed": false
+    },
+    "target/validation/combined-completion/producer-3-native-pack.log": {
+      "sha256": "fc047f05c37fc3ba566a5d7ade3e49d5fb559f861888e147e4f968a787cbdf13",
+      "summaries": [
+        "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 2226 filtered out; finished in 0.20s"
+      ],
+      "failed": false
+    },
+    "target/validation/combined-completion/producer-3-tests.log": {
+      "sha256": "c211a09bc0a7e1c8d9dd62a57d60426784cc743f2c52ed70ea0168112137194c",
+      "summaries": [
+        "test result: ok. 5 passed; 0 failed; 1 ignored; 0 measured; 2221 filtered out; finished in 1.63s"
+      ],
+      "failed": false
+    },
+    "target/validation/combined-completion/producer-5-build.log": {
+      "sha256": "89ffc347089feaddd9369d1102cd7a6bc8f235465798bfa4146b550ab746eda2",
+      "summaries": [],
+      "failed": false
+    },
+    "target/validation/combined-completion/producer-5-native-content.log": {
+      "sha256": "6ecd210fd22a661eabd5c581ffa8ec88186bffcba3f4d4d0da10e46685359fc6",
+      "summaries": [
+        "test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 2223 filtered out; finished in 0.85s"
+      ],
+      "failed": false
+    },
+    "target/validation/combined-completion/producer-5-native-library-ui-isolated.log": {
+      "sha256": "f83f6d1fabce7adc366de8c9db8fa49fe0bffaae3ca4fc89109565310b3a9067",
+      "summaries": [
+        "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 2230 filtered out; finished in 1.02s"
+      ],
+      "failed": false
+    },
+    "target/validation/combined-completion/producer-5-native-library-ui.log": {
+      "sha256": "d219e8601fe78381d9c6a18d9a160ec9d044bd2d587e6750fcf9c07f8cc4456f",
+      "summaries": [
+        "test result: FAILED. 1 passed; 1 failed; 0 ignored; 0 measured; 2229 filtered out; finished in 13.39s"
+      ],
+      "failed": true
+    },
+    "target/validation/combined-completion/producer-5-serial-producer_library__.log": {
+      "sha256": "7e72678a72eddd59fb24df682a3b97134da363f9e1c900210a60e9cde11ce5e5",
+      "summaries": [
+        "test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 2223 filtered out; finished in 0.88s"
+      ],
+      "failed": false
+    },
+    "target/validation/combined-completion/producer-5-serial-ui__ableton__library__tests__.log": {
+      "sha256": "5e5a4a822b54d89de7d1bfb0b64397b49fb8a703b7164c0f6c7d9d8718beb01b",
+      "summaries": [
+        "test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 2229 filtered out; finished in 1.99s"
+      ],
+      "failed": false
+    }
+  },
+  "archives": [
+    {
+      "path": "target/validation/combined-completion/ableton-qualified/24/omatainer",
+      "sha256": "b7a3dc3946f07066677c50546a7f802a339eb48b964023bd12f29c403b78fd6b",
+      "bytes": 485202432,
+      "archive": "target/validation/combined-completion/ableton-qualified/24/omatainer.gz",
+      "archiveBytes": 110715038
+    },
+    {
+      "path": "target/validation/combined-completion/ableton-qualified/24/omatainer-tests",
+      "sha256": "6b4ca158024f9a3e160384f3ada036431aa57500a17c280fb532b8422420a509",
+      "bytes": 575227016,
+      "archive": "target/validation/combined-completion/ableton-qualified/24/omatainer-tests.gz",
+      "archiveBytes": 129766869
+    },
+    {
+      "path": "target/validation/combined-completion/producer-qualified/3/omatainer-tests",
+      "sha256": "e1681d7167d2dea19da6be86fe4774a26471449f356dd3ce12942620b5db6beb",
+      "bytes": 576022088,
+      "archive": "target/validation/combined-completion/producer-qualified/3/omatainer-tests.gz",
+      "archiveBytes": 130019136
+    }
+  ],
+  "actualInstallationObservation": {
+    "host": "m1pro13",
+    "live": "11.0.11",
+    "presetSavedFormat": "11.0_433",
+    "manifestGrammar": "Ableton#04I FolderConfigData",
+    "claim": "Readonly structure observations, not user-authored session or playback certification"
+  },
+  "failedTrials": [
+    "Initial test compile used unavailable hound; replaced with existing independent WAV fixture helper",
+    "Generation 4 test-only saved-state field name corrected before qualification",
+    "First generation 5 library UI deadline exceeded; unchanged isolated and complete serial repeats passed; original failure retained"
+  ],
+  "pendingAcceptance": [
+    "Real user-authored Live 10/11 source sessions and playback/listening comparisons",
+    "Actual mounted-volume hot removal/remount and running playback-impact qualification",
+    "Authenticated declarative controller profiles and owned hardware requalification",
+    "Retained physical audio recovery/routing/latency/waveform/live-set release scope"
+  ]
+}

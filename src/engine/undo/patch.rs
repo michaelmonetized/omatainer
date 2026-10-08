@@ -37,6 +37,7 @@ impl Rack {
 pub(super) struct Global {
     bpm: f32,
     conductor: Option<Arc<midi_data::Conductor>>,
+    scene_timing: Option<scene::Timing>,
     quant: f32,
     quantize: bool,
     metronome: bool,
@@ -44,11 +45,14 @@ pub(super) struct Global {
     xfader_curve: f32,
     master: f32,
     cue_mix: f32,
+    mic_aux: Option<audio::routing::mic_aux::Configuration>,
     fx_kind: [FxKind; 3],
     fx_wet: [f32; 3],
     bank: usize,
     instrument: SamplerInstrument,
     octave: i8,
+    musical_context: Option<musical_context::Context>,
+    sampler_scale: bool,
     synth: SynthInstrument,
     offline: Option<Arc<fx::OfflineDevice>>,
     cutoff: f32,
@@ -58,6 +62,7 @@ impl Global {
         Self {
             bpm: rt.bpm,
             conductor: rt.conductor.clone(),
+            scene_timing: rt.scenes.timing,
             quant: rt.quant,
             quantize: rt.quantize,
             metronome: rt.metronome,
@@ -65,11 +70,14 @@ impl Global {
             xfader_curve: rt.xfader_curve,
             master: rt.master,
             cue_mix: rt.cue_mix,
+            mic_aux: rt.mic_aux.configuration(),
             fx_kind: rt.fx_kind,
             fx_wet: rt.fx_wet,
             bank: rt.sampler_bank,
             instrument: rt.sampler_inst,
             octave: rt.sampler_oct,
+            musical_context: rt.musical_context,
+            sampler_scale: rt.sampler_scale,
             synth: rt.sampler_poly.kind,
             offline: rt.sampler_poly.offline.clone(),
             cutoff: rt.sampler_poly.cutoff,
@@ -78,7 +86,13 @@ impl Global {
     fn swap(&mut self, rt: &mut RtEngine) {
         let current = Self::get(rt);
         rt.bpm = self.bpm;
+        let changed=match (&rt.conductor,&self.conductor){(Some(a),Some(b))=>!Arc::ptr_eq(a,b),(None,None)=>false,_=>true};
         rt.conductor = self.conductor.clone();
+        rt.scenes.cancel();
+        rt.scenes.timing = self.scene_timing;
+        if changed{rt.mapped_clock = None;}
+        rt.musical_context = self.musical_context;
+        rt.sampler_scale = self.sampler_scale;
         rt.quant = self.quant;
         rt.quantize = self.quantize;
         if rt.metronome != self.metronome {
@@ -89,6 +103,7 @@ impl Global {
         rt.xfader_curve = self.xfader_curve;
         rt.master = self.master;
         rt.cue_mix = self.cue_mix;
+        rt.mic_aux.set(self.mic_aux);
         for slot in 0..3 {
             if rt.fx_kind[slot] != self.fx_kind[slot] {
                 rt.master_fx[slot].reset(self.fx_kind[slot]);
@@ -118,6 +133,7 @@ pub(super) struct TrackControls {
     mute: bool,
     solo: bool,
     armed: bool,
+    input_monitor: Option<super::super::input_monitor::Mode>,
 }
 impl TrackControls {
     pub fn get(track: &TrackRt) -> Self {
@@ -127,6 +143,7 @@ impl TrackControls {
             mute: track.mute,
             solo: track.solo,
             armed: track.armed,
+            input_monitor: track.input_monitor,
         }
     }
     fn swap(&mut self, track: &mut TrackRt) {
@@ -136,6 +153,7 @@ impl TrackControls {
         track.mute = self.mute;
         track.solo = self.solo;
         track.armed = self.armed;
+        track.input_monitor = self.input_monitor;
         *self = current;
     }
 }
@@ -147,6 +165,7 @@ pub(super) struct DeckControls {
     source_gain: crate::track_gain::Resolved,
     pitch: f32,
     sync: bool,
+    sync_phase: deck_sync::Phase,
     sync_bpm: f32,
     gain: f32,
     eq: [f32; 3],
@@ -154,9 +173,11 @@ pub(super) struct DeckControls {
     eq_solo: i8,
     eq_store: [f32; 4],
     filter: f32,
+    channel_effect: super::super::channel_fx::Kind,
     pfl: bool,
     vinyl: bool,
     keylock: bool,
+    key_shift: i8,
     pitch_range: u8,
     cue: f64,
     hotcues: [Option<f64>; HOTCUES],
@@ -173,6 +194,7 @@ impl DeckControls {
             source_gain: deck.source_gain,
             pitch: deck.pitch,
             sync: deck.sync,
+            sync_phase: deck.sync_phase,
             sync_bpm: deck.sync_bpm,
             gain: deck.gain,
             eq: [deck.eq[0].low_g, deck.eq[0].mid_g, deck.eq[0].high_g],
@@ -180,9 +202,11 @@ impl DeckControls {
             eq_solo: deck.eq_solo,
             eq_store: deck.eq_store,
             filter: deck.filter_amt,
+            channel_effect: deck.channel_effect,
             pfl: deck.pfl,
             vinyl: deck.vinyl,
             keylock: deck.keylock,
+            key_shift: deck.key_shift,
             pitch_range: deck.pitch_range,
             cue: deck.cue_pos,
             cue_styles: deck.cue_styles,
@@ -196,12 +220,16 @@ impl DeckControls {
     }
     fn swap(&mut self, deck: &mut DeckRt, sr: f32) {
         let current = Self::get(deck);
+        let retune = self.key_shift != deck.key_shift;
         let jump = self.keylock != deck.keylock
             || self.loop_on != deck.loop_on
             || self.loop_start != deck.loop_start
             || self.loop_len != deck.loop_len;
         deck.pitch = self.pitch;
         deck.sync = self.sync;
+        deck.sync_phase = self.sync_phase;
+        deck.sync_phase_locked = false;
+        deck.sync_step = None;
         deck.sync_bpm = self.sync_bpm;
         deck.gain = self.gain;
         deck.source_gain = self.source_gain;
@@ -212,9 +240,11 @@ impl DeckControls {
             [eq.low_g, eq.mid_g, eq.high_g] = self.eq;
         }
         deck.filter_amt = self.filter;
+        deck.channel_effect = self.channel_effect;
         deck.pfl = self.pfl;
         deck.vinyl = self.vinyl;
         deck.keylock = self.keylock;
+        deck.key_shift = self.key_shift;
         deck.pitch_range = self.pitch_range;
         deck.cue_pos = self.cue;
         deck.cue_styles = self.cue_styles;
@@ -229,7 +259,7 @@ impl DeckControls {
         deck.controls.restore_loops(self.controller_loops);
         if jump {
             deck.transition_to(deck.pos, sr, DeckTransition::Jump);
-        }
+        } else if retune { deck.retune(sr); }
         *self = current;
     }
 }
@@ -258,9 +288,14 @@ impl Effect {
 }
 
 pub(super) enum Patch {
+    SongNavigation {saved:Option<song_navigation::Saved>,bytes:usize},
+    ClipManagement(Box<clip_management::edit::Inverse>),
+    Arrangement {seed:u64,value:Box<arrangement::Playback>,reserved:[Option<Arc<arrangement::Plan>>;2],bytes:usize},
     Session(Box<session::Inverse>),
     Global(Global),
-    Conductor { bpm: f32, value: Option<Arc<midi_data::Conductor>>, reserved_bytes: usize },
+    PluginParameter { namespace:[u64;2],id:u64,parameter:u32,value:f64 },
+    Sync(deck_sync::Saved),
+    Conductor { bpm: f32, value: Option<Arc<midi_data::Conductor>>, scene_timing: Option<scene::Timing>, reserved_bytes: usize },
     Sampler {
         index: usize,
         value: Option<sampler::Bank>,
@@ -298,6 +333,7 @@ pub(super) enum Patch {
         value: Clip,
         spare_notes: Vec<MidiNote>,
         reserved_midi_bytes: usize,
+        reserved_audio: [Option<Arc<Sample>>; 2],
     },
     Media {
         deck: u8,
@@ -348,8 +384,9 @@ impl Patch {
     pub fn target_label(&self) -> super::TargetLabel {
         use super::TargetLabel as T;
         match self {
-            Self::Session(_) | Self::Global(_) | Self::Conductor { .. } | Self::Sampler { .. } => T::None,
+            Self::SongNavigation {..} | Self::ClipManagement(_) | Self::Arrangement {..} | Self::Session(_) | Self::Global(_) | Self::Sync(_) | Self::Conductor { .. } | Self::Sampler { .. } => T::None,
             Self::Track(t, _) => T::Track(*t),
+            Self::PluginParameter {id,..} => T::Plugin(*id),
             Self::ClipGain { track, scene, .. } | Self::Clip { track, scene, .. } => {
                 T::Clip(*track, *scene)
             }
@@ -367,10 +404,16 @@ impl Patch {
                 (value.source_gain == deck.source_gain || !deck.source_gain_active())
                 && (value.grid==deck.grid || !deck.load_receipt.as_ref().is_some_and(|receipt|receipt.grid_is_locked()))),
             Self::Session(value) => value.valid(rt),
-            Self::Conductor { .. } | Self::Global(_) => rt.count_in.is_none(),
+            Self::PluginParameter {namespace,id,parameter,..} => *namespace==rt.session.namespace && rt.routing.as_ref().is_some_and(|g|g.plugin_parameter_value(*id,*parameter).is_some()),
+            Self::ClipManagement(value) => value.valid(rt),
+            Self::SongNavigation {..} => true,
+            Self::Arrangement {..} => !rt.playing&&!rt.recording&&rt.count_in.is_none()&&!rt.decks.iter().any(|d|d.playing||d.touching),
+            Self::Conductor { .. } => rt.count_in.is_none(),
+            Self::Global(value) => rt.count_in.is_none() && value.mic_aux.is_none_or(|cfg|cfg.validate(rt.routing.as_ref().map(|r|r.model.as_ref())).is_ok()),
             Self::Sampler { index, value, .. } => rt.sampler_revision != u64::MAX
                 && if value.is_some() { *index <= rt.sampler_banks.len() && (*index < rt.sampler_banks.len() || rt.sampler_banks.len() < sampler::MAX_BANKS) }
                 else { *index < rt.sampler_banks.len() },
+            Self::Clip { track, scene, reserved_audio, .. } if reserved_audio.iter().any(Option::is_some) => !rt.recording && rt.tracks.get(usize::from(*track)).is_some_and(|t| t.playing.or(t.project_resume).is_none_or(|p| p.scene != *scene)),
             Self::Effect { rack, index, .. } => *index < rack.get(rt).slots.len(),
             Self::Slot {
                 rack, index, slot, ..
@@ -397,7 +440,10 @@ impl Patch {
     }
     pub fn apply(&mut self, rt: &mut RtEngine) {
         match self {
+            Self::SongNavigation {saved,..} => {let floor=rt.navigation.saved.as_ref().map_or(1,|saved|saved.next_id);std::mem::swap(saved,&mut rt.navigation.saved);if let Some(current)=&mut rt.navigation.saved{current.next_id=current.next_id.max(floor);}rt.navigation.cancel();},
+            Self::Arrangement {value,seed,..} => {std::mem::swap(seed,&mut rt.note_seed);for (slot,track) in rt.tracks.iter_mut().enumerate(){track.note_seed=rt.note_seed;track.release_clip_notes();rt.midi_routing.clear_clip(slot as u8);}std::mem::swap(value,&mut rt.arrangement);rt.arrangement.reset(rt.precise_midi_beat());},
             Self::Session(value) => value.swap(rt),
+            Self::ClipManagement(value) => value.swap(rt),
             Self::Sampler { index, value, selected, .. } => {
                 let selection = rt.sampler_bank;
                 if let Some(mut prior) = value.take() {
@@ -410,16 +456,33 @@ impl Patch {
                 *selected = selection;
             }
             Self::Global(value) => value.swap(rt),
-            Self::Conductor { bpm, value, .. } => {
+            Self::PluginParameter {id,parameter,value,..} => {
+                let graph=rt.routing.as_mut().unwrap(); let current=graph.plugin_parameter_value(*id,*parameter).unwrap();
+                assert!(graph.plugin_parameter(*id,*parameter,*value)); *value=current;
+            },
+            Self::Sync(value) => value.swap(rt),
+            Self::Conductor { bpm, value, scene_timing, .. } => {
+                rt.internal_clock();
+                rt.scenes.cancel();
+                std::mem::swap(scene_timing, &mut rt.scenes.timing);
+                rt.metro.reset();
                 std::mem::swap(bpm, &mut rt.bpm);
                 std::mem::swap(value, &mut rt.conductor);
+                rt.mapped_clock = None;
             },
             Self::Track(track, value) => value.swap(&mut rt.tracks[*track as usize]),
             Self::ClipGain { track, scene, gain } => std::mem::swap(
                 gain,
                 &mut rt.tracks[*track as usize].clips[*scene as usize].gain,
             ),
-            Self::Deck(deck, value) => value.swap(&mut rt.decks[*deck as usize], rt.sr),
+            Self::Deck(deck, value) => {
+                let index=usize::from(*deck);
+                if value.pitch!=rt.decks[index].pitch || value.pitch_range!=rt.decks[index].pitch_range
+                    || value.sync!=rt.decks[index].sync || value.sync_phase!=rt.decks[index].sync_phase {
+                    rt.pitch_pickup.rearm(index);
+                }
+                value.swap(&mut rt.decks[index], rt.sr);
+            },
             Self::Position { deck, position } => {
                 let deck = &mut rt.decks[*deck as usize];
                 let current = deck.pos;
@@ -499,7 +562,10 @@ impl Patch {
 
     pub fn heap_bytes(&self) -> usize {
         match self {
+            Self::SongNavigation {bytes,..} => *bytes,
+            Self::Arrangement {bytes,..} => *bytes,
             Self::Session(value) => value.bytes(),
+            Self::ClipManagement(value) => value.bytes(),
             Self::Sampler { original, replacement, .. } => original.as_ref().map_or(0, |bank| bank.metadata_bytes()) + replacement.metadata_bytes(),
             Self::Global(value) => value.conductor.as_ref().map_or(0, |c| c.bytes()) + value.offline.as_ref().map_or(0, |d| d.bytes()),
             Self::Conductor { reserved_bytes, .. } => *reserved_bytes,
@@ -507,7 +573,7 @@ impl Patch {
             Self::Clip {
                 value, spare_notes, reserved_midi_bytes, ..
             } => {
-                (*reserved_midi_bytes).max(value.lanes.as_ref().map_or(0, |lanes| lanes.bytes())) + value.name.capacity()
+                (*reserved_midi_bytes).max(value.lanes.as_ref().map_or(0, |lanes| lanes.bytes()) + value.variation.as_ref().map_or(0, |plan| plan.bytes())) + value.name.capacity()
                     + (value.notes.capacity() + spare_notes.capacity()).max(2 * super::NOTE_LIMIT)
                         * std::mem::size_of::<MidiNote>()
             }
@@ -525,13 +591,15 @@ impl Patch {
             }
         };
         match self {
+            Self::Arrangement {reserved,..} => {for plan in reserved.iter().flatten(){for sample in plan.media(){add(Arc::as_ptr(sample)as usize,sample_bytes(sample));}}},
             Self::Session(value) => value.media_reservations(add),
+            Self::ClipManagement(value) => {for sample in value.media(){add(Arc::as_ptr(sample)as usize,sample_bytes(sample));}},
             Self::Sampler { original, replacement, .. } => {
                 for bank in original.iter().chain(std::iter::once(replacement)) {
                     for audio in &bank.audio { visit(audio); }
                 }
             }
-            Self::Clip { value, .. } => visit(&value.audio),
+            Self::Clip { value, reserved_audio, .. } => { visit(&value.audio); for source in reserved_audio { visit(source); } },
             Self::Media {
                 reserved_original,
                 reserved_media,
@@ -553,4 +621,5 @@ pub(in crate::engine) fn sample_bytes(sample: &Sample) -> usize {
         + sample.path.capacity()
         + sample.data.capacity() * std::mem::size_of::<f32>()
         + sample.peaks.capacity() * std::mem::size_of::<[f32; 3]>()
+        + sample.spectrum.as_ref().map_or(0, |waveform| waveform.storage_bytes())
 }

@@ -184,7 +184,7 @@ fn actual_decode_io_pressure_cancellation_supersession_and_exhaustion_preserve_c
     let second = files.source("second.wav", &wav(8000, 8000, 1, false));
     let path = files.0.join("first.wav");
     let (engine, mut rt) = Engine::headless_for_test(48000, 256);
-    let sample = Arc::new(Sample {
+    let sample = Arc::new(Sample { spectrum: None,
         name: "continuous qualification signal".into(),
         path: String::new(),
         sr: 48000,

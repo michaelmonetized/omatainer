@@ -265,3 +265,24 @@ fn maximum_set_reaches_final_cell_and_editor_through_accessible_navigation_with_
     gui.node("Duplicate scene");
     gui.node("Delete scene");
 }
+#[test]
+fn native_scene_properties_save_undo_duplicate_launch_and_cancel_use_real_handlers() {
+    use crate::engine::{clip_launch::Grid,scene::{Empty,Signature}};
+    let mut gui=Gui::new();
+    gui.click("Edit session");gui.click("Scene");gui.click("Scene launch properties");gui.click("Use scene tempo");
+    number(&mut gui,"Scene tempo",95.0);gui.click("Use scene time signature");number(&mut gui,"Scene meter numerator",7.0);
+    gui.click_text("Scene meter denominator 4");gui.click("Scene denominator 8");
+    gui.click_text("Empty slots: stop tracks");gui.click("Keep tracks playing for empty slots");
+    gui.click_text("Scene launch timing: Global");gui.click("Scene timing 1 bar");
+    gui.click("Save scene launch properties");settled(&mut gui);
+    let scene=gui.rt.selected_scene;let value=gui.rt.session.scenes[scene].scene;
+    assert!((value.bpm().unwrap()-95.0).abs()<0.001);assert_eq!(value.meter,Some(Signature{numerator:7,denominator_power:3}));assert_eq!(value.empty,Empty::Keep);assert_eq!(value.grid,Grid::Bar);
+    gui.app.history_action(false);settled(&mut gui);assert!(gui.rt.session.scenes[scene].scene.is_default());gui.app.history_action(true);settled(&mut gui);assert_eq!(gui.rt.session.scenes[scene].scene,value);
+    gui.click("Duplicate scene");settled(&mut gui);let copy=gui.rt.session.scenes.len()-1;assert_eq!(gui.rt.session.scenes[copy].scene,value);assert_ne!(gui.rt.session.scenes[copy].id,gui.rt.session.scenes[scene].id);
+    gui.app.session_editor.open=false;gui.frame(vec![]);
+    gui.action("Scene 8: Toggle playback",Accessible::CustomAction,Some(ActionData::CustomAction(3)));
+    gui.frame(vec![]);assert_eq!(gui.rt.scenes.timing.unwrap().signature.numerator,7);
+    gui.rt.apply(Command::Play);gui.frame(vec![]);
+    gui.action("Scene 8: Toggle playback",Accessible::CustomAction,Some(ActionData::CustomAction(3)));gui.frame(vec![]);assert!(gui.rt.scenes.pending.is_some());
+    gui.click("Edit session");gui.click("Cancel queued scene");gui.frame(vec![]);assert!(gui.rt.scenes.pending.is_none());
+}

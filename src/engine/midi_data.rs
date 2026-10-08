@@ -2,8 +2,12 @@
 //! is checked, so a stale tick record cannot override an intentional edit.
 use serde::{Deserialize, Serialize};
 mod lanes;
+mod control;
+pub(crate) use control::{ControlKind, Label, StatePoint, StateLane};
+pub(crate) use control::chase;
 mod timeline;
 pub(crate) use timeline::Settings as TimingSettings;
+pub(crate) use timeline::Clock as ConductorClock;
 pub(crate) use lanes::{Conductor, Lanes, Meter, Tempo, MAX_CONDUCTOR_POINTS, MAX_LANE_BYTES};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -50,7 +54,8 @@ impl super::MidiNote {
             .map_or(self.len as f64, TickTiming::duration_beats)
     }
     pub(crate) fn interchange_valid(&self) -> bool {
-        self.channel < 16
+        self.variation.is_none_or(super::note_variation::Properties::valid)
+            && self.channel < 16
             && self.release_vel <= 127
             && self
                 .source_timing
@@ -88,6 +93,7 @@ impl super::MidiNote {
             return Err("MIDI note identity is unavailable".into());
         }
         Ok(Self {
+            variation: None,
             id,
             muted: false,
             pitch: note.pitch,
@@ -233,6 +239,7 @@ mod tests {
 impl super::RtEngine {
     pub(super) fn retire_conductor(&mut self) {
         self.count_in = None;
+        self.mapped_clock = None;
         if let Some(conductor) = self.conductor.take() {
             let bytes = conductor.bytes();
             self.undo.retire_midi_conductor(conductor, bytes);

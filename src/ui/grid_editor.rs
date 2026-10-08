@@ -191,7 +191,9 @@ impl App {
                         .max_height((available.height() - 180.0).max(70.0))
                         .show(ui, |ui| {
                             ui.label(tr!("Solid = applied · dashed = preview · colored markers = absolute cues"));
-                            ui.label(tr!("Audio envelope: summed low/mid/high mean magnitudes, not raw sample peaks."));
+                            ui.label(if snap.spectrum.is_some() {
+                                tr!("Source peaks with measured frequency colors: bass red → treble violet.")
+                            } else { tr!("Audio envelope: summed low/mid/high mean magnitudes, not raw sample peaks.") });
                             preview(ui, &self.theme, &snap, applied, editor.draft);
                             let playhead = source_seconds(&snap);
                             // One stable parent ID even when a newly valid tempo
@@ -435,7 +437,7 @@ fn preview(
     }
     let x = |seconds: f64| rect.left() + ((seconds - start) / (end - start)) as f32 * rect.width();
     let points = (rect.width().ceil() as usize).clamp(1, 512);
-    if !snap.peaks.is_empty() {
+    if !super::waveform::paint_spectrum(&painter, theme, rect, snap, false, |fraction| Some(start + fraction * (end - start))) && !snap.peaks.is_empty() {
         for point in 0..points {
             let sec = start + point as f64 / points as f64 * (end - start);
             let index =

@@ -200,7 +200,7 @@ impl App {
 
     /// Release GUI-owned inputs for a panel before it closes or moves.
     /// Takes its persistent panel identity; returns no value and preserves independent MIDI owners.
-    fn release_workspace_panel(&mut self, panel: Panel) {
+    pub(super) fn release_workspace_panel(&mut self, panel: Panel) {
         match panel {
             Panel::Sampler => {
                 for pad in 0..16 {
@@ -208,6 +208,9 @@ impl App {
                 }
             }
             Panel::Decks => {
+                self.release_cue_inputs();
+                self.release_censor_inputs();
+                self.release_pitch_inputs();
                 for deck in 0..DECKS {
                     self.send(Command::DeckTouch {
                         deck: deck as u8,
@@ -335,6 +338,7 @@ impl App {
     /// Keep transport, safety state and output warnings visible above a detached panel.
     /// Takes its window UI; returns no value and submits ordinary shared commands.
     fn workspace_status(&mut self, ui: &mut Ui) {
+        scale_status::show(ui, &self.snap);
         let status = self.engine.cmd.performance().status();
         ui.horizontal_wrapped(|ui| {
             if ui

@@ -16,13 +16,14 @@ fn engine(sr: u32) -> RtEngine {
 }
 
 fn clip(pitch: u8, length: f32) -> Clip {
-    Clip {
-        lanes: None,
+    Clip { variation: None,
+        properties: Default::default(),
+        audio_region: None, lanes: None,
         region: None,
         kind: ClipKind::Midi,
         name: "quantized probe".into(),
         bars: 0.25,
-        notes: vec![MidiNote {
+        notes: vec![MidiNote { variation: None,
             channel:0,release_vel:64,source_timing:None, id: crate::engine::midi_edit::NoteId::new(), muted: false,
             pitch,
             start: 0.0,
@@ -228,11 +229,21 @@ fn scene_batches_share_one_start_even_when_transport_was_stopped_off_grid() {
             }
             rt.apply(command);
             let expected = if running { 1.0 } else { 0.375 };
+            if running {
+                assert_eq!(rt.scenes.pending.unwrap().when, expected);
+                assert!(rt.tracks.iter().all(|track| track.playing.is_none()));
+                while rt.scenes.pending.is_some() {
+                    assert!(rt.beat <= expected + 2.0 * rt.bpm as f64 / (60.0 * rt.sr as f64));
+                    rt.process(&mut [0.0; 2]);
+                }
+            }
             assert!(rt.tracks.iter().all(|track| {
                 track
                     .playing
-                    .is_some_and(|clip| clip.start_beat == expected)
-            }));
+                    .is_some_and(|clip| clip.midi_start_beat == expected
+                        && (clip.start_beat - expected).abs() < EPS)
+            }), "running={running}, beat={}, pending={:?}, clips={:?}",
+                rt.beat, rt.scenes.pending, rt.tracks.iter().map(|track| track.playing).collect::<Vec<_>>());
         }
     }
 }

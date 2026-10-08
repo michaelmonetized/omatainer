@@ -1,0 +1,194 @@
+{
+  "schema": 1,
+  "platform": "Linux ARM64; unopened-device headless/native GUI software qualification",
+  "sourceFiles": {
+    "src/engine/audio/routing/mic_aux/tests.rs": "d020dd3a81204aecf24cb2d68b4544aea6b920dc347f7b63c6f460cfe7793938",
+    "src/engine/audio_clip.rs": "bb104eabb834e3e50b4b1f69489930f0d41f6f0460339e036241473a1e5f8a4e",
+    "src/engine/audio_clip/edit.rs": "3e7468801c92705e5feacde519a2b16c83ad35ff673cf446ef727f615c63e5c5",
+    "src/engine/audio_clip/tests.rs": "3019e4fac1dadbb70a19c38e0a53c9db8f88181c720fc06a955dc55271bb6ef0",
+    "src/engine/clip_gain_tests.rs": "5ec3fb81e10d2d0a6161665ebd56b0a8605e79f04a018840f41cd3235fe4d75b",
+    "src/engine/clip_lifecycle_tests.rs": "caf6a92ad0bfb64e5074f51b4d8959458f1f74eb77b5a3ba8a04eb26f2720ce9",
+    "src/engine/control.rs": "79d391052949ecbab9657f26fbc79a920dd97d0718b63fd4c4dcb5ad59f3c861",
+    "src/engine/drum_velocity_tests.rs": "9e231d99c454d8c7577f8765af46c56aa13eef1c12e0258c69a961cd43ecb0ec",
+    "src/engine/midi_interchange.rs": "3b515a60a8d9fb1b9917cca62207adaa63e7655dfaa28ccf27a926bf9b39463b",
+    "src/engine/mod.rs": "5d12415715ebd18d3427988f072c42a1fb1b95e35536aad2d1554e7cbd9b3c0f",
+    "src/engine/mute_lifecycle_tests.rs": "cf7c6d000098c8bc6cb63a9f1eeb18c369483a7ce5af82e85d21970051ed80c3",
+    "src/engine/pad_routing_tests.rs": "3e7747d45afe12227ef2de2413b75bcbbdf4313f77fc9798d60096a975e5997b",
+    "src/engine/performance.rs": "9783bdc60acf30b3f34e5586fbb6be6192281922814d2376a051b43a36d9ce0f",
+    "src/engine/project.rs": "9df0d9b4c62b3cfe629e13e411d39bed056b4ea5e7a2f620e4383068b3338618",
+    "src/engine/project/capture.rs": "4026eeeb12cefbf5ee6a9ff3f0ea875ad69f28258e099e12cadf773741b7d87b",
+    "src/engine/project/model.rs": "5df8e57a9a0ea9f9ac4f1cb7010524236909ee7e78fb9288381788c79ef71795",
+    "src/engine/project/prepare.rs": "7f1deb4088860ad516152e9d1c349b10717bacf0c2f4b9dd35e5a8a42a3bede1",
+    "src/engine/project/tests.rs": "24317dce3731995243277f71052fa3448bdd8b7fd208c90c0ad467320bb1cf2a",
+    "src/engine/quantized_launch_tests.rs": "37331b9b4d22c8296eacd43ff371d426e12496b6fe7743b61091b61d1d324d45",
+    "src/engine/recording_position_tests.rs": "5af03fe8019b5028d75cd77de7e774b0f1f2597b56eb6e4b85e32356b6b8c388",
+    "src/engine/session/transaction/structural.rs": "1471435f54901fc2481ee1ba4ea3b5d6f9e47c36aa1f0a3b9880e0c63c52aceb",
+    "src/engine/snapshot.rs": "8b900ac2d919b9d7ba7264e247f0a2a26a38dd6d4aae275f2fa9a866ffa02c84",
+    "src/engine/undo/audio_clip.rs": "ffc97a9600a96f0e35f03e97536068e1350db51110341a315181fcf3fc413d5e",
+    "src/engine/undo/capture.rs": "3f064a5742c838b1ae011b12abe17740acd673e9a55789ae1a2bf22634556df0",
+    "src/engine/undo/midi_import.rs": "9602da49d874425a1951600ceabffe8b9ca1cd7daac398f3fa6be71bc7578eb0",
+    "src/engine/undo/mod.rs": "0e5e09dcc49264934632b3fba240808f310d5b7f46bc4ebd1ee2b7103d321f92",
+    "src/engine/undo/patch.rs": "a613b392c212684d92733a03c08da0f8ad53cbb88951cc94a5d50f6eeb6c0518",
+    "src/engine/undo/recording.rs": "0e0287d2c11ebbdf99cef12a3f480ac4c385ad4b1f6e600b06d38195b80b068e",
+    "src/engine/undo/tests.rs": "b501077791431feddace2347cb8d2a6d8170b3f9080eb9ecac99abac63667f75",
+    "src/ui.rs": "529e82b726db40e95a15c29428a2ef616426ea06d8b0554f971168d84843b929",
+    "src/ui/audio_clips.rs": "5fbe8e514a7ae3f73530f942fbfb949e94f235af9588cb84362406d4e0093acb",
+    "src/ui/audio_clips/tests.rs": "8ebf667313a4039239afe162fc37064357582aad1325944728805b0870db2687",
+    "src/ui/audio_clips/worker.rs": "1da908ddf1e80c8ca919d1583c99c5f42cfa4663c7dcd1a159a1b4ac4e208baf",
+    "src/ui/audio_status.rs": "4546781aebebc59ff149d4864e4b7c1c060891ad83791eabf2a0eff8d6914650",
+    "src/ui/help/catalogue.rs": "6d8ae1032182c57abe5d071f6b0b7d179c218f036be3e235587fe3c61a33c077",
+    "src/ui/templates/worker.rs": "f9273eace4749c8435982a34c13b9dfee606ae0cea0eaea6618622ccd3af957f",
+    "src/ui/waveform.rs": "2a9e964f26486f1b4b2f1b84ca4274493de4bacf24c43da8d950c099650dc898"
+  },
+  "testBinary": {
+    "path": "target/app-backlog/qualification-bin/audio-clip-tests",
+    "sha256": "f0d9f2d82e32d02695b3b517bbc9ba21e9d478320491411550430d0dfbc991a7"
+  },
+  "compiledInventory": {
+    "path": "target/app-backlog/audio-clip-compiled-source-inventory.json",
+    "sha256": "8ec91012590d86de47d75e22ac6492d41642f047ea473b6e25312620927a533b",
+    "files": 701
+  },
+  "tests": {
+    "focused": {
+      "path": "target/app-backlog/audio-clip-focused-tests.log",
+      "sha256": "b84c23a4d82b71485b6646dd0b739685935ab10b6260fd7ad85a4aec1569fcd7",
+      "passed": 14,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 1879,
+      "seconds": 5.85
+    },
+    "full": {
+      "path": "target/app-backlog/audio-clip-full-tests.log",
+      "sha256": "391aa7d3bf6d84a3b79c7792d9ce4327236ab1870e26af1421e39381faa77fc2",
+      "passed": 1849,
+      "failed": 0,
+      "ignored": 44,
+      "filtered": 0,
+      "seconds": 479.56
+    },
+    "manual": {
+      "path": "target/app-backlog/audio-clip-manual-regenerate.log",
+      "sha256": "c217f3065eb6306b47d880b9842899fb2cd4ebda05b42552458961fb55de6707",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 1892,
+      "seconds": 0
+    }
+  },
+  "retainedFailure": {
+    "path": "target/app-backlog/audio-clip-focused-first.log",
+    "sha256": "e87ef49f4d2b577ca545b9bd4ee9262c027e9902b7dd74b71cde61cc2ea97a8c",
+    "testBinarySha256": "89ad5d4fe8202d0ae641b8c8ab82c67357e8ffc46ed10ed99c7cb9de1b3aa650",
+    "sourceInventorySha256": "4430c5ab01fdc7199e9c574efd94158a690ba3d7afef4391982c17e758e98f4a",
+    "passed": 12,
+    "failed": 1,
+    "reason": "The fixture read published History before renderer publication. Correcting the wait and rebuilding produced the complete pass. Preparation now compacts referenced media before budget validation, and a new test covers replacement-source reservations and active Undo refusal."
+  },
+  "limits": [
+    "Issue 182 is partial until actual Arrangement instance editing/playback in issue 226 is implemented.",
+    "Pitch resampling changes pitch and duration; independent time stretching is separate issue 250.",
+    "Strict imported PCM is bounded to 128 MiB per file; shared project and History budgets also apply. Streaming is separate issue 184.",
+    "No physical device was opened, captured or auditioned in these checks."
+  ],
+  "checks": {
+    "node": {
+      "path": "target/app-backlog/audio-clip-node-tests.log",
+      "sha256": "5db865e0cedb9aed56521d835afe4f16d73606f25235442b2f3f9edabb68085c",
+      "passed": 15,
+      "failed": 0
+    },
+    "capabilityMatrix": "passed with frozen executable fixture inventory",
+    "checklist": "356 issues; dependency order verified; issue 182 partial",
+    "sourceInventory": "722 files; dependency records unchanged",
+    "diff": "git diff --check passed"
+  },
+  "installation": {
+    "schema": 1,
+    "package": {
+      "path": "/home/michael/Projects/omatainer-work/hardware-resurrection/target/app-backlog/release-audio-clips-qualified",
+      "manifestSha256": "cb82f52288fbb7fdb9854820c6d6a3836e35ffff6ea582049c3f8080439e7378",
+      "revision": "c1025e0e6d7361dcac789a12efda1266f79d7a07",
+      "version": "0.1.0+c1025e0e6d73",
+      "executableSha256": "4d4b8b1b354f0a9d8900396cd9057ff0d747593876be9751a3978d51831e270f"
+    },
+    "installed": {
+      "schema": 1,
+      "before": "96b7bc4a36197555f05c570fc54d85653ed57a195732f588b453d947fc84f320",
+      "after": "4d4b8b1b354f0a9d8900396cd9057ff0d747593876be9751a3978d51831e270f",
+      "installedAt": "2026-10-06T19:01:58.698Z"
+    },
+    "buildInfo": {
+      "arch": "aarch64",
+      "debug_assertions": false,
+      "os": "linux",
+      "pkg_version": "0.1.0",
+      "schema": 1
+    },
+    "applicationProcessesPreserved": [
+      {
+        "pid": 1649895,
+        "executable": "/home/michael/Projects/omatainer-work/hardware-resurrection/target/hardware/pioneer-apc/bin/omatainer",
+        "arguments": [
+          "/home/michael/Projects/omatainer-work/hardware-resurrection/target/hardware/pioneer-apc/bin/omatainer",
+          "--empty-once"
+        ],
+        "sha256": "646aa453a269d7c49feec0f5e88fcac94a030034f051468a82d2828ef05c4915"
+      },
+      {
+        "pid": 3973522,
+        "executable": "/home/michael/.local/bin/omatainer (deleted)",
+        "arguments": [
+          "/home/michael/.local/bin/omatainer",
+          "ctl",
+          "follow"
+        ],
+        "sha256": "23f88a47125de6eb19a7921d64faef6dafed56d3c25debdb89ac04d060d9b2e4"
+      }
+    ],
+    "additionalProcessesAfterInstall": [],
+    "preinstallState": {
+      "master": 1,
+      "playing": false,
+      "recording": false,
+      "decks": [
+        {
+          "title": "What More Can I Say",
+          "playing": false
+        },
+        {
+          "title": "Public Service Announcement",
+          "playing": false
+        }
+      ]
+    },
+    "postinstallState": {
+      "master": 1,
+      "playing": false,
+      "recording": false,
+      "decks": [
+        {
+          "title": "What More Can I Say",
+          "playing": false
+        },
+        {
+          "title": "Public Service Announcement",
+          "playing": false
+        }
+      ]
+    },
+    "scope": "Default executable installed for next launch. Previously active independent private GUI and follower processes retained; no hardware device opened or live playback restarted. An unavailable live state is recorded when no GUI was present."
+  },
+  "installationArtifacts": {
+    "releaseBuild": {
+      "path": "target/app-backlog/audio-clip-release-build.log",
+      "sha256": "16737c91fd349ca140e9250b53d60e1562d21f58bfac3921388753d453e7bcc4"
+    },
+    "receipt": {
+      "path": "target/app-backlog/audio-clips-install.json",
+      "sha256": "10e56b965ff064399391efd33ccc2b058ef431d26f6aa5b6dc5c0497b416bd1d"
+    }
+  }
+}

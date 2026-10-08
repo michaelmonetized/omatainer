@@ -1,0 +1,25 @@
+# Setlists and optional now-playing feed
+
+Issue [#157](https://github.com/michaelmonetized/omatainer/issues/157) extends the existing performance-history worker. Open **History**, select a session, choose JSON, Text, CSV or M3U8, and enter a new absolute filename. Export never overwrites an existing file or symlink and never writes inside managed history. Published files are private (0600). An export is a snapshot of the selected session when its worker job runs; an active session continues recording afterward.
+
+JSON preserves the existing version-1 history export. Text and CSV include every history entry in insertion order, including unplayed tracks and external assertions. They distinguish automatic measured status from manual played/unplayed marks and retain measured/uncertain seconds, session state, incomplete status and dropped observation frames. CSV additionally carries first/last active callback timestamps, opaque catalog identity/version and deck. JSON retains exact frame counts by sample rate; text/CSV durations are derived summaries. None of these formats automatically includes a media path or fingerprint. User-entered labels still need review before sharing.
+
+CSV is UTF-8 with a header, CRLF records, quoted cells and doubled embedded quotes, following [RFC 4180](https://www.rfc-editor.org/info/rfc4180/). Cells beginning with a spreadsheet formula marker (`=`, `+`, `-`, `@`, including after whitespace) receive a leading apostrophe; importers can remove that documented protection when exact label text is needed. Nanosecond timestamps are decimal text, not a spreadsheet date or floating-point clock.
+
+M3U8 includes only entries currently marked played, in history insertion order. Explicitly check **Allow file locations in this playlist**. Every included entry must resolve to the exact catalog version recorded in history and pass the existing file fingerprint and removable-volume guards. A changed/offline source, built-in sound, external assertion or unresolved entry refuses the entire playlist before publication. It never silently substitutes replacement content or drops unavailable tracks. UTF-8 extended entries use `#EXTM3U` and `#EXTINF:-1`, with absolute local file URIs; `-1` means unspecified media duration, not measured play time. Interoperability follows [VLC's playlist parser](https://github.com/videolan/vlc/blob/master/modules/demux/playlist/m3u.c). File locations are percent encoded as [RFC 8089](https://www.rfc-editor.org/rfc/rfc8089.txt) describes. References do not package the audio; the filesystem may change after export.
+
+In **Preferences → Automation and remote control**, enable **now-playing feed** and choose whether to publish titles, artists and opaque catalog identities. Apply saves and applies that intent; Cancel leaves the running feed alone. Profiles migrate to preferences version 15 with publication disabled. Media paths, fingerprints and internal load keys are never included.
+
+The read-only API request is:
+
+```sh
+omatainer ctl api '{"op":"now_playing"}'
+```
+
+The version-1 automation response contains `schema`, `enabled`, `status`, decimal-string `generation` and at most two `decks`. Each deck contains its zero-based index and only the permitted label/identity fields. Feed labels are capped at 512 complete UTF-8 bytes; `labels_truncated: true` reports when a requested label exceeded that budget. Status is `disabled`, `unavailable`, `stale` or `current`. Poll through the existing same-user Unix socket; the existing explicitly enabled loopback OSC adapter can carry the same request. This is a local endpoint, with no automatic internet publication, provider hosting or unsolicited network connection.
+
+Only a full recent playing window contributing to converted digital main output qualifies a track. Loaded/paused preview, master mute, unmeasured routing and disconnected output cannot fabricate activity. Measurements may remain visible for up to 750 ms plus a 250 ms publication interval after the last qualifying window; a worker snapshot older than one second returns no tracks. Changing redaction or disabling publication immediately invalidates prior data for subsequent reads. Already delivered responses cannot be retracted. Unknown load identities publish no labels.
+
+The feed has an independent measurement switch and does not change prepare-queue intent. Measurement reuses fixed renderer storage and atomic observations; label resolution, publication, serialization, filesystem work and client deadlines run outside the callback. Consumers read the latest bounded snapshot and never queue work on the renderer. History view backpressure does not stop feed publication. Slow/offline consumers use existing bounded IPC transport; reconnect reads current permitted state. Performance protection excludes optional exports while essential history saves continue.
+
+Qualification exercises real private export files, changed source versions, native History and Preferences controls, callback allocation counts and the actual Unix API with an offline/reconnecting consumer. These are software checks and add no hardware listening evidence.

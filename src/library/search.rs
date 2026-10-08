@@ -1,6 +1,23 @@
 use super::annotations::Annotations;
 use crate::localization::search_key;
 
+pub(crate) struct Indexed {title:String,artist:String,key:String,bpm:Option<f32>,seconds:Option<f64>,annotations:Annotations,sorted_tags:String}
+impl Indexed {
+    /// Normalize one exact metadata record once on its owning worker.
+    /// Takes borrowed effective fields; retains full Unicode search semantics without shortening text.
+    pub(crate) fn new(row:Row<'_>)->Self {
+        Self {sorted_tags:search_key(&row.annotations.tags.join(", ")),title:search_key(row.title),artist:search_key(row.artist),key:search_key(row.key),bpm:row.bpm,seconds:row.seconds,annotations:Annotations {rating:row.annotations.rating,color:row.annotations.color,group:search_key(&row.annotations.group),notes:search_key(&row.annotations.notes),tags:row.annotations.tags.iter().map(|tag|search_key(tag)).collect()}}
+    }
+    /// Borrow prepared Unicode fields for a current query or sort.
+    /// Takes the live confirmed play state; returns exact normalized metadata without allocating.
+    pub(crate) fn row(&self,played:bool)->Row<'_> {Row {title:&self.title,artist:&self.artist,key:&self.key,bpm:self.bpm,seconds:self.seconds,played,annotations:&self.annotations}}
+    /// Borrow the same comma-separated tag order used by library sorting.
+    /// Takes no arguments; returns full normalized joined tags prepared on the worker.
+    pub(crate) fn sorted_tags(&self)->&str {&self.sorted_tags}
+    /// Account for retained normalized field capacity.
+    /// Takes no arguments; returns record and string/vector storage bytes without shared-owner headers.
+    pub(crate) fn bytes(&self)->usize {std::mem::size_of::<Self>()+self.title.capacity()+self.artist.capacity()+self.key.capacity()+self.annotations.group.capacity()+self.annotations.notes.capacity()+self.sorted_tags.capacity()+self.annotations.tags.capacity()*std::mem::size_of::<String>()+self.annotations.tags.iter().map(String::capacity).sum::<usize>()}
+}
 pub(crate) struct Row<'a> {
     pub title: &'a str,
     pub artist: &'a str,
@@ -115,25 +132,30 @@ impl Query {
     pub fn uses_play_history(&self) -> bool { self.0.iter().any(|predicate| matches!(predicate, Predicate::Played(_))) }
     /// Match a borrowed current library row.
     /// Takes effective metadata and stable annotations; returns true only when every predicate matches.
-    pub fn matches(&self, row: Row<'_>) -> bool {
+    pub fn matches(&self, row: Row<'_>) -> bool {self.matches_fields(row,false)}
+    /// Match a prepared exact metadata record without allocating normalized text.
+    /// Takes the worker-owned record and live confirmed play state; returns whether every compiled predicate matches.
+    pub(crate) fn matches_indexed(&self,row:&Indexed,played:bool)->bool {self.matches_fields(Row {title:&row.title,artist:&row.artist,key:&row.key,bpm:row.bpm,seconds:row.seconds,played,annotations:&row.annotations},true)}
+    fn matches_fields(&self,row:Row<'_>,normalized:bool)->bool {
         self.0.iter().all(|predicate| match predicate {
             Predicate::Text(field, value) => {
-                let contains = |text: &str| search_key(text).contains(value);
+                let contains = |text: &str| if normalized {text.contains(value)} else {search_key(text).contains(value)};
+                let equals=|text:&str|if normalized {text==value} else {search_key(text)==*value};
                 match field {
                     Field::Any => {
                         contains(row.title)
                             || contains(row.artist)
                             || contains(row.key)
-                            || row.annotations.matches_text(value)
+                            || contains(&row.annotations.group) || contains(&row.annotations.notes) || row.annotations.tags.iter().any(|tag|contains(tag))
                     }
                     Field::Title => contains(row.title),
                     Field::Artist => contains(row.artist),
-                    Field::Key => search_key(row.key) == *value,
+                    Field::Key => equals(row.key),
                     Field::Tag => row
                         .annotations
                         .tags
                         .iter()
-                        .any(|tag| search_key(tag) == *value),
+                        .any(|tag| equals(tag)),
                     Field::Group => contains(&row.annotations.group),
                     Field::Note => contains(&row.annotations.notes),
                 }

@@ -26,7 +26,26 @@ fn note(action: Action, data: u8) -> Binding {
         deck: 0,
         extra: 0,
         relative: None,
+        controls: None,
+        pair_order: None,
     }
+}
+
+#[test]
+fn native_sync_assignment_choosers_use_fixed_mode_and_global_leader_ids() {
+    use crate::engine::deck_sync::{Leader, Mode};
+    let files = Files::new(); let mut gui = setup(&files);
+    gui.app.midi_learn.binding = Binding { deck: 1, extra: 0, ..note(Action::DeckSyncMode, 61) };
+    gui.frame(vec![]);
+    gui.click("MIDI sync mode"); gui.click(&format!("MIDI sync mode {}", Mode::Bar.label()));
+    assert_eq!(gui.app.midi_learn.binding.extra, 3);
+    assert_eq!(gui.app.midi_learn.binding.deck, 1);
+    gui.app.midi_learn.binding = Binding { deck: 1, extra: 0, ..note(Action::DeckSyncLeader, 62) };
+    gui.frame(vec![]);
+    gui.click("MIDI sync leader"); gui.click(&format!("MIDI sync leader {}", Leader::DeckB.label()));
+    assert_eq!(gui.app.midi_learn.binding.extra, 2);
+    assert_eq!(gui.app.midi_learn.binding.deck, 0);
+    assert!(learn::validate_binding(&gui.app.midi_learn.binding).is_ok());
 }
 
 #[test]
@@ -114,16 +133,13 @@ fn native_absolute_cc_exact_port_disconnect_and_saved_configuration_remain_expli
         "Fixture USB fader",
         "fixture:1",
     );
-    gui.app.midi_learn.binding = Binding {
-        kind: MsgKind::Cc,
-        ch: 0,
-        data: 0,
-        action: Action::Master,
-        deck: 0,
-        extra: 0,
-        relative: None,
-    };
+    gui.frame(vec![]);
+    gui.click("MIDI action");
+    gui.click("Master gain");
+    assert_eq!(gui.app.midi_learn.binding.action, Action::Master);
+    assert_eq!(gui.app.midi_learn.binding.kind, MsgKind::Cc);
     gui.click("Capture MIDI control");
+    assert!(gui.app.engine.cmd.midi_learn().view().armed);
     input.push(&[0xb3, 7, 32]);
     gui.frame(vec![]);
     let captured = gui.app.engine.cmd.midi_learn().view().capture.unwrap();

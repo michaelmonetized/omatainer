@@ -53,7 +53,7 @@ fn fixture(revision: u64) -> Bundle<State> {
             notes: vec![(60, 0.0, 1.25), (67, 3.75, 9.0)],
         },
         media: vec![
-            Arc::new(Sample {
+            Arc::new(Sample { spectrum: None,
                 name: "α sample\nexact".into(),
                 path: "/nonexistent/original/संगीत.wav".into(),
                 sr: 48000,
@@ -62,7 +62,7 @@ fn fixture(revision: u64) -> Bundle<State> {
                 peaks: Arc::new(vec![[-0.0, 0.0, f32::from_bits(1)], [-1.0, 1.0, 0.25]]),
                 bpm: -0.0,
             }),
-            Arc::new(Sample {
+            Arc::new(Sample { spectrum: None,
                 name: "empty but valid mono".into(),
                 path: String::new(),
                 sr: 8000,

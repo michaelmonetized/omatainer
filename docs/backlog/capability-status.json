@@ -1,7 +1,7 @@
 {
   "schema": 1,
-  "release": "Unreleased combined stack above #505",
-  "reviewed": "2026-10-04",
+  "release": "Unreleased app completion stack above #509",
+  "reviewed": "2026-10-07",
   "references": [
     {
       "name": "Ableton Live",
@@ -21,7 +21,7 @@
     {
       "name": "Linux aarch64 / Asahi MacBook Pro J316",
       "status": "local software fixtures",
-      "versions": "Linux 7.1.13-3-2-ARCH; Rust/Cargo 1.98.0; CPAL 0.15.3",
+      "versions": "Linux 7.1.13-3-2-ARCH; Rust/Cargo 1.98.0; CPAL 0.18.2",
       "limits": "Physical converter timing, external audio paths and sustained listening are not qualified by unit tests."
     },
     {
@@ -37,10 +37,10 @@
       "limits": "Discovery is not a captured audio or listening test."
     },
     {
-      "name": "Pioneer DDJ-FX; Numark NS7; Akai MPD232; Akai APC40; 88-key USB keyboard",
-      "status": "user available; pending attachment",
-      "versions": "Exact model, firmware and endpoint descriptors pending",
-      "limits": "No physical controller profile or custom NS7 driver is qualified yet."
+      "name": "Pioneer DDJ-SP1 08e4:0181; original Numark NS7 15e4:0071; Akai APC40 mkII 09e8:0029; Akai MPD232 09e8:0036",
+      "status": "Connected qualification recorded in PR #509; live captures now closed",
+      "versions": "Linux 7.1.13-3-2-ARCH; NS7 native ALSA module; MPD232 LiveLite preset",
+      "limits": "NS7 PA, scratching, contour, headphones and requested controls; Pioneer Sync; APC first fader/grid pad; MPD PAD 1 and bank-A CC capture have the specific receipts in docs/validation/hardware-resurrection.md. Other physical controls and stage-path power stability remain open. No new physical checks in this software batch."
     },
     {
       "name": "FreeToUse",
@@ -50,9 +50,9 @@
     },
     {
       "name": "Audio plugins",
-      "status": "planned",
-      "versions": "No hosted plugin formats or vendor versions qualified",
-      "limits": "Built-in effect racks are not VST3/CLAP/LV2 plugin hosting."
+      "status": "partial native VST3 qualification",
+      "versions": "vst3-host 0.9.0; SDK 3.8.1; native Linux aarch64; private Nekobi and MVerb",
+      "limits": "Isolated scanner, instrument/FX graph, state/automation, sidechain/multiple-output, automatic PDC and native-editor software qualification. Installed-app/hardware listening, ALS plugin-state migration, additional event buses/MIDI output, AU/VST2/CLAP/LV2 and other-platform qualification remain open."
     },
     {
       "name": "Windows / macOS",
@@ -85,232 +85,6 @@
       ],
       "limits": "USB unplug/replug and real suspend/resume remain pending."
     },
-    "131": {
-      "status": "implemented",
-      "paths": [
-        {
-          "kind": "native UI",
-          "file": "src/ui/deck_load_lock.rs",
-          "entry": "Platter lock → captured load/eject review"
-        },
-        {
-          "kind": "MIDI",
-          "file": "src/engine/midi.rs",
-          "entry": "Action::DeckLoadLock; existing load/eject producers"
-        },
-        {
-          "kind": "CLI/IPC",
-          "file": "src/main.rs",
-          "entry": "ctl deck-lock; ctl deck-eject; status lock fields"
-        }
-      ],
-      "fixtures": [
-        "engine::deck_load_lock_tests",
-        "ui::deck_load_lock::tests",
-        "ipc_schema_tests::deck_protection_cli_validates_target_and_action_before_connecting"
-      ],
-      "evidence": [
-        "docs/validation/issue-131-deck-load-lock.md"
-      ],
-      "limits": "Physical MIDI/controller display testing is pending; software producers and actual native egui interactions are exercised."
-    },
-    "137": {
-      "status": "partial",
-      "paths": [
-        {
-          "kind": "release tooling",
-          "file": "scripts/capability-matrix.py",
-          "entry": "generate / check"
-        }
-      ],
-      "fixtures": [
-        "scripts/test-capability-matrix.py"
-      ],
-      "evidence": [
-        "docs/capability-matrix.md"
-      ],
-      "limits": "The registry records observed status and pending work. Each implementation needs acceptance evidence before promotion."
-    },
-    "139": {
-      "status": "implemented",
-      "paths": [
-        {
-          "kind": "native UI",
-          "file": "src/ui/library_view.rs",
-          "entry": "Crate search; Search all library"
-        },
-        {
-          "kind": "query",
-          "file": "src/library/search.rs",
-          "entry": "Query::parse / matches"
-        }
-      ],
-      "fixtures": [
-        "library::search::tests",
-        "ui::library_view_tests"
-      ],
-      "evidence": [
-        "docs/validation/issue-139-library-search.md"
-      ],
-      "limits": "Local 100000-track synthetic catalog; search fields reflect implemented title/artist/key/annotation metadata."
-    },
-    "140": {
-      "status": "implemented",
-      "paths": [
-        {
-          "kind": "native UI",
-          "file": "src/ui/library_protection.rs",
-          "entry": "Library locks → capture, review and save"
-        },
-        {
-          "kind": "native UI",
-          "file": "src/ui/library_analysis.rs",
-          "entry": "Preview selected or filtered analysis changes"
-        },
-        {
-          "kind": "catalog owner",
-          "file": "src/library/protection.rs",
-          "entry": "Version-qualified protection and automatic metadata guards"
-        }
-      ],
-      "fixtures": [
-        "library::protection::tests",
-        "library::analysis::tests",
-        "library::tags::tests",
-        "engine::beatgrid::renderer_tests",
-        "ui::library_protection::tests",
-        "ui::library_analysis::tests",
-        "ui::library_tags::tests"
-      ],
-      "evidence": [
-        "docs/validation/issue-140-preparation-locks.md"
-      ],
-      "limits": "Software fixtures and read-only source paths; physical controller actions remain pending. Implementation is not an automatic acceptance or release qualification."
-    },
-    "205": {
-      "status": "implemented",
-      "paths": [
-        {
-          "kind": "native UI",
-          "file": "src/ui/library_smart_crates.rs",
-          "entry": "Named crates → Smart crate rules → Preview and Save"
-        },
-        {
-          "kind": "catalog worker",
-          "file": "src/ui/library_metadata/collection_rows.rs",
-          "entry": "Incremental membership bound to exact library/catalog publications"
-        },
-        {
-          "kind": "persistent catalog",
-          "file": "src/library/smart_crates.rs",
-          "entry": "Validated typed All/Any rules in versioned catalog"
-        }
-      ],
-      "fixtures": [
-        "library::smart_crates::tests",
-        "ui::library_metadata::collection_rows::tests",
-        "ui::library_smart_crates::tests"
-      ],
-      "evidence": [
-        "docs/validation/issue-205-smart-crates.md"
-      ],
-      "limits": "Native UI, real catalog-owner transactions, persistence/migration, stale approval and 100000-track software-renderer fixtures pass. Final release qualification is in progress. Supported fields are title, artist, key, tag, group, note, BPM, duration, rating and confirmed current-version played state. Genre/date/playcount are not authoritative catalog fields yet. Large-library measurements exercise software playback, not physical device deadlines."
-    },
-    "221": {
-      "status": "partial",
-      "paths": [
-        {
-          "kind": "native UI",
-          "file": "src/ui/music_provider.rs",
-          "entry": "FreeToUse search and preview"
-        },
-        {
-          "kind": "provider policy",
-          "file": "src/music_provider.rs",
-          "entry": "Capabilities and authorize"
-        },
-        {
-          "kind": "renderer",
-          "file": "src/engine/provider_preview.rs",
-          "entry": "Epoch-bound transient preview"
-        }
-      ],
-      "fixtures": [
-        "music_provider::tests",
-        "music_provider::freetouse::tests",
-        "engine::provider_preview::tests",
-        "ui::music_provider::tests"
-      ],
-      "evidence": [
-        "docs/validation/issue-120-providers.md"
-      ],
-      "limits": "Preview-only FreeToUse adapter. Earlier #120 evidence is historical; no blanket provider, derived-file or future recording/hosting claim."
-    },
-    "145": {
-      "status": "implemented",
-      "paths": [
-        {
-          "kind": "native UI",
-          "file": "src/ui/library_health.rs",
-          "entry": "Library → health… → captured selected/filtered validation"
-        },
-        {
-          "kind": "shared decoder",
-          "file": "src/engine/media_health.rs",
-          "entry": "Full read-only stream check on the existing optional decoder lane"
-        },
-        {
-          "kind": "import report",
-          "file": "src/ui/library_store.rs",
-          "entry": "Per-input skipped-entry diagnostics retain healthy imported rows"
-        }
-      ],
-      "fixtures": [
-        "engine::media_health::tests",
-        "ui::library_health::tests",
-        "engine::media_load::analysis_tests::foreground_admission_preempts_pending_validation_and_invalid_targets_leave_it_current",
-        "ui::library_scan::tests"
-      ],
-      "evidence": [
-        "docs/validation/issue-145-library-health.md"
-      ],
-      "limits": "Source 2ff1d5b passed 1455 ordinary/scene checks and private native faults; its optimized wall-time gate failed. New combined-source qualification remains pending. Linux native software fixtures; physical absent drives, USB controllers and listening remain pending. Full-file validation is cancellable at safe read/packet boundaries, not an OS-read interrupt. At most 4096 captured rows per queue; readiness is a last-observed source version, not a future-access guarantee."
-    },
-    "146": {
-      "status": "implemented",
-      "paths": [
-        {
-          "kind": "native UI",
-          "file": "src/ui/library_prepare.rs",
-          "entry": "Library prepare queue: captured add, reorder, load, paused preview, save and restore"
-        },
-        {
-          "kind": "MIDI",
-          "file": "src/engine/midi.rs",
-          "entry": "Prepare/PrepareCrate and shifted mapped deck Load"
-        },
-        {
-          "kind": "output measurement",
-          "file": "src/engine/history_measurement/capture.rs",
-          "entry": "Complete converted playing-output window and atomic transient receipts"
-        },
-        {
-          "kind": "catalog owner",
-          "file": "src/ui/library_metadata/collections.rs",
-          "entry": "One CreatePrepared transaction and durable save receipt"
-        }
-      ],
-      "fixtures": [
-        "ui::library_prepare::tests",
-        "engine::history_measurement::capture_tests",
-        "ui::library_metadata::collections::tests::prepared_queue_creation_is_one_atomic_save_with_ordered_stable_members",
-        "engine::media_load::tests::captured_source_version_rejects_replacement_before_decoding_its_new_bytes"
-      ],
-      "evidence": [
-        "docs/validation/issue-146-prepare-queue.md"
-      ],
-      "limits": "Merged-source qualification pending. Physical controller actions and listening remain pending. Auto-removal requires a complete 10 ms conservative legacy digital main-output window while playing; paused previews and uncertain/custom-route attribution retain tracks. Queue limited to 4096 tracks and 2 MiB; one hardware capture has the same bounds. Saved crates restore current catalog versions explicitly; transient queue/policy are not project persistence."
-    },
     "130": {
       "status": "partial",
       "paths": [
@@ -342,164 +116,34 @@
       ],
       "limits": "Exact saved routing, stopped confirmation and record-source file integrity are implemented. Newer input buffering and continuity checks refuse incomplete WAVs; current private ALSA 128/512-frame completion fixtures fail after real gaps and publish no file. Source-bound graph, optimized and physical requalification of the combined changes remains pending. Separate nominal-rate clocks are not resampled."
     },
-    "148": {
+    "131": {
       "status": "implemented",
       "paths": [
         {
           "kind": "native UI",
-          "file": "src/ui/midi_learn.rs",
-          "entry": "MIDI → action/target → Capture → review Add/Replace/Test → Edit/Remove → Save MIDI assignments"
+          "file": "src/ui/deck_load_lock.rs",
+          "entry": "Platter lock → captured load/eject review"
         },
         {
-          "kind": "dispatch worker",
-          "file": "src/engine/midi/learn.rs",
-          "entry": "Unique exact-port capture, mapping validation, cancellation and disconnect"
-        },
-        {
-          "kind": "persistent profile",
-          "file": "src/preferences/storage.rs",
-          "entry": "Version 12 learned assignments; durable Save with exact revision and legacy presence guard"
-        }
-      ],
-      "fixtures": [
-        "engine::midi::learn::tests",
-        "ui::midi_learn::tests",
-        "engine::midi::handoff::tests",
-        "engine::midi::realtime_tests",
-        "engine::midi::routing::tests",
-        "preferences::storage::midi_learn_migration_tests"
-      ],
-      "evidence": [
-        "docs/validation/issue-148-midi-learn.md"
-      ],
-      "limits": "All 1498 ordinary checks and private 32-channel native routing pass on the recorded MIDI-learn source. Synthetic callback delivery and native controls do not prove physical mapping, USB disconnect or listening. Exact backend port ids may require recapture after device identity changes; automatic hotplug is not claimed. NS7 motorized wheel protocols and custom drivers remain unqualified."
-    },
-    "154": {
-      "status": "implemented",
-      "paths": [
-        {
-          "kind": "native UI",
-          "file": "src/ui/library_crates/discovery.rs",
-          "entry": "Named crates → search names / Favorite crates only / Find crates containing selected track → Return"
-        },
-        {
-          "kind": "catalog owner",
-          "file": "src/library/crates.rs",
-          "entry": "SetFavorite edit with durable save; catalog schema 12 migration"
-        },
-        {
-          "kind": "controller",
-          "file": "src/engine/ui_requests.rs",
-          "entry": "Exact-ID bounded crate browsing and return through learned relative encoder/note controls"
-        }
-      ],
-      "fixtures": [
-        "library::crates::tests::favorites_preserve_identity_order_membership_and_conflict_safety",
-        "library::collections::tests::schema_eleven_migrates_without_inventing_favorites_and_old_headers_reject_new_flags",
-        "ui::library_metadata::collection_rows::tests::membership_discovery_includes_direct_manual_annotation_and_typed_rules_only",
-        "ui::library_crates::tests",
-        "engine::ui_requests::crate_tests"
-      ],
-      "evidence": [
-        "docs/validation/issue-154-crate-discovery.md"
-      ],
-      "limits": "Focused software checks include 4096 nested crates, native keyboard and synthetic controller navigation, restart, conflicts, cache reuse and selection/scroll restoration. Complete merged optimized qualification and physical controller navigation remain pending. Direct membership requires the exact catalog/row publication."
-    },
-    "153": {
-      "status": "implemented",
-      "paths": [
-        {
-          "kind": "native UI",
-          "file": "src/ui/sampler_editor.rs",
-          "entry": "Saved per-slot Trigger / Hold / Toggle, Repeat and cue; prepared Apply and reusable Save"
-        },
-        {
-          "kind": "mouse and keyboard",
-          "file": "src/ui.rs",
-          "entry": "Pad context Stop slot; focused Shift+Escape; final local owner release"
-        },
-        {
-          "kind": "controller",
+          "kind": "MIDI",
           "file": "src/engine/midi.rs",
-          "entry": "Learned Note action SamplerSlotStop with an exact slot"
+          "entry": "Action::DeckLoadLock; existing load/eject producers"
         },
         {
-          "kind": "renderer and admission",
-          "file": "src/engine/control.rs",
-          "entry": "Sixteen independent reserved stop lanes and matching onset fencing"
+          "kind": "CLI/IPC",
+          "file": "src/main.rs",
+          "entry": "ctl deck-lock; ctl deck-eject; status lock fields"
         }
       ],
       "fixtures": [
-        "engine::sampler::playback_tests",
-        "sampler_bank::store::tests::legacy_playback_defaults_migrate_without_writing_and_new_fields_require_the_new_header",
-        "sampler_bank::tests::cue_validation_refuses_missing_duration_outside_trim_and_nonfinite_values",
-        "engine::project::tests::sampler_tests::sampler_playback_modes_roundtrip_and_legacy_headers_refuse_even_default_or_null_fields",
-        "ui::sampler_editor::tests::native_playback_modes_cue_repeat_save_apply_invalid_draft_and_keyboard_slot_stop",
-        "ui::sampler_pad_tests::mouse_context_and_focused_shift_escape_stop_exact_slots",
-        "engine::midi::profile_tests::exact_sample_slot_stop_buttons_validate_and_dispatch_only_on_press",
-        "engine::control::admission_tests::saturated_queue_preserves_fifo_gate_releases_and_every_emergency_stop_lane"
+        "engine::deck_load_lock_tests",
+        "ui::deck_load_lock::tests",
+        "ipc_schema_tests::deck_protection_cli_validates_target_and_action_before_connecting"
       ],
       "evidence": [
-        "docs/validation/issue-153-sampler-playback.md"
+        "docs/validation/issue-131-deck-load-lock.md"
       ],
-      "limits": "Source 31a7a36 passes all 1517 ordinary checks and the private 32-channel native routing fixture with zero missing/overflow input frames. Controller stop is learned from a Note button; physical Pioneer/Numark/Akai input, actual disconnect and final listening remain pending. This change does not claim motorized-wheel or NS7 driver support. Audition remains a separate one-shot preview."
-    },
-    "144": {
-      "status": "implemented",
-      "paths": [
-        {
-          "kind": "native UI",
-          "file": "src/ui/library_layout.rs",
-          "entry": "Named layout editor with visibility, order, widths, density, two sorts, preview, save and discard"
-        },
-        {
-          "kind": "browser",
-          "file": "src/ui/library_view.rs",
-          "entry": "Stable source/viewport-preserving ordering with cached Unicode prefixes and virtualized rows"
-        },
-        {
-          "kind": "embedded artwork",
-          "file": "src/ui/library_artwork.rs",
-          "entry": "One bounded read-only source-version-checked PNG/JPEG worker and retryable thumbnail cache"
-        },
-        {
-          "kind": "saved profiles",
-          "file": "src/preferences/library_layout.rs",
-          "entry": "Validated saved layouts and preferences version 13 migration"
-        }
-      ],
-      "fixtures": [
-        "preferences::library_layout::tests",
-        "ui::library_layout::tests",
-        "ui::library_artwork::tests"
-      ],
-      "evidence": [
-        "docs/validation/issue-144-library-layouts.md"
-      ],
-      "limits": "Source 3bd82bb passes all 1532 ordinary checks. Native 32-channel routing assertions pass, with 2048 missing input frames (1024 and 640 within recorded captures) retained as a timing limit. Embedded PNG/JPEG artwork uses bounded, source-checked workers. Complete optimized and physical controller qualification remain pending."
-    },
-    "143": {
-      "status": "implemented",
-      "paths": [
-        {
-          "kind": "native UI",
-          "file": "src/ui/library_backup.rs",
-          "entry": "Explicit saved catalog export, authorized local collection, full verification, new-directory restore and conflict-checked import"
-        },
-        {
-          "kind": "snapshot and media worker",
-          "file": "src/library/backup.rs",
-          "entry": "Versioned, bounded catalog/media snapshots with SHA-256, descriptor/mount guards, deduplication and no-replace publication"
-        }
-      ],
-      "fixtures": [
-        "library::backup::tests",
-        "ui::library_backup::tests"
-      ],
-      "evidence": [
-        "docs/validation/issue-143-library-backup.md"
-      ],
-      "limits": "All eight backup checks pass, including native export/verify/restore/import, exact preparation and real-loader playback after source removal on a clean profile. The additional run uses distinct mounted local filesystems /home and /var/tmp. This is local software/mount evidence; removable USB migration, converter timing and listening remain unqualified. Final combined ordinary and optimized qualification is pending."
+      "limits": "Physical MIDI/controller display testing is pending; software producers and actual native egui interactions are exercised."
     },
     "132": {
       "status": "implemented",
@@ -612,6 +256,11 @@
           "kind": "native project",
           "file": "src/ui/project.rs",
           "entry": "Capture, validate and restore per-project waveform views with legacy defaults"
+        },
+        {
+          "kind": "source analysis",
+          "file": "src/engine/waveform.rs",
+          "entry": "Decode/project preparation → immutable stereo peaks and frequency-band pyramid"
         }
       ],
       "fixtures": [
@@ -620,12 +269,138 @@
         "ui::waveform::tests",
         "preferences::waveforms::tests",
         "engine::audio::audible_tests",
-        "ui::project::tests::waveform_zoom_round_trips_new_open_and_legacy_views"
+        "ui::project::tests::waveform_zoom_round_trips_new_open_and_legacy_views",
+        "engine::waveform::tests"
       ],
       "evidence": [
-        "docs/validation/issue-135-waveform-timing.md"
+        "docs/validation/issue-135-waveform-timing.md",
+        "docs/validation/rainbow-waveforms.md"
       ],
       "limits": "Reachable views and source-qualified playback estimates are implemented; software results are bound to exact sources and binaries in the linked validation receipt. CPAL uses reported playback delay; JACK uses cycle timing and one equal downstream latency range. Unknown/expired/overlapping timing, media replacement, key-lock and transition mixtures use explicitly labeled renderer positions. Phrase counts assume eight four-beat bars from the saved downbeat. This is not detected phrase structure or measured physical/display/converter alignment. External audio/controller and listening tests remain pending."
+    },
+    "136": {
+      "status": "partial",
+      "paths": [
+        {
+          "kind": "native UI",
+          "file": "src/ui/project/live_set.rs",
+          "entry": "Project → Next live set… → Preload → separate cue → unsaved-work review → explicit transition"
+        },
+        {
+          "kind": "renderer",
+          "file": "src/engine/live_set.rs",
+          "entry": "One reserved prepared graph; complete outgoing/incoming linear fade and worker-owned retirement"
+        },
+        {
+          "kind": "project ownership",
+          "file": "src/engine/project.rs",
+          "entry": "Preload reservation prevents competing graph/device replacement; captures remain available"
+        }
+      ],
+      "fixtures": [
+        "engine::live_set::tests",
+        "ui::project::live_set::tests",
+        "engine::audio::live_set_tests::large_live_set_transition_qualification"
+      ],
+      "evidence": [
+        "docs/validation/issue-136-live-set.md"
+      ],
+      "limits": "Standard stereo master outputs 1/2 only; four logical channels support independent cue on 3/4. One next project: 256 MiB PCM, 32 MiB metadata, existing 256 MiB processor bound. Missing assets and unavailable processors refuse preflight. Optional preload is cancelled by performance protection; committed transitions are explicit and not cancelled by the Cancel button. Large-session timing, maximum active/polyphony load, custom graph routes and physical controller/audio/listening acceptance remain incomplete; local fixture evidence does not close this issue."
+    },
+    "137": {
+      "status": "partial",
+      "paths": [
+        {
+          "kind": "release tooling",
+          "file": "scripts/capability-matrix.mjs",
+          "entry": "generate / check"
+        }
+      ],
+      "fixtures": [
+        "scripts/test-capability-matrix.mjs"
+      ],
+      "evidence": [
+        "docs/capability-matrix.md"
+      ],
+      "limits": "The registry records observed status and pending work. Each implementation needs acceptance evidence before promotion."
+    },
+    "138": {
+      "status": "implemented",
+      "paths": [
+        {
+          "kind": "release tooling",
+          "file": "scripts/release-package.mjs",
+          "entry": "build / verify / install / rollback"
+        },
+        {
+          "kind": "source provenance",
+          "file": "scripts/refresh-source-inventory.mjs",
+          "entry": "generate / check for unchanged dependencies"
+        }
+      ],
+      "fixtures": [
+        "scripts/test-release-package.mjs"
+      ],
+      "evidence": [
+        "docs/validation/safe-updates.md"
+      ],
+      "limits": "Linux x86_64/aarch64 ELF packages with matching architecture/glibc. Node.js 22 and flock are update-tool requirements. All instances using the destination must close before an update. File checksums require an independently obtained manifest checksum; signed publisher authentication and Windows/macOS qualification are not claimed. Installation preserves user data; document migrations on open require independent document backups for rollback."
+    },
+    "139": {
+      "status": "implemented",
+      "paths": [
+        {
+          "kind": "native UI",
+          "file": "src/ui/library_view.rs",
+          "entry": "Crate search; Search all library"
+        },
+        {
+          "kind": "query",
+          "file": "src/library/search.rs",
+          "entry": "Query::parse / matches"
+        }
+      ],
+      "fixtures": [
+        "library::search::tests",
+        "ui::library_view_tests"
+      ],
+      "evidence": [
+        "docs/validation/issue-139-library-search.md"
+      ],
+      "limits": "Local 100000-track synthetic catalog; search fields reflect implemented title/artist/key/annotation metadata."
+    },
+    "140": {
+      "status": "implemented",
+      "paths": [
+        {
+          "kind": "native UI",
+          "file": "src/ui/library_protection.rs",
+          "entry": "Library locks → capture, review and save"
+        },
+        {
+          "kind": "native UI",
+          "file": "src/ui/library_analysis.rs",
+          "entry": "Preview selected or filtered analysis changes"
+        },
+        {
+          "kind": "catalog owner",
+          "file": "src/library/protection.rs",
+          "entry": "Version-qualified protection and automatic metadata guards"
+        }
+      ],
+      "fixtures": [
+        "library::protection::tests",
+        "library::analysis::tests",
+        "library::tags::tests",
+        "engine::beatgrid::renderer_tests",
+        "ui::library_protection::tests",
+        "ui::library_analysis::tests",
+        "ui::library_tags::tests"
+      ],
+      "evidence": [
+        "docs/validation/issue-140-preparation-locks.md"
+      ],
+      "limits": "Software fixtures and read-only source paths; physical controller actions remain pending. Implementation is not an automatic acceptance or release qualification."
     },
     "141": {
       "status": "implemented",
@@ -701,34 +476,2191 @@
       ],
       "limits": "Whole-source major/minor estimate of the first stereo pair or mono. Fixed correlation/margin thresholds decline weak or ambiguous material; scores are not probabilities. Initial native-worker development corpus: 48 independent artist-labeled CC0 Bach piano recordings; 19 correct, 27 unknown, 2 wrong (9.52% error among returned estimates). This is not held-out or cross-genre/DJ accuracy proof. Comparison uses effective source keys and does not account for deck pitch changes or promise a transition. Physical listening and controllers remain unqualified. See linked evidence for individual source/binary checks. Software implementation status does not claim release or backlog completion."
     },
-    "136": {
+    "143": {
+      "status": "implemented",
+      "paths": [
+        {
+          "kind": "native UI",
+          "file": "src/ui/library_backup.rs",
+          "entry": "Explicit saved catalog export, authorized local collection, full verification, new-directory restore and conflict-checked import"
+        },
+        {
+          "kind": "snapshot and media worker",
+          "file": "src/library/backup.rs",
+          "entry": "Versioned, bounded catalog/media snapshots with SHA-256, descriptor/mount guards, deduplication and no-replace publication"
+        }
+      ],
+      "fixtures": [
+        "library::backup::tests",
+        "ui::library_backup::tests"
+      ],
+      "evidence": [
+        "docs/validation/issue-143-library-backup.md"
+      ],
+      "limits": "All eight backup checks pass, including native export/verify/restore/import, exact preparation and real-loader playback after source removal on a clean profile. The additional run uses distinct mounted local filesystems /home and /var/tmp. This is local software/mount evidence; removable USB migration, converter timing and listening remain unqualified. Final combined ordinary and optimized qualification is pending."
+    },
+    "144": {
+      "status": "implemented",
+      "paths": [
+        {
+          "kind": "native UI",
+          "file": "src/ui/library_layout.rs",
+          "entry": "Named layout editor with visibility, order, widths, density, two sorts, preview, save and discard"
+        },
+        {
+          "kind": "browser",
+          "file": "src/ui/library_view.rs",
+          "entry": "Stable source/viewport-preserving ordering with cached Unicode prefixes and virtualized rows"
+        },
+        {
+          "kind": "embedded artwork",
+          "file": "src/ui/library_artwork.rs",
+          "entry": "One bounded read-only source-version-checked PNG/JPEG worker and retryable thumbnail cache"
+        },
+        {
+          "kind": "saved profiles",
+          "file": "src/preferences/library_layout.rs",
+          "entry": "Validated saved layouts and preferences version 13 migration"
+        }
+      ],
+      "fixtures": [
+        "preferences::library_layout::tests",
+        "ui::library_layout::tests",
+        "ui::library_artwork::tests"
+      ],
+      "evidence": [
+        "docs/validation/issue-144-library-layouts.md"
+      ],
+      "limits": "Source 3bd82bb passes all 1532 ordinary checks. Native 32-channel routing assertions pass, with 2048 missing input frames (1024 and 640 within recorded captures) retained as a timing limit. Embedded PNG/JPEG artwork uses bounded, source-checked workers. Complete optimized and physical controller qualification remain pending."
+    },
+    "145": {
+      "status": "implemented",
+      "paths": [
+        {
+          "kind": "native UI",
+          "file": "src/ui/library_health.rs",
+          "entry": "Library → health… → captured selected/filtered validation"
+        },
+        {
+          "kind": "shared decoder",
+          "file": "src/engine/media_health.rs",
+          "entry": "Full read-only stream check on the existing optional decoder lane"
+        },
+        {
+          "kind": "import report",
+          "file": "src/ui/library_store.rs",
+          "entry": "Per-input skipped-entry diagnostics retain healthy imported rows"
+        }
+      ],
+      "fixtures": [
+        "engine::media_health::tests",
+        "ui::library_health::tests",
+        "engine::media_load::analysis_tests::foreground_admission_preempts_pending_validation_and_invalid_targets_leave_it_current",
+        "ui::library_scan::tests"
+      ],
+      "evidence": [
+        "docs/validation/issue-145-library-health.md"
+      ],
+      "limits": "Source 2ff1d5b passed 1455 ordinary/scene checks and private native faults; its optimized wall-time gate failed. New combined-source qualification remains pending. Linux native software fixtures; physical absent drives, USB controllers and listening remain pending. Full-file validation is cancellable at safe read/packet boundaries, not an OS-read interrupt. At most 4096 captured rows per queue; readiness is a last-observed source version, not a future-access guarantee."
+    },
+    "146": {
+      "status": "implemented",
+      "paths": [
+        {
+          "kind": "native UI",
+          "file": "src/ui/library_prepare.rs",
+          "entry": "Library prepare queue: captured add, reorder, load, paused preview, save and restore"
+        },
+        {
+          "kind": "MIDI",
+          "file": "src/engine/midi.rs",
+          "entry": "Prepare/PrepareCrate and shifted mapped deck Load"
+        },
+        {
+          "kind": "output measurement",
+          "file": "src/engine/history_measurement/capture.rs",
+          "entry": "Complete converted playing-output window and atomic transient receipts"
+        },
+        {
+          "kind": "catalog owner",
+          "file": "src/ui/library_metadata/collections.rs",
+          "entry": "One CreatePrepared transaction and durable save receipt"
+        }
+      ],
+      "fixtures": [
+        "ui::library_prepare::tests",
+        "engine::history_measurement::capture_tests",
+        "ui::library_metadata::collections::tests::prepared_queue_creation_is_one_atomic_save_with_ordered_stable_members",
+        "engine::media_load::tests::captured_source_version_rejects_replacement_before_decoding_its_new_bytes"
+      ],
+      "evidence": [
+        "docs/validation/issue-146-prepare-queue.md"
+      ],
+      "limits": "Merged-source qualification pending. Physical controller actions and listening remain pending. Auto-removal requires a complete 10 ms conservative legacy digital main-output window while playing; paused previews and uncertain/custom-route attribution retain tracks. Queue limited to 4096 tracks and 2 MiB; one hardware capture has the same bounds. Saved crates restore current catalog versions explicitly; transient queue/policy are not project persistence."
+    },
+    "147": {
+      "status": "implemented",
+      "paths": [
+        {
+          "kind": "bounded sample-clock scheduler",
+          "file": "src/engine/midi/clock/runtime.rs",
+          "entry": "24 PPQN from actual song sample beats, backend playback timestamp, signed compensation and ordered Start/Continue/Song Position/Stop"
+        },
+        {
+          "kind": "independently selected native outputs",
+          "file": "src/engine/midi/clock/output.rs",
+          "entry": "Sole Midir owner; exact unique ports, bounded deadline heap, send completion metrics, cancellation and explicit recovery after output/watchdog/safety failures"
+        },
+        {
+          "kind": "actual audio callback integration",
+          "file": "src/engine/audio.rs",
+          "entry": "Reported first-frame playback timestamps with visible one-buffer estimate fallback; no audio-thread backend send"
+        },
+        {
+          "kind": "native saved clock controls and sync status",
+          "file": "src/ui/midi_clock.rs",
+          "entry": "Enable, exact port chooser, 1–8 destinations, ±500 ms compensation, prepared/sent/late/fault status, cancel/retry controls"
+        },
+        {
+          "kind": "transport echo protection",
+          "file": "src/engine/midi/handoff.rs",
+          "entry": "Ignore returned transport from active/recent clock output device IDs without affecting normal musical controls"
+        },
+        {
+          "kind": "strict per-profile persistence",
+          "file": "src/preferences/storage.rs",
+          "entry": "Preference 21; disabled legacy defaults, current roundtrip and rejection of injected settings under old headers"
+        }
+      ],
+      "fixtures": [
+        "engine::midi::clock::tests",
+        "ui::midi_clock::tests::native_clock_destination_selection_compensation_and_profile_reopening_use_real_handlers"
+      ],
+      "evidence": [
+        "docs/validation/midi-clock.md",
+        "docs/validation/midi-clock-receipt.json"
+      ],
+      "limits": "Software qualification binds 24 PPQN sample deadlines at 8/44.1/48/96 kHz, signed compensation, native tempo ramps/steps through several callback sizes without renderer heap work, ordered Start/Continue/Song Position/Stop, independently chosen multiport worker output, send completion diagnostics, cancellation/missing destinations, saturation/send failure, callback-loss/emergency Stop attempts and input transport echo guards. Real worker timing uses concurrent FLAC decode and egui rendering at six tempos, records every clock delay and requires none early and worst completion under 5 ms. Preference schema 21 migration/refusal, native port chooser, compensation and actual file reopening are exercised. Count-in does not start external transport; fractional resumes round Song Position down to six-clock units. Fresh start beyond beat 4095.75 refuses. Negative compensation is constrained by callback lookahead. Backend acceptance does not prove physical device receipt or Stop. Physical drum-machine synchronization is unperformed, stage processes untouched, and no hardware acceptance or issue closure is claimed."
+    },
+    "148": {
+      "status": "implemented",
+      "paths": [
+        {
+          "kind": "native UI",
+          "file": "src/ui/midi_learn.rs",
+          "entry": "MIDI → action/target → Capture → review Add/Replace/Test → Edit/Remove → Save MIDI assignments"
+        },
+        {
+          "kind": "dispatch worker",
+          "file": "src/engine/midi/learn.rs",
+          "entry": "Unique exact-port capture, mapping validation, cancellation and disconnect"
+        },
+        {
+          "kind": "persistent profile",
+          "file": "src/preferences/storage.rs",
+          "entry": "Version 12 learned assignments; durable Save with exact revision and legacy presence guard"
+        }
+      ],
+      "fixtures": [
+        "engine::midi::learn::tests",
+        "ui::midi_learn::tests",
+        "engine::midi::handoff::tests",
+        "engine::midi::realtime_tests",
+        "engine::midi::routing::tests",
+        "preferences::storage::midi_learn_migration_tests"
+      ],
+      "evidence": [
+        "docs/validation/issue-148-midi-learn.md"
+      ],
+      "limits": "All 1498 ordinary checks and private 32-channel native routing pass on the recorded MIDI-learn source. Synthetic callback delivery and native controls do not prove physical mapping, USB disconnect or listening. Exact backend port ids may require recapture after device identity changes; automatic hotplug is not claimed. NS7 motorized wheel protocols and custom drivers remain unqualified."
+    },
+    "149": {
+      "status": "implemented",
+      "paths": [
+        {
+          "kind": "native UI",
+          "file": "src/ui/piano_roll/control.rs",
+          "entry": "Named CC, 14-bit bend, channel-pressure and bank/program points with exact beat editing"
+        },
+        {
+          "kind": "renderer",
+          "file": "src/engine/midi/routing/playback.rs",
+          "entry": "Prepared logarithmic state chase and patch-before-note ordering"
+        },
+        {
+          "kind": "MIDI output owner",
+          "file": "src/engine/midi/routing/output.rs",
+          "entry": "Owner-aware bend, pressure, expression, sustain and note cleanup"
+        },
+        {
+          "kind": "project and history",
+          "file": "src/engine/midi_edit.rs",
+          "entry": "Worker saveability preflight, concurrent-edit guard, allocation-free Apply and Undo"
+        }
+      ],
+      "fixtures": [
+        "ui::piano_roll::control::tests",
+        "engine::midi::routing::playback::tests::controller_chase_selects_the_original_patch_then_restores_pending_banks_before_notes",
+        "engine::midi::routing::playback::tests::controller_points_at_launch_and_seek_arrive_before_new_or_chased_native_notes",
+        "engine::midi::routing::output::tests::controller_stop_restores_a_shared_channel_owner_then_releases_bend_pressure_expression",
+        "engine::project::tests::named_controller_lanes_roundtrip_in_schema_fifteen_and_reject_legacy_or_invalid_labels",
+        "engine::project::tests::prepared_controller_edit_is_saveable_allocation_free_and_rejects_concurrent_project_changes"
+      ],
+      "evidence": [
+        "docs/validation/midi-controller-lanes.md"
+      ],
+      "limits": "Native UI, actual renderer and software output-owner wire traces pass; physical-synth acceptance remains unclaimed under the paused hardware plan. Imported RPN/NRPN/data-entry transactions retain normal playback/export but are not inferred on seek. Dense output retains its visible 256-event/block refusal policy. Device labels use project schema 15."
+    },
+    "151": {
+      "status": "implemented",
+      "paths": [
+        {
+          "kind": "native UI",
+          "file": "src/ui/piano_roll.rs",
+          "entry": "Stopped step cursor, held chords, rests, ties, triplet durations and focused computer input"
+        },
+        {
+          "kind": "editor",
+          "file": "src/ui/piano_roll/step.rs",
+          "entry": "Independent audition owners, repeat/focus guards and bounded reversible step edits"
+        },
+        {
+          "kind": "renderer and history",
+          "file": "src/engine/midi_edit.rs",
+          "entry": "Guarded atomic Apply with stable note identities and existing project Undo"
+        }
+      ],
+      "fixtures": [
+        "ui::piano_roll::tests::real_step_keyboard_enters_chords_rests_ties_triplets_and_plays_the_score",
+        "ui::piano_roll::tests::real_musical_keyboard_loses_focus_safely_and_keeps_physical_notes_owned",
+        "ui::piano_roll::tests::musical_keyboard_is_explicit_and_releases_on_tab_apply_and_close_at_laptop_size",
+        "ui::piano_roll::tests::step_bounds_deletion_and_intervening_edits_are_atomic"
+      ],
+      "evidence": [
+        "docs/validation/midi-step-rhythm.md"
+      ],
+      "limits": "Native headless UI and renderer qualification on Linux aarch64. Installed native release and broader UI regression receipts accompany this batch. No new physical input or PA listening claim. Apply remains guarded against stale clip content and uses the existing project Undo transaction."
+    },
+    "152": {
+      "status": "implemented",
+      "paths": [
+        {
+          "kind": "native clip management",
+          "file": "src/ui/clip_manager.rs",
+          "entry": "Setup and grid actions; source/destination selection, create/copy/move/delete/rename/exact RGB/disable, keyboard equivalents and actual audition"
+        },
+        {
+          "kind": "native preset files",
+          "file": "src/engine/clip_management/preset.rs",
+          "entry": "Strict embedded clip bundles, 128 MiB source limit, preserved existing files, finite PCM, cancellation and bit-exact source reuse"
+        },
+        {
+          "kind": "atomic native edits and History",
+          "file": "src/engine/clip_management/edit.rs",
+          "entry": "Coherent worker preparation, complete aggregate native limits, retained slot identities, fresh copied notes, preserved moved content and stopped-slot inverse swaps"
+        }
+      ],
+      "fixtures": [
+        "engine::clip_management::tests",
+        "ui::clip_manager::tests",
+        "engine::arrangement::tests::clip_management_disabled_arrangement_snapshots_have_no_audio_notes_or_monitor_activity"
+      ],
+      "evidence": [
+        "docs/validation/session-clip-management.md",
+        "docs/validation/session-clip-management-receipt.json"
+      ],
+      "limits": "Linux ARM64 software qualification: eight contrasting clips, real native keyboard/AccessKit edits, exact RGB, audio/MIDI content and lane/settings retention, project and preset file save/reopen, bit-exact shared audio, real preset audition, default/strict schema migration, canceled/stale/occupied/removed/active/recording/protected/aggregate-note/source-memory refusals and zero renderer edit/Undo/Redo allocation/free. Occupied destinations are preserved, MIDI uses destination instruments/routes, presets retain source media, and disabled content cannot launch/resume or suppress Arrangement input. Per-clip trigger/gate/toggle/repeat remains issue 196. Physical capture stays closed."
+    },
+    "153": {
+      "status": "implemented",
+      "paths": [
+        {
+          "kind": "native UI",
+          "file": "src/ui/sampler_editor.rs",
+          "entry": "Saved per-slot Trigger / Hold / Toggle, Repeat and cue; prepared Apply and reusable Save"
+        },
+        {
+          "kind": "mouse and keyboard",
+          "file": "src/ui.rs",
+          "entry": "Pad context Stop slot; focused Shift+Escape; final local owner release"
+        },
+        {
+          "kind": "controller",
+          "file": "src/engine/midi.rs",
+          "entry": "Learned Note action SamplerSlotStop with an exact slot"
+        },
+        {
+          "kind": "renderer and admission",
+          "file": "src/engine/control.rs",
+          "entry": "Sixteen independent reserved stop lanes and matching onset fencing"
+        }
+      ],
+      "fixtures": [
+        "engine::sampler::playback_tests",
+        "sampler_bank::store::tests::legacy_playback_defaults_migrate_without_writing_and_new_fields_require_the_new_header",
+        "sampler_bank::tests::cue_validation_refuses_missing_duration_outside_trim_and_nonfinite_values",
+        "engine::project::tests::sampler_tests::sampler_playback_modes_roundtrip_and_legacy_headers_refuse_even_default_or_null_fields",
+        "ui::sampler_editor::tests::native_playback_modes_cue_repeat_save_apply_invalid_draft_and_keyboard_slot_stop",
+        "ui::sampler_pad_tests::mouse_context_and_focused_shift_escape_stop_exact_slots",
+        "engine::midi::profile_tests::exact_sample_slot_stop_buttons_validate_and_dispatch_only_on_press",
+        "engine::control::admission_tests::saturated_queue_preserves_fifo_gate_releases_and_every_emergency_stop_lane"
+      ],
+      "evidence": [
+        "docs/validation/issue-153-sampler-playback.md"
+      ],
+      "limits": "Source 31a7a36 passes all 1517 ordinary checks and the private 32-channel native routing fixture with zero missing/overflow input frames. Controller stop is learned from a Note button; physical Pioneer/Numark/Akai input, actual disconnect and final listening remain pending. This change does not claim motorized-wheel or NS7 driver support. Audition remains a separate one-shot preview."
+    },
+    "154": {
+      "status": "implemented",
+      "paths": [
+        {
+          "kind": "native UI",
+          "file": "src/ui/library_crates/discovery.rs",
+          "entry": "Named crates → search names / Favorite crates only / Find crates containing selected track → Return"
+        },
+        {
+          "kind": "catalog owner",
+          "file": "src/library/crates.rs",
+          "entry": "SetFavorite edit with durable save; catalog schema 12 migration"
+        },
+        {
+          "kind": "controller",
+          "file": "src/engine/ui_requests.rs",
+          "entry": "Exact-ID bounded crate browsing and return through learned relative encoder/note controls"
+        }
+      ],
+      "fixtures": [
+        "library::crates::tests::favorites_preserve_identity_order_membership_and_conflict_safety",
+        "library::collections::tests::schema_eleven_migrates_without_inventing_favorites_and_old_headers_reject_new_flags",
+        "ui::library_metadata::collection_rows::tests::membership_discovery_includes_direct_manual_annotation_and_typed_rules_only",
+        "ui::library_crates::tests",
+        "engine::ui_requests::crate_tests"
+      ],
+      "evidence": [
+        "docs/validation/issue-154-crate-discovery.md"
+      ],
+      "limits": "Focused software checks include 4096 nested crates, native keyboard and synthetic controller navigation, restart, conflicts, cache reuse and selection/scroll restoration. Complete merged optimized qualification and physical controller navigation remain pending. Direct membership requires the exact catalog/row publication."
+    },
+    "155": {
+      "status": "implemented",
+      "paths": [
+        {
+          "kind": "reviewed reference and duplicate management",
+          "file": "src/library/file_management.rs",
+          "entry": "Exact rows, independent duplicate byte verification, stable IDs and both preparation histories"
+        },
+        {
+          "kind": "recoverable byte-verified transfers",
+          "file": "src/library/file_management/transfer/journal.rs",
+          "entry": "No-overwrite copies, durable move/keep/reopen/restore and ownership-bound rollback"
+        },
+        {
+          "kind": "single catalog owner",
+          "file": "src/ui/library_metadata/collections/files.rs",
+          "entry": "Existing serialized save owner, publication certainty and cancellation ownership"
+        },
+        {
+          "kind": "native music files review",
+          "file": "src/ui/library_files.rs",
+          "entry": "Accessible review/Apply, selected rows, duplicates, pending and saved move recovery"
+        }
+      ],
+      "fixtures": [
+        "library::file_management::tests",
+        "ui::library_metadata::collections::files::tests",
+        "ui::library_files::tests"
+      ],
+      "evidence": [
+        "docs/validation/music-file-management.md",
+        "docs/validation/music-file-management-receipt.json",
+        "docs/validation/music-file-management-integrated.md",
+        "docs/validation/music-file-management-integrated-receipt.json"
+      ],
+      "limits": "Software qualification uses actual local files, the existing single catalog owner, real native save/reopen, actual egui/AccessKit widgets and an independent PCM comparison while the private headless engine plays. No physical audio or MIDI ports and no new OS GUI were opened. Selection is bounded to 128 tracks; copies require an existing absolute destination, at most 8 GiB per source and 64 GiB per batch. Duplicate candidates are only likely matches until independently verified byte-identical; the retained identity and preparation are explicit. Moves keep original bytes in sibling recovery paths until explicit restoration; Keep archives the private recovery record and allows another batch. Restoring a saved move requires unchanged reviewed catalog rows and owned files, refuses changed preparation or occupied paths, and retains the last copy on uncertainty. At most 128 saved move records are inspected. Removing a reference never deletes audio. This does not implement project-wide storage cleanup (#170), complete the remaining backlog or qualify physical controller behavior. The active app/session are preserved and installation remains deferred while the independent GUI is open."
+    },
+    "156": {
+      "status": "implemented",
+      "paths": [
+        {
+          "kind": "native UI",
+          "file": "src/ui/library_playlist.rs",
+          "entry": "Named crates → Import playlists → exact review, selected playlists and explicit exclusion consent"
+        },
+        {
+          "kind": "bounded worker parser",
+          "file": "src/playlist_import.rs",
+          "entry": "UTF-8 M3U, Apple XML, rekordbox XML 1.0.0, Traktor NML 19 and legacy Serato crates"
+        },
+        {
+          "kind": "sole catalog writer",
+          "file": "src/ui/library_metadata/collections.rs",
+          "entry": "Atomic candidate import with selected ordered memberships, changed-version guards and truthful save receipt"
+        },
+        {
+          "kind": "isolated discovery",
+          "file": "src/dj_library.rs",
+          "entry": "Bounded content probing across home/custom paths and visible mounts, resumable worker pages and debounced source notifications"
+        }
+      ],
+      "fixtures": [
+        "playlist_import::tests",
+        "ui::library_metadata::collections::tests::playlist_review_single_writer_save_reopen_preserves_order_versions_and_source_bytes",
+        "ui::library_metadata::collections::tests::playlist_cancel_and_failed_save_do_not_publish_partial_tracks_or_crates",
+        "ui::library_crates::tests::native_playlist_review_exclusion_consent_save_reopen_and_stale_action_guards",
+        "scripts/test-retained-dependency-graph.mjs",
+        "playlist_import::dj_tests",
+        "dj_library::tests",
+        "library::tags::tests::imported_tempo_survives_tags_analysis_and_rescan_but_yields_to_user_corrections"
+      ],
+      "evidence": [
+        "docs/validation/playlist-import.md",
+        "docs/validation/dj-library-migration.md"
+      ],
+      "limits": "Extended software implementation on Linux aarch64 under single todo #511. Folder hierarchy, source/version identities, reviewed names, original repeated order and supported DJ metadata persist in schema 18; existing preparation and user corrections win. Isolated bounded pages and mount/database notifications are implemented. Vendor database/version limits and unsupported metadata are reported before import. Actual DJ source-application export comparisons, read-only removable-media hot removal/remount and scan impact during physical playback remain unqualified. This does not complete #511 or reopen/close consolidated #513."
+    },
+    "157": {
+      "status": "implemented",
+      "paths": [
+        {
+          "kind": "native UI",
+          "file": "src/ui/session_history.rs",
+          "entry": "History → selected session → JSON / Text / CSV / M3U8 playlist export with location consent"
+        },
+        {
+          "kind": "catalog and filesystem worker",
+          "file": "src/performance_history/export.rs",
+          "entry": "Private bounded exports with exact-version file URI resolution and no-overwrite publication"
+        },
+        {
+          "kind": "native preferences",
+          "file": "src/ui/preferences.rs",
+          "entry": "Automation → opt-in now-playing feed with title, artist and catalog identity redaction"
+        },
+        {
+          "kind": "local API",
+          "file": "src/automation.rs",
+          "entry": "Read-only now_playing request, bounded latest snapshot and existing client deadlines"
+        }
+      ],
+      "fixtures": [
+        "performance_history::export::tests",
+        "performance_history::storage::tests::all_setlist_formats_publish_private_new_files_and_refuse_existing_symlinks",
+        "performance_history::worker::tests::actual_worker_feed_runs_without_a_history_session_and_survives_consumer_reconnect",
+        "performance_history::worker::tests::export_as_job_uses_selected_session_and_reports_a_durable_csv_receipt",
+        "ui::session_history::tests::native_history_selects_text_csv_and_requires_playlist_location_consent",
+        "ui::preferences::tests::now_playing_profile_apply_cancel_and_reopen_preserve_redaction_intent",
+        "preferences::storage::now_playing_migration_tests",
+        "automation::tests::now_playing_api_bounds_worst_case_labels_and_drops_expired_or_disabled_data",
+        "engine::history_measurement::capture_tests::independent_now_playing_monitor_preserves_prepare_intent_and_allocates_nothing"
+      ],
+      "evidence": [
+        "docs/validation/setlist-exports.md"
+      ],
+      "limits": "Local software export/worker/native UI/API qualification; no provider-hosted publishing or new physical listening acceptance. Text/CSV include all entries in history insertion order. M3U8 requires explicit location consent and every played entry to have its exact recorded local file; unavailable entries refuse the entire playlist. Local feed is off by default, removes stale labels, caps requested labels at 512 UTF-8 bytes and never publishes paths. Preferences schema 15; project schema stays 15."
+    },
+    "162": {
+      "status": "implemented",
+      "paths": [
+        {
+          "kind": "bounded monitored input history",
+          "file": "src/engine/retrospective.rs",
+          "entry": "Original input timestamps, opt-in fixed ring, reviewed range and ordered ordinary MIDI preparation"
+        },
+        {
+          "kind": "normal MIDI handoff",
+          "file": "src/engine/midi/handoff.rs",
+          "entry": "Preserve callback time through existing monitored-route admission without opening ports in qualification"
+        },
+        {
+          "kind": "native capture review",
+          "file": "src/ui/piano_roll/retrospective.rs",
+          "entry": "Explicit range/source/tempo/loop preview, empty-slot draft, editable normal Apply and one Undo"
+        },
+        {
+          "kind": "privacy preferences",
+          "file": "src/ui/preferences.rs",
+          "entry": "Native opt-in limits and clear-on-disable, version 25 migration"
+        }
+      ],
+      "fixtures": [
+        "engine::retrospective::tests",
+        "ui::piano_roll::retrospective::tests",
+        "ui::preferences::tests::recent_midi_privacy_native_cancel_apply_resources_reopen_and_disable_discard_history",
+        "preferences::storage::retrospective_migration_tests"
+      ],
+      "evidence": [
+        "docs/validation/retrospective-midi.md",
+        "docs/validation/retrospective-midi-receipt.json"
+      ],
+      "limits": "Software qualification uses an original timestamped synthetic MIDI trace, the normal bounded input handoff, pure backend fixtures and actual egui/AccessKit widgets. No physical audio or MIDI ports were opened. History is explicitly opt-in for enabled monitored routes, fixed at 1–600 seconds and 256–65536 events; it is never automatically saved. Captured clips are ordinary user-saved MIDI. A disconnected, overwritten, cleared, reconfigured or ambiguously paired range is refused. The selected source/track, range, tempo and loop are explicit; no automatic tempo inference is claimed. The active rig and session are preserved; installation of a new package remains deferred while the independent GUI is open. This does not complete MPE voice ownership or the remaining backlog."
+    },
+    "163": {
+      "status": "implemented",
+      "paths": [
+        {
+          "kind": "bounded producer transformations",
+          "file": "src/engine/midi_tools.rs",
+          "entry": "Source-precise quantize, independent recombination, velocity/time curves, stretch/reverse and unique expression ownership"
+        },
+        {
+          "kind": "native reversible worker preview",
+          "file": "src/ui/piano_roll/tools.rs",
+          "entry": "Drawable/numeric curves, deterministic settings history, exact Restore/Keep and existing guarded one-Undo Apply"
+        }
+      ],
+      "fixtures": [
+        "engine::midi_tools::tests",
+        "ui::piano_roll::tools::tests"
+      ],
+      "evidence": [
+        "docs/validation/midi-transformations.md",
+        "docs/validation/midi-transformations-receipt.json"
+      ],
+      "limits": "Linux ARM64 software qualification of native MIDI transformations. Quantize straight/triplet starts and/or ends at partial strength; seeded independent pitch/position/length/velocity Shuffle, Mirror and Rotation; drawable/cyclic velocity; anchored Stretch, Reverse and integrated three-point time-speed curve. Preview retains an exact original, compares timing summaries, stores 32 transient parameter settings and commits once through existing worker preparation and Undo. Imported PPQN, event orders, stable note identity, channels, release velocity, metadata and labels survive; poly-pressure follows its unique note, with explicitly chosen lower/upper MPE member-channel range for pitch bend/pressure/CC74. Ambiguous, orphaned or newly overlapping expression refuses publication. Bounds are 8192 notes and existing lane/SMF limits; timing rounding is displayed. Parameters/history are live editor state, not saved presets. Automatic MPE-zone inference and a per-note expression editor remain separate work. No physical port, capture, OS GUI or listening test was opened."
+    },
+    "164": {
+      "status": "implemented",
+      "paths": [
+        {
+          "kind": "bounded producer transformations",
+          "file": "src/engine/midi_tools.rs",
+          "entry": "Source-precise quantize, independent recombination, velocity/time curves, stretch/reverse and unique expression ownership"
+        },
+        {
+          "kind": "native reversible worker preview",
+          "file": "src/ui/piano_roll/tools.rs",
+          "entry": "Drawable/numeric curves, deterministic settings history, exact Restore/Keep and existing guarded one-Undo Apply"
+        }
+      ],
+      "fixtures": [
+        "engine::midi_tools::tests",
+        "ui::piano_roll::tools::tests"
+      ],
+      "evidence": [
+        "docs/validation/midi-transformations.md",
+        "docs/validation/midi-transformations-receipt.json"
+      ],
+      "limits": "Linux ARM64 software qualification of native MIDI transformations. Quantize straight/triplet starts and/or ends at partial strength; seeded independent pitch/position/length/velocity Shuffle, Mirror and Rotation; drawable/cyclic velocity; anchored Stretch, Reverse and integrated three-point time-speed curve. Preview retains an exact original, compares timing summaries, stores 32 transient parameter settings and commits once through existing worker preparation and Undo. Imported PPQN, event orders, stable note identity, channels, release velocity, metadata and labels survive; poly-pressure follows its unique note, with explicitly chosen lower/upper MPE member-channel range for pitch bend/pressure/CC74. Ambiguous, orphaned or newly overlapping expression refuses publication. Bounds are 8192 notes and existing lane/SMF limits; timing rounding is displayed. Parameters/history are live editor state, not saved presets. Automatic MPE-zone inference and a per-note expression editor remain separate work. No physical port, capture, OS GUI or listening test was opened."
+    },
+    "165": {
+      "status": "implemented",
+      "paths": [
+        {
+          "kind": "atomic owned MIDI edits",
+          "file": "src/engine/midi_interchange/editor.rs",
+          "entry": "Coherent owner/content/metadata validation and one guarded multiple-target Undo"
+        },
+        {
+          "kind": "native shared ruler and protected owners",
+          "file": "src/ui/piano_roll/comparison.rs",
+          "entry": "Explicit focus, ghost protection, owner permissions and shared pitch/time/velocity selection"
+        }
+      ],
+      "fixtures": [
+        "engine::midi_interchange::tests::combined_editor_preparation_refuses_duplicates_stale_notes_and_cancellation_without_partial_prepared_targets",
+        "engine::midi_interchange::tests::combined_editor_preserves_owned_regions_lanes_properties_and_stable_notes_in_one_allocation_free_undo",
+        "engine::midi_interchange::tests::combined_editor_refuses_every_target_when_metadata_or_one_captured_owner_changes_and_cancel_preserves_truth",
+        "ui::piano_roll::comparison::tests"
+      ],
+      "evidence": [
+        "docs/validation/midi-clip-comparison.md",
+        "docs/validation/midi-clip-comparison-receipt.json"
+      ],
+      "limits": "Linux ARM64 native software qualification. Compare at most 64 captured empty/MIDI clips and at most 65536 notes, with the existing 8192-note and lane limits per clip. Ghost notes are read-only until their owner is focused; shared tools additionally require group enablement and explicit permission per companion. Criteria combine pitch, shared time and velocity, optional overlap and inversion. Each owner retains its source region, loop, shared display offset, track tuning, stable identities and controller/expression content. Worker preparation validates every owner before one guarded atomic Apply and one Undo step; any stale/cancelled target refuses the whole edit. Comparison membership, offsets and permission are current editor state, while applied notes and native musical regions persist. This does not claim saved scale context or per-note expression editing. No physical ports, capture, OS GUI or listening check was opened."
+    },
+    "166": {
+      "status": "implemented",
+      "paths": [
+        {
+          "kind": "seeded per-note choices",
+          "file": "src/engine/note_variation.rs",
+          "entry": "Worker-prepared same-onset linked/exclusive rules, expression ownership and allocation-free cycle decisions"
+        },
+        {
+          "kind": "native velocity and chance lanes",
+          "file": "src/ui/piano_roll/variation.rs",
+          "entry": "Explicit base/range/chance controls and a guarded full-width saved seed with exact Undo"
+        },
+        {
+          "kind": "paired actual playback",
+          "file": "src/engine/midi/routing/playback.rs",
+          "entry": "Built-in, routed and arrangement note/owned-expression cycle coherence"
+        }
+      ],
+      "fixtures": [
+        "engine::note_variation::tests",
+        "ui::piano_roll::variation::tests",
+        "engine::midi::routing::playback::tests::actual_rendered_two_thousand_loops_share_seed_choices_with_routed_expression_and_independent_blocks"
+      ],
+      "evidence": [
+        "docs/validation/note-variation.md",
+        "docs/validation/note-variation-receipt.json",
+        "docs/validation/midi-composition.md",
+        "docs/validation/midi-composition-receipt.json"
+      ],
+      "limits": "Linux ARM64 software qualification without physical ports, capture, OS GUI or listening. Native state version 34 stores optional note chance, inclusive velocity range, explicit same-onset Linked/Exclusive groups and a full-width project seed. Group weights above 100%, inconsistent linked probabilities, invalid ranges, mixed expression ownership modes and ambiguous voices refuse the complete edit. The immutable worker-prepared plan evaluates musical cycles without callback allocation, using separate random domains for independent, grouped and velocity decisions. Built-in note gates, routed paired releases and uniquely owned expression share the same cycle decision; unrelated automation remains unchanged. Explicit MPE ownership is required for member-channel expression; automatic MPE negotiation and independent expression curve editing remain #150. Copied clip/preset groups receive new stable identities. Applying a saved seed requires stopped playback and unchanged captured state, with cancellation, one Undo and exact retained notes/PCM. Ordinary notes and legacy projects retain their prior behavior, and old containers refuse future fields including null rather than discarding them. Twelve native import workflows remain separately qualified against a fresh worker; the private saved Live Set is a read-only format smoke check."
+    },
+    "167": {
+      "status": "implemented",
+      "paths": [
+        {
+          "kind": "native UI",
+          "file": "src/ui/piano_roll.rs",
+          "entry": "Independent rhythmic voices, seeded density, bounded common periods and guarded preview/restore"
+        },
+        {
+          "kind": "editor",
+          "file": "src/ui/piano_roll/rhythm.rs",
+          "entry": "Euclidean hit generation, exact integer seeds and least-common-period bounds"
+        },
+        {
+          "kind": "renderer and history",
+          "file": "src/engine/midi_edit.rs",
+          "entry": "Guarded atomic Apply with stable note identities and existing project Undo"
+        }
+      ],
+      "fixtures": [
+        "ui::piano_roll::rhythm::tests",
+        "ui::piano_roll::tests::real_rhythm_controls_preview_restore_regenerate_commit_and_undo",
+        "ui::piano_roll::tests::rhythm_restore_preserves_edits_and_bad_parameters_preserve_the_draft"
+      ],
+      "evidence": [
+        "docs/validation/midi-step-rhythm.md"
+      ],
+      "limits": "Native headless UI and renderer qualification on Linux aarch64. Installed native release and broader UI regression receipts accompany this batch. No new physical input or PA listening claim. Apply remains guarded against stale clip content and uses the existing project Undo transaction."
+    },
+    "168": {
+      "status": "implemented",
+      "paths": [
+        {
+          "kind": "saved song and clip context",
+          "file": "src/engine/musical_context.rs",
+          "entry": "Validated scale degrees, resolved owner provenance, active conflict and explicit participating instrument gates"
+        },
+        {
+          "kind": "bounded scale transformations",
+          "file": "src/engine/midi_tools/scale.rs",
+          "entry": "Captured key, chromatic preservation, owned expression and guarded harmony"
+        },
+        {
+          "kind": "native key and scale editor",
+          "file": "src/ui/piano_roll/scale.rs",
+          "entry": "Explicit saved context, fold/highlight, per-owner shared edits and rhythm participation"
+        }
+      ],
+      "fixtures": [
+        "engine::musical_context",
+        "engine::midi_tools::scale::tests",
+        "ui::piano_roll::scale::tests"
+      ],
+      "evidence": [
+        "docs/validation/saved-musical-context.md",
+        "docs/validation/saved-musical-context-receipt.json"
+      ],
+      "limits": "Linux ARM64 software qualification; no physical ports, capture, OS GUI or listening check. Native schema 33 stores an optional song key, optional per-clip override and explicit instrument participation. Thirteen validated scales use tonic 0–11 and absolute MIDI pitches 0–127; degree edits refuse out-of-range results. Existing chromatic notes stay unchanged unless explicitly included. Current context, captured owner metadata, note/lane bounds and cancellation guard every preview and atomic Apply. Harmony preserves originals and copies uniquely owned poly-pressure; MPE member-channel harmony refuses overlapping additional voices. Instrument participation affects newly pressed pads and retains the original pitch for held releases. Concurrent clips with differing contexts display a conflict without rewriting the song key or notes. This does not implement per-note expression curve editing, note chance, MIDI 2.0 or complete Live-authored migration comparison. Twelve isolated native import workflows were qualified separately; the retained private saved Live Set is a read-only format smoke check."
+    },
+    "170": {
+      "status": "implemented",
+      "paths": [
+        {
+          "kind": "storage report and compacted copy",
+          "file": "src/project_versions/storage.rs",
+          "entry": "Read-only chosen folders, shared slices and all-version storage; exact reviewed no-overwrite archive copy"
+        },
+        {
+          "kind": "reversible cleanup ownership",
+          "file": "src/project_versions/cleanup.rs",
+          "entry": "Private native records, descriptor-bound quarantine, partial recovery, full file proof and byte-exact index restore"
+        },
+        {
+          "kind": "existing single version worker",
+          "file": "src/ui/project_versions/worker.rs",
+          "entry": "Shared work admission and memory ownership outside GUI and audio; small review IDs and explicit Apply"
+        },
+        {
+          "kind": "native storage review and recovery",
+          "file": "src/ui/project_versions.rs",
+          "entry": "Inspect, reviewed compacted copy, pruning review, cancellation and reopen/restore controls"
+        }
+      ],
+      "fixtures": [
+        "project_versions::cleanup::tests",
+        "project_versions::storage::tests",
+        "ui::project_versions::tests"
+      ],
+      "evidence": [
+        "docs/validation/project-storage.md",
+        "docs/validation/project-storage-receipt.json"
+      ],
+      "limits": "Linux aarch64 software qualification uses actual local files, exact hashes and inode identities, native bundle save/reopen, actual egui/AccessKit controls and independently compared playing PCM. No physical audio/MIDI port or new OS GUI was opened. Storage totals are sampled, and explicitly chosen shared folders may include other projects or overlap. Original recording/render provenance is not inferred from filenames. Inventories stop at 65536 entries, 16 folder levels and 64 GiB. Native archives retain the existing 1 GiB PCM/64 MiB metadata limits. Compaction saves only a reviewed new copy and preserves metadata-sensitive identities; it never replaces the source archive or changes the active renderer. Quarantine retains disk bytes and private durable recovery records. At most 128 recovery batches are inspected. Restore newest first with unchanged version indexes, retained dependencies and owned bytes; occupied paths or later edits refuse restoration without discarding the last copy. Partial moves, failed or uncertain publications keep recoverable files and records. Permanent purge and cross-filesystem destructive moves are not offered. The running app/session are preserved; installation is deferred while the independent GUI remains open. This milestone does not complete the remaining nonhardware backlog or qualify physical controller behavior."
+    },
+    "176": {
+      "status": "implemented",
+      "paths": [
+        {
+          "kind": "separate monitor bus",
+          "file": "src/engine/monitor.rs",
+          "entry": "Pre-fader PFL, independent level/blend/split, explicit pair and finite routing tone"
+        },
+        {
+          "kind": "routing preparation",
+          "file": "src/engine/audio/routing/model.rs",
+          "entry": "Version-2 saved headphone alias and actual physical map conflict validation"
+        },
+        {
+          "kind": "native workflow",
+          "file": "src/ui/headphones.rs",
+          "entry": "Native exact alias selection, live controls, route availability and quiet stopped checks"
+        },
+        {
+          "kind": "typed IPC and Undo",
+          "file": "src/automation.rs",
+          "entry": "Validated immediate monitor gestures, published state and dirty/Undo-preserved saved blend"
+        }
+      ],
+      "fixtures": [
+        "engine::monitor::qualification_tests",
+        "engine::monitor::tests",
+        "ui::headphones::tests",
+        "ui::audio_routing::tests::native_headphone_pair_review_persists_exact_alias_and_rejects_program_overlap",
+        "automation::tests::headphone_api_validates_values_and_rejects_unavailable_checks_without_changing_program"
+      ],
+      "evidence": [
+        "docs/validation/headphone-monitoring.md",
+        "docs/validation/headphone-monitoring-receipt.json"
+      ],
+      "limits": "Nine new software checks and existing native NS7 regressions pass. Program output remains bit-identical through cue/blend/level/split changes in both renderers; separate tone duration/channel checks cover 44.1/48/96 kHz with zero callback heap work. Exact aliases, missing channels, overlaps, project reopen, typed API, native controls and saved blend Undo/Redo are covered. The complete 1797-test unfiltered suite passes with 43 ignored cases. Default ARM64 executable installed and checksum-verified for its next launch; the separate controller GUI was preserved; simultaneous physical main/headphone capture remains outside this thread active scope."
+    },
+    "177": {
+      "status": "implemented",
+      "paths": [
+        {
+          "kind": "sample policy",
+          "file": "src/engine/input_monitor.rs",
+          "entry": "In/Auto/Off input and audio clip precedence, arm, pre-fader cue and finite source ramps"
+        },
+        {
+          "kind": "saved state and Undo",
+          "file": "src/engine/project/model.rs",
+          "entry": "Strict version-16 optional monitoring mode, retained legacy behavior and saved arm/mode history"
+        },
+        {
+          "kind": "native workflow",
+          "file": "src/ui/input_monitoring.rs",
+          "entry": "Selected stable track controls, cue and applied policy without changing input aliases"
+        },
+        {
+          "kind": "typed API",
+          "file": "src/automation.rs",
+          "entry": "Strict track_monitor, track_arm and track_cue actions with stable original targets"
+        }
+      ],
+      "fixtures": [
+        "engine::input_monitor::tests",
+        "engine::audio::routing::input::monitor_tests",
+        "engine::project::tests::input_monitor_tests",
+        "engine::project::tests::structure_tests::created_and_duplicated_input_tracks_start_disarmed_in_auto_without_copying_external_routes",
+        "ui::input_monitoring::tests",
+        "automation::tests::track_input_api_retains_exact_targets_modes_arm_cue_and_saved_undo"
+      ],
+      "evidence": [
+        "docs/validation/input-monitoring.md",
+        "docs/validation/input-monitoring-receipt.json"
+      ],
+      "limits": "Nine new software checks plus existing import, version comparison, native Undo, manual and full regression gates pass: 1806 passed, 43 ignored, no failures or filters. Controlled raw input records exact frames while monitoring Off. Multiple track/deck cues preserve bit-identical program samples in both renderers. The verified release is installed as the default executable for its next launch; physical overdub timing remains outside this thread active scope, and graph compensation remains issue 178."
+    },
+    "178": {
+      "status": "partial",
+      "paths": [
+        {
+          "kind": "bounded prepared graph timing",
+          "file": "src/engine/audio/routing/latency.rs",
+          "entry": "Declared source/processor offsets, causal parallel paths, independent program/headphone summing and report transitions"
+        },
+        {
+          "kind": "native reviewed latency controls",
+          "file": "src/ui/audio_routing/latency.rs",
+          "entry": "Exact draft delays, monitor consequences and retained report identities"
+        },
+        {
+          "kind": "sample aligned delivery and capture metadata",
+          "file": "src/audio_delivery/render.rs",
+          "entry": "Selected-source delay trim, tail drain and exact live/export parity"
+        }
+      ],
+      "fixtures": [
+        "engine::audio::routing::latency::tests",
+        "ui::audio_routing::tests::native_latency_controls_preview_confirm_live_policy_and_undo_without_device_owners",
+        "audio_delivery::tests::compensated_exports_trim_the_actual_graph_delay_and_preserve_every_selected_source_frame",
+        "engine::audio::routing::plugin_tests"
+      ],
+      "evidence": [
+        "docs/validation/graph-latency.md",
+        "docs/validation/graph-latency-receipt.json",
+        "docs/validation/vst3-graph.md",
+        "docs/validation/vst3-graph-receipt.json"
+      ],
+      "limits": "Partial native aarch64 Linux qualification: declared/external delays and automatic native VST3 block latency, causal graph compensation with exact parallel cancellation and offline source trimming, sidechain/output maps, timestamped channel MIDI and normalized automation, independent program/headphone summing, explicit immediate cue override, bounded histories and sample-rate/Undo reconstruction. Native rendering and egui/AccessKit routes qualified; physical compensated recording clip placement, audible history, hardware loops and listening acceptance remain open."
+    },
+    "179": {
+      "status": "implemented",
+      "paths": [
+        {
+          "kind": "render and encode",
+          "file": "src/audio_delivery.rs",
+          "entry": "Reviewed ranges, repeats, native tails, channel/rate/format, normalization, integer dither and atomic folder publication"
+        },
+        {
+          "kind": "actual graph",
+          "file": "src/audio_delivery/render.rs",
+          "entry": "Coherent Session/Scene/Arrangement snapshot, actual offline renderer, exact program alias and source validation"
+        },
+        {
+          "kind": "native workflow",
+          "file": "src/ui/audio_delivery.rs",
+          "entry": "Source review, destinations, progress, cancellation and live-session isolation"
+        }
+      ],
+      "fixtures": [
+        "audio_delivery::tests",
+        "audio_delivery::wav::tests",
+        "ui::audio_delivery::tests::native_source_review_export_decode_and_stale_review_preserve_live_session"
+      ],
+      "evidence": [
+        "docs/validation/audio-delivery.md",
+        "docs/validation/audio-delivery-receipt.json"
+      ],
+      "limits": "Software qualification: actual mixer parity at 44.1/48/96 kHz, six real formats, native tails, exact alias order and protected destinations. Current session means captured launches/deck cursors; Arrangement replay uses the same timeline schedule; delivery versions and batch stems remain issue 229. Live physical inputs use performance recording. FFmpeg is required for FLAC/MP3. Forced fresh source 278025cc1a3d installed for next default launch; physical acceptance remains outside this thread scope."
+    },
+    "180": {
+      "status": "implemented",
+      "paths": [
+        {
+          "kind": "bounded voice processing",
+          "file": "src/engine/audio/routing/mic_aux.rs",
+          "entry": "Mono/stereo aliases, gain/mute/tone/metering, source-loss/replacement ramps and talkover before independently selected mixes"
+        },
+        {
+          "kind": "reviewed saved controls",
+          "file": "src/engine/audio/routing/mic_aux/control.rs",
+          "entry": "Stable source and project guards, scalar performance controls and explicit application receipts"
+        },
+        {
+          "kind": "native workflow",
+          "file": "src/ui/mic_aux.rs",
+          "entry": "Source review, master/booth/raw recording inclusion, live levels, tone and deliberate talkover"
+        }
+      ],
+      "fixtures": [
+        "engine::audio::routing::mic_aux::tests",
+        "engine::control::mic_aux_absolute_controls_coalesce_only_the_same_reviewed_source_and_parameter",
+        "ui::mic_aux::tests",
+        "ui::project_versions::tests::comparison_reports_saved_mic_aux_controls_as_a_mixer_change"
+      ],
+      "evidence": [
+        "docs/validation/mic-aux.md",
+        "docs/validation/mic-aux-receipt.json"
+      ],
+      "limits": "Eleven software checks and complete 1838-test unfiltered suite pass with 44 ignored cases. Actual source pipe, converted output, raw/final recording decode, mono/stereo order, master/PFL, loss/width/nonfinite handling, finite tone/talkover envelopes, native protected controls, schema 17 save/reopen/restore, Undo and selective import are qualified. No physical microphone, line source, PA feedback or clock-compensation acceptance is claimed in this closed capture thread. Forced fresh source 475c9d550026 installed and checksum-verified for the next default launch; the existing independent controller app stayed unchanged."
+    },
+    "181": {
+      "status": "implemented",
+      "paths": [
+        {
+          "kind": "bounded recording",
+          "file": "src/engine/audio/routing/record/delivery.rs",
+          "entry": "Final converted output or raw selected return, actual stream rate/order, metering, asynchronous formats, safe splitting and explicit prefix/error reporting"
+        },
+        {
+          "kind": "recovery",
+          "file": "src/audio_delivery/recovery.rs",
+          "entry": "Locked exact reviewed native WAV prefixes, process interruption, invalid/stale/active-file refusal and durable manifests"
+        },
+        {
+          "kind": "native workflow",
+          "file": "src/ui/audio_delivery.rs",
+          "entry": "Source, duration, format/dither, destination, start/stop, meters and recovery during Performance Mode"
+        }
+      ],
+      "fixtures": [
+        "engine::audio::routing::record::delivery::tests",
+        "audio_delivery::recovery::tests::interrupted_native_formats_recover_exact_prefix_and_refuse_active_or_changed_files",
+        "audio_delivery::recovery::tests::recovery_refuses_foreign_headers_links_and_preserves_only_finite_float_frames",
+        "audio_delivery::recovery::tests::killed_recording_worker_recovers_durable_samples",
+        "audio_delivery::recovery::tests::real_disk_write_error_finalizes_only_complete_frames_and_reports_the_failure",
+        "ui::audio_delivery::tests::native_performance_record_stop_decode_and_reviewed_recovery_work_in_performance_mode",
+        "engine::input_monitor::tests::final_output_recording_keeps_armed_auto_audio_clip_audible"
+      ],
+      "evidence": [
+        "docs/validation/audio-delivery.md",
+        "docs/validation/audio-delivery-receipt.json"
+      ],
+      "limits": "Software qualification: 86.4 million frames in an accelerated two-hour stream, two segments with ordered PCM hashes, actual converted callback parity, six encoders, killed-writer recovery and a real disk write failure. No heap work or waiting on suspended recording producers in the callback. Provider preview is refused. FLAC/MP3 retain original WAVs. Forced fresh source 278025cc1a3d installed for next default launch; Linux ARM64 only, no physical endurance or power-loss guarantee."
+    },
+    "182": {
+      "status": "implemented",
+      "paths": [
+        {
+          "kind": "native editor",
+          "file": "src/ui/audio_clips.rs",
+          "entry": "Setup → Audio clip; clip alternate audio action; source inspection, rainbow waveform and nondestructive controls"
+        },
+        {
+          "kind": "bounded worker",
+          "file": "src/ui/audio_clips/worker.rs",
+          "entry": "Strict decode, shared sources, stable target capture and prepared application"
+        },
+        {
+          "kind": "renderer",
+          "file": "src/engine/audio_clip.rs",
+          "entry": "Half-open source/loop sampling, reverse, pitch resampling and musical playback"
+        },
+        {
+          "kind": "project and History",
+          "file": "src/engine/audio_clip/edit.rs",
+          "entry": "Strict schema 19, shared native PCM, cancellation, budgets, complete source Undo and worker retirement"
+        },
+        {
+          "kind": "Arrangement instances",
+          "file": "src/ui/arrangement.rs",
+          "entry": "Setup → Arrangement timeline; retained source snapshots, independent track/song placements, offsets, duration, gain and repetition"
+        }
+      ],
+      "fixtures": [
+        "engine::audio_clip::tests",
+        "ui::audio_clips::tests",
+        "engine::arrangement::tests",
+        "ui::arrangement::tests"
+      ],
+      "evidence": [
+        "docs/validation/audio-clips.md",
+        "docs/validation/audio-clips-receipt.json",
+        "docs/validation/arrangement.md",
+        "docs/validation/arrangement-receipt.json"
+      ],
+      "limits": "Session and Arrangement paths qualified with immutable shared sources, WAV/MP3 import, trims/reverse/pitch/loops, actual track devices/routing/PFL/input precedence, native save/reopen/import/Undo and exact realtime/export parity. Pitch resampling changes duration; independent warp modes and asynchronous streaming remain issues 250 and 184. Physical capture stays closed."
+    },
+    "183": {
+      "status": "partial",
+      "paths": [
+        {
+          "kind": "isolated native VST3 processor core",
+          "file": "src/plugin_host/worker.rs",
+          "entry": "Stable factory classes, native bus buffers, timestamped channel MIDI and normalized automation, identity-bound opaque state, tempo/seek context and native editor owner"
+        },
+        {
+          "kind": "bounded nonblocking audio bridge",
+          "file": "src/plugin_host/realtime.rs",
+          "entry": "Preallocated SPSC packet exchange with fixed three-block latency; worker-owned SDK locks and IPC"
+        },
+        {
+          "kind": "native graph, project and editor workflow",
+          "file": "src/engine/audio/routing/render_plugins.rs",
+          "entry": "Track MIDI → instrument → ordered native/plugin FX; explicit sidechain/output buses; automatic compensation; saved opaque state and manual/automation controls"
+        }
+      ],
+      "fixtures": [
+        "plugin_host::scanner::tests::native_plugin_audio_automation_state_and_instruments",
+        "plugin_host::realtime::tests",
+        "engine::audio::routing::plugin_tests",
+        "ui::audio_routing::tests"
+      ],
+      "evidence": [
+        "docs/validation/vst3-core.md",
+        "docs/validation/vst3-core-receipt.json",
+        "docs/validation/vst3-graph.md",
+        "docs/validation/vst3-graph-receipt.json"
+      ],
+      "limits": "Native Linux aarch64 graph/project hosting with identity-bound missing placeholders, state/automation/rate reconstruction, generic parameter undo, safe editor errors, all declared audio buses and automatic graph PDC. Independent Nekobi/MVerb plus original SDK contract qualify software rendering and the separate native Xvfb editor. Installed-app/hardware audio, broad event-bus/note-expression/MIDI-output support, other-platform qualification and ALS dependency migration remain open in #511."
+    },
+    "185": {
+      "status": "implemented",
+      "paths": [
+        {
+          "kind": "native UI",
+          "file": "src/ui/beat_jump.rs",
+          "entry": "Per-deck backward/size/forward controls beneath platter"
+        },
+        {
+          "kind": "renderer",
+          "file": "src/engine/deck_controls/beat_jump.rs",
+          "entry": "Musical source jump with loop wrapping and held return clocks"
+        },
+        {
+          "kind": "keyboard",
+          "file": "src/ui/shortcuts.rs",
+          "entry": "Selected-deck jump and size bindings; command palette and profile migration"
+        },
+        {
+          "kind": "MIDI Learn",
+          "file": "src/engine/midi.rs",
+          "entry": "Four exact-deck Note actions via ordinary input worker"
+        }
+      ],
+      "fixtures": [
+        "engine::deck_controls::beat_jump_tests",
+        "ui::beat_jump::tests",
+        "engine::midi::handoff::tests::learned_beat_jump_pads_keep_note_edges_ordered_and_target_both_decks_without_heap_work",
+        "preferences::storage::beat_jump_migration_tests",
+        "preferences::shortcuts::tests::old_portable_bindings_preserve_chord_ownership_and_new_action_ids_need_version_two",
+        "automation::tests::beat_jump_api_jobs_report_applied_positions_sizes_and_strict_immediate_targets",
+        "ui::keyboard_tests::unbound_modifiers_and_repeats_are_rejected_while_modified_brackets_dispatch_jump_controls"
+      ],
+      "evidence": [
+        "docs/validation/beat-jump.md"
+      ],
+      "limits": "Software qualification only. Sizes are runtime state, not saved preparation. Physical pad acceptance remains paused."
+    },
+    "186": {
+      "status": "implemented",
+      "paths": [
+        {
+          "kind": "native UI",
+          "file": "src/ui/cue_audition.rs",
+          "entry": "Visible per-deck Cue hold with owned pointer, keyboard, assistive and touch edges"
+        },
+        {
+          "kind": "renderer",
+          "file": "src/engine/deck_controls.rs",
+          "entry": "Source-owned Cue preview and ordinary Play latch with reserved releases"
+        },
+        {
+          "kind": "MIDI Learn",
+          "file": "src/engine/midi.rs",
+          "entry": "Distinct Note On/Off Cue audition assignment; existing one-shot Cue preserved"
+        },
+        {
+          "kind": "preferences",
+          "file": "src/preferences/storage.rs",
+          "entry": "Version 17 migration preserves existing custom shortcut and Cue assignment owners"
+        }
+      ],
+      "fixtures": [
+        "engine::deck_controls::cue_audition_tests",
+        "ui::cue_audition::tests",
+        "engine::midi::handoff::tests::learned_cue_holds_follow_note_edges_play_latches_and_worker_retirement_without_heap_work",
+        "preferences::storage::cue_audition_migration_tests",
+        "ui::keyboard_tests::unfocused_global_bindings_work_and_respect_each_events_modifiers",
+        "ui::touch::tests"
+      ],
+      "evidence": [
+        "docs/validation/cue-audition.md"
+      ],
+      "limits": "Native headless UI, actual learned MIDI workers and stereo source-reference software qualification. Physical Cue buttons and new listening acceptance remain paused. Existing one-shot Cue and main-cue preparation persistence remain available. Held state is transient and never saved. Preferences schema 17; project 15 and portable shortcuts 2 unchanged."
+    },
+    "187": {
+      "status": "implemented",
+      "paths": [
+        {
+          "kind": "independent source FX and draining histories",
+          "file": "src/engine/surface_controls/fx.rs",
+          "entry": "Deck/sampler/master assignments, exact timing, fader placement and bounded allocation-free stereo tails"
+        },
+        {
+          "kind": "native routed and legacy mixer integration",
+          "file": "src/engine/audio/routing/render.rs",
+          "entry": "Post-crossfader deck FX and master pre/post-gain units before shared safety"
+        },
+        {
+          "kind": "native unit control workflow",
+          "file": "src/ui/dj_fx.rs",
+          "entry": "Confirmed assignments, sampler identity, applied timing, wet/bypass and settled placement"
+        },
+        {
+          "kind": "existing wire-shaped bank regression",
+          "file": "src/engine/midi/surface_tests.rs",
+          "entry": "Actual controller-worker FX button/encoder dispatch into shared renderer state without ports"
+        }
+      ],
+      "fixtures": [
+        "engine::surface_controls::fx::tests",
+        "ui::dj_fx::tests",
+        "engine::midi::surface_tests::surfaces_sp1_fx_buttons_and_encoder_operate_the_shared_native_units_and_retained_stereo_tails"
+      ],
+      "evidence": [
+        "docs/validation/dj-fx-units.md",
+        "docs/validation/dj-fx-units-receipt.json"
+      ],
+      "limits": "Linux ARM64 software qualification: two independent live DJ FX units with three serial Echo/Reverb/Filter slots; separate stereo histories for both decks, one explicitly chosen stable sampler destination per unit and Master. Beat-clock or manual echo timing, applied duration, wet/bypass, independent source assignments and defined fader placement are native controls sharing the existing controller banks. Bypass/unassignment fades new wet injection over 2 ms and drains original tails without callback allocation; sampler unassignment retains its original bus, stale/replaced project targets retire safely, source/placement edits require off/settled histories. Dry units use a fast path. Native graph and legacy mixer cut/pause tails, actual OutputCallback, six-rate raw impulses, native egui/AccessKit and recorded wire-shaped mapping dispatch passed. Echo storage supports up to two seconds, with the applied cap shown; after two seconds of silence below 1e-7, inactive histories retire. These are transient live controls like the existing surface banks; no new project version, dependency or manufacturer address. No physical audio/MIDI device, capture, new OS GUI, mapped physical paddle or listening acceptance."
+    },
+    "188": {
+      "status": "implemented",
+      "paths": [
+        {
+          "kind": "musical renderer",
+          "file": "src/engine/deck_controls/quantization.rs",
+          "entry": "Fixed pending onset, mapped source time, per-deck divisions and due-sample dispatch"
+        },
+        {
+          "kind": "input ownership",
+          "file": "src/engine/midi/learn.rs",
+          "entry": "Atomic cancellation epoch shared with reserved source release"
+        },
+        {
+          "kind": "native UI",
+          "file": "src/ui/deck_quantization.rs",
+          "entry": "Independent Q policy, division selector and renderer-confirmed pending label"
+        },
+        {
+          "kind": "typed IPC",
+          "file": "src/automation.rs",
+          "entry": "Quantize gesture and published pending onset distinct from API job acceptance"
+        }
+      ],
+      "fixtures": [
+        "engine::deck_controls::quantization_tests",
+        "ui::deck_quantization::tests",
+        "automation::tests::deck_quantization_api_reports_pending_onsets_separately_from_accepted_gestures"
+      ],
+      "evidence": [
+        "docs/validation/deck-quantization.md",
+        "docs/validation/deck-quantization-receipt.json"
+      ],
+      "limits": "Eight new software checks pass. Independent mapped click timing covers all nine 44.1/48/96 kHz source/output combinations, constant and tempo-synchronized playback around tempo anchors, with onset within one output frame and zero callback allocations/frees. Release/reset/reconfiguration, scratch, grid Undo, media, safety and project fences are exercised. One fixed pending action per deck replaces rapid retriggers. Source-second loop editing stays exact. The complete 1786-test unfiltered software batch passes (43 ignored cases). Source-qualified ARM64 release installed with paused decks and muted master.; physical qualification remains paused."
+    },
+    "190": {
+      "status": "implemented",
+      "paths": [
+        {
+          "kind": "source musical engine",
+          "file": "src/engine/deck_controls/loop_edit.rs",
+          "entry": "loop_edit_bounds, fit_loop_beats and edit_deck_loop"
+        },
+        {
+          "kind": "native UI",
+          "file": "src/ui/loop_editor.rs",
+          "entry": "Per-deck Loop editor: exact seconds, one-frame nudges, musical lengths and moves"
+        },
+        {
+          "kind": "typed API",
+          "file": "src/automation.rs",
+          "entry": "Exact decimal media keys, applied loop state and immediate loop controls"
+        },
+        {
+          "kind": "undo and preparation",
+          "file": "src/engine/undo/capture.rs",
+          "entry": "Source-guarded complete-region edits through existing history and preparation owners"
+        }
+      ],
+      "fixtures": [
+        "engine::deck_controls::loop_edit_tests",
+        "ui::loop_editor::tests",
+        "automation::tests::loop_edit_api_reports_stale_or_unusable_regions_as_rejected_and_applied_exact_bounds"
+      ],
+      "evidence": [
+        "docs/validation/loop-editing.md",
+        "docs/validation/loop-editing-receipt.json"
+      ],
+      "limits": "Seven new source-bound engine, native and typed-IPC checks pass, with deck, automation, waveform and Undo regressions. Moves preserve complete musical span across tempo anchors and fit track bounds. Native applied waveform markers and numeric/frame edits are exercised. Minimum region is 64 source frames; lengths that cannot fit and stale/held-roll edits refuse. The complete 1786-test unfiltered software batch passes (43 ignored cases). Source-qualified ARM64 release installed with paused decks and muted master.; physical qualification is paused."
+    },
+    "192": {
+      "status": "implemented",
+      "paths": [
+        {
+          "kind": "fixed per-deck mode identities",
+          "file": "src/engine/deck_pads.rs",
+          "entry": "Eight fixed mode IDs, names/colors, fixed pad IDs, exact raw MIDI and normalized manufacturer keys"
+        },
+        {
+          "kind": "captured renderer input ownership",
+          "file": "src/engine/deck_pads/runtime.rs",
+          "entry": "Bounded original action owners, mode-cancellation tombstones, independent keyed held deck/sampler gestures and safety retirement"
+        },
+        {
+          "kind": "reserved release admission",
+          "file": "src/engine/control.rs",
+          "entry": "Validated onsets and source-qualified reserved releases through full queues, source retirement and project/safety boundaries"
+        },
+        {
+          "kind": "native performance grids and parameters",
+          "file": "src/ui/deck_pads.rs",
+          "entry": "Actual mode chooser, names/colors, source-qualified cues/loops, right sampler slots and independent pointer/keyboard/assistive/touch keys"
+        },
+        {
+          "kind": "production controller routing",
+          "file": "src/engine/midi/handoff.rs",
+          "entry": "Raw release before profile lookup, normalized factory and learned SP1 pad addresses/layers and original software deck ownership"
+        },
+        {
+          "kind": "portable profile declarations",
+          "file": "src/engine/midi/learn.rs",
+          "entry": "Validated fixed mode-selector declarations, connected labels/colors and actual preset 5/preferences 23 file persistence with strict older-header guards"
+        }
+      ],
+      "fixtures": [
+        "engine::deck_pads::tests",
+        "ui::deck_pads::tests",
+        "ui::touch::tests::native_deck_pad_touch_contacts_preserve_both_decks_and_release_outside_after_mode_changes",
+        "engine::midi::handoff::tests::deck_pad_learned_sp1_override_releases_the_original_deck_after_a_manufacturer_mode_and_layer_change",
+        "preferences::worker::midi_presets_tests::deck_pad_presets_export_import_and_real_preferences_reopen_preserve_fixed_modes_and_strict_versions"
+      ],
+      "evidence": [
+        "docs/validation/deck-pad-modes.md",
+        "docs/validation/deck-pad-modes-receipt.json"
+      ],
+      "limits": "Linux ARM64 software qualification: eight per-deck modes and fixed slot IDs, current labels/colors and mode parameters; original source/key/deck action release through mode, learned profile and manufacturer pad-address/deck-layer changes; unrelated deck, ordinary control and source owner preservation; bounded reservations through a full command queue, safety and explicit recovery; mouse/keyboard/assistive/touch ownership and fresh-press-only keyboard behavior; actual native mode chooser, parameters, pad holds, cue descriptions and named saved slots; synthetic production MIDI workers including learned SP1 overrides; actual preset export/import and preference file reopening with strict legacy action/header refusal. The existing sampler preserves active voice bank ownership and its selected playback mode: Hold ends on release, while finite one-shots retain their normal tails. Pad mode selection starts at Hot Cue on a fresh app, and held input is never persisted. No physical audio/MIDI device opened, no live controller capture and no new physical acceptance claimed. The independent stage GUI and follower remain unchanged."
+    },
+    "193": {
+      "status": "implemented",
+      "paths": [
+        {
+          "kind": "explicit phase and clock ownership",
+          "file": "src/engine/deck_sync.rs",
+          "entry": "Typed modes/leader, emitted leader intervals, source-map advancement, one-time bounded phase arm, compatible loops and deliberate retirement policy"
+        },
+        {
+          "kind": "shared default and routed deck audio",
+          "file": "src/engine/audio/routing/render.rs",
+          "entry": "Both decks render once against the same leader frame with fixed outputs and taps"
+        },
+        {
+          "kind": "actual native mode/leader controls",
+          "file": "src/ui/deck_sync.rs",
+          "entry": "Direct mode/leader choices in a compact popup, explicit re-arm, target BPM and published aligned/armed/stopped state"
+        },
+        {
+          "kind": "native project persistence and Undo",
+          "file": "src/engine/project/model.rs",
+          "entry": "State 25 leader/phase intent, strict old-header refusal, stopped reopen and fixed scalar history without performed playhead rewind"
+        },
+        {
+          "kind": "portable learned sync controls",
+          "file": "src/ui/midi_learn.rs",
+          "entry": "Fixed mode/global-leader IDs, validated production dispatch, preset 6/preferences 24 and native assignment choosers"
+        },
+        {
+          "kind": "bounded read-only status projection",
+          "file": "src/ipc_follow.rs",
+          "entry": "Ordinary/follow leader readiness, modes, alignment and target BPM with exact cached projection"
+        }
+      ],
+      "fixtures": [
+        "engine::deck_sync::tests",
+        "ui::deck_sync::tests",
+        "engine::midi::handoff::tests::sync_modes_and_leaders_reach_the_renderer_through_the_real_learned_input_worker",
+        "preferences::worker::midi_presets_tests::sync_mode_presets_and_preferences_preserve_explicit_targets_and_refuse_older_headers",
+        "ui::midi_learn::tests::native_sync_assignment_choosers_use_fixed_mode_and_global_leader_ids"
+      ],
+      "evidence": [
+        "docs/validation/tempo-phase-sync.md",
+        "docs/validation/tempo-phase-sync-receipt.json"
+      ],
+      "limits": "Linux ARM64 software qualification: explicit Off/Tempo/Beat/four-quarter-note Bar modes and deliberate Transport/Deck A/Deck B leaders; exact mapped source beat intervals, emitted paired click PCM at three output rates and unequal source rates through variable-tempo boundaries and both deck leaders; conductor ramps/pickup/quarter-note timing; default/routed output parity, compatible and incompatible loops; performed offset preservation and explicit re-arm; stopped arming without Play, leader stop/unload/replacement with retained choice and last tempo; invalid/foreign spindle message refusal; real native mode/leader and learned assignment choosers, production input workers, file reopening and strict old-header guards; fixed undo intent without playhead rewind; callback allocations/frees. Bar means four quarter notes; odd-meter bar alignment and global relative pitch are not claimed. Click PCM is measured with keylock disabled; existing keylock regression fixtures also pass. No physical device opened, no live capture or new GUI, no hardware acceptance claimed. Independent stage GUI/follower and session remain preserved."
+    },
+    "194": {
+      "status": "implemented",
+      "paths": [
+        {
+          "kind": "full Unicode indexed search",
+          "file": "src/library/search.rs",
+          "entry": "Prepared exact normalized fields preserve ordinary field semantics without query-time Unicode allocation"
+        },
+        {
+          "kind": "bounded existing worker publication",
+          "file": "src/ui/library_metadata/collection_rows/search_index.rs",
+          "entry": "128 MiB retained records, unchanged record reuse, exact generation ownership and full eleven-column sort keys"
+        },
+        {
+          "kind": "incremental whole-library browsing",
+          "file": "src/ui/library_view.rs",
+          "entry": "Small metadata deltas retain sorted membership and source/scroll anchors; structural changes retain exact full membership"
+        }
+      ],
+      "fixtures": [
+        "library::search::tests",
+        "ui::library_metadata::collection_rows::search_index::tests",
+        "ui::library_view_tests::native_indexed_metadata_updates_preserve_selection_and_scrolling_without_full_refilter",
+        "ui::library_view_tests::native_indexed_10000_and_100000_track_search_scroll_and_updates_meet_budgets_during_a_mix",
+        "ui::library_analysis::tests::indexed_large_catalog_analysis_and_real_file_replacement_preserve_selected_row_and_loaded_audio"
+      ],
+      "evidence": [
+        "docs/validation/library-scale.md",
+        "docs/validation/library-scale-receipt.json"
+      ],
+      "limits": "Linux ARM64 software qualification at 10,000 and 100,000 catalog rows: actual native egui field queries, all eleven sorted columns, real wheel scrolling and prepared small whole-library metadata publications under at least 300 seconds of rendered two-deck audio. Search p95 below 100 ms; scrolling and GUI application of prepared small updates p95 below 16.7 ms; retained normalized search records capped at 128 MiB with explicit oversized metadata refusal. Synthetic scale publications use the real index builder through a fixture adapter, not the real metadata worker; measured GUI update excludes worker preparation. A separate actual metadata/analysis/scan/loader workflow on 10,005 rows qualifies a two-path replacement/import batch plus all analysis fields in under five seconds, preserving selected source and already loaded audio. Bulk import of 1,000 files and five minutes of wall-clock mixing are not claimed. Small incremental sorted/unsorted updates apply to whole-library views; selected crates and identity/order/large changes use exact full membership. No physical audio/MIDI device, new GUI or capture opened; stage processes/session preserved."
+    },
+    "195": {
+      "status": "implemented",
+      "paths": [
+        {
+          "kind": "portable format",
+          "file": "src/engine/midi/presets.rs",
+          "entry": "Strict named factory overlays and exact-port candidates without backend IDs"
+        },
+        {
+          "kind": "native UI",
+          "file": "src/ui/midi_presets.rs",
+          "entry": "Save, duplicate, rename, delete, import/export, reviewed load and factory restoration"
+        },
+        {
+          "kind": "persistence",
+          "file": "src/preferences/worker.rs",
+          "entry": "Cancellable worker reads, private atomic exports and durable version 18 profile bank"
+        },
+        {
+          "kind": "dispatch",
+          "file": "src/engine/midi/learn.rs",
+          "entry": "Atomic review revision and unique connected source checks before replacement"
+        }
+      ],
+      "fixtures": [
+        "engine::midi::presets::tests",
+        "ui::midi_presets::tests",
+        "preferences::worker::midi_presets_tests",
+        "engine::midi::handoff::tests::portable_presets_retarget_real_workers_keep_factory_input_and_retire_holds_without_callback_heap_work"
+      ],
+      "evidence": [
+        "docs/validation/midi-mapping-presets.md"
+      ],
+      "limits": "Native headless UI, real file storage and synthetic MIDI workers qualify portable definitions and factory fallback. Physical portable-preset import and override listening remain open; factory MPD captures are separate. Loading requires a unique connected exact port and explicit review; no inferred cross-machine device selection. Preferences 18, portable MIDI preset 1; project 15 and portable shortcut 2 unchanged."
+    },
+    "196": {
+      "status": "implemented",
+      "paths": [
+        {
+          "kind": "native clip policy editor",
+          "file": "src/ui/clip_manager.rs",
+          "entry": "Session clips manager → Trigger/Gate/Toggle/Repeat, inherited or explicit timing, legato → Create/Apply"
+        },
+        {
+          "kind": "native held input and cancellation",
+          "file": "src/ui/clip_launch.rs",
+          "entry": "Primary mouse, Space/Enter and assistive press/release; original-target releases outside the grid or after focus loss; cancel queued transition"
+        },
+        {
+          "kind": "source-owned renderer scheduling",
+          "file": "src/engine/clip_launch.rs",
+          "entry": "Exact pending start/stop, repeat and unequal-length legato; generation ownership, renderer-safe stale identity refusal"
+        },
+        {
+          "kind": "musical bar timing",
+          "file": "src/engine/midi_data/lanes.rs",
+          "entry": "Allocation-free pickup-aware groups of bars through odd and fragmentary meter changes"
+        },
+        {
+          "kind": "release reservation and recovery",
+          "file": "src/engine/control.rs",
+          "entry": "Retained Session identity admission reserves held releases at full queue; bank/remapping/disconnect releases retain original owners"
+        },
+        {
+          "kind": "native project and preset persistence",
+          "file": "src/engine/project/model.rs",
+          "entry": "State 21 policies, strict legacy migration, nonresuming held Gate/Repeat modes and real .omat/.omatclip reopen"
+        }
+      ],
+      "fixtures": [
+        "engine::clip_launch::tests",
+        "engine::midi::surface_tests::clip_launch_apc_release_keeps_its_original_target_after_bank_and_selection_changes",
+        "engine::midi::surface_tests::clip_launch_controller_disconnect_reserves_release_at_full_queue_and_preserves_other_owners",
+        "ui::clip_manager::tests::native_clip_launch_properties_and_keyboard_pointer_releases_use_real_handlers"
+      ],
+      "evidence": [
+        "docs/validation/session-launch.md",
+        "docs/validation/session-launch-receipt.json"
+      ],
+      "limits": "Session launch policies are software-qualified through unopened-device MIDI workers, native mouse/key/assistive handlers, timestamped MIDI, independent actual audio PCM boundaries, file reopening and measured zero renderer heap work. Positive Global repeat subdivisions are at least 1/64 of a whole note; Immediate repeat uses clip length. Bar groups honor the saved meter/pickup. Explicit one-shot/loop actions use timing/legato but do not invent held input. Arrangement snapshots retain policy metadata while Arrangement scheduling owns their instance positions. New physical held-pad and listening acceptance is outside this software pass."
+    },
+    "200": {
+      "status": "implemented",
+      "paths": [
+        {
+          "kind": "native continuous playback",
+          "file": "src/ui/continuous_playback.rs",
+          "entry": "Independent accessible captured manual-crate mode, next preview, finite/repeat policy, bounded skips and owned protected loads"
+        },
+        {
+          "kind": "source-qualified natural end and start",
+          "file": "src/engine/deck_continue.rs",
+          "entry": "Lease, manual transport and safety fencing; pre-start end acknowledgement and exact refusal"
+        },
+        {
+          "kind": "callback ownership retirement",
+          "file": "src/engine/undo/mod.rs",
+          "entry": "Fixed automatic-start requests retire with their final Arc ownership on the existing worker"
+        }
+      ],
+      "fixtures": [
+        "engine::deck_continue::tests",
+        "ui::continuous_playback::tests"
+      ],
+      "evidence": [
+        "docs/validation/continuous-playback.md",
+        "docs/validation/continuous-playback-receipt.json"
+      ],
+      "limits": "Linux ARM64 software qualification through native egui/AccessKit, real readable/missing/corrupt source files, ordinary protected loader, actual renderer and independent exact other-deck PCM. Explicit independent manual-crate continuous mode with finite/repeat policy, captured stable order, next preview and bounded skip reports; no auto crossfader or beatmatch. Transient mode starts disabled in a new app and has no schema/profile persistence. Exact source/manual-transport/safety and immediate disable ownership qualify sub-block ends, duplicate requests, outer refusal, queued application and final-owner worker retirement without callback allocation or free. No physical device, live capture or new GUI is opened; independent stage processes/session remain preserved. Hardware acceptance and wall-clock live-stage continuity are not claimed."
+    },
+    "202": {
+      "status": "implemented",
+      "paths": [
+        {
+          "kind": "independent key shift and matching",
+          "file": "src/engine/key_shift.rs",
+          "entry": "Bounded equal-tempered offsets, exact same-mode target matching and source-qualified fixed renderer admission"
+        },
+        {
+          "kind": "native key controls",
+          "file": "src/ui/key_shift.rs",
+          "entry": "Independent accessible offsets/reset, exact loaded-version provenance, chosen target, one undoable key-lock match and actual bypass state"
+        },
+        {
+          "kind": "actual source-time renderer",
+          "file": "src/engine/mod.rs",
+          "entry": "Original stereo overlap/resampling, shifted tempo endpoint convergence, retune envelope and exact unchanged transport"
+        }
+      ],
+      "fixtures": [
+        "engine::key_shift::tests",
+        "ui::key_shift::tests",
+        "engine::project::tests::key_shift_offsets_roundtrip_native_project_pcm_and_reject_older_headers_or_invalid_ranges"
+      ],
+      "evidence": [
+        "docs/validation/key-shift.md",
+        "docs/validation/key-shift-receipt.json"
+      ],
+      "limits": "Linux ARM64 software qualification through actual OutputCallback/renderer PCM, native egui/AccessKit, real source catalog files and native .omat round trip. Original MIT stereo-linked WSOLA plus bounded resampling, no new dependency. Independent ±6-semitone offsets; exact loaded-version same-mode key matching enables key lock in one undoable edit. Nonzero shifts support forward tempo 0.5–1.5 intersected with locked tempo/pitch factor 0.5–1.5; scratch, reverse and out-of-range playback disclose bypass. Saved state 28 rejects older offset headers; unknown reopened catalog provenance refuses matching. Source-time grain search and lookahead scale with requested grain step and output/source rates; no universal 67 ms bound or converter latency claim. Twelve complete Float32 mix/transition WAVs are retained for listening; no human transparency judgment, live capture, new GUI or physical audio/MIDI device is claimed. Independent stage processes/session stay preserved."
+    },
+    "203": {
+      "status": "implemented",
+      "paths": [
+        {
+          "kind": "nested source timeline and release",
+          "file": "src/engine/deck_controls/slip.rs",
+          "entry": "Fixed source-owned shadow, variable-grid musical return, original-loop wrapping, interrupted-held-input fence and restored first-sample forward rate"
+        },
+        {
+          "kind": "native slip controls and marker",
+          "file": "src/ui/slip.rs",
+          "entry": "Independent accessible enablement and explicit immediate/musical release with renderer-confirmed source and pending return positions"
+        },
+        {
+          "kind": "ordinary performance integration",
+          "file": "src/engine/deck_controls.rs",
+          "entry": "Shared held-cue, scratch and temporary-pad root; independent input ownership, no premature nested returns and safe transient boundaries"
+        }
+      ],
+      "fixtures": [
+        "engine::deck_controls::slip::tests",
+        "ui::slip::tests"
+      ],
+      "evidence": [
+        "docs/validation/slip-playback.md",
+        "docs/validation/slip-playback-receipt.json"
+      ],
+      "limits": "Linux ARM64 software qualification through actual OutputCallback/renderer PCM and native egui/AccessKit. Transient independent slip enablement with immediate or 1/8–4-beat release; nominal forward shadow through nested scratch/cue/hotcue/temporary roll/slice and reverse/bleep, manual tempo changes and variable grid/original-loop wraps. Source-owned scalar state, independent input owners, pending re-grab and deliberate interruption fence. First returned sample restores forward rate; existing transition envelope applies. New app instances start disabled; no project/profile schema change or persistence is claimed. No physical audio/MIDI device, live capture, new GUI, converter latency, human listening or stage continuity qualification; independent stage processes/session stay preserved."
+    },
+    "205": {
+      "status": "implemented",
+      "paths": [
+        {
+          "kind": "native UI",
+          "file": "src/ui/library_smart_crates.rs",
+          "entry": "Named crates → Smart crate rules → Preview and Save"
+        },
+        {
+          "kind": "catalog worker",
+          "file": "src/ui/library_metadata/collection_rows.rs",
+          "entry": "Incremental membership bound to exact library/catalog publications"
+        },
+        {
+          "kind": "persistent catalog",
+          "file": "src/library/smart_crates.rs",
+          "entry": "Validated typed All/Any rules in versioned catalog"
+        }
+      ],
+      "fixtures": [
+        "library::smart_crates::tests",
+        "ui::library_metadata::collection_rows::tests",
+        "ui::library_smart_crates::tests"
+      ],
+      "evidence": [
+        "docs/validation/issue-205-smart-crates.md"
+      ],
+      "limits": "Native UI, real catalog-owner transactions, persistence/migration, stale approval and 100000-track software-renderer fixtures pass. Final release qualification is in progress. Supported fields are title, artist, key, tag, group, note, BPM, duration, rating and confirmed current-version played state. Genre/date/playcount are not authoritative catalog fields yet. Large-library measurements exercise software playback, not physical device deadlines."
+    },
+    "207": {
+      "status": "implemented",
+      "paths": [
+        {
+          "kind": "bounded composition worker",
+          "file": "src/engine/midi_tools/composition.rs",
+          "entry": "Quantized editable notes, scale/register validation, cancellation and expression ownership; Editable degrees, inversions, voicings and bounded voice leading without crossing"
+        },
+        {
+          "kind": "native composition controls",
+          "file": "src/ui/piano_roll/tools/composition.rs",
+          "entry": "Actual reversible preview, ordinary draft editing and shared Apply/Undo; Editable degrees, inversions, voicings and bounded voice leading without crossing"
+        }
+      ],
+      "fixtures": [
+        "engine::midi_tools::composition::tests",
+        "ui::piano_roll::tools::composition::tests::actual_eight_chord_progression_revises_inversion_previews_restores_commits_undo_and_reopens"
+      ],
+      "evidence": [
+        "docs/validation/midi-composition.md",
+        "docs/validation/midi-composition-receipt.json"
+      ],
+      "limits": "Linux ARM64 software qualification through actual egui/AccessKit actions, real composition workers, ordinary editable MIDI notes, Apply/Undo/Redo, and native project save/reopen. No physical MIDI or audio ports, hardware capture, OS GUI or listening were used. Chords and constrained melodies use each clip’s saved scale context; borrowed pitches need explicit permission. Ambiguous expression ownership, overlapping voices, invalid register/timing, chance-group duplication, excess work and cancellation refuse the complete operation. The source note expression is copied only when ownership is unambiguous; unrelated automation is retained. Composition preview is visual; this receipt makes no physical audition claim. Per-note expression editing and MPE negotiation remain tracked separately in #150."
+    },
+    "208": {
+      "status": "implemented",
+      "paths": [
+        {
+          "kind": "bounded composition worker",
+          "file": "src/engine/midi_tools/composition.rs",
+          "entry": "Quantized editable notes, scale/register validation, cancellation and expression ownership; Drawn contours, explicit density/register/dynamics and deterministic full-width seeds"
+        },
+        {
+          "kind": "native composition controls",
+          "file": "src/ui/piano_roll/tools/composition.rs",
+          "entry": "Actual reversible preview, ordinary draft editing and shared Apply/Undo; Drawn contours, explicit density/register/dynamics and deterministic full-width seeds"
+        }
+      ],
+      "fixtures": [
+        "engine::midi_tools::composition::tests",
+        "ui::piano_roll::tools::composition::tests::actual_drawn_contour_ten_saved_seeded_alternatives_reopen_and_manual_note_edit_survives_without_generator"
+      ],
+      "evidence": [
+        "docs/validation/midi-composition.md",
+        "docs/validation/midi-composition-receipt.json"
+      ],
+      "limits": "Linux ARM64 software qualification through actual egui/AccessKit actions, real composition workers, ordinary editable MIDI notes, Apply/Undo/Redo, and native project save/reopen. No physical MIDI or audio ports, hardware capture, OS GUI or listening were used. Chords and constrained melodies use each clip’s saved scale context; borrowed pitches need explicit permission. Ambiguous expression ownership, overlapping voices, invalid register/timing, chance-group duplication, excess work and cancellation refuse the complete operation. The source note expression is copied only when ownership is unambiguous; unrelated automation is retained. Composition preview is visual; this receipt makes no physical audition claim. Per-note expression editing and MPE negotiation remain tracked separately in #150."
+    },
+    "209": {
+      "status": "implemented",
+      "paths": [
+        {
+          "kind": "bounded composition worker",
+          "file": "src/engine/midi_tools/composition.rs",
+          "entry": "Quantized editable notes, scale/register validation, cancellation and expression ownership; Arpeggio, strum, grace, flam, glissando, repetition and legato as ordinary notes"
+        },
+        {
+          "kind": "native composition controls",
+          "file": "src/ui/piano_roll/tools/composition.rs",
+          "entry": "Actual reversible preview, ordinary draft editing and shared Apply/Undo; Arpeggio, strum, grace, flam, glissando, repetition and legato as ordinary notes"
+        }
+      ],
+      "fixtures": [
+        "engine::midi_tools::composition::tests",
+        "ui::piano_roll::tools::composition::tests::actual_articulation_selector_strums_flams_and_glissandi_remain_editable_with_one_undo"
+      ],
+      "evidence": [
+        "docs/validation/midi-composition.md",
+        "docs/validation/midi-composition-receipt.json"
+      ],
+      "limits": "Linux ARM64 software qualification through actual egui/AccessKit actions, real composition workers, ordinary editable MIDI notes, Apply/Undo/Redo, and native project save/reopen. No physical MIDI or audio ports, hardware capture, OS GUI or listening were used. Chords and constrained melodies use each clip’s saved scale context; borrowed pitches need explicit permission. Ambiguous expression ownership, overlapping voices, invalid register/timing, chance-group duplication, excess work and cancellation refuse the complete operation. The source note expression is copied only when ownership is unambiguous; unrelated automation is retained. Composition preview is visual; this receipt makes no physical audition claim. Per-note expression editing and MPE negotiation remain tracked separately in #150."
+    },
+    "216": {
+      "status": "partial",
+      "paths": [
+        {
+          "kind": "isolated scanner and durable catalog",
+          "file": "src/plugin_host/scanner.rs",
+          "entry": "Timed traversal/hash/probe processes, incremental content identities, quarantine, explicit retry and blacklist, atomic cache and cancel preservation"
+        },
+        {
+          "kind": "native scanner controls",
+          "file": "src/ui/plugins.rs",
+          "entry": "Preferences → VST3 plugins; custom paths, scan, cancel, reload, retry and blacklist; protected-mode admission"
+        }
+      ],
+      "fixtures": [
+        "plugin_host::scanner::tests",
+        "ui::plugins::tests::native_plugin_browser_controls_reload_persist_and_respect_protection"
+      ],
+      "evidence": [
+        "docs/validation/vst3-core.md",
+        "docs/validation/vst3-core-receipt.json",
+        "docs/validation/vst3-graph.md",
+        "docs/validation/vst3-graph-receipt.json"
+      ],
+      "limits": "Software/native egui and compiled child-process qualification on aarch64 Linux. Deliberately crashing, hanging and corrupt native factories remain isolated. Known catalog records can attach instrument/FX graphs while scans continue. Actual installed-GUI and physical playback scan-impact checks remain open in #511."
+    },
+    "219": {
+      "status": "implemented",
+      "paths": [
+        {
+          "kind": "absolute pitch pickup",
+          "file": "src/engine/pitch_pickup.rs",
+          "entry": "Physical source/channel and assignment with bounded owners, exact acquisition and lifecycle rearm"
+        },
+        {
+          "kind": "ordered MIDI crossings and reset generations",
+          "file": "src/engine/midi/handoff.rs",
+          "entry": "Pitch remains ordered even at shared addresses; producer retains overflow, mapping and routing context"
+        },
+        {
+          "kind": "native target and momentary bends",
+          "file": "src/ui/pitch_controls.rs",
+          "entry": "Separate BPM/range presentation and admitted native mouse/keyboard/assistive press/release with global guards"
+        },
+        {
+          "kind": "bounded coherent status",
+          "file": "src/ipc_follow.rs",
+          "entry": "Same retained exact pickup scalars on ordinary status and no-allocation subscribed projection"
+        }
+      ],
+      "fixtures": [
+        "engine::pitch_pickup::tests",
+        "ui::pitch_controls::tests",
+        "engine::midi::handoff::tests::absolute_pitch_factory_and_learned_crossings_keep_ordered_worker_samples_and_rearm_on_mapping_and_overflow",
+        "ipc_server::follow_tests::cached_projection_is_exact_status_and_ignores_large_unrelated_state_without_allocation"
+      ],
+      "evidence": [
+        "docs/validation/pitch-pickup.md",
+        "docs/validation/pitch-pickup-receipt.json"
+      ],
+      "limits": "Linux ARM64 software qualification: source/wire-channel/assignment-owned absolute CC, CC14 and pitch-bend pickup; both crossing directions without changing the base at acquisition; exact physical slot reuse and rearm after layer/range/media/GUI/Sync/assignment/routing/overflow changes; 64 bounded owners and no callback allocation; existing relative controls and native Undo; original/local/effective BPM and range readouts, visible/accessibly described target; independent native pointer/Space/Enter/assistive bend ownership and focus/panel/safety/source/dialog release; production factory/learned input worker, real native project stopped reopen with transient ownership absent; actual PCM versus independent base-rate playback at three output rates; identical bounded ordinary/subscribed status. Sync requires deliberate Off and is never disabled by fader input. No physical audio/MIDI device opened, new GUI or capture started, or physical absolute-fader acceptance claimed; independent stage processes/session preserved."
+    },
+    "220": {
+      "status": "implemented",
+      "paths": [
+        {
+          "kind": "fixed media-relative loop bank",
+          "file": "src/engine/saved_loops.rs",
+          "entry": "Eight fixed IDs, names/colors, selected slot and independent display order, strict bounded atomic encoding"
+        },
+        {
+          "kind": "source-qualified deck and native Undo",
+          "file": "src/engine/deck_controls/saved.rs",
+          "entry": "Save/Recall/Activate/name/move/delete, source and bounds refusal, no implicit Play and complete durable preparation publication"
+        },
+        {
+          "kind": "exact quantized loop activation",
+          "file": "src/engine/deck_controls/quantization.rs",
+          "entry": "Current source and captured tuple, real musical output boundary with cancellation and editing refusal"
+        },
+        {
+          "kind": "native loop editor",
+          "file": "src/ui/loop_editor/saved.rs",
+          "entry": "Real Save/Recall/Activate/Rename/reorder/Delete and stable named slots through accessible controls"
+        },
+        {
+          "kind": "native project and library persistence",
+          "file": "src/engine/project/model.rs",
+          "entry": "State 24/library 16 complete banks, actual file reopen/backup/restore/merge, strict legacy injection guards and stopped armed policy"
+        },
+        {
+          "kind": "learned fixed-slot input and portable settings",
+          "file": "src/engine/midi.rs",
+          "entry": "Recall/Save/Delete slot IDs on production worker, exact preset 4/preference 22 files, note-off neutrality and older-version guards"
+        }
+      ],
+      "fixtures": [
+        "engine::saved_loops::tests",
+        "engine::preparation::tests::bounded_receipt_publication_is_coherent_and_renderer_commands_allocate_nothing",
+        "ui::loop_editor::tests::native_saved_loop_save_rename_reorder_recall_activate_delete_and_undo_use_the_actual_deck_handlers",
+        "library::tests::saved_loop_bank_survives_real_catalog_save_backup_restore_merge_and_exact_track_reload"
+      ],
+      "evidence": [
+        "docs/validation/saved-loops.md",
+        "docs/validation/saved-loops-receipt.json"
+      ],
+      "limits": "Linux ARM64 software qualification: eight fixed loop IDs, independent reorder/delete/reuse, bounded Unicode names/colors and coherent complete preparation receipts; exact native project/catalog/backup/merge/MIDI-preset/preference files; actual learned input dispatch and native egui/AccessKit Save/name/reorder/Recall/Activate/Delete/Undo; stopped reload with selected and armed region, no resumed queue; source-qualified stale/invalid/temporary-loop refusal; sample-boundary activation before audible output across three rates and three musical positions including tempo anchors; independent stereo PCM loop playback at file start/end and across a tempo anchor for three source/two output rates; atomic receipt stress and zero renderer heap work. Current regions use source seconds, Recall disables looping without moving the playhead and Activate jumps to the saved start without starting a stopped deck. Names and existing colors persist; this editor does not add a color chooser. Library load drops invalid/out-of-source regions; native project validation refuses them. No physical audio/MIDI device opened and no new physical controller proof or ticket acceptance claimed. The independent stage application stays unchanged."
+    },
+    "221": {
       "status": "partial",
       "paths": [
         {
           "kind": "native UI",
-          "file": "src/ui/project/live_set.rs",
-          "entry": "Project → Next live set… → Preload → separate cue → unsaved-work review → explicit transition"
+          "file": "src/ui/music_provider.rs",
+          "entry": "FreeToUse search and preview"
+        },
+        {
+          "kind": "provider policy",
+          "file": "src/music_provider.rs",
+          "entry": "Capabilities and authorize"
         },
         {
           "kind": "renderer",
-          "file": "src/engine/live_set.rs",
-          "entry": "One reserved prepared graph; complete outgoing/incoming linear fade and worker-owned retirement"
-        },
-        {
-          "kind": "project ownership",
-          "file": "src/engine/project.rs",
-          "entry": "Preload reservation prevents competing graph/device replacement; captures remain available"
+          "file": "src/engine/provider_preview.rs",
+          "entry": "Epoch-bound transient preview"
         }
       ],
       "fixtures": [
-        "engine::live_set::tests",
-        "ui::project::live_set::tests",
-        "engine::audio::live_set_tests::large_live_set_transition_qualification"
+        "music_provider::tests",
+        "music_provider::freetouse::tests",
+        "engine::provider_preview::tests",
+        "ui::music_provider::tests"
       ],
       "evidence": [
-        "docs/validation/issue-136-live-set.md"
+        "docs/validation/issue-120-providers.md"
       ],
-      "limits": "Standard stereo master outputs 1/2 only; four logical channels support independent cue on 3/4. One next project: 256 MiB PCM, 32 MiB metadata, existing 256 MiB processor bound. Missing assets and unavailable processors refuse preflight. Optional preload is cancelled by performance protection; committed transitions are explicit and not cancelled by the Cancel button. Large-session timing, maximum active/polyphony load, custom graph routes and physical controller/audio/listening acceptance remain incomplete; local fixture evidence does not close this issue."
+      "limits": "Preview-only FreeToUse adapter. Earlier #120 evidence is historical; no blanket provider, derived-file or future recording/hosting claim."
+    },
+    "222": {
+      "status": "implemented",
+      "paths": [
+        {
+          "kind": "timestamped clock renderer",
+          "file": "src/engine/midi/clock_input.rs",
+          "entry": "Explicit source, fixed-size interval/phase estimate, selected transport/SPP, loss/reacquisition and coherent sample clock with manual takeover"
+        },
+        {
+          "kind": "native source and loss controls",
+          "file": "src/ui/midi_clock/input.rs",
+          "entry": "Accessible confirmed source/transport/loss/deadline controls, output echo refusal and visible timing quality"
+        },
+        {
+          "kind": "private input worker and bounded status",
+          "file": "src/engine/midi/handoff.rs",
+          "entry": "Original callback timestamp and source generation, separate bounded clock handoff, independent retirement and selected Stop under queue pressure"
+        }
+      ],
+      "fixtures": [
+        "engine::midi::clock_input::tests",
+        "ui::midi_clock::input::tests",
+        "engine::midi::handoff::tests",
+        "ipc_server::limits_tests"
+      ],
+      "evidence": [
+        "docs/validation/midi-clock-input.md",
+        "docs/validation/midi-clock-input-receipt.json"
+      ],
+      "limits": "Linux ARM64 software qualification only: selected timestamped source, stable 40–240 BPM tempo/phase, coherent Start/Continue/Stop/SPP, independent bounded handoff, generation-scoped retirement/overflow/feedback, configurable freewheel/stop and visible jitter/loss. Native egui/AccessKit, actual private input workers, software renderer and OutputCallback PCM, live-owner isolation, conductor/automatic-loop/manual-takeover and maximum bounded IPC status/follow checks. Internal preserves existing realtime dispatch. No new dependency or project/library/preferences schema. No physical audio/MIDI device, hardware capture, new OS GUI, listening or live-stage continuity acceptance; existing independent stage processes/session remain preserved."
+    },
+    "223": {
+      "status": "implemented",
+      "paths": [
+        {
+          "kind": "native assignment editor and full-value capture",
+          "file": "src/ui/midi_learn.rs",
+          "entry": "Absolute/relative/14-bit/bend formats; explicit pair order, direction, scalar limits and sensitivity; capture → preview → apply"
+        },
+        {
+          "kind": "renderer-owned relative parameters and independent pair state",
+          "file": "src/engine/midi/controls.rs",
+          "entry": "Current parameter accumulation, limits, standard coarse/fine and explicit reverse pair order; channel/controller/port/reset separation"
+        },
+        {
+          "kind": "production callback and worker integration",
+          "file": "src/engine/midi/handoff.rs",
+          "entry": "Bounded callback handoff, worker-owned pairing and revision-qualified dispatch"
+        },
+        {
+          "kind": "preset and native preference persistence",
+          "file": "src/engine/midi/presets.rs",
+          "entry": "Preset 2, preference 19; actual native Save/Export/Import and reopening; legacy default migration and injection refusal"
+        },
+        {
+          "kind": "accessible preset banking and text fields",
+          "file": "src/ui/midi_presets.rs",
+          "entry": "Named destination and saved-preset selectors; shared named preference text fields for actual preset name/path editing"
+        }
+      ],
+      "fixtures": [
+        "engine::midi::controls::tests",
+        "ui::midi_learn::encoder_tests::native_encoder_format_pair_capture_preview_assignment_and_saved_preset_reopen_use_real_handlers"
+      ],
+      "evidence": [
+        "docs/validation/midi-encoders.md",
+        "docs/validation/midi-encoders-receipt.json"
+      ],
+      "limits": "Software qualification exhausts 16,384 CC-pair/bend values and signed-bit byte vectors, production synthetic workers, current renderer-relative state, actual native capture/preview/save/export/import and native preference reopening. Standard fine-only updates retain coarse state; explicit reverse-order pairs require one-second freshness. Browser steps remain one item per step. Existing scalar Undo paths are reused; baseline send-control Undo/persistence is not newly qualified. No physical audio or MIDI device was opened; physical encoder response stays outside this software pass."
+    },
+    "226": {
+      "status": "implemented",
+      "paths": [
+        {
+          "kind": "native timeline",
+          "file": "src/ui/arrangement.rs",
+          "entry": "Real source/instance editing, pointer move/trim, exact beats, snap, zoom/scroll, range/overview navigation and actual transport controls"
+        },
+        {
+          "kind": "prepared renderer",
+          "file": "src/engine/arrangement.rs",
+          "entry": "Independent audio/MIDI song placements, shared source PCM, half-open spans, owned MIDI and seek indexes"
+        },
+        {
+          "kind": "native persistence and History",
+          "file": "src/engine/arrangement/edit.rs",
+          "entry": "Coherent worker preparation, strict schema 19, capacity/save budgets, acknowledged admission and complete allocation-free Undo/Redo"
+        },
+        {
+          "kind": "exact offline graph",
+          "file": "src/audio_delivery/render.rs",
+          "entry": "Arrangement export uses the same track graph and timeline schedule as listening"
+        }
+      ],
+      "fixtures": [
+        "engine::arrangement::tests",
+        "ui::arrangement::tests",
+        "engine::midi::routing::playback::tests::arrangement_seek_emits_original_program_pending_banks_and_owned_notes_without_devices",
+        "audio_delivery::tests::arrangement_song_export_matches_realtime_overlaps_midi_and_five_minute_clock"
+      ],
+      "evidence": [
+        "docs/validation/arrangement.md",
+        "docs/validation/arrangement-receipt.json"
+      ],
+      "limits": "Software qualification: five-minute 12 kHz reference and 44.1/48/96 kHz references, exact realtime/export parity with a native tempo ramp, overlap/seek/source edits, native handlers/hour navigation, save/reopen/selective imports/templates, cancellation/stale/protected/active/budget refusals and zero renderer allocation/free. Sources are snapshots; later Session changes are independent. Capacity limits are explicit. Streaming, independent warping and physical/cross-platform acceptance remain separate."
+    },
+    "227": {
+      "status": "implemented",
+      "paths": [
+        {
+          "kind": "strict native scene metadata",
+          "file": "src/engine/scene/model.rs",
+          "entry": "Independent optional tempo/meter, Stop/Keep and launch grid; native meter range and retained flat phase/click settings"
+        },
+        {
+          "kind": "atomic whole-scene renderer launch",
+          "file": "src/engine/scene/runtime.rs",
+          "entry": "One stable queued boundary, selected-track/physical-owner preservation, continuing tracks, exact empty Stop and queue cancellation/refusal"
+        },
+        {
+          "kind": "guarded metadata Undo",
+          "file": "src/engine/session/transaction.rs",
+          "entry": "Worker-prepared properties, generation/namespace/epoch checks; duplicate/delete/reuse semantics and atomic inverse"
+        },
+        {
+          "kind": "native properties and accessible queue",
+          "file": "src/ui/session_editor/scene_properties.rs",
+          "entry": "Existing Session editor numeric/chooser/save controls; queued scene/cells and cancel/status descriptions"
+        },
+        {
+          "kind": "persistent native clock and conductor inverse",
+          "file": "src/engine/project/model.rs",
+          "entry": "State 23, legacy field-injection guards, real file reopening, native timing import/Undo and no resumed pending scene"
+        },
+        {
+          "kind": "controller-readable bounded status",
+          "file": "src/ipc_follow.rs",
+          "entry": "Names, properties, identities, queued beat and meter in both status paths; bounded names/truncation and allocation-free unchanged cache"
+        }
+      ],
+      "fixtures": [
+        "engine::quantized_launch_tests::scene_batches_share_one_start_even_when_transport_was_stopped_off_grid",
+        "engine::scene::tests",
+        "ui::session_editor::tests::native_scene_properties_save_undo_duplicate_launch_and_cancel_use_real_handlers",
+        "engine::midi::clock::tests::actual_scene_tempo_and_meter_changes_keep_clock_continuous_at_the_shared_launch_sample",
+        "ipc_server::follow_tests::scene_status_exposes_names_properties_queue_and_meter_without_repeated_cache_heap_work",
+        "ipc_server::limits_tests::scene_status_socket_returns_reviewed_properties_names_and_queued_identity"
+      ],
+      "evidence": [
+        "docs/validation/scene-properties.md",
+        "docs/validation/scene-properties-receipt.json"
+      ],
+      "limits": "Software qualification: atomic whole-scene tempo/meter and clip switches at exact sample boundaries; independent timestamp/downbeat oracles at 8/44.1/48 kHz and clock oracles additionally at 96 kHz, callbacks 31/257, continuing tracks under Keep, exact Stop releases, disabled/additive/legato semantics, selected-track and held-input ownership, actual recording completion, native odd-meter count-in/rate change, full native meter inheritance including 255/128 and pickup, guarded metadata Undo/Redo/cancellation/stale identity, deletion/reuse/reorder, safety/seek/project replacement, native state 23 real-container reopen and old-header injection refusal, native egui/AccessKit editing/duplication/launch/cancel, bounded consistent socket/follow status and zero unchanged cache heap work. A selected scene tempo/meter replaces future conductor automation with the current flat clock; historical conductor mapping is not retained. Pending launches/active identities never resume on reopen. No physical controller display or new live hardware/audio qualification; independent stage application unchanged. No ticket acceptance or issue closure claimed."
+    },
+    "232": {
+      "status": "implemented",
+      "paths": [
+        {
+          "kind": "bounded stereo channel processing",
+          "file": "src/engine/channel_fx.rs",
+          "entry": "Filter/Echo/Room, dry detent, tempo-aware sides, exact five-millisecond transitions and eased independent histories"
+        },
+        {
+          "kind": "native selection and feedback",
+          "file": "src/ui/dj_fx.rs",
+          "entry": "Per-deck confirmed selection, knob and center controls in the existing DJ FX panel"
+        },
+        {
+          "kind": "portable controller assignment",
+          "file": "src/engine/midi/learn.rs",
+          "entry": "Explicit learned selection alongside existing mapped knob controls; compatible immutable signed factory catalog"
+        },
+        {
+          "kind": "project and undo ownership",
+          "file": "src/engine/project/model.rs",
+          "entry": "Version 35 native persistence, Filter migration, dirty tracking and exact deck Undo/Redo"
+        }
+      ],
+      "fixtures": [
+        "engine::channel_fx::tests",
+        "ui::dj_fx::tests",
+        "engine::midi::feedback::tests::channel_effect_feedback_exposes_actual_assignment_name_position_and_detent_without_wire_commands",
+        "engine::midi::learn::tests::channel_effect_assignment_applies_only_pressed_selected_deck_and_existing_knob_controls_it",
+        "preferences::worker::midi_presets_tests::channel_effect_assignments_preserve_names_and_targets_in_portable_presets_and_real_preferences",
+        "engine::project::tests::channel_effects_native_archive_reopen_rate_change_and_legacy_migration_preserve_both_decks",
+        "engine::undo::tests::channel_effect_selection_is_dirty_exact_deck_undoable_and_rejected_before_invalid_admission",
+        "engine::midi::catalog::tests::immutable_signed_factory_version_is_independent_of_newer_portable_learn_assignments"
+      ],
+      "evidence": [
+        "docs/validation/channel-effects.md",
+        "docs/validation/channel-effects-receipt.json"
+      ],
+      "limits": "Linux aarch64 software qualification uses actual native egui/AccessKit controls, MIDI dispatch workers without OS ports, durable project and preset file I/O, independently compared playing PCM, bounded stereo histories and fixed renderer transitions. Controller feedback exposes the renderer-confirmed deck assignment, effect name, knob and neutral flag in status; physical display behavior is unqualified. Existing signed factory profiles remain version 6 and unchanged. Portable learned selections use version 7, preferences version 26 and project state version 35. Echo history is capped at two seconds and the neutral detent clears previous side histories. The active app, follower and session remain preserved. This milestone does not complete the remaining software checklist or establish physical controller/audio acceptance."
+    },
+    "234": {
+      "status": "implemented",
+      "paths": [
+        {
+          "kind": "versioned portable preset",
+          "file": "src/engine/dj_fx_preset.rs",
+          "entry": "Bounded named two-unit native file with ordered controls and stable routes; durable no-overwrite save and strict import validation"
+        },
+        {
+          "kind": "atomic playback recall",
+          "file": "src/engine/dj_fx_recall.rs",
+          "entry": "Fixed Reset after fade transaction with expected-controls/project checks, exact timing and owner/rate retirement"
+        },
+        {
+          "kind": "native review and file worker",
+          "file": "src/ui/dj_fx_presets.rs",
+          "entry": "Save, inspect, route rebinding/removal, review and renderer-confirmed recall in the existing DJ FX panel"
+        }
+      ],
+      "fixtures": [
+        "engine::dj_fx_preset::tests",
+        "ui::dj_fx_presets::tests"
+      ],
+      "evidence": [
+        "docs/validation/dj-fx-presets.md",
+        "docs/validation/dj-fx-presets-receipt.json"
+      ],
+      "limits": "Linux aarch64 software qualification uses actual egui/AccessKit buttons, durable native file I/O and independently compared playing PCM. The version-1 .omatfx format holds two units with bounded UTF-8 names, ordered slots, routes and parameters; it contains no audio media and is limited to 64 KiB of metadata. Sampler routes use stable project identities and foreign/deleted targets require explicit rebinding or removal. The sole recall policy is Reset after fade: exactly five milliseconds to dry, atomic replacement of both units with history retirement, then exactly five milliseconds back. Tails are not carried across the reset. Reviewed settings and project routes are rechecked in the renderer; stale requests preserve current controls. Files are never overwritten by Save new layout. These portable presets are separate from native project persistence and do not depend on proprietary Serato formats. No physical controller or stage acceptance is claimed; the independent app and session remain preserved and the software checklist remains open."
+    },
+    "236": {
+      "status": "implemented",
+      "paths": [
+        {
+          "kind": "shared held roll renderer",
+          "file": "src/engine/deck_controls/slicer.rs",
+          "entry": "Immediate/current-source or deck-quantized onset, original pending owner, latest-held fallback and advancing release root"
+        },
+        {
+          "kind": "confirmed native roll state",
+          "file": "src/ui/deck_pads.rs",
+          "entry": "Selected beat divisions, actual active roll and separate queued outline/accessible onset"
+        }
+      ],
+      "fixtures": [
+        "engine::deck_controls::roll_reverse_tests",
+        "ui::deck_pads::tests"
+      ],
+      "evidence": [
+        "docs/validation/roll-reverse.md",
+        "docs/validation/roll-reverse-receipt.json"
+      ],
+      "limits": "Linux ARM64 software qualification: held beat-division rolls with per-deck onset timing, original source/key cancellation, newest-owner priority after slot reuse, shared advancing Slip root and original-loop release; independent native reverse latch and source-owned censor with defined first-frame/backward-loop behavior. Actual renderer/OutputCallback PCM, numbered source impulses, decoded WAV/FLAC/MP3, native egui/AccessKit pointer/key/touch/assistive inputs and confirmed waveform direction. Existing SP1 direction feedback bytes generated from actual snapshots without output ports; no NS7 direction LED or new motor address introduced. No new dependency or saved project/profile format. No physical audio/MIDI device, live capture, new OS GUI, listening or stage continuity acceptance; existing independent stage processes/session preserved."
+    },
+    "237": {
+      "status": "implemented",
+      "paths": [
+        {
+          "kind": "independent reverse latch and shared censor root",
+          "file": "src/engine/deck_controls.rs",
+          "entry": "Persistent native latch separate from held sources, safety/media retirement and coherent Slip ownership"
+        },
+        {
+          "kind": "native direction and censor input owners",
+          "file": "src/ui/deck_direction.rs",
+          "entry": "Confirmed latch/status, independent pointer/key/touch/assistive input routes and original-owner retirement"
+        },
+        {
+          "kind": "explicit waveform direction",
+          "file": "src/ui/waveform.rs",
+          "entry": "Painted renderer direction and accessible source-position description"
+        },
+        {
+          "kind": "existing feedback regression",
+          "file": "src/engine/midi/feedback.rs",
+          "entry": "Actual reverse/censor snapshot into existing SP1 Note feedback without output port or new NS7 command"
+        }
+      ],
+      "fixtures": [
+        "engine::deck_controls::roll_reverse_tests",
+        "ui::deck_direction::tests",
+        "engine::midi::feedback::tests::existing_sp1_direction_feedback_uses_actual_renderer_status_without_output_ports"
+      ],
+      "evidence": [
+        "docs/validation/roll-reverse.md",
+        "docs/validation/roll-reverse-receipt.json"
+      ],
+      "limits": "Linux ARM64 software qualification: held beat-division rolls with per-deck onset timing, original source/key cancellation, newest-owner priority after slot reuse, shared advancing Slip root and original-loop release; independent native reverse latch and source-owned censor with defined first-frame/backward-loop behavior. Actual renderer/OutputCallback PCM, numbered source impulses, decoded WAV/FLAC/MP3, native egui/AccessKit pointer/key/touch/assistive inputs and confirmed waveform direction. Existing SP1 direction feedback bytes generated from actual snapshots without output ports; no NS7 direction LED or new motor address introduced. No new dependency or saved project/profile format. No physical audio/MIDI device, live capture, new OS GUI, listening or stage continuity acceptance; existing independent stage processes/session preserved."
+    },
+    "240": {
+      "status": "implemented",
+      "paths": [
+        {
+          "kind": "moving/repeating slicer renderer",
+          "file": "src/engine/deck_controls/slicer.rs",
+          "entry": "Exact mapped/source-bounded phrase intervals, source-owned pending onset against independent background, original repeating loop restoration and stable input release ownership"
+        },
+        {
+          "kind": "native source intervals and settings",
+          "file": "src/ui/deck_pads/slicer.rs",
+          "entry": "Independent accessible domain/behavior/repeat/trigger controls and renderer-confirmed eight source ranges with active and pending markers"
+        },
+        {
+          "kind": "ordinary performance integration",
+          "file": "src/engine/deck_controls.rs",
+          "entry": "Shared temporary pad admission, mapped background clock, retained mode indexes, Slip and deliberate transport/source boundaries"
+        }
+      ],
+      "fixtures": [
+        "engine::deck_controls::slicer::tests",
+        "ui::deck_pads::slicer::tests"
+      ],
+      "evidence": [
+        "docs/validation/slicer.md",
+        "docs/validation/slicer-receipt.json"
+      ],
+      "limits": "Linux ARM64 software qualification: independent transient moving/repeating 2–64-beat slicer domains, eight exact original source intervals, repeat subdivisions and explicit immediate/musical onset. Actual producer/renderer, private MIDI worker, numbered stereo PCM, mixed clocks/manual variable grid, independent input owners, deliberate cancellation, shared Slip root and native egui/AccessKit painted ranges with fixed neighboring touch geometry and bounded pad-column width. No project/profile schema or controller address change. No physical audio/MIDI device, live capture, new OS GUI, hardware RGB inspection, human listening or stage continuity acceptance; existing independent stage processes/session remain preserved."
+    },
+    "247": {
+      "status": "implemented",
+      "paths": [
+        {
+          "kind": "source-qualified chromatic cue renderer",
+          "file": "src/engine/deck_pads/runtime.rs",
+          "entry": "Newest original held cue owner, immediate cue onset, independent key/tempo and exact release retirement"
+        },
+        {
+          "kind": "chromatic semitone ranges",
+          "file": "src/engine/deck_pads/pitch.rs",
+          "entry": "Three fixed eight-note ranges containing the original key"
+        },
+        {
+          "kind": "native root, range and reset controls",
+          "file": "src/ui/deck_pads/pitch.rs",
+          "entry": "Existing-cue root, actual semitone labels, bypass consequences and undoable Original Key"
+        },
+        {
+          "kind": "saved ninth learned pad mode",
+          "file": "src/engine/midi/learn.rs",
+          "entry": "Qualified learned Pitch Cue dispatch without changing manufacturer mode addresses"
+        }
+      ],
+      "fixtures": [
+        "engine::deck_pads::pitch::tests",
+        "ui::deck_pads::tests::native_chromatic_root_ranges_reset_and_focus_release_use_actual_deck_pad_controls",
+        "engine::midi::learn::tests::learned_chromatic_mode_retains_ninth_bit_and_old_manufacturer_modes_without_opening_ports"
+      ],
+      "evidence": [
+        "docs/validation/chromatic-cue-pads.md",
+        "docs/validation/chromatic-cue-pads-receipt.json"
+      ],
+      "limits": "Linux ARM64 software qualification: eight monophonic chromatic cue pads, existing-cue root, labeled Low/Center/High ranges containing original key, source-qualified reset with Undo/Redo, independent tempo, newest original held-owner priority and source/mode/range/focus retirement. Immediate cue onset preserves quantize preference, paused cue audition returns on release and playing decks continue without rewinding. Actual renderer and OutputCallback tonal PCM, native egui/AccessKit and saved learned MIDI mapping dispatch passed. Existing forward pitch DSP range is 0.5–1.5; scratch/reverse and unsupported rates explicitly bypass pitch. Pad choices remain transient like existing pad modes; no new saved project version, dependency or manufacturer wire address. No physical device, capture, new OS GUI or listening acceptance."
+    },
+    "249": {
+      "status": "implemented",
+      "paths": [
+        {
+          "kind": "coherent source and loop fades",
+          "file": "src/engine/audio_clip/fades.rs",
+          "entry": "Validated curved quarter-note envelope and optional automatic 4 ms edges; shared playback/waveform gain"
+        },
+        {
+          "kind": "editable crossfades and linked tracks",
+          "file": "src/engine/arrangement/fades.rs",
+          "entry": "Adjacent/overlap resize, source-handle checks, aligned stable track groups, atomic refusal and cleanup"
+        },
+        {
+          "kind": "actual native source and placement editors",
+          "file": "src/ui/audio_fades.rs",
+          "entry": "Accessible duration/curve controls, automatic edge choice and audible waveform envelope; existing Apply/Undo route"
+        },
+        {
+          "kind": "versioned project and clip persistence",
+          "file": "src/engine/project/model.rs",
+          "entry": "State 26 source/placement envelopes and stable links with strict old-header guards"
+        }
+      ],
+      "fixtures": [
+        "engine::audio_clip::fades_tests",
+        "engine::arrangement::fades::tests",
+        "ui::audio_clips::tests::native_audio_fade_lengths_curves_auto_edges_and_apply_undo_preserve_source_pcm",
+        "ui::arrangement::tests::native_arrangement_crossfade_and_aligned_fade_links_use_actual_widgets_and_one_apply_undo",
+        "audio_delivery::tests::arrangement_song_export_matches_realtime_overlaps_midi_and_five_minute_clock"
+      ],
+      "evidence": [
+        "docs/validation/clip-fades.md",
+        "docs/validation/clip-fades-receipt.json"
+      ],
+      "limits": "Linux ARM64 software qualification: explicit curved quarter-note fades and automatic 4 ms edges, coherent stereo gain, trimmed/reverse/transposed source loops, real Session conductor ramps and unequal rates, editable adjacent/overlap Arrangement crossfades with available source audio, aligned linked fade groups and stable track references, atomic producer edits/cancellation/stale-target refusal and one Undo/Redo, native controls, real project/template files and version 26 old-header guards. Arrangement placement overrides replace source envelopes; inherited source fades follow source offsets and repeats. Source PCM stays immutable. Complete linked take comping, warp markers and unrelated grouped edit commands in issue 318 remain separate. No physical device opened, live capture or new GUI; stage processes/state/session preserved."
+    },
+    "255": {
+      "status": "implemented",
+      "paths": [
+        {
+          "kind": "native live section and loop editor",
+          "file": "src/ui/song_navigation.rs",
+          "entry": "Named creation/edit/move/delete, exact beat/time entry, quantized previous/next/ID jumps, loop braces and loop-to-next; keyboard/assistive handlers"
+        },
+        {
+          "kind": "bounded native metadata and stable MIDI identities",
+          "file": "src/engine/song_navigation/metadata.rs",
+          "entry": "256 visible named locators; chronological resolution and loop braces; persistent allocation counter survives Undo without reusing IDs"
+        },
+        {
+          "kind": "sample-clock jumps and looping",
+          "file": "src/engine/song_navigation/playback.rs",
+          "entry": "Meter/pickup-aware launch boundary, exact renderer sample movement, fractional loop overshoot, cancellation and destination range recheck"
+        },
+        {
+          "kind": "atomic live metadata admission and native Undo",
+          "file": "src/engine/undo/song_navigation.rs",
+          "entry": "Worker-prepared namespace/epoch/exact-model guard; Ack/cancel/stale refusal; metadata editing during playback/recording with retained inverse ownership"
+        },
+        {
+          "kind": "native project persistence",
+          "file": "src/engine/project/model.rs",
+          "entry": "State schema 22; strict legacy injection refusal, saved braces/switch/high-water identity counter and no pending movement on reopen"
+        },
+        {
+          "kind": "learned controller navigation",
+          "file": "src/engine/midi.rs",
+          "entry": "Stable ID, previous/next, loop toggle and cancel through production input dispatch; press edges and global timing"
+        },
+        {
+          "kind": "navigation binding persistence",
+          "file": "src/engine/midi/presets.rs",
+          "entry": "Preset 3 and preference 20; old action injection refusal, with actual schema-2/preference-19 encoder migration"
+        }
+      ],
+      "fixtures": [
+        "engine::song_navigation::tests",
+        "ui::song_navigation::tests::native_sections_edit_save_trigger_loop_and_keyboard_time_entry_use_real_handlers",
+        "engine::midi::routing::playback::tests::named_song_jump_clears_old_clip_owners_and_chases_destination_controllers_before_sustained_notes"
+      ],
+      "evidence": [
+        "docs/validation/song-navigation.md",
+        "docs/validation/song-navigation-receipt.json"
+      ],
+      "limits": "Linux ARM64 software qualification: live metadata edits during playback/recording, exact PCM destination samples and loop timing across tempo/meter changes at multiple rates, clip recording-take completion with held live input preservation, clear/chase MIDI ordering, production synthetic learned input, stable IDs through Undo branching/reopening, actual native editor/keyboard/assistive controls, .omat and MIDI preset/preferences files, strict version migration/refusal and measured zero renderer heap work. Editing follows existing Studio/performance-protection admission. Jumps/wraps finish the current clip recording take; pending movement is omitted from storage. No physical controller or audio device was opened. DJ deck transports remain separate."
+    },
+    "263": {
+      "status": "implemented",
+      "paths": [
+        {
+          "kind": "fixed source-relative associations",
+          "file": "src/engine/saved_loops.rs",
+          "entry": "Eight cue-to-slot links, validated strict allocation-free preparation encoding, fixed IDs through reorder"
+        },
+        {
+          "kind": "atomic quantized cue and loop",
+          "file": "src/engine/deck_controls/cue_loops.rs",
+          "entry": "One exact-source transition, linked marker synchronization and cue-only override retaining the saved link"
+        },
+        {
+          "kind": "source and deferred ownership",
+          "file": "src/engine/deck_controls/quantization.rs",
+          "entry": "Captured cue, fixed slot and exact region with source/cancellation/routing/release refusal"
+        },
+        {
+          "kind": "actual native linking and cue override",
+          "file": "src/ui/loop_editor/saved.rs",
+          "entry": "Choose cue, explicit move/link and unlink with one Undo; cue editor and pad show association and cue-only action"
+        },
+        {
+          "kind": "versioned preparation persistence",
+          "file": "src/engine/project/model.rs",
+          "entry": "State 27/library 17 exact associations, stopped reopen and strict old-header raw-field guards"
+        }
+      ],
+      "fixtures": [
+        "engine::saved_loops::tests",
+        "library::tests::cue_loop_associations_survive_real_catalog_backup_merge_reload_and_refuse_legacy_field_injection",
+        "ui::loop_editor::tests::native_cue_loop_partner_link_unlink_and_undo_use_real_saved_loop_controls_without_starting_playback",
+        "ui::cue_editor::tests::native_cue_editor_displays_saved_region_and_explicit_cue_only_override_preserves_its_link",
+        "engine::midi::handoff::tests::learned_hotcue_enters_its_saved_region_through_the_real_input_worker_without_a_new_profile_action"
+      ],
+      "evidence": [
+        "docs/validation/cue-loops.md",
+        "docs/validation/cue-loops-receipt.json"
+      ],
+      "limits": "Linux ARM64 software qualification: source-qualified cue-to-fixed-loop associations; exact cue/region atomic dispatch at existing musical output boundaries across source-tempo anchors and unequal rates; exact off-grid cue-only override that retires active looping and retains the association; bounded map codec and coherent preparation; slot reorder, resize/delete, held release and source/routing cancellation; complete native Undo/Redo; real native project and library save/backup/restore/merge/reload; state 27/library 17 strict old-header injection guards; actual native egui/AccessKit chooser/link/unlink/override and synthetic learned production MIDI worker. Reopen remains stopped and no preset/profile version changes are required. No physical device opened, new GUI or capture started, physical acceptance or current competitor comparison claimed; independent stage processes and session preserved."
     }
   }
 }

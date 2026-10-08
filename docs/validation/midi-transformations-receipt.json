@@ -1,0 +1,4160 @@
+{
+  "schema": 1,
+  "supplementaryArtifacts": [
+    {
+      "path": "target/app-backlog/midi-tools-library-navigation-diagnostic-source.rs",
+      "sha256": "e8fbdeba40ee6d2bc9661ae8ec91116211d219f34a329937a15138fc83dfc276"
+    },
+    {
+      "path": "target/app-backlog/midi-tools-library-navigation-diagnostic-source.json",
+      "sha256": "f4e1234c34c55bb1dd1d037e1cd1b047ec702012eef71b57bcce9bfd7cbc53ee"
+    },
+    {
+      "path": "target/app-backlog/midi-tools-library-navigation-diagnostic.log",
+      "sha256": "b101baebab23701830a0ac5629bd37f3bad5343ecb2a05d780c675f708f11b54"
+    },
+    {
+      "path": "target/app-backlog/midi-tools-seventeenth-host-observations.jsonl",
+      "sha256": "c6854dd0ef6472aca56110bcfbeb118622ca6dd4d59efddf41a9de42ba86c8f4"
+    },
+    {
+      "path": "target/app-backlog/qualification-bin/midi-tools-library-navigation-diagnostic",
+      "sha256": "8a37ba76abf03962f584138262c7582d73210df4af75287a3e6cdb6cf866939d"
+    }
+  ],
+  "deadlineReproductions": {
+    "duration": [
+      {
+        "path": "target/app-backlog/midi-tools-eighteenth-duration-reproduction-1.log",
+        "sha256": "2ebe1d0ad075cbff081431ec5d1006007c9e05bada89c197ec4bf40d7a37fce9",
+        "outcome": "ok",
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 2218,
+        "seconds": 0.41
+      },
+      {
+        "path": "target/app-backlog/midi-tools-eighteenth-duration-reproduction-2.log",
+        "sha256": "3980c96e4b3226f9dc6d68ea2bccc8e302891cd6c622b16c3116d4f672bf3495",
+        "outcome": "ok",
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 2218,
+        "seconds": 0.3
+      },
+      {
+        "path": "target/app-backlog/midi-tools-eighteenth-duration-reproduction-3.log",
+        "sha256": "1a697b1ebf45504a8642ebe36099d98c178e95219588f2882a42e19861e20248",
+        "outcome": "ok",
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 2218,
+        "seconds": 0.26
+      },
+      {
+        "path": "target/app-backlog/midi-tools-eighteenth-duration-reproduction-4.log",
+        "sha256": "984db7c4ed760a9a5716b61243019317399a74e35505be94f3302d2c9b9d9f69",
+        "outcome": "ok",
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 2218,
+        "seconds": 0.28
+      },
+      {
+        "path": "target/app-backlog/midi-tools-eighteenth-duration-reproduction-5.log",
+        "sha256": "08b740c249f2a6321e4007771778faa9a313b594af18a81f13ce7907b651693e",
+        "outcome": "ok",
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 2218,
+        "seconds": 0.24
+      },
+      {
+        "path": "target/app-backlog/midi-tools-eighteenth-duration-reproduction-6.log",
+        "sha256": "08b740c249f2a6321e4007771778faa9a313b594af18a81f13ce7907b651693e",
+        "outcome": "ok",
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 2218,
+        "seconds": 0.24
+      },
+      {
+        "path": "target/app-backlog/midi-tools-eighteenth-duration-reproduction-7.log",
+        "sha256": "bfbf2f7bc730b05ed12c10a0861be625d05d8114c1204788429807f74cf900b9",
+        "outcome": "ok",
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 2218,
+        "seconds": 0.36
+      },
+      {
+        "path": "target/app-backlog/midi-tools-eighteenth-duration-reproduction-8.log",
+        "sha256": "980bf7a6a2d4ab39f309b008384e9a00c9e8d9a5954682cb58f9e378db506cfc",
+        "outcome": "ok",
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 2218,
+        "seconds": 0.25
+      },
+      {
+        "path": "target/app-backlog/midi-tools-eighteenth-duration-reproduction-9.log",
+        "sha256": "415021b36004396497d58970e341ca80fd2e15374027fc7a061e086e783480e7",
+        "outcome": "ok",
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 2218,
+        "seconds": 0.27
+      },
+      {
+        "path": "target/app-backlog/midi-tools-eighteenth-duration-reproduction-10.log",
+        "sha256": "415021b36004396497d58970e341ca80fd2e15374027fc7a061e086e783480e7",
+        "outcome": "ok",
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 2218,
+        "seconds": 0.27
+      }
+    ],
+    "sampler": [
+      {
+        "path": "target/app-backlog/midi-tools-eighteenth-sampler-reproduction-1.log",
+        "sha256": "d19c56914df509436b1de1f06e46b13f648561bb01b7a1310f544e9932419f1d",
+        "outcome": "ok",
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 2218,
+        "seconds": 0.41
+      },
+      {
+        "path": "target/app-backlog/midi-tools-eighteenth-sampler-reproduction-2.log",
+        "sha256": "2af9629f9173d6627c9b68d429e4be1f8a5a01ea5278266ca28d399ebd89c954",
+        "outcome": "ok",
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 2218,
+        "seconds": 0.4
+      },
+      {
+        "path": "target/app-backlog/midi-tools-eighteenth-sampler-reproduction-3.log",
+        "sha256": "d19c56914df509436b1de1f06e46b13f648561bb01b7a1310f544e9932419f1d",
+        "outcome": "ok",
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 2218,
+        "seconds": 0.41
+      },
+      {
+        "path": "target/app-backlog/midi-tools-eighteenth-sampler-reproduction-4.log",
+        "sha256": "9e200fc7ace2fff4b753b52dd6d7c77abb57f679fdc3223d60d751624e08480c",
+        "outcome": "ok",
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 2218,
+        "seconds": 0.42
+      },
+      {
+        "path": "target/app-backlog/midi-tools-eighteenth-sampler-reproduction-5.log",
+        "sha256": "6768fbb3cb523dfe0157b17f7b949c71b8bf21b26d336ff117a37895d048e5cf",
+        "outcome": "ok",
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 2218,
+        "seconds": 0.52
+      },
+      {
+        "path": "target/app-backlog/midi-tools-eighteenth-sampler-reproduction-6.log",
+        "sha256": "9e200fc7ace2fff4b753b52dd6d7c77abb57f679fdc3223d60d751624e08480c",
+        "outcome": "ok",
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 2218,
+        "seconds": 0.42
+      },
+      {
+        "path": "target/app-backlog/midi-tools-eighteenth-sampler-reproduction-7.log",
+        "sha256": "9e200fc7ace2fff4b753b52dd6d7c77abb57f679fdc3223d60d751624e08480c",
+        "outcome": "ok",
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 2218,
+        "seconds": 0.42
+      },
+      {
+        "path": "target/app-backlog/midi-tools-eighteenth-sampler-reproduction-8.log",
+        "sha256": "2af9629f9173d6627c9b68d429e4be1f8a5a01ea5278266ca28d399ebd89c954",
+        "outcome": "ok",
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 2218,
+        "seconds": 0.4
+      },
+      {
+        "path": "target/app-backlog/midi-tools-eighteenth-sampler-reproduction-9.log",
+        "sha256": "9e200fc7ace2fff4b753b52dd6d7c77abb57f679fdc3223d60d751624e08480c",
+        "outcome": "ok",
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 2218,
+        "seconds": 0.42
+      },
+      {
+        "path": "target/app-backlog/midi-tools-eighteenth-sampler-reproduction-10.log",
+        "sha256": "d19c56914df509436b1de1f06e46b13f648561bb01b7a1310f544e9932419f1d",
+        "outcome": "ok",
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 2218,
+        "seconds": 0.41
+      }
+    ],
+    "background": [
+      {
+        "path": "target/app-backlog/midi-tools-eighteenth-background-reproduction-1.log",
+        "sha256": "f23c88b2fc34e9f502b8b3becf112d1c7d31ffebce3c26d77c2bd236ca8bc992",
+        "outcome": "ok",
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 2218,
+        "seconds": 0.14
+      },
+      {
+        "path": "target/app-backlog/midi-tools-eighteenth-background-reproduction-2.log",
+        "sha256": "f23c88b2fc34e9f502b8b3becf112d1c7d31ffebce3c26d77c2bd236ca8bc992",
+        "outcome": "ok",
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 2218,
+        "seconds": 0.14
+      },
+      {
+        "path": "target/app-backlog/midi-tools-eighteenth-background-reproduction-3.log",
+        "sha256": "f23c88b2fc34e9f502b8b3becf112d1c7d31ffebce3c26d77c2bd236ca8bc992",
+        "outcome": "ok",
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 2218,
+        "seconds": 0.14
+      },
+      {
+        "path": "target/app-backlog/midi-tools-eighteenth-background-reproduction-4.log",
+        "sha256": "f23c88b2fc34e9f502b8b3becf112d1c7d31ffebce3c26d77c2bd236ca8bc992",
+        "outcome": "ok",
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 2218,
+        "seconds": 0.14
+      },
+      {
+        "path": "target/app-backlog/midi-tools-eighteenth-background-reproduction-5.log",
+        "sha256": "12e27d0f0f67341351f5c779e82e65d3c4b13ce0127b387ba2cecce6386dbcfa",
+        "outcome": "ok",
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 2218,
+        "seconds": 0.72
+      },
+      {
+        "path": "target/app-backlog/midi-tools-eighteenth-background-reproduction-6.log",
+        "sha256": "61ec466286250ec11678c2d801247f925e430a79a7fcdc58f5879884931f28e1",
+        "outcome": "ok",
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 2218,
+        "seconds": 0.19
+      },
+      {
+        "path": "target/app-backlog/midi-tools-eighteenth-background-reproduction-7.log",
+        "sha256": "4df6975f0c6e9fade22cb0fa06cb8ff21d09331a8ea4133f718f311d6bc593dd",
+        "outcome": "ok",
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 2218,
+        "seconds": 0.15
+      },
+      {
+        "path": "target/app-backlog/midi-tools-eighteenth-background-reproduction-8.log",
+        "sha256": "f23c88b2fc34e9f502b8b3becf112d1c7d31ffebce3c26d77c2bd236ca8bc992",
+        "outcome": "ok",
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 2218,
+        "seconds": 0.14
+      },
+      {
+        "path": "target/app-backlog/midi-tools-eighteenth-background-reproduction-9.log",
+        "sha256": "f23c88b2fc34e9f502b8b3becf112d1c7d31ffebce3c26d77c2bd236ca8bc992",
+        "outcome": "ok",
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 2218,
+        "seconds": 0.14
+      },
+      {
+        "path": "target/app-backlog/midi-tools-eighteenth-background-reproduction-10.log",
+        "sha256": "f23c88b2fc34e9f502b8b3becf112d1c7d31ffebce3c26d77c2bd236ca8bc992",
+        "outcome": "ok",
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 2218,
+        "seconds": 0.14
+      },
+      {
+        "path": "target/app-backlog/midi-tools-eighteenth-background-reproduction-11.log",
+        "sha256": "523298558f2f81c9ee6c55c920b83db47c36c42105088715145ffb48ef6ed172",
+        "outcome": "ok",
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 2218,
+        "seconds": 0.13
+      },
+      {
+        "path": "target/app-backlog/midi-tools-eighteenth-background-reproduction-12.log",
+        "sha256": "f23c88b2fc34e9f502b8b3becf112d1c7d31ffebce3c26d77c2bd236ca8bc992",
+        "outcome": "ok",
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 2218,
+        "seconds": 0.14
+      },
+      {
+        "path": "target/app-backlog/midi-tools-eighteenth-background-reproduction-13.log",
+        "sha256": "523298558f2f81c9ee6c55c920b83db47c36c42105088715145ffb48ef6ed172",
+        "outcome": "ok",
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 2218,
+        "seconds": 0.13
+      },
+      {
+        "path": "target/app-backlog/midi-tools-eighteenth-background-reproduction-14.log",
+        "sha256": "f23c88b2fc34e9f502b8b3becf112d1c7d31ffebce3c26d77c2bd236ca8bc992",
+        "outcome": "ok",
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 2218,
+        "seconds": 0.14
+      },
+      {
+        "path": "target/app-backlog/midi-tools-eighteenth-background-reproduction-15.log",
+        "sha256": "523298558f2f81c9ee6c55c920b83db47c36c42105088715145ffb48ef6ed172",
+        "outcome": "ok",
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 2218,
+        "seconds": 0.13
+      },
+      {
+        "path": "target/app-backlog/midi-tools-eighteenth-background-reproduction-16.log",
+        "sha256": "523298558f2f81c9ee6c55c920b83db47c36c42105088715145ffb48ef6ed172",
+        "outcome": "ok",
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 2218,
+        "seconds": 0.13
+      },
+      {
+        "path": "target/app-backlog/midi-tools-eighteenth-background-reproduction-17.log",
+        "sha256": "4df6975f0c6e9fade22cb0fa06cb8ff21d09331a8ea4133f718f311d6bc593dd",
+        "outcome": "ok",
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 2218,
+        "seconds": 0.15
+      },
+      {
+        "path": "target/app-backlog/midi-tools-eighteenth-background-reproduction-18.log",
+        "sha256": "f23c88b2fc34e9f502b8b3becf112d1c7d31ffebce3c26d77c2bd236ca8bc992",
+        "outcome": "ok",
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 2218,
+        "seconds": 0.14
+      },
+      {
+        "path": "target/app-backlog/midi-tools-eighteenth-background-reproduction-19.log",
+        "sha256": "f23c88b2fc34e9f502b8b3becf112d1c7d31ffebce3c26d77c2bd236ca8bc992",
+        "outcome": "ok",
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 2218,
+        "seconds": 0.14
+      },
+      {
+        "path": "target/app-backlog/midi-tools-eighteenth-background-reproduction-20.log",
+        "sha256": "523298558f2f81c9ee6c55c920b83db47c36c42105088715145ffb48ef6ed172",
+        "outcome": "ok",
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 2218,
+        "seconds": 0.13
+      }
+    ]
+  },
+  "issues": [
+    163,
+    164
+  ],
+  "status": "implemented",
+  "sourceFiles": {
+    "src/engine/midi_tools.rs": "462a4173a1823f7903108deaf0c240c6dddd661c0bfdc5c671fb2033d64453bd",
+    "src/engine/midi_tools/tests.rs": "834304336f556b9b15027247011441226fe278467f5a3f66625c5cbd08371e3c",
+    "src/engine/mod.rs": "d975c18dfa235500ee2009ebecf48ad36fd97b5c6cd787d629fc30370ef168f9",
+    "src/ui/help/catalogue.rs": "05b18cf5314f37130a830075247a49475bebb13ac54e7b4cc45558522f50a9f4",
+    "src/ui/piano_roll.rs": "d932148a49c7c75eba540a32ae0472eef7351c4c826b456e772b75a427c22694",
+    "src/ui/piano_roll/canvas.rs": "c9a20e707b5154627bad5a5d67754b5b04efc079a34d4d74f070c87826224958",
+    "src/ui/piano_roll/control.rs": "bb032fe7708bfcc1e86f24f566868324fad3d23493e7b28ade5c806d49dc862b",
+    "src/ui/piano_roll/tools.rs": "4b6d894eeaca26b6fbb892c4c7f01765daddb061791ab8d6eb739a09f8988cf3",
+    "src/ui/piano_roll/tools/tests.rs": "37f75ee6f94252a550ab2404504d0df3c732650a3315fcc3e1c37cd7434bd179"
+  },
+  "testBinary": {
+    "path": "target/app-backlog/qualification-bin/multi-clip-tests-fourth",
+    "sha256": "5eb2f8dd5a4849ed0d61559d308e602ba0fe8204935742f93e2815fe0de27455"
+  },
+  "compiledInventory": {
+    "path": "target/app-backlog/midi-tools-eighteenth-source.json",
+    "sha256": "63d327d604fcdfa8fb4ad5ed38095e5aa66dc79f63b7102c6618132462e3ce64",
+    "baseRevision": "c060b55f8a01a097f248164322b90378a3e0f6aa",
+    "files": 890
+  },
+  "compileLog": {
+    "path": "target/app-backlog/multi-clip-fourth-build.log",
+    "sha256": "eebd8e62be513a3d1d8a0e0ff6470e706be9140263de284175d08d09841e5402"
+  },
+  "testBuildArguments": [
+    "test",
+    "--locked",
+    "--offline",
+    "--no-run",
+    "--config",
+    "profile.test.package.omatainer.debug=0"
+  ],
+  "integrationLicenseFix": {
+    "sourceFiles": {
+      "scripts/license-inventory.mjs": "37ed0311ad121a53dc0e720112598a8ad19d71d9ae90683daf94b76231b7b4e3",
+      "scripts/test-license-inventory.mjs": "ff570bc990f88324c74ea007290530a343ca009b3219db29a25c07d6f102e724",
+      "src/licenses.rs": "1b0fde37880aacb3041054e8038dfc4da0a632dc304296d39ad676624d96d5e4",
+      "src/ui/test_support.rs": "d3dbfe3aeccd676a0d1309390c66dc4c91a1b658c41664cd5ad71c105e1e1995",
+      "src/ui/duration_tests.rs": "b66050d112a9118179202a1678955abf9e3447a9d970b50bee56cebe4848b822",
+      "src/ui/library_metadata.rs": "2ae31b38bf4753a28d41f9fbd420748bf6239473cd679cf549b7686abc0a80dd",
+      "src/ui/library_scan.rs": "0249a838c2972e96fc892b4df4f6d6f0e6e02203ab335e26c894dcb818164b61",
+      "src/ui/library_scan/tests.rs": "14ea60b8bd6950098a622b2d46b1131ea2b6d8f8bc85b76019d90b90f4a9a805",
+      "src/ui/library_store/import_tests.rs": "7a6892a144adbacf10f2a126344ab97909d5da8985787d9a7a25d39c87e0d125",
+      "src/ui.rs": "9dff685dcd42c2d7a273a2c9b3d3d9054ff918b4d1c1d9564e1e713a02d754e6",
+      "src/ui/library_view_tests.rs": "e110f6f0a500afa8008b0b806e144b59c1b8955ecf866ff89ba7234115f6f52b",
+      "src/engine/monitor/qualification_tests.rs": "8496455af283799459d1eed33531d2509be7888848e6263b3a93d83d2183da88",
+      "src/engine/plugin_midi.rs": "b82dd7700795a55fb8339b1dc97257e125b25545ce4836832a7ba353480d94eb",
+      "src/engine/plugin_midi/tests.rs": "56be1636e8006caa2eb7bf538afd675abf4a981792288337893a46e6e8052fbe",
+      "src/engine/media_load/analysis_tests.rs": "4c89686eb3d50356b5b5ca1f511903547e1314561d67c52903936b81386edc57",
+      "src/ui/sampler_editor/tests.rs": "cd13799586f6799ee7eb62a36cfeb68933735036cbf5b17b6b3aa9588b6b51eb",
+      "src/engine/audio/routing/record/delivery/tests.rs": "44f28a29813053daf25f30185843717bd02cd1f2cfac15df2bd13c531a9114ef"
+    },
+    "scope": "Complete backlog source inventory, VST3 release-source coverage and original-deadline caller diagnostics and recording-activation fixture synchronization and heap-initialized fixed plugin MIDI storage, supported routing-version roundtrips and actual compact-library viewport sizing and indexer resource retirement before terminal completion",
+    "regressions": {
+      "path": "target/app-backlog/midi-tools-license-fix-tests.log",
+      "sha256": "5d80baefbc13b7973da78dd5ded5ab641095750e824eaa63e22cf289b150c0e0",
+      "passed": 2,
+      "failed": 0
+    },
+    "difference": {
+      "path": "target/app-backlog/midi-tools-license-inventory-difference.json",
+      "sha256": "f64b3a32758c321f77f650e25704bec2f201a669aa3115bb8b2b5dffbd97bc3d"
+    }
+  },
+  "productionCheck": {
+    "path": "target/app-backlog/midi-tools-eighteenth-production-check.log",
+    "sha256": "56913f1ba5339ae745074dc6a0be4bfb8be01c0ec6b7d68e30f32d6d086dc44d",
+    "passed": true
+  },
+  "tests": {
+    "background-jobs": {
+      "path": "target/app-backlog/midi-tools-eighteenth-background-jobs.log",
+      "sha256": "0bf8c2e9283437a7c3b8b292c2aeafad6bcf06c5d68ee4ff63aa145321a70841",
+      "outcome": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2218,
+      "seconds": 0.16
+    },
+    "library-scan": {
+      "path": "target/app-backlog/midi-tools-eighteenth-library-scan.log",
+      "sha256": "21d73d7295494ce110bd8219f09a9ef0c8a4a944a5d1ff7a25f6bf4c29185549",
+      "outcome": "ok",
+      "passed": 17,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2202,
+      "seconds": 3.48
+    },
+    "monitor-qualification": {
+      "path": "target/app-backlog/midi-tools-eighteenth-monitor-qualification.log",
+      "sha256": "86fec7961ddd1cb5542a84d92e2488f9424979c8dfa8a8fac82ead578335ba88",
+      "outcome": "ok",
+      "passed": 6,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2213,
+      "seconds": 4.31
+    },
+    "library-view": {
+      "path": "target/app-backlog/midi-tools-eighteenth-library-view.log",
+      "sha256": "00673fb05ab0cb15b9fc98203b0d3250c283855a6d679cdb39b29c63d47c36bc",
+      "outcome": "ok",
+      "passed": 10,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2209,
+      "seconds": 30
+    },
+    "plugin-midi-storage": {
+      "path": "target/app-backlog/midi-tools-eighteenth-plugin-midi-storage.log",
+      "sha256": "ffa22620695b91c358c459c7fe70144b66ba099a56e0b1e3ed74a9d101c5b31e",
+      "outcome": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2218,
+      "seconds": 0
+    },
+    "media-analysis": {
+      "path": "target/app-backlog/midi-tools-eighteenth-media-analysis.log",
+      "sha256": "94a85e5267eda79400e7ad439f92527b6527f942e36d0621304c819d043fe0cd",
+      "outcome": "ok",
+      "passed": 9,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2210,
+      "seconds": 0.33
+    },
+    "duration": {
+      "path": "target/app-backlog/midi-tools-eighteenth-duration.log",
+      "sha256": "4ee0a2a6e68937b59c7882e53cf8d3b7e98fb06110ab09627a2e03b2056ff854",
+      "outcome": "ok",
+      "passed": 5,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2214,
+      "seconds": 1.15
+    },
+    "core": {
+      "path": "target/app-backlog/midi-tools-eighteenth-core.log",
+      "sha256": "511310e967678dbad3c811747815e0b79a0ebad835edd2636e249883014b3fef",
+      "outcome": "ok",
+      "passed": 7,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2212,
+      "seconds": 0.06
+    },
+    "native": {
+      "path": "target/app-backlog/midi-tools-eighteenth-native.log",
+      "sha256": "6323093566cf1fda36c641bf9ba4ae860680127e3cfd69e9853c971861a39f3d",
+      "outcome": "ok",
+      "passed": 5,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2214,
+      "seconds": 3.03
+    },
+    "piano": {
+      "path": "target/app-backlog/midi-tools-eighteenth-piano.log",
+      "sha256": "5fbeafb68dd6be1fd356deaa752023d03a747225856f1272e9c156f58d313433",
+      "outcome": "ok",
+      "passed": 27,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2192,
+      "seconds": 11.85
+    },
+    "edit": {
+      "path": "target/app-backlog/midi-tools-eighteenth-edit.log",
+      "sha256": "5faa0df6d3cb6efb41f92e45f3e0a4ad504c6ba255a6e6dc15113e66e4905da2",
+      "outcome": "ok",
+      "passed": 9,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2210,
+      "seconds": 1.03
+    },
+    "interchange": {
+      "path": "target/app-backlog/midi-tools-eighteenth-interchange.log",
+      "sha256": "4d90efbf61ecfe115f31be5316f33b154a12d3d3da62c5866fb9aae3a9a91f34",
+      "outcome": "ok",
+      "passed": 14,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2205,
+      "seconds": 10.41
+    },
+    "midi-data": {
+      "path": "target/app-backlog/midi-tools-eighteenth-midi-data.log",
+      "sha256": "999bbcaa312e83775bb3c9ed755f278bb23e0d5dbb3c1b9d4b92c4734cc8c0b1",
+      "outcome": "ok",
+      "passed": 9,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2210,
+      "seconds": 1.73
+    },
+    "midi-file": {
+      "path": "target/app-backlog/midi-tools-eighteenth-midi-file.log",
+      "sha256": "c3a31ea30c8a48688b5b7150351a7411566dbaa6a4180d51d230e3d6638afa81",
+      "outcome": "ok",
+      "passed": 9,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2210,
+      "seconds": 0
+    },
+    "midi-ui": {
+      "path": "target/app-backlog/midi-tools-eighteenth-midi-ui.log",
+      "sha256": "314dc4cc09886a8d4e5e76b11dc97d527ed98b022b7f271502d4dfdb25700fad",
+      "outcome": "ok",
+      "passed": 8,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2211,
+      "seconds": 2.2
+    },
+    "undo": {
+      "path": "target/app-backlog/midi-tools-eighteenth-undo.log",
+      "sha256": "70b668d22c598666d014a308fe54fab5eb56e9575ef1c632aeb0089165e7329b",
+      "outcome": "ok",
+      "passed": 36,
+      "failed": 0,
+      "ignored": 1,
+      "filtered": 2182,
+      "seconds": 4.87
+    },
+    "clip-management": {
+      "path": "target/app-backlog/midi-tools-eighteenth-clip-management.log",
+      "sha256": "7964375c8b08a9958f9a1c2759d0f9c9b39f3f75ebea6cbb23c50772c1955417",
+      "outcome": "ok",
+      "passed": 8,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2211,
+      "seconds": 2.04
+    },
+    "routing-playback": {
+      "path": "target/app-backlog/midi-tools-eighteenth-routing-playback.log",
+      "sha256": "c064bc5e97940fb653b5ed85da2643714cdfade20188dea5a134048ea7fb7981",
+      "outcome": "ok",
+      "passed": 13,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2206,
+      "seconds": 9.45
+    },
+    "clock": {
+      "path": "target/app-backlog/midi-tools-eighteenth-clock.log",
+      "sha256": "b1b076b51715d8633faf418a426bb6790bf09dcf10664f4384a602a30d8e2b35",
+      "outcome": "ok",
+      "passed": 13,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2206,
+      "seconds": 11.53
+    },
+    "graph": {
+      "path": "target/app-backlog/midi-tools-eighteenth-graph.log",
+      "sha256": "8ff75d77f1cfbfd8abb487fa0304a6251c9e66fb803bc34e6ff68da352b50372",
+      "outcome": "ok",
+      "passed": 10,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2209,
+      "seconds": 0.82
+    },
+    "workspace": {
+      "path": "target/app-backlog/midi-tools-eighteenth-workspace.log",
+      "sha256": "e4f905a4df2d660f447201783125f2b0ef323b05e25e40324fc5039899b90249",
+      "outcome": "ok",
+      "passed": 8,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2211,
+      "seconds": 0.99
+    },
+    "touch": {
+      "path": "target/app-backlog/midi-tools-eighteenth-touch.log",
+      "sha256": "0122c143309882ca8a1f1b4c37c9643246f3e904027238c0da7b18b79f156554",
+      "outcome": "ok",
+      "passed": 12,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2207,
+      "seconds": 1.5
+    },
+    "help": {
+      "path": "target/app-backlog/midi-tools-eighteenth-help.log",
+      "sha256": "d7687e2fa7ceaf8110b0626ae3359c81a616b8598d6e75794b44927a9b026850",
+      "outcome": "ok",
+      "passed": 14,
+      "failed": 0,
+      "ignored": 1,
+      "filtered": 2204,
+      "seconds": 3.19
+    },
+    "licenses": {
+      "path": "target/app-backlog/midi-tools-eighteenth-licenses.log",
+      "sha256": "e131dce85b008227fcc259816a8d9ed9b125bf0797f96d46666bcaa193b6ea4f",
+      "outcome": "ok",
+      "passed": 6,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2213,
+      "seconds": 0.57
+    },
+    "play-history": {
+      "path": "target/app-backlog/midi-tools-eighteenth-play-history.log",
+      "sha256": "2ad02c722bf6871907363fd0b1631ccb8b1ed13ba9d0dcac1aaafd21d6dab07e",
+      "outcome": "ok",
+      "passed": 11,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2208,
+      "seconds": 1.56
+    },
+    "sampler-editor": {
+      "path": "target/app-backlog/midi-tools-eighteenth-sampler-editor.log",
+      "sha256": "16ee394186d7e509f589e409162b3c81157e3e541f3ffd62a61c48b9c0a908bf",
+      "outcome": "ok",
+      "passed": 15,
+      "failed": 0,
+      "ignored": 1,
+      "filtered": 2203,
+      "seconds": 4.59
+    },
+    "sampler-store": {
+      "path": "target/app-backlog/midi-tools-eighteenth-sampler-store.log",
+      "sha256": "29fedd1c915e80350136e5f5ed4894e4f1e6612008457459a17f45a7a7f2f8d1",
+      "outcome": "ok",
+      "passed": 4,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2215,
+      "seconds": 0.04
+    },
+    "compose": {
+      "path": "target/app-backlog/midi-tools-eighteenth-compose.log",
+      "sha256": "0620594667bb38648b2c2a8dd8474fe164ca26d8309283dd8488da3b037b3dd3",
+      "outcome": "ok",
+      "passed": 2,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2217,
+      "seconds": 0.3
+    },
+    "waveform": {
+      "path": "target/app-backlog/midi-tools-eighteenth-waveform.log",
+      "sha256": "e273def060ddfa3c7cd06d7438b332ac47814755055f88a9f0e52e9f229f54a5",
+      "outcome": "ok",
+      "passed": 5,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2214,
+      "seconds": 0.5
+    },
+    "song-navigation": {
+      "path": "target/app-backlog/midi-tools-eighteenth-song-navigation.log",
+      "sha256": "fdb129185453d68ca445178de5d7179682d9cc36e9ef31257c589a60f4a654d2",
+      "outcome": "ok",
+      "passed": 11,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2208,
+      "seconds": 2.78
+    },
+    "project-timing": {
+      "path": "target/app-backlog/midi-tools-eighteenth-project-timing.log",
+      "sha256": "4a0d085919f4e7fbe3068f2903696b6f8e04c04e79c4184ce9bed9006469092e",
+      "outcome": "ok",
+      "passed": 6,
+      "failed": 0,
+      "ignored": 1,
+      "filtered": 2212,
+      "seconds": 1.49
+    },
+    "metronome": {
+      "path": "target/app-backlog/midi-tools-eighteenth-metronome.log",
+      "sha256": "94e9fdf26d458d225cbafeb24fb24c780a9b6b0ee8d348fdd30e2a2fdbd21219",
+      "outcome": "ok",
+      "passed": 6,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2213,
+      "seconds": 2.35
+    },
+    "recording": {
+      "path": "target/app-backlog/midi-tools-eighteenth-recording.log",
+      "sha256": "627410f2d6fc71163b4ec9c7ad625db66d6651cefc94b433c4c2132ced039c3c",
+      "outcome": "ok",
+      "passed": 12,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2207,
+      "seconds": 4.08
+    },
+    "audio": {
+      "path": "target/app-backlog/midi-tools-eighteenth-audio.log",
+      "sha256": "32a8564b49f282352469825015c94e15beee48b2a8b9068aaf9779af128f0010",
+      "outcome": "ok",
+      "passed": 4,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2215,
+      "seconds": 0.42
+    },
+    "manual": {
+      "path": "target/app-backlog/midi-tools-eighteenth-manual.log",
+      "sha256": "1852e861684217ac990fd083f132a384bb7428513fb2188ff30b9616ee3d5b6e",
+      "outcome": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2218,
+      "seconds": 0
+    },
+    "full": {
+      "path": "target/app-backlog/midi-tools-eighteenth-full.log",
+      "sha256": "88bccda56d7f383f4567ef9b513a0601a315c369e07b35e2215ce031a654cc75",
+      "outcome": "ok",
+      "passed": 2160,
+      "failed": 0,
+      "ignored": 59,
+      "filtered": 0,
+      "seconds": 764.74
+    }
+  },
+  "checks": {
+    "native": {
+      "native_egui_accesskit": true,
+      "reversible_preview": true,
+      "settings_history": true,
+      "single_undo": true,
+      "native_save_reopen": true,
+      "physical_devices_opened": false
+    },
+    "expression": {
+      "linked_events": 5,
+      "unselected_notes_and_events_unchanged": true,
+      "metadata_and_labels_retained": true,
+      "single_undo_redo": true,
+      "native_save_reopen": true,
+      "physical_devices_opened": false
+    },
+    "worker": {
+      "actual_worker": true,
+      "stale_result_preserves_draft": true,
+      "cancel_preserves_draft": true,
+      "history_limit": 32,
+      "discard_cancels": true,
+      "physical_devices_opened": false
+    },
+    "drawn": {
+      "actual_pointer_curve": true,
+      "native_numeric_points": true,
+      "cyclic_preset": true,
+      "velocity_only": true,
+      "single_undo": true,
+      "physical_devices_opened": false
+    },
+    "disabled": {
+      "actual_pointer_drag": true,
+      "disabled_canvas_preserves_draft": true,
+      "keyboard_cannot_edit_preview": true,
+      "committed_clip_unchanged": true,
+      "physical_devices_opened": false
+    },
+    "capacity": {
+      "selected_notes": 8192,
+      "linked_expression_events": 229376,
+      "worker_preparation_ms": 57,
+      "physical_devices_opened": false
+    }
+  },
+  "compiledTests": {
+    "total": 2219,
+    "ignored": 59,
+    "all": {
+      "path": "target/app-backlog/multi-clip-fourth-compiled-tests.log",
+      "sha256": "7a7125bd5abd3d60724fc911d56d42f147712e5cbb06bcdde8879f86c44fbd3c"
+    },
+    "ignoredFixtures": {
+      "path": "target/app-backlog/multi-clip-fourth-ignored-tests.log",
+      "sha256": "6e055db2142728f40598f1a19208efb3eef3f17c71d0af43251948a3d7b7fb1d"
+    }
+  },
+  "concurrentPluginIntegration": {
+    "schema": 1,
+    "localFeatureRevision": "31c4247498b2916d24ef5cf6bdb659dd1a5efd59",
+    "remoteRevision": "54b917608676b468c3d755f7ff94f1d7cfce47fe",
+    "conflict": "Only generated source inventory. Incoming dependency/license records and vendored bytes preserved; combined sources inventoried without Python.",
+    "inheritedVendorWhitespace": {
+      "path": "target/app-backlog/midi-tools-inherited-vendor-whitespace.log",
+      "sha256": "629966ff3cd922c5db1544f360ff5337771f9459aee08927427c483dae07db58",
+      "lines": 3,
+      "reason": "Upstream vendored whitespace retained unchanged to preserve declared dependency bytes. All other staged files pass whitespace validation."
+    },
+    "featureSourceFiles": {
+      "src/engine/midi_tools.rs": "462a4173a1823f7903108deaf0c240c6dddd661c0bfdc5c671fb2033d64453bd",
+      "src/engine/midi_tools/tests.rs": "834304336f556b9b15027247011441226fe278467f5a3f66625c5cbd08371e3c",
+      "src/engine/mod.rs": "2fcda6c5fcaa828e38cd1ea9b90ed2022b45b71a56334760573efc6ce05cb408",
+      "src/ui/help/catalogue.rs": "05b18cf5314f37130a830075247a49475bebb13ac54e7b4cc45558522f50a9f4",
+      "src/ui/piano_roll.rs": "067508c40f2949a251efb6566fa10f16fd686b24c4e76525d35fb6a7d19f1560",
+      "src/ui/piano_roll/control.rs": "bb032fe7708bfcc1e86f24f566868324fad3d23493e7b28ade5c806d49dc862b",
+      "src/ui/piano_roll/tools.rs": "fceb5e5bab5c80db6f8f07a9093843d3eb6803cdb0e3cfaf548e6adcdb10d088",
+      "src/ui/piano_roll/tools/tests.rs": "c16b4d2ba256a67746b0ae838f07fe279de076b856aae7b0ab9377a7e32c1211"
+    },
+    "pluginGraphIntegration": {
+      "localQualificationCorrections": "fcd2d1a",
+      "remoteRevision": "0d3a5e91229597d28ed59e461ae3ae3b78c996fb",
+      "mergedRevision": "c060b55f8a01a097f248164322b90378a3e0f6aa",
+      "obsoleteTenthFullGate": "Explicitly interrupted and retained before source integration; no full pass claimed"
+    }
+  },
+  "node": {
+    "path": "target/app-backlog/midi-tools-eighteenth-node.log",
+    "sha256": "3bc9d6864629f69fef69361d06b2822890b943e273bca0045d66511146118dc7",
+    "passed": 17,
+    "failed": 0
+  },
+  "clockLoadRegression": {
+    "path": "target/app-backlog/midi-tools-eighteenth-full-output-timing.json",
+    "sha256": "e29ff7712ed10994b3add54835c38089da0d6d67858567b4cd12cc5bed8c59a4",
+    "physical_devices_opened": false,
+    "real_decode_egui_iterations": 4974,
+    "schema": 1,
+    "tempos": [
+      {
+        "bpm": 40,
+        "clocks": 24,
+        "delay_ns": [
+          68572,
+          105573,
+          137990,
+          44449,
+          144617,
+          125118,
+          108160,
+          95327,
+          129078,
+          151621,
+          16496,
+          30580,
+          19623,
+          111874,
+          3245767,
+          102876,
+          114585,
+          7252,
+          108003,
+          40254,
+          142088,
+          3672,
+          41590,
+          57591
+        ],
+        "max_delay_ns": 3245767
+      },
+      {
+        "bpm": 73,
+        "clocks": 24,
+        "delay_ns": [
+          114864,
+          57755,
+          92188,
+          283622,
+          118763,
+          355364,
+          159338,
+          63313,
+          18162,
+          114304,
+          117946,
+          126504,
+          188604,
+          71870,
+          64428,
+          149028,
+          117294,
+          74477,
+          41077,
+          27301,
+          77777,
+          382045,
+          335394,
+          34409
+        ],
+        "max_delay_ns": 382045
+      },
+      {
+        "bpm": 120,
+        "clocks": 24,
+        "delay_ns": [
+          89779,
+          126725,
+          63878,
+          147822,
+          164226,
+          82129,
+          34698,
+          114060,
+          140422,
+          329867,
+          98436,
+          140673,
+          99450,
+          124937,
+          76215,
+          49909,
+          124605,
+          179175,
+          63910,
+          104022,
+          914180,
+          27744,
+          8064,
+          70260
+        ],
+        "max_delay_ns": 914180
+      },
+      {
+        "bpm": 137,
+        "clocks": 24,
+        "delay_ns": [
+          109822,
+          115794,
+          131434,
+          58073,
+          89629,
+          139560,
+          27532,
+          24755,
+          37977,
+          45533,
+          28464,
+          151229,
+          113744,
+          36299,
+          15772,
+          100787,
+          15384,
+          93315,
+          43913,
+          99677,
+          82358,
+          228415,
+          56262,
+          12692
+        ],
+        "max_delay_ns": 228415
+      },
+      {
+        "bpm": 180,
+        "clocks": 24,
+        "delay_ns": [
+          134155,
+          64604,
+          132054,
+          78586,
+          147285,
+          54901,
+          123809,
+          124176,
+          14707,
+          117365,
+          133148,
+          51889,
+          151214,
+          23495,
+          108904,
+          93061,
+          111261,
+          56084,
+          159951,
+          33192,
+          8849,
+          42049,
+          82706,
+          65114
+        ],
+        "max_delay_ns": 159951
+      },
+      {
+        "bpm": 240,
+        "clocks": 24,
+        "delay_ns": [
+          155072,
+          36711,
+          83975,
+          87364,
+          111295,
+          18600,
+          151823,
+          5754,
+          153310,
+          119073,
+          19171,
+          7643,
+          23740,
+          83005,
+          148436,
+          61407,
+          60714,
+          157520,
+          86575,
+          104048,
+          11895,
+          65159,
+          7548,
+          63187
+        ],
+        "max_delay_ns": 157520
+      }
+    ]
+  },
+  "retainedPreliminaryResults": {
+    "seventeenth": {
+      "reason": "All focused groups, original-deadline reproductions, scanner and relocation checks passed. The full unfiltered suite retained 2152 passing tests, one media-analysis wait timeout and 59 ignored qualifications in 789.11 seconds. Five exact repetitions on the unchanged executable passed in 0 to 20 ms. The final source adds caller and pending/active analysis, foreground lane, scheduler and protection diagnostics with the same three-second deadline. No root cause or production timeout fix is claimed. Retained host observations show concurrent CPU, memory and I/O pressure but do not establish causation. The ready shared-editor implementation is integrated for the next single build/full qualification; no failed run is promoted to release evidence. All original sources, executable, results and observations remain retained.",
+      "binary": {
+        "path": "target/app-backlog/qualification-bin/midi-tools-tests-seventeenth",
+        "sha256": "6ad91ed168e469cf903c25b3e9c77922143f5196d57095eba6743c737b275f50"
+      },
+      "artifacts": [
+        {
+          "path": "target/app-backlog/midi-tools-seventeenth-analysis-reproduction-1.log",
+          "sha256": "d82e7522dee6d08eaa4f0d9b2d134472bb0ec258419a083538926f5f24590e2a"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-seventeenth-analysis-reproduction-2.log",
+          "sha256": "c766e3bff5d9579f054c60ed1462a028060897afe26688c9157ac3d14939d17c"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-seventeenth-analysis-reproduction-3.log",
+          "sha256": "c766e3bff5d9579f054c60ed1462a028060897afe26688c9157ac3d14939d17c"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-seventeenth-analysis-reproduction-4.log",
+          "sha256": "c766e3bff5d9579f054c60ed1462a028060897afe26688c9157ac3d14939d17c"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-seventeenth-analysis-reproduction-5.log",
+          "sha256": "c766e3bff5d9579f054c60ed1462a028060897afe26688c9157ac3d14939d17c"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-seventeenth-audio.log",
+          "sha256": "d496ca5eaf8bf79af5bb8975eae6779346b646a5accf6fb03de0c922f069f89e"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-seventeenth-background-jobs.log",
+          "sha256": "158aeddc7f350920e281f4e0766864b9e0b53c9c5e5ee5ad3a1bd1057995a9eb"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-seventeenth-background-reproduction-1.log",
+          "sha256": "158aeddc7f350920e281f4e0766864b9e0b53c9c5e5ee5ad3a1bd1057995a9eb"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-seventeenth-background-reproduction-10.log",
+          "sha256": "158aeddc7f350920e281f4e0766864b9e0b53c9c5e5ee5ad3a1bd1057995a9eb"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-seventeenth-background-reproduction-11.log",
+          "sha256": "d234eeea1f1a2ef53e2d1b0bb82bef480f883a9672355a89ea9553f21e429884"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-seventeenth-background-reproduction-12.log",
+          "sha256": "d234eeea1f1a2ef53e2d1b0bb82bef480f883a9672355a89ea9553f21e429884"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-seventeenth-background-reproduction-13.log",
+          "sha256": "d234eeea1f1a2ef53e2d1b0bb82bef480f883a9672355a89ea9553f21e429884"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-seventeenth-background-reproduction-14.log",
+          "sha256": "94e480cf07fb6d6a4295da1d7f551c9fbbdc7810c5d804712c305822e01f126f"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-seventeenth-background-reproduction-15.log",
+          "sha256": "158aeddc7f350920e281f4e0766864b9e0b53c9c5e5ee5ad3a1bd1057995a9eb"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-seventeenth-background-reproduction-16.log",
+          "sha256": "158aeddc7f350920e281f4e0766864b9e0b53c9c5e5ee5ad3a1bd1057995a9eb"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-seventeenth-background-reproduction-17.log",
+          "sha256": "158aeddc7f350920e281f4e0766864b9e0b53c9c5e5ee5ad3a1bd1057995a9eb"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-seventeenth-background-reproduction-18.log",
+          "sha256": "659aea5e39df788f89302f4917aa0f77a3ca7ecc81342c3b48bbc0b55ce84abd"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-seventeenth-background-reproduction-19.log",
+          "sha256": "659aea5e39df788f89302f4917aa0f77a3ca7ecc81342c3b48bbc0b55ce84abd"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-seventeenth-background-reproduction-2.log",
+          "sha256": "158aeddc7f350920e281f4e0766864b9e0b53c9c5e5ee5ad3a1bd1057995a9eb"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-seventeenth-background-reproduction-20.log",
+          "sha256": "659aea5e39df788f89302f4917aa0f77a3ca7ecc81342c3b48bbc0b55ce84abd"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-seventeenth-background-reproduction-3.log",
+          "sha256": "158aeddc7f350920e281f4e0766864b9e0b53c9c5e5ee5ad3a1bd1057995a9eb"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-seventeenth-background-reproduction-4.log",
+          "sha256": "158aeddc7f350920e281f4e0766864b9e0b53c9c5e5ee5ad3a1bd1057995a9eb"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-seventeenth-background-reproduction-5.log",
+          "sha256": "dd0ebab1416f6e020f477be5f0ae3234d84c4afdb5076617e44a6d7a41695e20"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-seventeenth-background-reproduction-6.log",
+          "sha256": "d234eeea1f1a2ef53e2d1b0bb82bef480f883a9672355a89ea9553f21e429884"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-seventeenth-background-reproduction-7.log",
+          "sha256": "d234eeea1f1a2ef53e2d1b0bb82bef480f883a9672355a89ea9553f21e429884"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-seventeenth-background-reproduction-8.log",
+          "sha256": "659aea5e39df788f89302f4917aa0f77a3ca7ecc81342c3b48bbc0b55ce84abd"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-seventeenth-background-reproduction-9.log",
+          "sha256": "d234eeea1f1a2ef53e2d1b0bb82bef480f883a9672355a89ea9553f21e429884"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-seventeenth-build.log",
+          "sha256": "1ce9b30f86e74b8ee951b92aba33b7dfc3f7513e30f297c0eb25a9cd18a2c9de"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-seventeenth-clip-management.log",
+          "sha256": "a4888eaa74cd0a1ea59600da3a1f26f7ebbd13da715dcf9ea963bd62ea1b656a"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-seventeenth-clock.log",
+          "sha256": "e8e4ed3321c0a3e670a3b05dcd17e503adbafc76fd6895cbb383665ba11174bc"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-seventeenth-compiled-tests.log",
+          "sha256": "f42a4eb88ea3220e57f5e9f20bdac366b243a41e53f645a1b65f0cd876436b22"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-seventeenth-compose.log",
+          "sha256": "742754a228b03f39911edde137f560fdba7464d6a0ba8a3bd5db1d1e4420dbfd"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-seventeenth-core.log",
+          "sha256": "72d390472da0a6631020d79e85d34e6d66894c431b9b4f612cb17e08242db751"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-seventeenth-duration-reproduction-1.log",
+          "sha256": "833c6c51c86a0ebcae564a52f852b563ba4bbccc1dcf126fbf8db9bd4239dc08"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-seventeenth-duration-reproduction-10.log",
+          "sha256": "4e68e04260fc8384b58d93695c08d0cd197c581cbfd0d8509358af664fe661f0"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-seventeenth-duration-reproduction-2.log",
+          "sha256": "9a2f01dc57455357463d94c1acccd110ff349a6d511fdf889d84bb72ec7d95fa"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-seventeenth-duration-reproduction-3.log",
+          "sha256": "b745400fbf5b627404a1b4624b435b7af699cf8c50d2316deb43cbfa5a403037"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-seventeenth-duration-reproduction-4.log",
+          "sha256": "3d2f86dc6696f27724e7e7f7a7e4d011994ba97eec1b2de8de4d2375375756bb"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-seventeenth-duration-reproduction-5.log",
+          "sha256": "3d2f86dc6696f27724e7e7f7a7e4d011994ba97eec1b2de8de4d2375375756bb"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-seventeenth-duration-reproduction-6.log",
+          "sha256": "00a44daca82b76aff12703b5794a0bd45a51ec925e48ae89ca72b07578297d44"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-seventeenth-duration-reproduction-7.log",
+          "sha256": "00a44daca82b76aff12703b5794a0bd45a51ec925e48ae89ca72b07578297d44"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-seventeenth-duration-reproduction-8.log",
+          "sha256": "3d2f86dc6696f27724e7e7f7a7e4d011994ba97eec1b2de8de4d2375375756bb"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-seventeenth-duration-reproduction-9.log",
+          "sha256": "d56380c70670172e8769b1a63e2638ec18b36c89d09f1bf58c2e24be47a7e401"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-seventeenth-duration.log",
+          "sha256": "b340b7085d15cdada2ecc046811969901125ef606bccb043c5b514b801d3bbc5"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-seventeenth-edit.log",
+          "sha256": "ee18846b8c0e6928d936b829fd520a9b6ced9e422577aeb2182c6a11bd3b8075"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-seventeenth-full-output-timing.json",
+          "sha256": "3971000e0921d7edad5317786c204e904f152328412855499d558ca1bbfb38a0"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-seventeenth-full.log",
+          "sha256": "10827fa55d1354239b5ef167f9cd05c1104a0e7f4576362c196584a620e998ba"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-seventeenth-graph.log",
+          "sha256": "6989d49f80dd450916e32ae0b6f1ec40f53e85531c48635a6324569568660336"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-seventeenth-help.log",
+          "sha256": "7bfe70f57e0f3bf75d57283bba34f3d98b07e07b74ac3b051b895de6cbaa451b"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-seventeenth-ignored-tests.log",
+          "sha256": "6e055db2142728f40598f1a19208efb3eef3f17c71d0af43251948a3d7b7fb1d"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-seventeenth-interchange.log",
+          "sha256": "ef2d12ce74a8a5de84bd73854dda0cfbe60b0377c8d6835d5f0125ce9b4f2cd8"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-seventeenth-inventory-corrected.log",
+          "sha256": "4ac57d40559fd050430478b3b7c52610e5fa9552405e4febcf75242f98a974a8"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-seventeenth-inventory.log",
+          "sha256": "fb1a479f7996f9e6ae944d4fd47cbe9fd62222d041fcc9906b5194077931bf50"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-seventeenth-library-scan.log",
+          "sha256": "6f1cc813fd8ee0c84089449c6703b799cd2987ce351fb744e43b1b99b64dcf60"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-seventeenth-library-view.log",
+          "sha256": "228b002712c0753ca71c0ae134be060f78bff8fd2f41bdf08fbb576c6bb0702c"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-seventeenth-licenses.log",
+          "sha256": "29b4827312f4d3b29a89e2adaea0bdf222ed6c9a85d4b6e3afb14cb2e3a6e048"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-seventeenth-manual.log",
+          "sha256": "475282e999ecadfb9b3041bf05221003d6851838a94ef25132322b17e5e52369"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-seventeenth-metronome.log",
+          "sha256": "e884bf2969fd899bfa2c08f13d562c42f2f893e11b01a7ad10ed227df8ee8204"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-seventeenth-midi-data.log",
+          "sha256": "68ffa8bd45a54836ab1a8b262f2d04d88d3ece147e7611e1911256098ec3f98d"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-seventeenth-midi-file.log",
+          "sha256": "888b73210dd8b80a9a9539a43ad2d17a741aa6e2fe21d9a1b687d1bc94cafea6"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-seventeenth-midi-ui.log",
+          "sha256": "a6342270230fe437ded9bb06a4ca0a179f89306e524e3cda9bfd2e683686a79e"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-seventeenth-monitor-qualification.log",
+          "sha256": "881fdfa44ec7a6b4de9a02f589b58966e3314623bf042fd66a277eb26e3d39c4"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-seventeenth-native.log",
+          "sha256": "24d0a6f67fd4a681e2f8021a1a6b69e8f3be045edf34e73a78e11d364938ce73"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-seventeenth-piano.log",
+          "sha256": "7d2d828cf5a92c25febedaa36bb0b73fbc8aa005f317485881efe0eeab921caf"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-seventeenth-play-history.log",
+          "sha256": "cd32d9fdf08f9f08c4c452bc1d9f59191415ae00424b5b88058dd3ebf90c2057"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-seventeenth-plugin-midi-storage.log",
+          "sha256": "d5b0c9cdcbd423fe6840d3a8d36fe98c5334cef8b64b4593778baad0a5855f17"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-seventeenth-production-check.log",
+          "sha256": "780a24585e6f984d7b3d5112fc348268b4b725cc1c3326b512d58e6b1b05a90b"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-seventeenth-project-timing.log",
+          "sha256": "9347f750ea56a7124a7441692e348e03560971eb1becd54b68b554dbb579a00c"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-seventeenth-recording.log",
+          "sha256": "33d7cb43a23b04b6792b1f7a328a6ff2e5deec931d58df9e8bbb5eea796088ec"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-seventeenth-routing-playback.log",
+          "sha256": "556c242e2e4972f0072358aa6c941dcb47d883d66b178c14f7f2bfb35ef800e0"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-seventeenth-sampler-editor.log",
+          "sha256": "d8696cce6badf0dd88de45294c97cda99c2877a0ee0f4f4ba38e0fa5b0ef89ce"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-seventeenth-sampler-reproduction-1.log",
+          "sha256": "d17f101768047a6091d698674c30e48d83011f15769984f87acb4f79976fded4"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-seventeenth-sampler-reproduction-10.log",
+          "sha256": "6b1c3cbe35263990945149e82e63a868ea4cb0737ec8b94cac04e622a46901a9"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-seventeenth-sampler-reproduction-2.log",
+          "sha256": "d17f101768047a6091d698674c30e48d83011f15769984f87acb4f79976fded4"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-seventeenth-sampler-reproduction-3.log",
+          "sha256": "7eb62ddcbbe751bebe42e29a0330dd1d611751fb00c6849343539cdd75c4940f"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-seventeenth-sampler-reproduction-4.log",
+          "sha256": "9f5b46a1b4c8bca52afc16b6589a255b520b4bded58ba2d0ea46e584bc282288"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-seventeenth-sampler-reproduction-5.log",
+          "sha256": "3a6e39e1ca6c2489d4e980e57299a7f652165c7b47977f6a2ae99353712a30df"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-seventeenth-sampler-reproduction-6.log",
+          "sha256": "3a6e39e1ca6c2489d4e980e57299a7f652165c7b47977f6a2ae99353712a30df"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-seventeenth-sampler-reproduction-7.log",
+          "sha256": "9f5b46a1b4c8bca52afc16b6589a255b520b4bded58ba2d0ea46e584bc282288"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-seventeenth-sampler-reproduction-8.log",
+          "sha256": "d17f101768047a6091d698674c30e48d83011f15769984f87acb4f79976fded4"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-seventeenth-sampler-reproduction-9.log",
+          "sha256": "9f5b46a1b4c8bca52afc16b6589a255b520b4bded58ba2d0ea46e584bc282288"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-seventeenth-sampler-store.log",
+          "sha256": "ef8cbb36de7b422ac485eb16d8ae4cb6ccbc03ae29492a9e59439e557a51bb77"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-seventeenth-song-navigation.log",
+          "sha256": "1b6ef2ea8659f416b9f7cb5f86a94b9b66e67f2df18b9b63b7c6a979cfa77fa2"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-seventeenth-source.json",
+          "sha256": "6972577543a243831be6a5100e82a5dc6374fe887b9b58b46b1a925a54481dac"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-seventeenth-touch.log",
+          "sha256": "521cbf5f8d800944cefdd5d36d447f68af6731a6e6bcdd42c501e2e0e62a32ab"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-seventeenth-undo.log",
+          "sha256": "f6fcc30eb6a3a334ecc8a7a4dbffa301429e5ad8327619aad50b3cf57ea8ee21"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-seventeenth-waveform.log",
+          "sha256": "e2d97033a44d04299bd8b2c15413c7a13c0c07694e9d7a03fa0529c82bb90d25"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-seventeenth-workspace.log",
+          "sha256": "31af8c4a7c6dbca42d56d0a116e7de3281d775d14bda1dd4998998b16e7b896b"
+        }
+      ]
+    },
+    "sixteenth": {
+      "reason": "All focused groups, original-deadline repetitions and the background cancellation regression passed. The unfiltered suite retained 2146 passing tests, seven failures and 59 ignored qualifications in 819.52 seconds: six scanner waits and one replacement-publication wait timed out. The unchanged immutable executable subsequently passed all seventeen scanner tests in 3.66 seconds and the exact replacement test in 0.43 seconds. No root cause or production timeout fix is claimed. Caller, scanner phase/progress, worker termination, scheduler admission and metadata publication state are now retained on timeout without extending any deadline or removing any assertion. The complete original run, unchanged reproductions, clock receipt, inputs and executable are retained.",
+      "binary": {
+        "path": "target/app-backlog/qualification-bin/midi-tools-tests-sixteenth",
+        "sha256": "90de13fb64cf56d514ae76a9635e9c1a81fd2c74d8db1f6f8a2f41304b303742"
+      },
+      "artifacts": [
+        {
+          "path": "target/app-backlog/midi-tools-sixteenth-audio.log",
+          "sha256": "24f89c67f16880873b40218a2af8742e9cdbc7dcfa09b4d158ad3eb52e272935"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-sixteenth-background-jobs.log",
+          "sha256": "dd0ebab1416f6e020f477be5f0ae3234d84c4afdb5076617e44a6d7a41695e20"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-sixteenth-background-reproduction-1.log",
+          "sha256": "dd0ebab1416f6e020f477be5f0ae3234d84c4afdb5076617e44a6d7a41695e20"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-sixteenth-background-reproduction-10.log",
+          "sha256": "158aeddc7f350920e281f4e0766864b9e0b53c9c5e5ee5ad3a1bd1057995a9eb"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-sixteenth-background-reproduction-11.log",
+          "sha256": "d234eeea1f1a2ef53e2d1b0bb82bef480f883a9672355a89ea9553f21e429884"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-sixteenth-background-reproduction-12.log",
+          "sha256": "d234eeea1f1a2ef53e2d1b0bb82bef480f883a9672355a89ea9553f21e429884"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-sixteenth-background-reproduction-13.log",
+          "sha256": "158aeddc7f350920e281f4e0766864b9e0b53c9c5e5ee5ad3a1bd1057995a9eb"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-sixteenth-background-reproduction-14.log",
+          "sha256": "d234eeea1f1a2ef53e2d1b0bb82bef480f883a9672355a89ea9553f21e429884"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-sixteenth-background-reproduction-15.log",
+          "sha256": "d234eeea1f1a2ef53e2d1b0bb82bef480f883a9672355a89ea9553f21e429884"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-sixteenth-background-reproduction-16.log",
+          "sha256": "d234eeea1f1a2ef53e2d1b0bb82bef480f883a9672355a89ea9553f21e429884"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-sixteenth-background-reproduction-17.log",
+          "sha256": "158aeddc7f350920e281f4e0766864b9e0b53c9c5e5ee5ad3a1bd1057995a9eb"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-sixteenth-background-reproduction-18.log",
+          "sha256": "659aea5e39df788f89302f4917aa0f77a3ca7ecc81342c3b48bbc0b55ce84abd"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-sixteenth-background-reproduction-19.log",
+          "sha256": "94e480cf07fb6d6a4295da1d7f551c9fbbdc7810c5d804712c305822e01f126f"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-sixteenth-background-reproduction-2.log",
+          "sha256": "158aeddc7f350920e281f4e0766864b9e0b53c9c5e5ee5ad3a1bd1057995a9eb"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-sixteenth-background-reproduction-20.log",
+          "sha256": "d234eeea1f1a2ef53e2d1b0bb82bef480f883a9672355a89ea9553f21e429884"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-sixteenth-background-reproduction-3.log",
+          "sha256": "158aeddc7f350920e281f4e0766864b9e0b53c9c5e5ee5ad3a1bd1057995a9eb"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-sixteenth-background-reproduction-4.log",
+          "sha256": "d234eeea1f1a2ef53e2d1b0bb82bef480f883a9672355a89ea9553f21e429884"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-sixteenth-background-reproduction-5.log",
+          "sha256": "158aeddc7f350920e281f4e0766864b9e0b53c9c5e5ee5ad3a1bd1057995a9eb"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-sixteenth-background-reproduction-6.log",
+          "sha256": "d234eeea1f1a2ef53e2d1b0bb82bef480f883a9672355a89ea9553f21e429884"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-sixteenth-background-reproduction-7.log",
+          "sha256": "158aeddc7f350920e281f4e0766864b9e0b53c9c5e5ee5ad3a1bd1057995a9eb"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-sixteenth-background-reproduction-8.log",
+          "sha256": "158aeddc7f350920e281f4e0766864b9e0b53c9c5e5ee5ad3a1bd1057995a9eb"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-sixteenth-background-reproduction-9.log",
+          "sha256": "158aeddc7f350920e281f4e0766864b9e0b53c9c5e5ee5ad3a1bd1057995a9eb"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-sixteenth-build.log",
+          "sha256": "8658ff2f3c459b0a01c548ed6d9c05643be480ed3a1428280c97db3d7b47903a"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-sixteenth-clip-management.log",
+          "sha256": "22c44e05ff828281f77a5051d626d1b581ef3ef7366bead42deace9e2a820bf4"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-sixteenth-clock.log",
+          "sha256": "d258099100a960243fd0a527cdd376c042b93e9f5e8f82d04a2f67d17eb033ed"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-sixteenth-compiled-tests.log",
+          "sha256": "f42a4eb88ea3220e57f5e9f20bdac366b243a41e53f645a1b65f0cd876436b22"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-sixteenth-compose.log",
+          "sha256": "3a963a59698e87f3f8d887cb58b03bab5fd877c457732eb9527411e15d1d8f33"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-sixteenth-core.log",
+          "sha256": "40b05932b94d16ecb93a2e11f2111e338560f6b799c6221def2df39c3777cffd"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-sixteenth-duration-reproduction-1.log",
+          "sha256": "4c58c85c9247f0dc03e5adcd4336f638d43dd98cf7bcd3bb22ad7a2f298de8f1"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-sixteenth-duration-reproduction-10.log",
+          "sha256": "7336c8e1c044fe4713c0626e026248a9733e4b239f765d07023c7259739fb573"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-sixteenth-duration-reproduction-2.log",
+          "sha256": "7336c8e1c044fe4713c0626e026248a9733e4b239f765d07023c7259739fb573"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-sixteenth-duration-reproduction-3.log",
+          "sha256": "cc40b3884410771ffb1e431de199d8077ad5cebdc05603f4eeeb3de005b61097"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-sixteenth-duration-reproduction-4.log",
+          "sha256": "7336c8e1c044fe4713c0626e026248a9733e4b239f765d07023c7259739fb573"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-sixteenth-duration-reproduction-5.log",
+          "sha256": "833c6c51c86a0ebcae564a52f852b563ba4bbccc1dcf126fbf8db9bd4239dc08"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-sixteenth-duration-reproduction-6.log",
+          "sha256": "cc40b3884410771ffb1e431de199d8077ad5cebdc05603f4eeeb3de005b61097"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-sixteenth-duration-reproduction-7.log",
+          "sha256": "00a44daca82b76aff12703b5794a0bd45a51ec925e48ae89ca72b07578297d44"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-sixteenth-duration-reproduction-8.log",
+          "sha256": "5082f1fb3ddeb08a09afcb3685804fc9b2776b834e963a783a25ca2bc411b22d"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-sixteenth-duration-reproduction-9.log",
+          "sha256": "aadb0508414c209ce723c1894a877d6f74f4cd289b0644aa9f4c97ce829126d1"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-sixteenth-duration.log",
+          "sha256": "7fb365f20b215edfab81adcb91ad2fecd72b0a571011ee9df39873746b4a11e4"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-sixteenth-edit.log",
+          "sha256": "58c851c76ddee68d5eeb46c90c1fa3deac75962d91bab7ad4d91e0e125f22340"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-sixteenth-full-output-timing.json",
+          "sha256": "e91afee9fe5192f8e72d5712bb6f5f6b04534a68614951e8e76d68d516efe616"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-sixteenth-full.log",
+          "sha256": "fa4df4bead4a8d42da0fd45c66d41e1c2a60dd2e2a74d825b8c14d3314ff5ce5"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-sixteenth-graph.log",
+          "sha256": "6e673a6244c4d5d600d4fb414000a5417ca87cd707db70dbc281adc010a4aa2f"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-sixteenth-help.log",
+          "sha256": "4f6e5ed75f4b8e01a7f7f38d93cf10ce8829f9bd2c78d2f0049a57a5277ab93c"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-sixteenth-ignored-tests.log",
+          "sha256": "6e055db2142728f40598f1a19208efb3eef3f17c71d0af43251948a3d7b7fb1d"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-sixteenth-interchange.log",
+          "sha256": "8db5d351ad470535d2ce48f622311d2a14138d43f2e86d7faf70dff4434b0a8e"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-sixteenth-inventory.log",
+          "sha256": "628e4ef150d1b621e2c25ee07b71cf7015a8c1385c67038132abd6d96af8b0f0"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-sixteenth-library-scan-reproduction-1.log",
+          "sha256": "f655f8bfbbf079f914d5ffb74a5632efe6c4e8dc0459ef03dd3e674350c668c8"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-sixteenth-library-scan.log",
+          "sha256": "5ffb8271db10775b97a992b9ed9e16de751ed8d180d69acebac2c0e634b49ae1"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-sixteenth-library-view.log",
+          "sha256": "9f41c2846ceb4d6d774c9d50d78ffd74d6444022b42d18ef5c7dbadfcc671575"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-sixteenth-license-check.log",
+          "sha256": "d94a5e067286d5c5aedd5ca514a33ee02642f635614378560b96a923d8b76c14"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-sixteenth-licenses.log",
+          "sha256": "9ed0b57b4feb7a1da7d702bccc4065cd8b4029d94ca5f31a2bfe7bc142198ae6"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-sixteenth-manual.log",
+          "sha256": "475282e999ecadfb9b3041bf05221003d6851838a94ef25132322b17e5e52369"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-sixteenth-metronome.log",
+          "sha256": "f327624eaf38376b6e32833a76ce30d96ccc0baf7197398ff5cd3295d38c2b7d"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-sixteenth-midi-data.log",
+          "sha256": "877c03ea9aafc6e50cb2c7110d285638e6a22d6a486fe17febabe685e48b14ba"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-sixteenth-midi-file.log",
+          "sha256": "888b73210dd8b80a9a9539a43ad2d17a741aa6e2fe21d9a1b687d1bc94cafea6"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-sixteenth-midi-ui.log",
+          "sha256": "1752ac8d36f5eba0e6461c096b06db4c97a77b3d26fb077d9a6577a9b5efb8d9"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-sixteenth-monitor-qualification.log",
+          "sha256": "e9b3880829d1162b34ce90a36daf3faec65324cc4821fa7c84d7d9b77b0f487c"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-sixteenth-native.log",
+          "sha256": "055daaf474e1aa1ae846a94fd15f19a6fd18405dcf433587d7ce8c17e2354363"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-sixteenth-piano.log",
+          "sha256": "fd1d5fb9e9767a3b8ae4d09b4596fbd8ec3c37303805053cc8a3d236493bff7c"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-sixteenth-play-history.log",
+          "sha256": "5b3df58a7031a750aaa48f12ec1f7f7395f7521d828a50263ad32f71df09e3fa"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-sixteenth-plugin-midi-storage.log",
+          "sha256": "d5b0c9cdcbd423fe6840d3a8d36fe98c5334cef8b64b4593778baad0a5855f17"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-sixteenth-production-check.log",
+          "sha256": "e422933795f36759712436e4074c1ba4da312870985a91f6cf3dacb1c3084f1f"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-sixteenth-project-timing.log",
+          "sha256": "02446ef29b509515f72d35b3ef6842ac519674853cbb0296d2af514618e506c6"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-sixteenth-recording.log",
+          "sha256": "5e3f0552dd83c27d1c44c8c450cfa2f23258838a863c07f3f3710ee3125d7cce"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-sixteenth-relocation-reproduction-1.log",
+          "sha256": "b7e5ce97a962fc657fa8adf52cdf81bceba9abd157ca46a2c52be8a6225e4bfd"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-sixteenth-routing-playback.log",
+          "sha256": "3015306781463813d51daa62d8b14ebf067b3713c1ddeca5e4c39104bdfa1624"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-sixteenth-sampler-editor.log",
+          "sha256": "00a1905904a88b893d503684248bb5146c11209d1f21821abc942d807d6be1cd"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-sixteenth-sampler-reproduction-1.log",
+          "sha256": "07365c3a5049aa53995b4046f15fed3064a0de5a6645dca0002c1238acb05b60"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-sixteenth-sampler-reproduction-10.log",
+          "sha256": "1bef05e9bf291647c3e2d250bf15456593620ef7f4fc0b48faa25aaf5b637877"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-sixteenth-sampler-reproduction-2.log",
+          "sha256": "8e0b485997cee74381f8c654ae3f17eea5a1e5a14adae68157289cc3512d8af1"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-sixteenth-sampler-reproduction-3.log",
+          "sha256": "bc9223e0c9e500ce088bca23fe107989d315243ccdad7407b33e53d62b23b4f8"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-sixteenth-sampler-reproduction-4.log",
+          "sha256": "6cf010f62d130befc14493829775ebd04e7a2b4d2fd137e667fb3753a4998b80"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-sixteenth-sampler-reproduction-5.log",
+          "sha256": "7eb62ddcbbe751bebe42e29a0330dd1d611751fb00c6849343539cdd75c4940f"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-sixteenth-sampler-reproduction-6.log",
+          "sha256": "bc9223e0c9e500ce088bca23fe107989d315243ccdad7407b33e53d62b23b4f8"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-sixteenth-sampler-reproduction-7.log",
+          "sha256": "bc9223e0c9e500ce088bca23fe107989d315243ccdad7407b33e53d62b23b4f8"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-sixteenth-sampler-reproduction-8.log",
+          "sha256": "3a6e39e1ca6c2489d4e980e57299a7f652165c7b47977f6a2ae99353712a30df"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-sixteenth-sampler-reproduction-9.log",
+          "sha256": "9f5b46a1b4c8bca52afc16b6589a255b520b4bded58ba2d0ea46e584bc282288"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-sixteenth-sampler-store.log",
+          "sha256": "97bcc0505ff2eb4f923bf52eaf74b5973b718a09be11277a9a9a86fe3c7df27e"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-sixteenth-song-navigation.log",
+          "sha256": "5f4e34a1effdd0c9afafb913718191b165d6998f6b64aeb9421a64e4ecd4dcd8"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-sixteenth-source-check.log",
+          "sha256": "f87904cbebf65c3d7bfde8c08f584d7a112dc6f29b96e84dbeaaf2199826fac5"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-sixteenth-source.json",
+          "sha256": "59fec2336eb5629c0b7b29d5887604ce5e8eaea64522a6af1fb70a47da2b8738"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-sixteenth-touch.log",
+          "sha256": "a68ca9bccc553a67ad26a2205450e9e2ee99df3a201b51c7b9de22d31fab77ed"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-sixteenth-undo.log",
+          "sha256": "9b97532d95e80d6c809933818ca7b727e3f6288388cdafff26687aca82f2d742"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-sixteenth-waveform.log",
+          "sha256": "20aa4ae42a4af6b37475784929a230a6fff19d163ba4f7c57fc9b60f1efee692"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-sixteenth-workspace.log",
+          "sha256": "9f3a46547ad56b31271b7855789f09216e4e7a950269fc2f28c7fa217e6e4937"
+        }
+      ]
+    },
+    "fifteenth": {
+      "reason": "Every focused group, all ten library checks, original-deadline duration and sampler repetitions passed. The unfiltered suite retained 2152 passing tests, one native background-job cancellation failure and 59 ignored qualifications in 761.17 seconds. The actual GUI had received completion while the canceled indexer still held its 256 MiB running reservation. Source inspection confirms cancellation and I/O failure were sent before the running guard and request resources were dropped. Production now releases those resources on the worker before sending terminal completion; successful pending publication continues to retain its resources until the existing GUI decision. Twenty exact original-executable repetitions passed, consistent with a scheduling race rather than a reproducible timeout. The original reservation assertion, deadlines, GUI controls, library/media identity checks, clock measurements, logs, source inventory and executable remain retained.",
+      "binary": {
+        "path": "target/app-backlog/qualification-bin/midi-tools-tests-fifteenth",
+        "sha256": "c83b3473769f91aca010a1f0d668c80be9307a62039f12dca6ef6b45258ce8cc"
+      },
+      "artifacts": [
+        {
+          "path": "target/app-backlog/midi-tools-fifteenth-audio.log",
+          "sha256": "eb058ab1c16cf30dc8c9266d24bac3a52ddd607b0178fe73dfd47ab8707fd6ba"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-fifteenth-background-reproduction-1.log",
+          "sha256": "dd0ebab1416f6e020f477be5f0ae3234d84c4afdb5076617e44a6d7a41695e20"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-fifteenth-background-reproduction-10.log",
+          "sha256": "158aeddc7f350920e281f4e0766864b9e0b53c9c5e5ee5ad3a1bd1057995a9eb"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-fifteenth-background-reproduction-11.log",
+          "sha256": "158aeddc7f350920e281f4e0766864b9e0b53c9c5e5ee5ad3a1bd1057995a9eb"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-fifteenth-background-reproduction-12.log",
+          "sha256": "d234eeea1f1a2ef53e2d1b0bb82bef480f883a9672355a89ea9553f21e429884"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-fifteenth-background-reproduction-13.log",
+          "sha256": "158aeddc7f350920e281f4e0766864b9e0b53c9c5e5ee5ad3a1bd1057995a9eb"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-fifteenth-background-reproduction-14.log",
+          "sha256": "158aeddc7f350920e281f4e0766864b9e0b53c9c5e5ee5ad3a1bd1057995a9eb"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-fifteenth-background-reproduction-15.log",
+          "sha256": "158aeddc7f350920e281f4e0766864b9e0b53c9c5e5ee5ad3a1bd1057995a9eb"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-fifteenth-background-reproduction-16.log",
+          "sha256": "d234eeea1f1a2ef53e2d1b0bb82bef480f883a9672355a89ea9553f21e429884"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-fifteenth-background-reproduction-17.log",
+          "sha256": "158aeddc7f350920e281f4e0766864b9e0b53c9c5e5ee5ad3a1bd1057995a9eb"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-fifteenth-background-reproduction-18.log",
+          "sha256": "158aeddc7f350920e281f4e0766864b9e0b53c9c5e5ee5ad3a1bd1057995a9eb"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-fifteenth-background-reproduction-19.log",
+          "sha256": "158aeddc7f350920e281f4e0766864b9e0b53c9c5e5ee5ad3a1bd1057995a9eb"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-fifteenth-background-reproduction-2.log",
+          "sha256": "d234eeea1f1a2ef53e2d1b0bb82bef480f883a9672355a89ea9553f21e429884"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-fifteenth-background-reproduction-20.log",
+          "sha256": "158aeddc7f350920e281f4e0766864b9e0b53c9c5e5ee5ad3a1bd1057995a9eb"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-fifteenth-background-reproduction-3.log",
+          "sha256": "158aeddc7f350920e281f4e0766864b9e0b53c9c5e5ee5ad3a1bd1057995a9eb"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-fifteenth-background-reproduction-4.log",
+          "sha256": "158aeddc7f350920e281f4e0766864b9e0b53c9c5e5ee5ad3a1bd1057995a9eb"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-fifteenth-background-reproduction-5.log",
+          "sha256": "d234eeea1f1a2ef53e2d1b0bb82bef480f883a9672355a89ea9553f21e429884"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-fifteenth-background-reproduction-6.log",
+          "sha256": "158aeddc7f350920e281f4e0766864b9e0b53c9c5e5ee5ad3a1bd1057995a9eb"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-fifteenth-background-reproduction-7.log",
+          "sha256": "d234eeea1f1a2ef53e2d1b0bb82bef480f883a9672355a89ea9553f21e429884"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-fifteenth-background-reproduction-8.log",
+          "sha256": "d234eeea1f1a2ef53e2d1b0bb82bef480f883a9672355a89ea9553f21e429884"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-fifteenth-background-reproduction-9.log",
+          "sha256": "2c253fb9641cdccdff2c4cf0fe41a26e818a4dbd685fe63445b9a501f4ad158f"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-fifteenth-build.log",
+          "sha256": "1e2419a1c8fb16a267d268f8fc99286c57dae9514dc87e54d05c140a2f2bac83"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-fifteenth-clip-management.log",
+          "sha256": "cb529a887e1c4fe287df72449187dd622ec578a03a6976c1e2d5a9ee35a8d93c"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-fifteenth-clock.log",
+          "sha256": "60769b202a16855a4aa68b2f653b41bcefbce64903d89a58a84dcaebcd368932"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-fifteenth-compiled-tests.log",
+          "sha256": "f42a4eb88ea3220e57f5e9f20bdac366b243a41e53f645a1b65f0cd876436b22"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-fifteenth-compose.log",
+          "sha256": "742754a228b03f39911edde137f560fdba7464d6a0ba8a3bd5db1d1e4420dbfd"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-fifteenth-core.log",
+          "sha256": "40b05932b94d16ecb93a2e11f2111e338560f6b799c6221def2df39c3777cffd"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-fifteenth-duration-reproduction-1.log",
+          "sha256": "00a44daca82b76aff12703b5794a0bd45a51ec925e48ae89ca72b07578297d44"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-fifteenth-duration-reproduction-10.log",
+          "sha256": "b745400fbf5b627404a1b4624b435b7af699cf8c50d2316deb43cbfa5a403037"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-fifteenth-duration-reproduction-2.log",
+          "sha256": "cc40b3884410771ffb1e431de199d8077ad5cebdc05603f4eeeb3de005b61097"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-fifteenth-duration-reproduction-3.log",
+          "sha256": "3d2f86dc6696f27724e7e7f7a7e4d011994ba97eec1b2de8de4d2375375756bb"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-fifteenth-duration-reproduction-4.log",
+          "sha256": "3d2f86dc6696f27724e7e7f7a7e4d011994ba97eec1b2de8de4d2375375756bb"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-fifteenth-duration-reproduction-5.log",
+          "sha256": "3d2f86dc6696f27724e7e7f7a7e4d011994ba97eec1b2de8de4d2375375756bb"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-fifteenth-duration-reproduction-6.log",
+          "sha256": "3d2f86dc6696f27724e7e7f7a7e4d011994ba97eec1b2de8de4d2375375756bb"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-fifteenth-duration-reproduction-7.log",
+          "sha256": "00a44daca82b76aff12703b5794a0bd45a51ec925e48ae89ca72b07578297d44"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-fifteenth-duration-reproduction-8.log",
+          "sha256": "d56380c70670172e8769b1a63e2638ec18b36c89d09f1bf58c2e24be47a7e401"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-fifteenth-duration-reproduction-9.log",
+          "sha256": "cc40b3884410771ffb1e431de199d8077ad5cebdc05603f4eeeb3de005b61097"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-fifteenth-duration.log",
+          "sha256": "58b1459246d89c32065c36751acfe6d8d9c68ee7a6247a07c78efed73da8cb23"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-fifteenth-edit.log",
+          "sha256": "8c4c180a13632e4ec8415fb9b3b5b406ba68764f9ae0346f2d8b08c354a243fb"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-fifteenth-full-output-timing.json",
+          "sha256": "ca7095c84d8cdff306cac99b7dc090228ceef8490ca9cc42439859e568b8e7f8"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-fifteenth-full.log",
+          "sha256": "eab83777e18fc06f34b3baf07ca90ff6fdf968446e8f4e19618e6c42940b048c"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-fifteenth-graph.log",
+          "sha256": "9d97b109ff50c513e35fb4e47818edc192926ef66697963916af04e0206b9436"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-fifteenth-help.log",
+          "sha256": "e7eab9b6b9b72dd8142472f692c52f742a244a9037a8ab3ed31d918ecc56e338"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-fifteenth-ignored-tests.log",
+          "sha256": "6e055db2142728f40598f1a19208efb3eef3f17c71d0af43251948a3d7b7fb1d"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-fifteenth-interchange.log",
+          "sha256": "3ba7bf29c05b0d3da990b7ce2b0ea4af16f451098e95eb20208cfb2f4ff6c938"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-fifteenth-inventory.log",
+          "sha256": "628e4ef150d1b621e2c25ee07b71cf7015a8c1385c67038132abd6d96af8b0f0"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-fifteenth-library-view.log",
+          "sha256": "f680c6f7c4304df0301e42a547c784d9d67ad122144f7aafb8a1722d83989014"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-fifteenth-license-check.log",
+          "sha256": "d94a5e067286d5c5aedd5ca514a33ee02642f635614378560b96a923d8b76c14"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-fifteenth-licenses.log",
+          "sha256": "fcdfc1561814a823191cc7c24cb8beadeb7260a4b672e08fa81e7720b5c1ac98"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-fifteenth-manual.log",
+          "sha256": "475282e999ecadfb9b3041bf05221003d6851838a94ef25132322b17e5e52369"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-fifteenth-metronome.log",
+          "sha256": "5eb58ff75c1d15a04c761b48c1eb5d95ab707533e43296a93cf018e64553dc44"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-fifteenth-midi-data.log",
+          "sha256": "2c29eb48c1ea5c8be6d4c4136afec69c2d2f8a0f8f4bf07fe61b10ab50bea767"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-fifteenth-midi-file.log",
+          "sha256": "888b73210dd8b80a9a9539a43ad2d17a741aa6e2fe21d9a1b687d1bc94cafea6"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-fifteenth-midi-ui.log",
+          "sha256": "7186778060bf5a5b07278adc1d56908e7c9345faa6afebd0c4c14b94f0110d8a"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-fifteenth-monitor-qualification.log",
+          "sha256": "7cf426736b1156a3aa5bb7fee35acc8713e9e5e54f97f948913cb1d4421ccaaa"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-fifteenth-native.log",
+          "sha256": "055daaf474e1aa1ae846a94fd15f19a6fd18405dcf433587d7ce8c17e2354363"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-fifteenth-piano.log",
+          "sha256": "9244c53c97aa8d089d5463903f62601cbb8636729d91673e05d032aecaf3a866"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-fifteenth-play-history.log",
+          "sha256": "41b95f1d47e21a66106a231af75d59eb1bc70da86fec5ff2b60f7c88e3c2ff92"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-fifteenth-plugin-midi-storage.log",
+          "sha256": "d5b0c9cdcbd423fe6840d3a8d36fe98c5334cef8b64b4593778baad0a5855f17"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-fifteenth-production-check.log",
+          "sha256": "48eda61e2c189ca96848bbaf6b0d1c1de8a4298015058fa68ccb4424955da6de"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-fifteenth-project-timing.log",
+          "sha256": "f8c0543975bede0f7d139a83cee57b811c1419d3776286dd72ebf25c0f565111"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-fifteenth-recording.log",
+          "sha256": "5e3f0552dd83c27d1c44c8c450cfa2f23258838a863c07f3f3710ee3125d7cce"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-fifteenth-routing-playback.log",
+          "sha256": "e075d619433d3f1a0d96c156d7eb3dde1af8333745d16a490abcafeacb8abb3d"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-fifteenth-sampler-editor.log",
+          "sha256": "76a186f694f1bfc600594cfaea0e309c5c108c3fc64a9c3264cdbe4e21e1340f"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-fifteenth-sampler-reproduction-1.log",
+          "sha256": "9f5b46a1b4c8bca52afc16b6589a255b520b4bded58ba2d0ea46e584bc282288"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-fifteenth-sampler-reproduction-10.log",
+          "sha256": "a51781b4dd188bcb8101680f75241893f5bc56a425cfd15a0a4f131382e815a9"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-fifteenth-sampler-reproduction-2.log",
+          "sha256": "d17f101768047a6091d698674c30e48d83011f15769984f87acb4f79976fded4"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-fifteenth-sampler-reproduction-3.log",
+          "sha256": "9f5b46a1b4c8bca52afc16b6589a255b520b4bded58ba2d0ea46e584bc282288"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-fifteenth-sampler-reproduction-4.log",
+          "sha256": "9f5b46a1b4c8bca52afc16b6589a255b520b4bded58ba2d0ea46e584bc282288"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-fifteenth-sampler-reproduction-5.log",
+          "sha256": "bc9223e0c9e500ce088bca23fe107989d315243ccdad7407b33e53d62b23b4f8"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-fifteenth-sampler-reproduction-6.log",
+          "sha256": "6e75552a2f67a6f5380205bb726caa71683a28ff1214699ffceefadefb386ea1"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-fifteenth-sampler-reproduction-7.log",
+          "sha256": "7729b436123b31d46c4959cad1607fe05531e9bbe6d63a4691fe155b16affb7d"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-fifteenth-sampler-reproduction-8.log",
+          "sha256": "23c1f8190a1b8d1c7f08680f74dc6560e114c7cab8f79f63c45a60f9247ea0bc"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-fifteenth-sampler-reproduction-9.log",
+          "sha256": "eb3b79a83b765acc4049627e3e9ad55495fffd22e02758b385915f619cd77a21"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-fifteenth-sampler-store.log",
+          "sha256": "97bcc0505ff2eb4f923bf52eaf74b5973b718a09be11277a9a9a86fe3c7df27e"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-fifteenth-song-navigation.log",
+          "sha256": "5f9ca86fd2cfac38d0d86fab33ceabbf622402ea6cb355793b1b10ce95a22d21"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-fifteenth-source-check.log",
+          "sha256": "f87904cbebf65c3d7bfde8c08f584d7a112dc6f29b96e84dbeaaf2199826fac5"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-fifteenth-source.json",
+          "sha256": "444d4d517fdf82efda0325ced8c553b4c5b9aefdcc646253710c700d7a3e0183"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-fifteenth-touch.log",
+          "sha256": "e1dfd95e4633740dbeb1517819f9ae6fdb435d606c655ff71df215e212504a8a"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-fifteenth-undo.log",
+          "sha256": "60f44a66548921ad47db10a73ebebc54769cc3c11e63d0e5c583440ac7564f57"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-fifteenth-waveform.log",
+          "sha256": "c89e1d3162c6f86388dab27d6a65e63b7421d723048a7b348578a48a7e310c69"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-fifteenth-workspace.log",
+          "sha256": "254e5ec23fbf45838272c0d94ac057d54144f9a2dbd5208cbac211fa1127ff19"
+        }
+      ]
+    },
+    "fourteenth": {
+      "reason": "Production compilation and all sixteen original focused groups passed. The six monitor qualifications passed, including both supported project versions. The original 108-pixel final-row keyboard visibility regression also passed after actual scroller sizing was corrected. The complete library group retained eight passing tests and two wheel failures: the old wheel fixtures left only a partial row and scrollbar within their 108-pixel window. Only the two wheel fixtures now use a 144-pixel viewport that contains a usable visible row; the original 108-pixel navigation regression, actual wheel input, bounded row/cell counts, exact selection and performance assertions remain unchanged. Full qualification did not begin. All original logs, frozen source and executable are retained.",
+      "binary": {
+        "path": "target/app-backlog/qualification-bin/midi-tools-tests-fourteenth",
+        "sha256": "96b7f829ba6233a104262c8503a742cc1ad6fc2261cf462138d45bc8e5bc55dd"
+      },
+      "artifacts": [
+        {
+          "path": "target/app-backlog/midi-tools-fourteenth-build.log",
+          "sha256": "3eb02f08af5053fca1231db68d1d861337eddbdaa81b5fe1d8f6f0e95ae94d6d"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-fourteenth-clip-management.log",
+          "sha256": "de6b8299e33ac1d937d48f809c12f69be94aba9a9eea4d4ad9d49e40253eab15"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-fourteenth-clock.log",
+          "sha256": "a5f60330f5597e4a0fe516b69c5df2e446009cd00d917473ab9d600267cef44c"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-fourteenth-compiled-tests.log",
+          "sha256": "f42a4eb88ea3220e57f5e9f20bdac366b243a41e53f645a1b65f0cd876436b22"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-fourteenth-core.log",
+          "sha256": "d2e4a42eb555984370f71ff66b35fe8cf862112ee72a3ebd5ca19bfd29a1e6ea"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-fourteenth-edit.log",
+          "sha256": "849c0a3168ced61a67c79f8a9366bfa825b31be712096a966bb092e61139cadb"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-fourteenth-graph.log",
+          "sha256": "d5f3b045730d48ca2ea83024136dd6182c68a89df08545dcbbb26600ad232257"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-fourteenth-help.log",
+          "sha256": "d4b06c09dee5291000de6aab41767edc3fcba0cd2ad2a765bea4c03eec66f0ce"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-fourteenth-ignored-tests.log",
+          "sha256": "6e055db2142728f40598f1a19208efb3eef3f17c71d0af43251948a3d7b7fb1d"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-fourteenth-interchange.log",
+          "sha256": "c9a8801229ed8d2fbe62ce179362f74168c8bcb5c75a1e6ecab024bbfa644a3e"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-fourteenth-inventory.log",
+          "sha256": "628e4ef150d1b621e2c25ee07b71cf7015a8c1385c67038132abd6d96af8b0f0"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-fourteenth-library-view.log",
+          "sha256": "7500ed1c6fb6b9153c84c4e29f7b93004b436bf9689fba3d9f72bb44fc8876c6"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-fourteenth-license-check.log",
+          "sha256": "d94a5e067286d5c5aedd5ca514a33ee02642f635614378560b96a923d8b76c14"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-fourteenth-manual.log",
+          "sha256": "475282e999ecadfb9b3041bf05221003d6851838a94ef25132322b17e5e52369"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-fourteenth-midi-data.log",
+          "sha256": "e3cd89c776c86a57c12246ebac72d5945e02d3b8893b23282fab89cebd8b5f55"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-fourteenth-midi-file.log",
+          "sha256": "888b73210dd8b80a9a9539a43ad2d17a741aa6e2fe21d9a1b687d1bc94cafea6"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-fourteenth-midi-ui.log",
+          "sha256": "9e424bc444373033f20082cfbf5ed9f12604b0262ecdd43c92fad3b9f1c46bfa"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-fourteenth-monitor-qualification.log",
+          "sha256": "7cf426736b1156a3aa5bb7fee35acc8713e9e5e54f97f948913cb1d4421ccaaa"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-fourteenth-native.log",
+          "sha256": "722879b8227a851d3f1e7e9cf764afa1dab59988bc2207e23f89d4cdfe9844f0"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-fourteenth-piano.log",
+          "sha256": "34c723da7ad165f05524ee9c1264b1f70b52a4debcd67ae710e5c3833593e0de"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-fourteenth-production-check.log",
+          "sha256": "54ebadb938fec6692165b72cb647538e2730ad500a6b914ee624035d367ac6be"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-fourteenth-routing-playback.log",
+          "sha256": "797ee17793491061868d502300069ba60b3f1332700aa86a0152c9296b70cc4c"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-fourteenth-source-check.log",
+          "sha256": "f87904cbebf65c3d7bfde8c08f584d7a112dc6f29b96e84dbeaaf2199826fac5"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-fourteenth-source.json",
+          "sha256": "fbc7c22b57477280efa9bac71468fc26012ea451979081e362ffb9be32de5194"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-fourteenth-touch.log",
+          "sha256": "a68ca9bccc553a67ad26a2205450e9e2ee99df3a201b51c7b9de22d31fab77ed"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-fourteenth-undo.log",
+          "sha256": "4b0e853ca417f5444fb8b0de0f3fa2b5155bf85dfeebccab439c41bbec9d4603"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-fourteenth-workspace.log",
+          "sha256": "6c67f3d45ac763afbf8bd009ba3cc942d3bf0921e55bd1a31cd835366c95d57e"
+        }
+      ]
+    },
+    "thirteenth": {
+      "reason": "The unfiltered suite retained 2150 passing tests, three failures and 59 explicit ignored qualifications in 792.93 seconds. The monitor fixture incorrectly rejected graph version 3 after the native plugin graph added that supported version; the corrected fixture roundtrips both versions 2 and 3 through native preparation while retaining unsupported-version and alias/channel validation. Library navigation reproduces on the original executable: the scroller reserved 64 pixels despite only 17 visible pixels and placed the selected final row below the clip. Production now uses the available scrolled height; the same strict actual visible-label regression remains. The sampler preview timeout passed ten exact original-deadline reproductions without source changes. Caller, performance and background-state diagnostics are added without a deadline change or an unproven production timeout fix. The original full log, all reproductions, clock measurements and immutable executables are retained.",
+      "binary": {
+        "path": "target/app-backlog/qualification-bin/midi-tools-tests-thirteenth",
+        "sha256": "aeac20203a733d6f32a8381ee5c9b0919affc487bb5af28c0eff3f646a0a000f"
+      },
+      "artifacts": [
+        {
+          "path": "target/app-backlog/midi-tools-thirteenth-audio.log",
+          "sha256": "eb058ab1c16cf30dc8c9266d24bac3a52ddd607b0178fe73dfd47ab8707fd6ba"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-thirteenth-build.log",
+          "sha256": "a53a7a716fcada89eb9f6014558347af957f89bd01b2b65694150ad771cfdfbb"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-thirteenth-clip-management.log",
+          "sha256": "d8e0d7099d69432547a21b4e474a5d42b10c96c7bd6edd0f998ef860d3cb67ee"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-thirteenth-clock.log",
+          "sha256": "fe5d0800312436f12bb6b2d495db379e9d424eecd3e9207e0c874084b75c10fe"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-thirteenth-compiled-tests.log",
+          "sha256": "f42a4eb88ea3220e57f5e9f20bdac366b243a41e53f645a1b65f0cd876436b22"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-thirteenth-compose.log",
+          "sha256": "8754d431ec103a1027ee5e73a7fcce8d74c7a2ed76078d6ae82ee138207888bd"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-thirteenth-core.log",
+          "sha256": "8ba027cfb08de1dc1c9a67e1127fe5f14f0ce63e81d0e5a288e2901f1a8a6db1"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-thirteenth-duration-reproduction-1.log",
+          "sha256": "d56380c70670172e8769b1a63e2638ec18b36c89d09f1bf58c2e24be47a7e401"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-thirteenth-duration-reproduction-10.log",
+          "sha256": "3d2f86dc6696f27724e7e7f7a7e4d011994ba97eec1b2de8de4d2375375756bb"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-thirteenth-duration-reproduction-2.log",
+          "sha256": "9a2f01dc57455357463d94c1acccd110ff349a6d511fdf889d84bb72ec7d95fa"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-thirteenth-duration-reproduction-3.log",
+          "sha256": "00a44daca82b76aff12703b5794a0bd45a51ec925e48ae89ca72b07578297d44"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-thirteenth-duration-reproduction-4.log",
+          "sha256": "00a44daca82b76aff12703b5794a0bd45a51ec925e48ae89ca72b07578297d44"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-thirteenth-duration-reproduction-5.log",
+          "sha256": "3d2f86dc6696f27724e7e7f7a7e4d011994ba97eec1b2de8de4d2375375756bb"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-thirteenth-duration-reproduction-6.log",
+          "sha256": "aadb0508414c209ce723c1894a877d6f74f4cd289b0644aa9f4c97ce829126d1"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-thirteenth-duration-reproduction-7.log",
+          "sha256": "833c6c51c86a0ebcae564a52f852b563ba4bbccc1dcf126fbf8db9bd4239dc08"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-thirteenth-duration-reproduction-8.log",
+          "sha256": "833c6c51c86a0ebcae564a52f852b563ba4bbccc1dcf126fbf8db9bd4239dc08"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-thirteenth-duration-reproduction-9.log",
+          "sha256": "9a2f01dc57455357463d94c1acccd110ff349a6d511fdf889d84bb72ec7d95fa"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-thirteenth-duration.log",
+          "sha256": "53aefb0fe0982b702d9a0b45aa9e4f084b21c4e5d164061db5e340631dcd1bee"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-thirteenth-edit.log",
+          "sha256": "0886461fff79dcb25ad4c6c8d5079902604bdd416e40f3e8d125f88b747a4a96"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-thirteenth-full-output-timing.json",
+          "sha256": "bfcbcaa6f87add068d7724151efa695435a163f37467015bdb12b4360dfa9dea"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-thirteenth-full.log",
+          "sha256": "e04dc191723782796fa40b2fc5384cc26ba04ccdc48b06ce2a5c3dc687f1cf8e"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-thirteenth-graph.log",
+          "sha256": "366a76b1681811dfe443fce5b859d3f7bcddf0fc8e27cd204cfed2d4c1cfa6a2"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-thirteenth-help.log",
+          "sha256": "1b2694ddda9c16f298d2faced91e3ff46c76d65602ba2f6ec7d96f00d733a4b3"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-thirteenth-ignored-tests.log",
+          "sha256": "6e055db2142728f40598f1a19208efb3eef3f17c71d0af43251948a3d7b7fb1d"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-thirteenth-interchange.log",
+          "sha256": "f63685f19dc4d3dfd92d854652aa770240f511444419a4371936679c5eb142bf"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-thirteenth-inventory-refresh.log",
+          "sha256": "628e4ef150d1b621e2c25ee07b71cf7015a8c1385c67038132abd6d96af8b0f0"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-thirteenth-library-navigation-reproduction-1.log",
+          "sha256": "13234810cdbe328add3dd12779ae5016a696d8f217d10603b58269d8ee7b5bf5"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-thirteenth-license-check.log",
+          "sha256": "d94a5e067286d5c5aedd5ca514a33ee02642f635614378560b96a923d8b76c14"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-thirteenth-licenses.log",
+          "sha256": "fcdfc1561814a823191cc7c24cb8beadeb7260a4b672e08fa81e7720b5c1ac98"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-thirteenth-manual.log",
+          "sha256": "475282e999ecadfb9b3041bf05221003d6851838a94ef25132322b17e5e52369"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-thirteenth-metronome.log",
+          "sha256": "21fd0ef26016151a671ea7408cf0af8c735b780b4da69bf292ef39bcf4451d7b"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-thirteenth-midi-data.log",
+          "sha256": "8e447497271c9eb752447050b5204394fdf4ab69dbbd6166bfc8f74a434b3d52"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-thirteenth-midi-file.log",
+          "sha256": "888b73210dd8b80a9a9539a43ad2d17a741aa6e2fe21d9a1b687d1bc94cafea6"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-thirteenth-midi-ui.log",
+          "sha256": "db4e8627050cc084187f931c47b3c88ce34a3c480fd07fd391a55dc0a827afc7"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-thirteenth-native.log",
+          "sha256": "b5c45fc3bdfff1f797c17daea128c95b3feabb5722b77dbb0bc2cec84f8ddd22"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-thirteenth-piano.log",
+          "sha256": "1cbca0005f9ec9d7a10a7fc8fc1243fd1cf03391850a8f1225e5a4a54e55ec48"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-thirteenth-play-history.log",
+          "sha256": "4b3b8440cde621025e866b5590d6ce395d7c89c1c61a9ec2489f2d2796400d1e"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-thirteenth-plugin-midi-storage.log",
+          "sha256": "d5b0c9cdcbd423fe6840d3a8d36fe98c5334cef8b64b4593778baad0a5855f17"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-thirteenth-production-check.log",
+          "sha256": "eb8b94898e9da090c33682ac9d486e769490d020cef6d41906bb17400b82cdf6"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-thirteenth-project-timing.log",
+          "sha256": "e826ebd701cfe879562a45fdad1af4cdd24f9c02d67054f247a050356d2945cc"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-thirteenth-recording.log",
+          "sha256": "c31ed30011087ea87d065ac054529432243b7d13470304209dd5e0a167ef9dec"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-thirteenth-routing-playback.log",
+          "sha256": "51359cc7701d097fdbc07e797680213d2b6c39ed58aa7b844b8fbb69ae081cbc"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-thirteenth-sampler-editor.log",
+          "sha256": "42d461d8aa6145ccb76bb31cdeeac2c18425fbd330405b59bb6604b41b1dc20e"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-thirteenth-sampler-reproduction-1.log",
+          "sha256": "7eb62ddcbbe751bebe42e29a0330dd1d611751fb00c6849343539cdd75c4940f"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-thirteenth-sampler-reproduction-10.log",
+          "sha256": "9f5b46a1b4c8bca52afc16b6589a255b520b4bded58ba2d0ea46e584bc282288"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-thirteenth-sampler-reproduction-2.log",
+          "sha256": "00c726da0acdd3079694ed7ada9bee6f53d2facfab29f535342993fb1d80f188"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-thirteenth-sampler-reproduction-3.log",
+          "sha256": "d17f101768047a6091d698674c30e48d83011f15769984f87acb4f79976fded4"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-thirteenth-sampler-reproduction-4.log",
+          "sha256": "7eb62ddcbbe751bebe42e29a0330dd1d611751fb00c6849343539cdd75c4940f"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-thirteenth-sampler-reproduction-5.log",
+          "sha256": "d17f101768047a6091d698674c30e48d83011f15769984f87acb4f79976fded4"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-thirteenth-sampler-reproduction-6.log",
+          "sha256": "9f5b46a1b4c8bca52afc16b6589a255b520b4bded58ba2d0ea46e584bc282288"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-thirteenth-sampler-reproduction-7.log",
+          "sha256": "9f5b46a1b4c8bca52afc16b6589a255b520b4bded58ba2d0ea46e584bc282288"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-thirteenth-sampler-reproduction-8.log",
+          "sha256": "6306d6aebebd8b174b4a1045e39a60900addf022e102a8498eb816b2f412ca2d"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-thirteenth-sampler-reproduction-9.log",
+          "sha256": "d17f101768047a6091d698674c30e48d83011f15769984f87acb4f79976fded4"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-thirteenth-sampler-store.log",
+          "sha256": "97bcc0505ff2eb4f923bf52eaf74b5973b718a09be11277a9a9a86fe3c7df27e"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-thirteenth-song-navigation.log",
+          "sha256": "448a5e68017744b37cd91d603954319a6233bb2db2f89bd2831ef0fce84207a2"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-thirteenth-source.json",
+          "sha256": "749c44ba20a8d038d240b05280e0bee2a8a4c5ff502d4fadf6cfc8b583de97b7"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-thirteenth-touch.log",
+          "sha256": "20d19619a45c85c3120fd5d2523a0701a738b15450f899e07fda7bd05870d18e"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-thirteenth-undo.log",
+          "sha256": "26391cc4c8fc487ce7f3d182f9109bb5fb7e52454b2b8eb05a8576b832c00367"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-thirteenth-waveform.log",
+          "sha256": "99585c626ffb4b56d8da3116939496a7cf8d417282d4893960c7f660a42f18fc"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-thirteenth-workspace.log",
+          "sha256": "3f5c9ca722e79854ddffae19c69e23503bad1d422de59dd06da3a06381e77595"
+        }
+      ]
+    },
+    "twelfth": {
+      "reason": "All sixteen focused groups, the five duration checks and ten exact duration reproductions passed with original deadlines and pending-state diagnostics. The sampler-editor gate then aborted with stack overflow. The retained systemd core backtrace locates plugin_midi::Routing::default inside RtEngine construction. Its 128-track MIDI event array was initialized by value on the stack before boxing; the correction allocates the same fixed capacity directly as a boxed slice during setup. A new 128 KiB worker-stack constructor and full-capacity callback heap regression accompanies the unchanged sampler-editor gate. No test-thread stack or public deadline is increased. Only debug sections are omitted from retained test executables; source build arguments are recorded. The private extracted core was removed after diagnosis, while its backtrace, original abort, source inventory and binary remain retained.",
+      "binary": {
+        "path": "target/app-backlog/qualification-bin/midi-tools-tests-twelfth",
+        "sha256": "5f8b1ba0014017740a7297e081e697ebe1e7829eeee817547f6ab67ed88cb31e"
+      },
+      "artifacts": [
+        {
+          "path": "target/app-backlog/midi-tools-twelfth-build.log",
+          "sha256": "d2bbe9d504c384848525fecb86016777c59600a953fc6d3bbf9baf1a76d54e22"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-twelfth-clip-management.log",
+          "sha256": "83aadf89427c119f4f9b27f5b261a9507d30d09e360cb6e56036751c1872fba5"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-twelfth-clock.log",
+          "sha256": "724065716158fe45fceee2229c3210a8e2a00e164f5290f6214d6c149aa651ca"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-twelfth-compiled-tests.log",
+          "sha256": "75737e40190a10c25fb193f5e7206f95af73a5d8e13f528fd14519af3178268f"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-twelfth-core-extraction.log",
+          "sha256": "7262ae32e2dfd0db7957ac1477c11aa29b5a0271f150c38dcb6311258435abfa"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-twelfth-core.log",
+          "sha256": "1d82c37431cfb4cd50d19cc717aea3eb2b3cb62dd549171430e8b280c801b3c0"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-twelfth-crash-kernel.log",
+          "sha256": "4af837edbe1b203c8d984a19df5fc936f7f173aa3e45d66343a031862f6b4b99"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-twelfth-crash-memory.log",
+          "sha256": "f20f666df65c7084136bc8df09c66b30ed11c5260a256a15d97bc6fcf3260755"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-twelfth-duration-reproduction-1.log",
+          "sha256": "a71ec3f5be63b70e7f30398846cadff706eaa863ded6d51875faeff22c4f6a40"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-twelfth-duration-reproduction-10.log",
+          "sha256": "26159cb800ad1a547ab7dd6eb5a23666dafcd26086b79f653a6b65d213e278ef"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-twelfth-duration-reproduction-2.log",
+          "sha256": "b90b905b8224d4c9b3b2d9aba63a099a36fade638a10da0bab1a3f71730193ae"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-twelfth-duration-reproduction-3.log",
+          "sha256": "5647f631fd8eb633d32ea35f82b852455472fae3d6533771ba3fb7414edbce99"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-twelfth-duration-reproduction-4.log",
+          "sha256": "9ccf965cd4d5cc520eb5772f9293926c315737fb40817de76af6dcc51c098db0"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-twelfth-duration-reproduction-5.log",
+          "sha256": "50db573a9c193db2201ef9e06e0cfd0ce3a46e67b7bc9d9d0fa3512dde36d30e"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-twelfth-duration-reproduction-6.log",
+          "sha256": "e61a3ec00d717bee99c305d99dad9c5560cfc18f2b90cd1deb2611a4737c3692"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-twelfth-duration-reproduction-7.log",
+          "sha256": "b90b905b8224d4c9b3b2d9aba63a099a36fade638a10da0bab1a3f71730193ae"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-twelfth-duration-reproduction-8.log",
+          "sha256": "81ec6ec6efacd57fd5dc29d8273d4567e2c0ffe9a2b28ec185edc82e87bda602"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-twelfth-duration-reproduction-9.log",
+          "sha256": "e9615539641262006c34f96b69a6467b2707bc4a3aa51ed8f065b52f7d8e38dd"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-twelfth-duration.log",
+          "sha256": "3c0eca61fe62f69f1441e5f371d693fbe080a89380d776214a64bebfdbbaf731"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-twelfth-edit.log",
+          "sha256": "0871a933429037b61c525ed03a40e66e5fb13d4f732acf75b7c07edcfe3a3414"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-twelfth-graph.log",
+          "sha256": "a9620e36c9a599b081bf82dc99af5a4b50814ddbf1230cfa5f9c4c717091ccca"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-twelfth-help.log",
+          "sha256": "29ad19baa6575f7c389ecb1d9fb32524c558709db1010fe146b26bb3ab256964"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-twelfth-ignored-tests.log",
+          "sha256": "6e055db2142728f40598f1a19208efb3eef3f17c71d0af43251948a3d7b7fb1d"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-twelfth-interchange.log",
+          "sha256": "1002b9d985966c49e3772ce2490d8908a348f2d74fbbbb1507f095a392b70543"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-twelfth-inventory-refresh.log",
+          "sha256": "cc17702e65009e4900d2d95e899ac2b95a8b00afa110fcaaa84b94deb42d97ad"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-twelfth-license-check.log",
+          "sha256": "d94a5e067286d5c5aedd5ca514a33ee02642f635614378560b96a923d8b76c14"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-twelfth-licenses.log",
+          "sha256": "0d70f3e29523d7e91cef3f2be5ea3caab1f527f1d9d727d4b5ddece99f3535c6"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-twelfth-manual.log",
+          "sha256": "ee8be84074a10eb22a7cde7a918716673226984258e81d1e213b60eb6cb1de8b"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-twelfth-midi-data.log",
+          "sha256": "a3ea83570fcc10383e9d221f476d56b2e05fe9e67a1e914c8d2e16cb5cad67c1"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-twelfth-midi-file.log",
+          "sha256": "7b3208e9e085e8c20bd56467b9c88b9f6216167d00fa763af8e3135bb177d5f9"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-twelfth-midi-ui.log",
+          "sha256": "305873f2ec794069f42f586f84f42d8bc86172713136caa13ef1f55f72b974a0"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-twelfth-native.log",
+          "sha256": "e35d6764873b16a2b054cb1fdaaff3233704571d98ce5852d5421bfe18e9ffe2"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-twelfth-piano.log",
+          "sha256": "37b9756b18fa5225180a54f5276f7ba353641ae899a807b14937f13447de12d8"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-twelfth-play-history.log",
+          "sha256": "6132c22094515145e6582a810899a4db8378eef8f3393bcafa29e86e6c9ac652"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-twelfth-production-check.log",
+          "sha256": "f1347db67fcad63d4eceb01cca47598751a3ba31a08ef5b2e16278e8bcfc28ae"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-twelfth-routing-playback.log",
+          "sha256": "5e77d5c0528731eae53556089f111f33fa400c1abf512a2a711e87228e4926c5"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-twelfth-sampler-editor.log",
+          "sha256": "000929c86b522b902a743dec12e93d9e601301dbc7ce15deea9ab8793e2be3b7"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-twelfth-source.json",
+          "sha256": "bd55453a49f255bf71422cbcb4ae16c20d5b0cd248572074077798846bfb7731"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-twelfth-stack-overflow-backtrace.log",
+          "sha256": "8d7228fb482dc57350a9f299cf9a153173baa581dff3107af07d43a564f0e82c"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-twelfth-stack-overflow-info.log",
+          "sha256": "a9bc74620c28efefc01cf08a458dfcabf1a666965f514143a5b2b403895910b1"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-twelfth-touch.log",
+          "sha256": "8eb4a8392df09f6d5e09f930f1769567d80eee597156d6ae71a5f848717c0284"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-twelfth-undo.log",
+          "sha256": "f4e04460d84cab507afdc4d2162ffd69e71b9a441b4c8bef9932fb6346f968aa"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-twelfth-workspace.log",
+          "sha256": "6b65a2cc4f3a6dc13b110914e79c818e4d111e20b97b79ee18d96e13c48e7d31"
+        }
+      ]
+    },
+    "eleventh": {
+      "reason": "The freshly integrated plugin graph compiled and all sixteen focused groups passed. The duration group then reproduced the original five-second timeout during the initial file scan and metadata publication at duration_tests.rs:175, before any held older-scan fixture began. Full qualification did not start. The subsequent source adds test-only pending-state diagnostics without extending deadlines; both earlier failures remain retained.",
+      "binary": {
+        "path": "target/app-backlog/qualification-bin/midi-tools-tests-eleventh",
+        "sha256": "fa075b5817c7e304d4df31bf5e04f5466f34215a034f693c49faa9d500666195"
+      },
+      "artifacts": [
+        {
+          "path": "target/app-backlog/midi-tools-eleventh-build.log",
+          "sha256": "5cd683d42492cc336a0eef8686c0e4bc1b69d9a06ea0968afd1491a7de87ef07"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-eleventh-clip-management.log",
+          "sha256": "69d53708f058981c8ca2c647a82ca290fbc28c440b532308b0969a7922fe9b78"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-eleventh-clock.log",
+          "sha256": "e6a790a1c75e6bc5d54accc7ddbe6470cbac79f476cfdbc5cf0c50e0b9982703"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-eleventh-compiled-tests.log",
+          "sha256": "75737e40190a10c25fb193f5e7206f95af73a5d8e13f528fd14519af3178268f"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-eleventh-core.log",
+          "sha256": "1d82c37431cfb4cd50d19cc717aea3eb2b3cb62dd549171430e8b280c801b3c0"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-eleventh-duration.log",
+          "sha256": "84a0759194dcaff973d0f033b2beef45a76673f81aac9b867764c1eb00371a80"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-eleventh-edit.log",
+          "sha256": "1086af4ffe270c6b90dc3385616275faf0d9e755566b6a60d82594ee5400100b"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-eleventh-graph.log",
+          "sha256": "1b03c844fd8f53415a1a6871271c1d605dba1275797975c4007e7bebb814303b"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-eleventh-help.log",
+          "sha256": "0bda9faa44766e3f4340b9447c71bdd01f34c0c5de12d0274acfd5063c3baad4"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-eleventh-ignored-tests.log",
+          "sha256": "6e055db2142728f40598f1a19208efb3eef3f17c71d0af43251948a3d7b7fb1d"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-eleventh-interchange.log",
+          "sha256": "0bf73445d92a5d0a9fcb5061dd551ba3e789c65e50f055b6a2810dbf5c26fa65"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-eleventh-manual.log",
+          "sha256": "ee8be84074a10eb22a7cde7a918716673226984258e81d1e213b60eb6cb1de8b"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-eleventh-midi-data.log",
+          "sha256": "eea8528363365912d63cc2a78c63c7326e1375242f0973d0216d2066441bff0b"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-eleventh-midi-file.log",
+          "sha256": "7b3208e9e085e8c20bd56467b9c88b9f6216167d00fa763af8e3135bb177d5f9"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-eleventh-midi-ui.log",
+          "sha256": "d5d21734867ea145cc3c509c319b76c22a624050070114eda0840de7d006ece2"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-eleventh-native.log",
+          "sha256": "7a885cbe91ad3c0e5ded26a28a8ba389ea02ba9857ce1dbd75b0f9f1615ea7d3"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-eleventh-piano.log",
+          "sha256": "0fdea1b43908afb3f427fce277ae1cae28e9c60ee153d29fee39e937b5ca6f1c"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-eleventh-production-check.log",
+          "sha256": "fe7c438e18cb420d69aad5b37d1bdbbb3f5cb7198af3a132eaaf6845ed9ba7c1"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-eleventh-routing-playback.log",
+          "sha256": "2f6d102a4b019017a92090eeaabde56276aeaab97d303c150510153ad371aafb"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-eleventh-source.json",
+          "sha256": "0dea180d7a3e5753ab03aee2702f83719415e08ed96e4d64cfd2bb0d6285280b"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-eleventh-touch.log",
+          "sha256": "5d7d1bbf97fecbfcd288c20cd6b9e687d815b58ca8d3a3b1aeaeae7b55f45c37"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-eleventh-undo.log",
+          "sha256": "382ad6b631a67144b1f15f0aae3045b3d5627328f2ecc243bf58b87e39f92450"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-eleventh-workspace.log",
+          "sha256": "fb31849356ef44a08980aa135c368b9ff566e9bd2c75a509e2be996a9f4980d0"
+        }
+      ]
+    },
+    "tenth": {
+      "reason": "All sixteen focused groups and twelve additional groups passed, including duration publication with original deadlines and caller diagnostics. Unfiltered qualification was deliberately interrupted after new concurrent plugin graph source was published at 0d3a5e9; no full pass is claimed. The next build integrates that source and reruns every gate. The interrupted full log, executable, frozen inputs, deferral and all focused logs are retained.",
+      "binary": {
+        "path": "target/app-backlog/qualification-bin/midi-tools-tests-tenth",
+        "sha256": "ef87cdb555663998c01555f40ebb35f26af9967d05ed5c1c52d5777384aaf9a6"
+      },
+      "artifacts": [
+        {
+          "path": "target/app-backlog/midi-tools-tenth-audio.log",
+          "sha256": "2e4b869cbfbe94242fe7d507080b21fac62f709e2f82e9f85b0ffa4774323b14"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-tenth-build.log",
+          "sha256": "885feba9be2715d2e1122c29c44bbd908b2e7bfc1ba474ae5ad1735a5f2118fa"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-tenth-clip-management.log",
+          "sha256": "c31f9bf4c28a01354c2c547205c0c77cbd38c9e2f89caa40b86b328d0e8bab5d"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-tenth-clock.log",
+          "sha256": "e04495c233df1e3f1d18e3e3ad0fdaaa02b06c36935bc99428a9cf4350b4d006"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-tenth-compiled-tests.log",
+          "sha256": "2484403060e5fa7e8496fcb4347a2f154afc43866e91711d39495099d6af1fdb"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-tenth-compose.log",
+          "sha256": "dc5ca4c830f24ef5ee6e283970dc330e36dd8ad50e2f9d5a72bcda07789eea5f"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-tenth-concurrent-tip-fetch.log",
+          "sha256": "46d5e882a5b2f0f170783eeae5aa90847a9b1a362d478bfc369e3ab8a6d71d7e"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-tenth-core.log",
+          "sha256": "803a18557eafc8eb4e1e257c4e90d5cf1833a44ec1aa5262a74d0b3cc0ca5979"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-tenth-duration.log",
+          "sha256": "4d934b9b3a2183c36f080fd4243144e3d9db771cf5487bd5fdabcf496a1726f7"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-tenth-edit.log",
+          "sha256": "0ddfba47b4b8b55fd6fe48b3ef30e2ec1adbe14ce3a0c7496a2f6da288f834c2"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-tenth-full-integration-deferral.json",
+          "sha256": "3ff13af016bae1a23bdb29c7cdc196182ed4e9a895153469f8d3225428cad979"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-tenth-full.log",
+          "sha256": "e23d23887a4058c6f60e9669cce23817d7c6ec22efb7127bba5673262dcb295a"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-tenth-graph.log",
+          "sha256": "ac31089b28294df799f7acae3a7b301bf5a4b4e3844658113a0decf8a7c37922"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-tenth-help.log",
+          "sha256": "a3d4bfb93e70659f87b4f8454c5d879820a5f7c30e47ab4d3ef4fdf78e678142"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-tenth-ignored-tests.log",
+          "sha256": "8c82a09d18fd2184aeb0d9fc3001da1a6824fd52c13ed4c66127ef8eb6367d58"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-tenth-interchange.log",
+          "sha256": "5a6b4937623e29a8413633943e38b9a017123dfa081c03f509af94c0ca910d86"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-tenth-inventory-check.log",
+          "sha256": "a7d16b8de3b9ee0834f8b10bb058cd5034de7124e24eb91d4bf1fff3f9a11b7c"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-tenth-inventory-refresh.log",
+          "sha256": "c1173e0bf10ca043134fd6a8edc73cef36a23b57aba5aceba37c4f28461d574b"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-tenth-license-check.log",
+          "sha256": "d94a5e067286d5c5aedd5ca514a33ee02642f635614378560b96a923d8b76c14"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-tenth-licenses.log",
+          "sha256": "a64d9fa99b4c0ed635031b6753a225b53106855a0dca31352725502ea7b688a7"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-tenth-manual.log",
+          "sha256": "efc869129573baa63e405504fb1a768eb6a59d1b673a8ae4a986a52dcc6f71ee"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-tenth-metronome.log",
+          "sha256": "77e8b261ab9b8decc52d4e947992f3b1258098435861dc7a5a4366218dfcf869"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-tenth-midi-data.log",
+          "sha256": "6bd172b5eef5833894fd7ef0d51c9d3451e6c771c72b9e59f954ac46cf566626"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-tenth-midi-file.log",
+          "sha256": "a1e49a606a925e7972f28e21b969b5cb43fb057d61cc4d89590a49b6f77b8261"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-tenth-midi-ui.log",
+          "sha256": "6e9401271bf4c13891dc38070cd8707f1d1ed266b90ccbb0ede49ca063f1378d"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-tenth-native.log",
+          "sha256": "ef36c438f42eb146ac265c27fb55ee2a8d480073d56e53e8c88758edb70f52eb"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-tenth-piano.log",
+          "sha256": "3063c2d969875649808f5a2ba8b8c33c1bd046a50698c252162ace5c865310af"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-tenth-play-history.log",
+          "sha256": "6a9a1a1f040c9918deca991000de1357c44d2c8ece689e93dbfc05d95f66fb23"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-tenth-production-check.log",
+          "sha256": "f367947e497b0ca0a2e1d214bc90310892ac751113d5b80e6d996e3497523591"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-tenth-production.log",
+          "sha256": "f367947e497b0ca0a2e1d214bc90310892ac751113d5b80e6d996e3497523591"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-tenth-project-timing.log",
+          "sha256": "3fc7d1a928fb103f312e73eb94a6ebafb56fd91c0739f590410f689024e9a935"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-tenth-recording.log",
+          "sha256": "83e670e1985edbd850b7a55dd2c70f83a1006bc9e18efabfbfed4dcb0c60abc4"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-tenth-routing-playback.log",
+          "sha256": "c5e061a392599af5151055d0590e45592734080171da43073c07c8fcc2cbd53e"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-tenth-sampler-editor.log",
+          "sha256": "c8650be69b74965de58a7fe0001f0a1dbad82f441d3980d6a11c0667359a5144"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-tenth-sampler-store.log",
+          "sha256": "9c7cd6974fa3a3f53d98992bf163a1af4e7e165abbe224f4f5e72ed66cd39ed9"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-tenth-song-navigation.log",
+          "sha256": "49f32af1248de08c85e4dc8a6cfffade980b50275b320d79a723fcd045522d6c"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-tenth-source.json",
+          "sha256": "868e8a1a45f63864a44c412ff375b2a03282c3923d407feac14ce49b1286e86e"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-tenth-touch.log",
+          "sha256": "49ed9a707205843b5f472a03513fae4bda0e42e3097f6a3973150db216c70264"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-tenth-undo.log",
+          "sha256": "b5d4db4bcb2470ae3b73304326d3d75a6ab7222ebac483bd54df76c1abe7ae96"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-tenth-waveform.log",
+          "sha256": "d10cbd1f0559040879c96d0b5478c107161318a4db62d78108de12aede4843ff"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-tenth-workspace.log",
+          "sha256": "6082591d0c29dad7eb3a9f622f4fca728c4a5e11788018ca4ee1adb8e3a61b1d"
+        }
+      ]
+    },
+    "ninth": {
+      "reason": "All focused and additional groups passed, including the corrected recording parity fixture. The full suite retained 2149 passing tests, one duration-cache fixture timeout and 49 ignored qualifications. Ten exact reproductions on the unchanged ninth executable passed with original deadlines; no duration correctness failure was reproduced. Final source adds stage and caller diagnostics with no deadline extension, and fresh duration/full-suite qualification follows. The original failure, executable, all reproductions and clock receipt remain retained.",
+      "binary": {
+        "path": "target/app-backlog/qualification-bin/midi-tools-tests-ninth",
+        "sha256": "e92bb9489bede550c0bc90bf41ea76b46c5baadf14ffef98bc2e49a8d1b5e15d"
+      },
+      "artifacts": [
+        {
+          "path": "target/app-backlog/midi-tools-ninth-audio.log",
+          "sha256": "2e4b869cbfbe94242fe7d507080b21fac62f709e2f82e9f85b0ffa4774323b14"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-ninth-build.log",
+          "sha256": "12cacbca08d4b57ef783dc160f0e5857078197f8a6c12119d814cbeab50881b1"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-ninth-clip-management.log",
+          "sha256": "f660a25b6daac4b97574eccf1657ceaf52490d4711a8e6b8e3d40046c3dd9853"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-ninth-clock.log",
+          "sha256": "1106afd63a57514c811acc85215a4d7a088c365bb840a096f3668298549d05e2"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-ninth-compiled-tests.log",
+          "sha256": "2484403060e5fa7e8496fcb4347a2f154afc43866e91711d39495099d6af1fdb"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-ninth-compose.log",
+          "sha256": "dc5ca4c830f24ef5ee6e283970dc330e36dd8ad50e2f9d5a72bcda07789eea5f"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-ninth-core.log",
+          "sha256": "cb3f7a7a1cfd420446a19deb2cf86e79b01a6ae6be4b0dd838770488a53aba50"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-ninth-duration-reproduction-1.log",
+          "sha256": "0c2c3b77e2b1babacc3a87ecf8f711bf8b56208783de7252f8b4b2e827b9bf5c"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-ninth-duration-reproduction-10.log",
+          "sha256": "61f1c9f398026ad4587b1ca5b1911de64b396af8ac47a339115dd6ec880d275d"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-ninth-duration-reproduction-2.log",
+          "sha256": "0c2c3b77e2b1babacc3a87ecf8f711bf8b56208783de7252f8b4b2e827b9bf5c"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-ninth-duration-reproduction-3.log",
+          "sha256": "fb1bd6e583496f83c7fa6f76959b68fadc764957a36bc982fa5433f3c7dda900"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-ninth-duration-reproduction-4.log",
+          "sha256": "fb1bd6e583496f83c7fa6f76959b68fadc764957a36bc982fa5433f3c7dda900"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-ninth-duration-reproduction-5.log",
+          "sha256": "0c2c3b77e2b1babacc3a87ecf8f711bf8b56208783de7252f8b4b2e827b9bf5c"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-ninth-duration-reproduction-6.log",
+          "sha256": "0c2c3b77e2b1babacc3a87ecf8f711bf8b56208783de7252f8b4b2e827b9bf5c"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-ninth-duration-reproduction-7.log",
+          "sha256": "0c2c3b77e2b1babacc3a87ecf8f711bf8b56208783de7252f8b4b2e827b9bf5c"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-ninth-duration-reproduction-8.log",
+          "sha256": "fb1bd6e583496f83c7fa6f76959b68fadc764957a36bc982fa5433f3c7dda900"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-ninth-duration-reproduction-9.log",
+          "sha256": "0c2c3b77e2b1babacc3a87ecf8f711bf8b56208783de7252f8b4b2e827b9bf5c"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-ninth-edit.log",
+          "sha256": "0ddfba47b4b8b55fd6fe48b3ef30e2ec1adbe14ce3a0c7496a2f6da288f834c2"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-ninth-final-inventory-check.log",
+          "sha256": "a7d16b8de3b9ee0834f8b10bb058cd5034de7124e24eb91d4bf1fff3f9a11b7c"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-ninth-final-inventory-refresh.log",
+          "sha256": "c1173e0bf10ca043134fd6a8edc73cef36a23b57aba5aceba37c4f28461d574b"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-ninth-final-license-check.log",
+          "sha256": "d94a5e067286d5c5aedd5ca514a33ee02642f635614378560b96a923d8b76c14"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-ninth-focused-output.log",
+          "sha256": "b5f00bd6625ff168017b485e416853086cf068479053fa6befffb647683e2b60"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-ninth-full-output-timing.json",
+          "sha256": "0dcbe592effe6f39869d69bc915e5d1376662b6a63f1e8c5a82ad8be4d663956"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-ninth-full-output.log",
+          "sha256": "ce381da1aef49acbf30ba52663097b026726ab75e9922afe4d88feeb150508ca"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-ninth-full.log",
+          "sha256": "63ce2bf74d06148db46ace74959e0ad975c8ae23537f007cac6fa24fa5f40701"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-ninth-graph.log",
+          "sha256": "9e325e31c3e176b24672dff70aa3498ef7e8d8efdb12b5e4f22d4b947adce52a"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-ninth-help.log",
+          "sha256": "20e019f10a30e965eb80a01030307946813d5131070cd069655cde656fac30cb"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-ninth-ignored-tests.log",
+          "sha256": "8c82a09d18fd2184aeb0d9fc3001da1a6824fd52c13ed4c66127ef8eb6367d58"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-ninth-interchange.log",
+          "sha256": "789f8a02e96801823ebf644991cf52e16069369a8cbaec5fd885c18c13bf5459"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-ninth-inventory-check.log",
+          "sha256": "a7d16b8de3b9ee0834f8b10bb058cd5034de7124e24eb91d4bf1fff3f9a11b7c"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-ninth-inventory-refresh.log",
+          "sha256": "c1173e0bf10ca043134fd6a8edc73cef36a23b57aba5aceba37c4f28461d574b"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-ninth-license-check.log",
+          "sha256": "d94a5e067286d5c5aedd5ca514a33ee02642f635614378560b96a923d8b76c14"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-ninth-licenses.log",
+          "sha256": "a64ef1cd7b95dca75c56d6e3c3a5913cb8396aec0ee09dc7d715305dc45c53b3"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-ninth-manual.log",
+          "sha256": "efc869129573baa63e405504fb1a768eb6a59d1b673a8ae4a986a52dcc6f71ee"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-ninth-metronome.log",
+          "sha256": "08d47cad8c9a1b6e554a7dbe0d173ea83e180bb208dae01b6630a1ba6b5af59c"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-ninth-midi-data.log",
+          "sha256": "ca59df9270b2426a0bae24ec85411c4ad7103b483e64136a5aaae17d0f9adaeb"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-ninth-midi-file.log",
+          "sha256": "a1e49a606a925e7972f28e21b969b5cb43fb057d61cc4d89590a49b6f77b8261"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-ninth-midi-ui.log",
+          "sha256": "12466c7edcd74a9e5862b234210e95d5cee71f78d0bf473fe19ba6b3d4ef6e3b"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-ninth-native.log",
+          "sha256": "8417f82e673bad57cf5dbd61cb022c71b66ca3ff3d791b12497b4fd75a459f89"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-ninth-piano.log",
+          "sha256": "8656d7915873fc6e84bee7104f267afb9644fafc970b3f55103812a84d0df097"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-ninth-play-history.log",
+          "sha256": "4daf29f08fa05f8d109158980bb7a270263647af8e00f601cb367aba7da1fccd"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-ninth-production-check.log",
+          "sha256": "6f8666287c2b8e7eee1ab3edc3823cd050d8b4d8399c21d9c50b8d013c00fee2"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-ninth-project-timing.log",
+          "sha256": "860e353a7c39a84ac74ee87dd6c893988e7e6f97aa9847ef6a2651d8a87b77d3"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-ninth-recording.log",
+          "sha256": "fa2dd8e536fe3de4ef41325d385fe81f48b7f0131d24188f846b6ea27fceaa82"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-ninth-routing-playback.log",
+          "sha256": "a10a64f379ca9cde35dfdee7ebe249674c1eee5330aa82952d75a14d0d16fa2b"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-ninth-sampler-editor.log",
+          "sha256": "a04ec41167aa92acf41e84d88a61ab79b1f7ccedf061fbfd3e02f8688d0ba08e"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-ninth-sampler-store.log",
+          "sha256": "9c7cd6974fa3a3f53d98992bf163a1af4e7e165abbe224f4f5e72ed66cd39ed9"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-ninth-song-navigation.log",
+          "sha256": "3c394d6146edf8c6a58c6b18a712f922b926d53858d89276640247829d2fcfae"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-ninth-source.json",
+          "sha256": "3a3f075bae57472d12747e96f74b15aa07ff24a6af41c8b7075ff8bcb1d02245"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-ninth-touch.log",
+          "sha256": "0b98771bc56db954991710c783487d9449e8e532f2c295b1dddfd9ba281beb02"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-ninth-undo.log",
+          "sha256": "f4ca42e3969ed88fbca9d66c51301f74f5c80fd5be400512121042dab5d0cce2"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-ninth-waveform.log",
+          "sha256": "2a826f9bd7863f7a42c1877927a7a6c82069bafe51aba55398278214a69cc5c7"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-ninth-workspace.log",
+          "sha256": "6082591d0c29dad7eb3a9f622f4fca728c4a5e11788018ca4ee1adb8e3a61b1d"
+        }
+      ]
+    },
+    "eighth": {
+      "reason": "All sixteen focused groups, all eleven additional qualification groups and five native workflows passed. The unfiltered full suite retained 2149 passing tests, one failure and 49 ignored qualifications in 816.62 seconds. The three seventh failures all passed. The recording parity fixture passed exact captured/audience-buffer equality but failed its nonzero assertion: its one-second sample was started before its asynchronously opened writer activated, so an I/O delay consumed the fixture before recording. Final qualification renders two seconds of actual callbacks before the writer opens, then starts DeckPlay through the real engine command only after actual recording activation. Exact parity and nonzero assertions are retained, with no deadline extension or production recording behavior change. The eighth executable, frozen inputs, clock receipt and all logs are retained.",
+      "binary": {
+        "path": "target/app-backlog/qualification-bin/midi-tools-tests-eighth",
+        "sha256": "9ed1465c12d9a11a9418bd60b868e7433c3ad1b2ad4e4510e279929b898ebc46"
+      },
+      "artifacts": [
+        {
+          "path": "target/app-backlog/midi-tools-eighth-audio.log",
+          "sha256": "f4a0225a4d4e31427b854f2090d8e20e5d0058dd41b717031cfb839aa4b4ffe6"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-eighth-build.log",
+          "sha256": "3817653a208fda8c4a9983280f85f6931ddb9ed7f239031329edc52c72b48d26"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-eighth-clip-management.log",
+          "sha256": "37f8f8eb7d14fc0567ebec51bf0cc92d9d4f24a59be0d0c5a1427baaedc0200f"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-eighth-clock.log",
+          "sha256": "d3dd05c7049108d393ebab62f1355a461c63a4a11c132bf007611796fdd2ecbc"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-eighth-compiled-tests.log",
+          "sha256": "2484403060e5fa7e8496fcb4347a2f154afc43866e91711d39495099d6af1fdb"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-eighth-compose.log",
+          "sha256": "dc5ca4c830f24ef5ee6e283970dc330e36dd8ad50e2f9d5a72bcda07789eea5f"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-eighth-core.log",
+          "sha256": "64e215b85b2dc66a6f007d0d77afd92bddc0c473378ebfc19688aef37e9589a7"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-eighth-edit.log",
+          "sha256": "93c37a69817bc09fdf8b6b56022368fc1288789cb3f9b55108f15f08e9896e93"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-eighth-final-tip-fetch.log",
+          "sha256": "46d5e882a5b2f0f170783eeae5aa90847a9b1a362d478bfc369e3ab8a6d71d7e"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-eighth-focused-output.log",
+          "sha256": "319ec5c6f04f9e4fef3003d01b7fa89c785e340ae52a7aa5435d58266d4afb6d"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-eighth-full-output-timing.json",
+          "sha256": "df79abd35754f341ef705566668643daabdf68842603c791c1e59e81d616f07e"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-eighth-full-output.log",
+          "sha256": "85d95f758756a7d05d90cf009fec2f5f520b0d096399f09e8c879bb269a0ea0b"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-eighth-full.log",
+          "sha256": "2bd4efc21da2246e3f4a48bc1a0c5613b65220dbd64e9b21f180a259de4e4d7f"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-eighth-graph.log",
+          "sha256": "248bbaba3abf65bdf98c21681ccff99aeb2ec302bca75c3ef17662db9214ae6b"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-eighth-help.log",
+          "sha256": "3eea5b753603bc25c1ee487751d0cf48364f7ea190a3fb47d1d92d9c0ffb449a"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-eighth-ignored-tests.log",
+          "sha256": "8c82a09d18fd2184aeb0d9fc3001da1a6824fd52c13ed4c66127ef8eb6367d58"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-eighth-interchange.log",
+          "sha256": "979513b662d720fcf1930389aac0c10c202fed86817b0fb5f75771af4fc63d9c"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-eighth-inventory-check.log",
+          "sha256": "a7d16b8de3b9ee0834f8b10bb058cd5034de7124e24eb91d4bf1fff3f9a11b7c"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-eighth-inventory-refresh.log",
+          "sha256": "c1173e0bf10ca043134fd6a8edc73cef36a23b57aba5aceba37c4f28461d574b"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-eighth-license-check.log",
+          "sha256": "d94a5e067286d5c5aedd5ca514a33ee02642f635614378560b96a923d8b76c14"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-eighth-licenses.log",
+          "sha256": "d714375c8be83de783549605b2415c7762177008bd65ff27416af4a33b9e40e0"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-eighth-manual.log",
+          "sha256": "efc869129573baa63e405504fb1a768eb6a59d1b673a8ae4a986a52dcc6f71ee"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-eighth-metronome.log",
+          "sha256": "4ddcef541f76f30c90e22c85aa438f2031c53d6f7a9a6715935d5f16403ebdd5"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-eighth-midi-data.log",
+          "sha256": "1295d4f7a95f4b0b0f503902a1b5b4b0b5911ceed525e0519c7483515e2b119e"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-eighth-midi-file.log",
+          "sha256": "a1e49a606a925e7972f28e21b969b5cb43fb057d61cc4d89590a49b6f77b8261"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-eighth-midi-ui.log",
+          "sha256": "a4a8fd28264d3883eb253bb816ec3eebc91054399c5bfc1e6712188490adc612"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-eighth-native.log",
+          "sha256": "3ac7fdf57c1dffd6e1450d6af33d35190ba72f80a927f81447eb2acd9cc1d74e"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-eighth-piano.log",
+          "sha256": "98bb33fc7379c0a64189838579f45cb61a8f976540d8ccb77650fd4c12fce5a0"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-eighth-play-history.log",
+          "sha256": "802d134fbe6efe392849e51fc8c9113cde32435317fa0a621490fbe76c328f28"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-eighth-production-check.log",
+          "sha256": "2c601ebb840b0d56c2fa14ed66723883b3a5d5f0826e7926114cc09e86f98b1f"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-eighth-project-timing.log",
+          "sha256": "83a94bd38dd80ec3fef1bf6afb65f5281d7a9198315c876214442e35b5381158"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-eighth-publication-fetch.log",
+          "sha256": "46d5e882a5b2f0f170783eeae5aa90847a9b1a362d478bfc369e3ab8a6d71d7e"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-eighth-recording.log",
+          "sha256": "83e670e1985edbd850b7a55dd2c70f83a1006bc9e18efabfbfed4dcb0c60abc4"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-eighth-routing-playback.log",
+          "sha256": "97ca334e64aad69259768c6c98e1469c42e8b21eec221b74520606309fbfe628"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-eighth-sampler-editor.log",
+          "sha256": "25d95fbae3a4b05d5c4d88ca4bf7a85b402be9141a0157655e3861b0c71e4571"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-eighth-sampler-store.log",
+          "sha256": "9c7cd6974fa3a3f53d98992bf163a1af4e7e165abbe224f4f5e72ed66cd39ed9"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-eighth-song-navigation.log",
+          "sha256": "d28ac57cd123a70b13269eff7c7c4e9cfcb45a05fbd5af15b21781a31f962591"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-eighth-source.json",
+          "sha256": "aa8b8de0df1ca45fd9f372c22c0e72af85f4481d2e88324d544927af00358d43"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-eighth-touch.log",
+          "sha256": "0e094c565ed642745898823737a35d9c838d51af935a96946996bae19ae841cd"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-eighth-undo.log",
+          "sha256": "34cf470a6a1a915545f48994111cafe45ad047e52eec99cc5506ded0d1917023"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-eighth-waveform.log",
+          "sha256": "151e47e109b95a975f40c66d0b4e2df15a1a0f997cdeaa069671606fea235e11"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-eighth-workspace.log",
+          "sha256": "c86eacb39ec286e34efed441afc3e8ed78f7f5592d999452a752865a8c31132b"
+        }
+      ]
+    },
+    "seventh": {
+      "reason": "All focused MIDI/editor/routing/clock/graph/help checks passed on the combined source. The unfiltered full suite retained 2146 passing tests, three failures and 49 explicit ignored qualifications. The license test retained a fixed count from before the 43-file VST3 merge; final qualification checks every new host source destination, inventory hash and MIT license record. Playback-history and sampler-editor timeouts passed both exact and entire-group reproduction on the unchanged seventh executable with original deadlines. Their timeout helpers now preserve caller locations without extending deadlines. Review also found that an already-held pointer drag bypassed disabled editor controls; final qualification adds an actual pointer and keyboard regression. Every seventh log/executable is retained.",
+      "binary": {
+        "path": "target/app-backlog/qualification-bin/midi-tools-tests-seventh",
+        "sha256": "555b531cc042ddaa246f5e7b682d373fb3577d87ec64c1c3486108eae8574f5c"
+      },
+      "artifacts": [
+        {
+          "path": "target/app-backlog/midi-tools-seventh-audio.log",
+          "sha256": "4ee4e61ec73516cab13375bf73cc4d550cd75b8bc989bec7647b469edc989b09"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-seventh-build.log",
+          "sha256": "a0e5ab770fcfcf5529d1672fcf9e1a65330924da782f35c500e341b7898eefbc"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-seventh-clip-management.log",
+          "sha256": "daf4de843c9fa74527a7339c17656e71b7b1e3c6c37d2e63fa4539165a83b114"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-seventh-clock.log",
+          "sha256": "603c3c665ab1a45d218522e959cc3f978469584e1974a00e20e60fb014af208d"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-seventh-compiled-tests.log",
+          "sha256": "9c555c6adc759b3a0da08def164a1c79daf2309446c7950fc8ed68b6e4aca43e"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-seventh-compose.log",
+          "sha256": "d270120da8eb2c97a789583ea287a3800a9f22e3eac95156217122d0e5207879"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-seventh-core.log",
+          "sha256": "6ca61a4d0261f02a961c97694b026fa5e5e702b71bf67cb469575abc1c320307"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-seventh-edit.log",
+          "sha256": "413b04cb70dcc4f4ca8029deb30c9c630e85f442acdd41e4c6ad50ea7537d50e"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-seventh-focused-output.log",
+          "sha256": "712ef0712b1b4d6f0bcac064f159e26235c9be060a0236935658f6b975a3f1af"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-seventh-full-output-timing.json",
+          "sha256": "4b4533196c36e64bdf89053b701a00b68c34e7414dc5bf58d582b249e7012ef1"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-seventh-full-output.log",
+          "sha256": "6152f918c528ce8f61d50e0496f530e087507b6d661c3d466d799b7126fb710d"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-seventh-full.log",
+          "sha256": "7d6a989d175fbeef043ca5c349b6968260bb396b59bbf3708759c3f0cb5222df"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-seventh-graph.log",
+          "sha256": "72ee11b6f9410204c5cddd21261148b51b8a202b49a29aaeddf8cd4e0ba19d7d"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-seventh-help.log",
+          "sha256": "cf04701191056789f632b3446b70ed959aa0de8570bedc9860c3eed7843cb113"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-seventh-history-group-reproduction.log",
+          "sha256": "10fcd38a94093c5ac020e7e5807d8a08752b9442b69d0c6ecf213b0b775b3bac"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-seventh-history-reproduction.log",
+          "sha256": "950403625e3f457729cb7df6f3e4d18c687ee59abc85c29d72c2f1e38450b2d6"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-seventh-ignored-tests.log",
+          "sha256": "8c82a09d18fd2184aeb0d9fc3001da1a6824fd52c13ed4c66127ef8eb6367d58"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-seventh-interchange.log",
+          "sha256": "ac112e8c5347bb78f7b2df3b696e640b31f3e7b27b6f4a2f0ac8630f7d27240a"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-seventh-manual.log",
+          "sha256": "3a90ebdea3e45403ef827e9163e214c7349763f11c7d1f8a1ad699af22cb6d96"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-seventh-metronome.log",
+          "sha256": "789eb47aa8ee23a74f5a5dfc751cb9c35395831ef45b5c573f3e732f9c058f9d"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-seventh-midi-data.log",
+          "sha256": "b036d0dee479b30e28a6e9937eb9e8ea6ed1fde01679d471bea5eaf7bb009971"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-seventh-midi-file.log",
+          "sha256": "6453c016c3cf2502bbc8d159a30b735a8a0b776751728e121b7f27336b5e209a"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-seventh-midi-ui.log",
+          "sha256": "2ee976705b90f2df6d8a96f99353939ee2cdbc9580f040c45ceee4fb4d15243d"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-seventh-native.log",
+          "sha256": "b067a8e0a02b1116bb10faa34f535e2df4f5136baa130394c4a692edaa8f966d"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-seventh-piano.log",
+          "sha256": "7b52910fa3a8f12dcdf17f72ea76710318df73a2214579ef0d8d18b0d7ab4205"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-seventh-production-check.log",
+          "sha256": "ad2f52bfddee563045f39ba8176b38414acb7422108bb7751a42ea87d089619d"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-seventh-project-timing.log",
+          "sha256": "f86221241cf21addcf2d8c574d5e56330c904c7ef27515acda877e70dbd6c81e"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-seventh-recording.log",
+          "sha256": "d9632970fdf5cb22c8cc854a1ca0402ae412a700643f4c00c779a88706d67528"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-seventh-routing-playback.log",
+          "sha256": "5ce7822c7d60e9742a801caaf9a449fd0eee7b5956b7a124bc5bf324bb7a4457"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-seventh-sampler-group-reproduction.log",
+          "sha256": "caf0f4576a886e2c8a9f6bf30efbbe22a4e933131ad920d80776caac45fe0c68"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-seventh-sampler-reproduction.log",
+          "sha256": "9a3781c95c25b8f80d63e91f96c2598301db88d3b0bdcd58682ce069cbe47f21"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-seventh-song-navigation.log",
+          "sha256": "81c8409bab79e350fb500711c66eb0dd9c8557f85d9be7ab5dda2098abd17b01"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-seventh-source.json",
+          "sha256": "2c227bff1afaa6d21e34f707cf48376531d46c529f27f27d53418959d29f7658"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-seventh-touch.log",
+          "sha256": "47a20bb192d677a9c54ebd0a524bd78b91c21d1a8b73b530804483b84b356caa"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-seventh-undo.log",
+          "sha256": "74c837eec581054a2e32d5a395e37da9038041bc856993fc0e36055987fe5111"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-seventh-waveform.log",
+          "sha256": "3222b14bc91d13613972adcee9260215d899007db68a8bb02e9d081c8a6dde6c"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-seventh-workspace.log",
+          "sha256": "f8fe52e1dac9a603d42c46797134f67e0c0971a164ced7ad27160f8949334a66"
+        }
+      ]
+    },
+    "sixth": {
+      "reason": "All sixteen focused transformation/MIDI/editor/routing/clock/graph/help groups passed on the combined VST3 source: seven pure transformation and four actual native workflows. Full qualification was deliberately deferred when the newly integrated license inventory check omitted app-checklist.json, app-checklist.md and remaining-checklist.md. The final generator inventories the complete backlog directory; two real private-source regressions exercise changed bytes and added/removed inputs. A fresh build follows that correction.",
+      "binary": {
+        "path": "target/app-backlog/qualification-bin/midi-tools-tests-sixth",
+        "sha256": "18876b7400745e1f6cde73f243fe4acdbe1a9c09cb348e318473b962bb0adf1d"
+      },
+      "artifacts": [
+        {
+          "path": "target/app-backlog/midi-tools-sixth-build.log",
+          "sha256": "9034898fbcfa18bff667d91b321294c55ed260254944465041b0a3381f320abd"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-sixth-clip-management.log",
+          "sha256": "ea785bd9106fe97c3283d0aaaf6ec720af58feab2f7f66c592b0126348f23b7f"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-sixth-clock.log",
+          "sha256": "32b208a994ed3f747353f315ad9ed880b7b27fbcf0d30420f409b8caf77f2f2c"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-sixth-compiled-tests.log",
+          "sha256": "9c555c6adc759b3a0da08def164a1c79daf2309446c7950fc8ed68b6e4aca43e"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-sixth-core.log",
+          "sha256": "e83fcf51b7bf67593a6fe13023d948dd0486068872e424f17c7e7ac88d8bcde5"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-sixth-edit.log",
+          "sha256": "27ef2780ce6abb80b5665d889606459cfc33a354dcc538df7367070aa8005c0d"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-sixth-focused-output.log",
+          "sha256": "a09df951a30cae287072dbfc92d8268c68702b4f6060a21b332b80e42a322db3"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-sixth-full-output.log",
+          "sha256": "cef19ec038150d5a8299819b4987df5a4073ca65b84b3e91359966ab1fc1c8ec"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-sixth-graph.log",
+          "sha256": "88b6714214badb4bd7af56fd54c5bf384031d3a94ca000deb0c410fd8046bf7c"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-sixth-help.log",
+          "sha256": "d7264b2ac39427fefdf2a892b13b0255d318f005d717d28eef1bd3aa2a9e7af5"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-sixth-ignored-tests.log",
+          "sha256": "8c82a09d18fd2184aeb0d9fc3001da1a6824fd52c13ed4c66127ef8eb6367d58"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-sixth-interchange.log",
+          "sha256": "5e39c582f1a86c255d3612587675c51a0cb265b68a7484356d343efb4196a47f"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-sixth-license-check.log",
+          "sha256": "0283f1783674b089aafbac139ec9c53eca1b5dcb167c23b1fd08502a6dbd3683"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-sixth-manual.log",
+          "sha256": "3a90ebdea3e45403ef827e9163e214c7349763f11c7d1f8a1ad699af22cb6d96"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-sixth-midi-data.log",
+          "sha256": "8c3323e0ad88d13c729343f740b740b7fb06eeb848e935b3aee812d8e250ecc7"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-sixth-midi-file.log",
+          "sha256": "6453c016c3cf2502bbc8d159a30b735a8a0b776751728e121b7f27336b5e209a"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-sixth-midi-ui.log",
+          "sha256": "2d992559cd3a079cec004b05047d2d209769335cb8f1d114e4c6ccd482f47114"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-sixth-native.log",
+          "sha256": "4bf67935432ae3bc6182076dba246b2cd890ca64ee954cdb4d4a8179cbbdb032"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-sixth-piano.log",
+          "sha256": "ebde68cc5bdc75cbce5a22b8da6eb802298505dcf3853c3257816157f82b1c0e"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-sixth-production-check.log",
+          "sha256": "a23e8ef14faa696817f08abf9b505338ce60fbad030cd0d6e3a2034fed811746"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-sixth-routing-playback.log",
+          "sha256": "f84565559ff2867d27042a039dad0f7144d34a3569a6cf39336f8869e46c8b86"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-sixth-source.json",
+          "sha256": "595bdb055d73b6c171aa77e856bc1d1c0000f42c5649160a9a71d98420e68b6f"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-sixth-touch.log",
+          "sha256": "c1b85f477d8b48993820ca1fb53de614be5ce18ca6e64c169943eac22a09d037"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-sixth-undo.log",
+          "sha256": "792f234171d9c793825b1aee32bdc999f72c0fb907a79fb2ec0701c0aefd649a"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-sixth-workspace.log",
+          "sha256": "fe95b75f032b357b006d3b5cfd3e60508d5f94588105c58582004a14d11f331d"
+        }
+      ]
+    },
+    "fifth": {
+      "reason": "All transformation math, native drawn/cyclic velocity, exact preview/save/reopen, imported expression and neighboring groups passed. The added pending-seed regression configured only the seed text on Quantize, whose seed parsing intentionally belongs to Recombine. The fixture now sets the actual parameter seed before starting the worker and changes the next parameters afterward; the prepared status/history oracle remains strict.",
+      "binary": {
+        "path": "target/app-backlog/qualification-bin/midi-tools-tests-fifth",
+        "sha256": "0cc341a44c12668cf1e1197a2c41c826f9a73225997dd7d8286df1b40d7657a1"
+      },
+      "artifacts": [
+        {
+          "path": "target/app-backlog/midi-tools-fifth-build.log",
+          "sha256": "f74a923ec2df43a6f31ac7b3e8fe68ac388a46f8a68423b9a56b8d1dddcdcef9"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-fifth-clip-management.log",
+          "sha256": "29c1d12b8712831255a3a1906bd15755341e482f85da8929695d1e38f30288e3"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-fifth-clock.log",
+          "sha256": "8e43288135bf1a29b8cbc02b36268b3e21d84e55a85de59f581091126a67df85"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-fifth-core.log",
+          "sha256": "1b3cba7a7bb5f6dc74709f2b39020ad3134eafd43983212ab5456e3df616a103"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-fifth-edit.log",
+          "sha256": "a7b302be126f8127bc12dcf4ca9a57660431a7c5376c1230251ec4aa694c6cfb"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-fifth-focused-output.log",
+          "sha256": "942ff771cfb228f8610994ee31f49457dc59b466df6486ceede9bb27f2a46f3a"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-fifth-graph.log",
+          "sha256": "9bcdb52ce2775888ef7e4519ca9a5d8d2e2ab83f6dc0d523748cda90920fdcde"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-fifth-help.log",
+          "sha256": "81c44e1aa49d405d853458af3b31e80357dd3c83c7dd0cc123bc4fc4cb27dbea"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-fifth-interchange.log",
+          "sha256": "dad7f73b05dffcbc7914bfe690dc2141946cc9d42681da7c85eb68361bc7ab88"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-fifth-manual.log",
+          "sha256": "b5b70e4667da3cafd87ae38f5666e51cafddfda9763452edaa48c3096e38dfcf"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-fifth-midi-data.log",
+          "sha256": "e17e30969b9cf19e882fd73c3b791dbc943736abf10ded5219e3099652d878cc"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-fifth-midi-file.log",
+          "sha256": "30a280a3c3485377e57fbccf10e62c849a9392c42aa2cf68d816aa36aad59b06"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-fifth-midi-ui.log",
+          "sha256": "7e54f1518bbef30164dda11b6c1985d111d10cbd6a5b8987cc717345948844ff"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-fifth-native.log",
+          "sha256": "8f4b109a0cfc7a40c123dff81c05d2c7a99d0db1154b41d89c9a5f4dfa8b4285"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-fifth-piano.log",
+          "sha256": "c5dc39f46bfcd8f05dd1550ba28dff544e4dabc104bb38ba569d81d9e43cf9d8"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-fifth-production-check.log",
+          "sha256": "2e45e654bab44831ea265f9e60ccf4946a8d4b03959320f7cac977b7e59a6308"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-fifth-routing-playback.log",
+          "sha256": "4f235a2f410440ceee05d679291add32f0a67906848a0e96e7a2cc7837ee8a60"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-fifth-source.json",
+          "sha256": "871f6f499cc8ccf6b8d3c7eeaa7a0fb9bed69f8bba721691ff178d19362a073b"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-fifth-touch.log",
+          "sha256": "b3ea002f55df5ebefb42d5524badb2e3e59da7851c88a0f0fe7d4fa508b7fd59"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-fifth-undo.log",
+          "sha256": "a2bd4f90163d398c3ac37f8c02300e597fec3aa226c615039a3f5b72a02ab613"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-fifth-workspace.log",
+          "sha256": "e7f8756685f9af4a428a0bc061cb0284c670c28e8c27c7bebba935b4d7c53224"
+        }
+      ]
+    },
+    "first": {
+      "reason": "The production build passed; test compilation refused an untyped analytical ln fixture. Explicit f64 receivers fixed the fixture without changing the timing oracle.",
+      "binary": null,
+      "artifacts": [
+        {
+          "path": "target/app-backlog/midi-tools-first-build.log",
+          "sha256": "2cc9d357434cbeb52254f989f0200bc878b107d599143a6f006635009a5a36d6"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-first-production-check.log",
+          "sha256": "577e7f383e0673a6fdb1047d68129f6a9acac7c83c9033412638b888c5db3825"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-first-source.json",
+          "sha256": "06d99c542a4e773fe3bfb602104110e091f6d692db7b9d21e0b70bd20c13a31b"
+        }
+      ]
+    },
+    "second": {
+      "reason": "All engine transformation and neighboring groups passed. A native expressive fixture had an invalid 64-beat Region with four bars; the fixture now uses the actual four-bar Region. The added panel also shifted existing pointer geometry; it now follows ordinary editor controls. The generated offline manual was refreshed.",
+      "binary": {
+        "path": "target/app-backlog/qualification-bin/midi-tools-tests-second",
+        "sha256": "ee7ea698c521a26651f1864fe561acf67b0fd9c5e84a90dfb57fd6de935296cb"
+      },
+      "artifacts": [
+        {
+          "path": "target/app-backlog/midi-tools-second-build.log",
+          "sha256": "8dc5f22cdc61a7e011b50b6668040c022f76a66a10cfd13cf5287914be149b8b"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-second-clip-management.log",
+          "sha256": "161d3b788fd431ae149b9a4160df67c43e9fb6dade510466dae1313c01cf761c"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-second-clock.log",
+          "sha256": "43b811c00eff0869b6a6cdd263b9900056eb5fbcafbef862015b59461672e284"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-second-core.log",
+          "sha256": "485b244542f7a2481b951ec4975163664577b693ce6a490f0f71ed75f44f1b5f"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-second-edit.log",
+          "sha256": "03262df3856817686378b553825b45d652ae6bf71cef839576d02af974a736fc"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-second-focused-output.log",
+          "sha256": "cc9853e6a0a7166fe500caf9f2c3b65c56b6eb6885b1fe32ac94f9f532ce2fd6"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-second-graph.log",
+          "sha256": "ac65a8ef782f17615f59b489202be909d02acf8f2d9f99dafacfbfee333ec5f9"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-second-help.log",
+          "sha256": "3c8bd6b8d1a474360b6cda50c75d1b864e131438faa13e81ffb24327476d2aee"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-second-interchange.log",
+          "sha256": "16a7e123ec4866bb1de34b4de549d7ff340c2bd301da67d477d0dc28fc24c6c3"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-second-midi-data.log",
+          "sha256": "4f72b701621626129ca02eb1ada291bcd58c9e651837ef92c76294bb663de1e0"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-second-midi-file.log",
+          "sha256": "19d9835c5e97c3303a5b64f83e41692eebbe03e573a2e308be828406fd5183b9"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-second-midi-ui.log",
+          "sha256": "75bf86050e5208fa5b069387782453752377ad410fee2e1635f95b01c890af59"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-second-native.log",
+          "sha256": "2ac5c4f71d642b7611a2ae5b60da517bb4730a34109197e2728d11b60018cac0"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-second-piano.log",
+          "sha256": "b630b4c7aecd16023f09e18373d4c86ff6318871d268c14915a1b8481d22d461"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-second-production-check.log",
+          "sha256": "2c8cd977f8a09ff8bb3c973396f11709259e0fd666214fc95a1f749f30755928"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-second-routing-playback.log",
+          "sha256": "9683a9d4b050c1daada0d3c2057cb0817100ed1bd6c7d5a3dbfeb80ec0f4e649"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-second-source.json",
+          "sha256": "509d18474437ad68017fe37c6693c1b36e932290762c0ca68c4dd472cd3a3e69"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-second-touch.log",
+          "sha256": "2ec61a47b31895c560308c560166887cfc131fde04f0e78b88d4df051bd37b98"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-second-undo.log",
+          "sha256": "4b9fd1c86e1ce73364bec9506c1273692379f1b125607e3af4d4ea7020fa7ce2"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-second-workspace.log",
+          "sha256": "8b452869d2f64d79f39b788ffe8416fe5073b3227319ed49214a327f92f99735"
+        }
+      ]
+    },
+    "third": {
+      "reason": "The existing pointer regression, production compilation, pure transformations and other native workflows passed. Imported controller rows legitimately pushed the transformation header below the viewport; native qualification now reaches it using the existing accessible scrollbar rather than assuming unlimited painted space.",
+      "binary": {
+        "path": "target/app-backlog/qualification-bin/midi-tools-tests-third",
+        "sha256": "2116b98c5f527fd7851c88532bf214018112a470259a573da52b4cc8c088678d"
+      },
+      "artifacts": [
+        {
+          "path": "target/app-backlog/midi-tools-third-build.log",
+          "sha256": "c7860711cdef3194df5f89dc3390924b01eb34dc8c850d17374233230b2687f2"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-third-clip-management.log",
+          "sha256": "c4872a4d3d0ad9bb30be1e9fb93e0e087735e8e95ccc43a94a8aa4c678bb267e"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-third-clock.log",
+          "sha256": "57df6ec5d8aee1d30d982b77594a270727f1fc13fa5501200fbcf745889bbb9d"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-third-core.log",
+          "sha256": "485b244542f7a2481b951ec4975163664577b693ce6a490f0f71ed75f44f1b5f"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-third-edit.log",
+          "sha256": "ee58eb014f9ec34e2c293a2f4bdd6581d21024d2de473d0dd255a7e0292c8cc0"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-third-focused-output.log",
+          "sha256": "6a97ec819bbcfd1269338c7ab02a950df2b60b0b13660eced81cecc51d901527"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-third-graph.log",
+          "sha256": "4ff44294b2cf2e2a8563e0bc41529bf43c9f6a42a8410691e1224c056d95a916"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-third-help.log",
+          "sha256": "2b04a9220cb31a3fa06d888060fba569c78ffc745e9e9ce672917c6e61d18b7d"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-third-interchange.log",
+          "sha256": "b25f9a6f2fd3eb1a7d84e55a3c23f0d396ad0798e06f6b9f5551827310d7361a"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-third-manual.log",
+          "sha256": "085c2260e82fa54d4b23a3a7bec9f53817aa776884a910973e3ad1ed26f216a6"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-third-midi-data.log",
+          "sha256": "ec9106f8caa59d359e5c1e790ea0ef3c16482f5ebee571dbf2f2a64a36448c65"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-third-midi-file.log",
+          "sha256": "19d9835c5e97c3303a5b64f83e41692eebbe03e573a2e308be828406fd5183b9"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-third-midi-ui.log",
+          "sha256": "ec6063c9eb5be7cf267f8715db14789c721adad2a22ffbf777c7520dd16f24af"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-third-native.log",
+          "sha256": "4f89fbf5984ede024adf4c0422b40a9117ca86dc14e0800f80703713fbd239dd"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-third-piano.log",
+          "sha256": "4a44c0e533f4f6a0e5796c2d75c709668ddd2b1d8e77d31b0a561368bcd4174d"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-third-production-check.log",
+          "sha256": "1f4ef86fc69caae052f80605aa1c8557a8053cfbb7dc9758e8e1f98d8745bba5"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-third-routing-playback.log",
+          "sha256": "2968b4dc83dafc58d692b51749d152123d25ad618a9a38dcb365f8d5d3b71d9f"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-third-source.json",
+          "sha256": "87d0ee4a3f42766789bf6f38fd6775b2e8691e47c316c06f55aa59c46590cae5"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-third-touch.log",
+          "sha256": "3991251f45835e926a1c74c3aef5732cc5a2d27fadce7ea3521d569f6a52cf68"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-third-undo.log",
+          "sha256": "c353406c364413256a86dcfb1637d2a247ff07250fd291509fe9080f3f01f60b"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-third-workspace.log",
+          "sha256": "e7294c8d61dff0cf117798a72b1ac594e50228452932ce67ddeb9443547867f4"
+        }
+      ]
+    },
+    "fourth": {
+      "reason": "Seven engine checks, three native workflows and all neighboring gates passed. The imported-expression workflow retained the missing-header failure because the scrollbar fixture omitted its MIDI piano roll scope prefix. The fifth fixture uses the exact exported label. The final build also reports the actual prepared seed if the next parameter seed changes while a worker is pending, with a regression retaining actual history seeds.",
+      "binary": {
+        "path": "target/app-backlog/qualification-bin/midi-tools-tests-fourth",
+        "sha256": "511b4349f534b196cd736d488b870186bef13f29601c1a8a7924dbf7ee617a91"
+      },
+      "artifacts": [
+        {
+          "path": "target/app-backlog/midi-tools-fourth-build.log",
+          "sha256": "722d2a7ea901737dff84ccdfcd09a909e4e3e7791c8b76d193787cd7d2d86948"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-fourth-clip-management.log",
+          "sha256": "29168bee5e5348b51ac9c56cab52a959c0884f14a786f1ad3d602c56fa0bb5f5"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-fourth-clock.log",
+          "sha256": "f745bc18503c432588be2a2fbb6257c66c619385ebe59f7013aa27623ae983cc"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-fourth-core.log",
+          "sha256": "e6b9016854c8b30e2bd184d4282ece4a3165fdc3d83c908fc0697c719cf8bec0"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-fourth-edit.log",
+          "sha256": "a7b302be126f8127bc12dcf4ca9a57660431a7c5376c1230251ec4aa694c6cfb"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-fourth-focused-output.log",
+          "sha256": "053c975755433c6fa2dec51e6707b97a2b481057d148b44b9c6e94cf25a5de7d"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-fourth-graph.log",
+          "sha256": "f602d77a8b14ed11f00f1e94884e7beb0e6332f07641db3d9619d9a4077fc39d"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-fourth-help.log",
+          "sha256": "05454cb92048f9aeb2c475559884c2439c8e1d8c1088e8bf18421518d7c8a7a6"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-fourth-interchange.log",
+          "sha256": "7983e0638c8d6369d2f643214ba8daa9810bf57f1631e5a0c86e3104c25ebaf2"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-fourth-manual.log",
+          "sha256": "b5b70e4667da3cafd87ae38f5666e51cafddfda9763452edaa48c3096e38dfcf"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-fourth-midi-data.log",
+          "sha256": "e17e30969b9cf19e882fd73c3b791dbc943736abf10ded5219e3099652d878cc"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-fourth-midi-file.log",
+          "sha256": "30a280a3c3485377e57fbccf10e62c849a9392c42aa2cf68d816aa36aad59b06"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-fourth-midi-ui.log",
+          "sha256": "593891d2d3251e81b5699c6bd0da5010b528271e1ccfadb3db61f9b30bba700d"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-fourth-native.log",
+          "sha256": "b6b0488559952d2e669ccd3202cc8914ee0930bcbf98ecb481068084b4d81a44"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-fourth-piano.log",
+          "sha256": "9ed35479033b2e256f32590f315659ea88c8e0cb6a83c300b1fa9e9c5819791d"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-fourth-production-check.log",
+          "sha256": "6737c73ed90afd38eb7b90f43597cd27d63db12403669510bbfc2aa32dc9cdb8"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-fourth-routing-playback.log",
+          "sha256": "3b6367f1236c2b6ac9d4e298547cdd8a66232d86524523ed0742adccbfce2dd0"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-fourth-source.json",
+          "sha256": "2f0d893caf8f9a75a39b459f53cd5f32fc70911f9ac24aa2a35f6ccfcb7b606e"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-fourth-touch.log",
+          "sha256": "5b4421597bd3298418a7836b5e154f69e5d543a844d28de18e2eafbd35d5cc2e"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-fourth-undo.log",
+          "sha256": "9131386b86ff04abb8b4a325c5268e51f2ff5001fdedb616caa3e2f5210b072d"
+        },
+        {
+          "path": "target/app-backlog/midi-tools-fourth-workspace.log",
+          "sha256": "61979a5cfc826a8b5124dad5f0136f1f47ad1476cf7ad800dfb9c8c18c4bbfcc"
+        }
+      ]
+    }
+  },
+  "limits": "Linux ARM64 software qualification of native MIDI transformations. Quantize straight/triplet starts and/or ends at partial strength; seeded independent pitch/position/length/velocity Shuffle, Mirror and Rotation; drawable/cyclic velocity; anchored Stretch, Reverse and integrated three-point time-speed curve. Preview retains an exact original, compares timing summaries, stores 32 transient parameter settings and commits once through existing worker preparation and Undo. Imported PPQN, event orders, stable note identity, channels, release velocity, metadata and labels survive; poly-pressure follows its unique note, with explicitly chosen lower/upper MPE member-channel range for pitch bend/pressure/CC74. Ambiguous, orphaned or newly overlapping expression refuses publication. Bounds are 8192 notes and existing lane/SMF limits; timing rounding is displayed. Parameters/history are live editor state, not saved presets. Automatic MPE-zone inference and a per-note expression editor remain separate work. No physical port, capture, OS GUI or listening test was opened.",
+  "releaseDeployment": {
+    "schema": 1,
+    "integratedQualification": {
+      "receipt": "docs/validation/saved-musical-context-receipt.json",
+      "compiledInventory": {
+        "path": "target/app-backlog/scale-context-fifth-source.json",
+        "sha256": "e118fb517d454e8143b9a0a807e199c6957899ca7aa7a2edc5adc46c866cbf09",
+        "baseRevision": "b81460cea09a6891024dd821c403bfb02189cfaf",
+        "files": 918
+      },
+      "testBinary": {
+        "path": "target/app-backlog/qualification-bin/scale-context-tests-fifth",
+        "sha256": "dd7264bbc7bcf8db66d13c85b2b8750678e7690f7b2df02b701eb6c02d2663e2"
+      },
+      "full": {
+        "path": "target/app-backlog/scale-context-fifth-full.log",
+        "sha256": "4eae84f64e548c0e7e4906e034630ec2c94e867820f93680d3dab95004948c3b",
+        "outcome": "ok",
+        "passed": 2193,
+        "failed": 0,
+        "ignored": 71,
+        "filtered": 0,
+        "seconds": 737.76
+      },
+      "nativeWorker": {
+        "path": "target/app-backlog/qualification-bin/scale-context-native-worker-fifth",
+        "sha256": "541541c469378261e9736c3e6f5f88a854bebf992042ed2bc1085f569eeea472",
+        "bytes": 437788832
+      },
+      "nativeImportWorkflows": 12
+    },
+    "status": "ready_installation_deferred_active_app",
+    "package": {
+      "path": "/home/michael/Projects/omatainer-work/hardware-resurrection/target/app-backlog/release-midi-tools-shared-qualified",
+      "manifestSha256": "f56190da9341bc15a11ff4e66b24dd26017f410cba0bc73315c66002115a5f94",
+      "revision": "b58e85009155d1b125a0b5f35a50cdd2104330af",
+      "version": "0.1.0+b58e85009155",
+      "executableSha256": "326def2b573ed7bbecaebf90af9f20c1d7a384a6d86e4e2ca8f02663674359c3"
+    },
+    "installed": false,
+    "previousInstalledSha256": "3217e4bfce388cac60e0ad7bea4caf83ec0d323f6eb620d4bf3a04d2c09ed69d",
+    "installedExecutableSha256": "3217e4bfce388cac60e0ad7bea4caf83ec0d323f6eb620d4bf3a04d2c09ed69d",
+    "buildInfo": {
+      "arch": "aarch64",
+      "debug_assertions": false,
+      "os": "linux",
+      "pkg_version": "0.1.0",
+      "schema": 1
+    },
+    "applicationProcessesPreserved": [
+      {
+        "pid": 2045140,
+        "executable": "/home/michael/.local/bin/omatainer",
+        "arguments": [
+          "/home/michael/.local/bin/omatainer",
+          "--empty-once"
+        ],
+        "sha256": "3217e4bfce388cac60e0ad7bea4caf83ec0d323f6eb620d4bf3a04d2c09ed69d"
+      },
+      {
+        "pid": 2273135,
+        "executable": "/home/michael/.local/bin/omatainer",
+        "arguments": [
+          "/home/michael/.local/bin/omatainer",
+          "ctl",
+          "follow"
+        ],
+        "sha256": "3217e4bfce388cac60e0ad7bea4caf83ec0d323f6eb620d4bf3a04d2c09ed69d"
+      }
+    ],
+    "protectedSessionPreserved": {
+      "path": "/home/michael/Projects/omatainer-work/hardware-resurrection/target/hardware/apc-restart-20261006/session.omat",
+      "bytes": 162882871,
+      "sha256": "96e0b2495cdbdc549c324ecf8337fdef5590bdcbfe8916e4f014eb05d1ee827d"
+    },
+    "reason": "The default GUI is active. Replacement is deferred before changing any file; the verified package is ready for installation after the active app closes. No GUI, follower, capture, audio or MIDI connection was restarted or opened."
+  }
+}

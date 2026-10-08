@@ -218,7 +218,7 @@ fn midi_load_and_late_decode_cannot_replace_playing_media_but_stopped_deck_load_
         .send((
             0,
             Ok(crate::engine::decode::DecodedAudio {
-                sample: crate::engine::dsp::Sample {
+                sample: crate::engine::dsp::Sample { spectrum: None,
                     name: "delayed".into(),
                     path: String::new(),
                     sr: 48000,
@@ -398,7 +398,7 @@ fn a_reviewed_delayed_decode_keeps_audio_until_ready_and_refuses_a_changed_targe
     gui.fixture.rt.apply(Command::LoadBuiltin { deck: 0, stem: 1 });
     let replacement = gui.fixture.rt.decks[0].audio.clone().unwrap();
     handle.set_deck_load_lock(0, true).unwrap();
-    gui.fixture.decoder_results.send((0, Ok(crate::engine::decode::DecodedAudio { sample: crate::engine::dsp::Sample {
+    gui.fixture.decoder_results.send((0, Ok(crate::engine::decode::DecodedAudio { sample: crate::engine::dsp::Sample { spectrum: None,
         name: "reviewed".into(), path: String::new(), sr: 48000, ch: 2, data: vec![0.25; 4096],
         peaks: Arc::new(Vec::new()), bpm: 120.0 }, diagnostics: Default::default() }))).unwrap();
     gui.fixture.poll_loads(); gui.frame(vec![]);

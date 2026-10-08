@@ -85,7 +85,7 @@ fn fixture(count: usize, legacy: bool) -> RtEngine {
     rt.cue_mix = 0.0;
     // Long constant decks keep the benchmark active without filesystem/audio IO.
     for (index, deck) in rt.decks.iter_mut().enumerate() {
-        deck.audio = Some(Arc::new(Sample {
+        deck.audio = Some(Arc::new(Sample { spectrum: None,
             name: "gain reference".into(),
             sr: 48_000,
             ch: 2,

@@ -282,20 +282,25 @@ impl Handle {
         Writer(&self.0.admission)
     }
     pub fn audio_change(&self) -> Result<ExclusivePermit, Error> {
-        self.exclusive(true)
+        self.exclusive(true, true)
     }
     pub(super) fn project_change(&self) -> Result<ExclusivePermit, Error> {
-        self.exclusive(false)
+        self.exclusive(false, false)
     }
-    fn exclusive(&self, audio: bool) -> Result<ExclusivePermit, Error> {
+    /// Reopen controller ports after a completed safety stop.
+    /// Takes this guard; returns a worker permit without clearing recovery or authorizing audio replacement.
+    pub(super) fn controller_change(&self) -> Result<ExclusivePermit, Error> {
+        self.exclusive(false, true)
+    }
+    fn exclusive(&self, audio: bool, recovery_safe: bool) -> Result<ExclusivePermit, Error> {
         let mut old = self.0.admission.load(Ordering::Acquire);
         loop {
             if old & EXCLUSIVE != 0 {
                 return Err(self.reject(Error::Changing));
             }
             let recovery =
-                old & (RECOVERY | STOPPED) == RECOVERY | STOPPED || self.status().output_muted;
-            if old & (PROTECTED | RECOVERY) != 0 && !(audio && recovery) {
+                old & (RECOVERY | STOPPED) == RECOVERY | STOPPED || (audio && self.status().output_muted);
+            if old & (PROTECTED | RECOVERY) != 0 && !(recovery_safe && recovery) {
                 return Err(self.reject(Error::Protected));
             }
             match self.0.admission.compare_exchange_weak(
@@ -516,12 +521,19 @@ fn destructive(command: &Command) -> bool {
     match command {
         Command::Remote(request) => destructive(&request.action.command()),
         Command::SessionEdit(request) => request.disruptive(),
-        Command::TimelineSeek(_)
+        Command::MicAuxConfigure(_)
+        | Command::TimelineSeek(_)
+        | Command::SongSeek(_)
+        | Command::AudioClipEdit(_)
+            | Command::ArrangementEdit(_)
+        | Command::SongNavigationEdit(_)
+                    | Command::ClipManage(_)
         | Command::MidiImport(_)
         | Command::MidiEdit(_)
         | Command::MidiAudition { on: true, .. }
         | Command::SetNotes { .. }
         | Command::SamplerEdit(_)
+        | Command::PluginEditor { .. }
         | Command::SamplerAudition(_)
         | Command::ProviderPreview(_)
         | Command::DeckGrid { .. }
@@ -543,13 +555,23 @@ fn destructive(command: &Command) -> bool {
         | Command::Record
         | Command::Tap(_)
         | Command::MidiClock { .. }
+        | Command::ClockFollow(_)
         | Command::SetBpm(_)
         | Command::LaunchClip { .. }
+        | Command::DeckPadParameter { .. }
+        | Command::DeckPadPress(_)
+        | Command::DeckPadRelease(_)
+        | Command::ClipPress(_)
+        | Command::ClipRelease(_)
+        | Command::ClipCancel { .. }
         | Command::LaunchScene { .. }
         | Command::StopTrack { .. }
         | Command::DeckPlay { .. }
+        | Command::DeckContinue(_)
         | Command::DeckCue { .. }
         | Command::DeckSync { .. }
+        | Command::DeckSyncMode { .. }
+        | Command::DeckSyncLeader(_)
         | Command::DeckJog { .. }
         | Command::DeckTouch { .. }
         | Command::MidiDeckTouch { .. }
@@ -559,10 +581,15 @@ fn destructive(command: &Command) -> bool {
         | Command::Surface(_)
         | Command::MidiSamplerPad { .. }
         | Command::DeckTrack { .. }
+        | Command::MidiAdjust(_)
+        | Command::MidiPitch(_)
+        | Command::CancelScene
+        | Command::SongNavigation(_)
         | Command::DeckPitch { .. }
         | Command::DeckGain { .. }
         | Command::DeckEq { .. }
         | Command::DeckFilter { .. }
+        | Command::DeckChannelEffect { .. }
         | Command::DeckPfl { .. }
         | Command::DeckHotCue { del: false, .. }
         | Command::DeckCuePoint { del: false, .. }
@@ -577,6 +604,7 @@ fn destructive(command: &Command) -> bool {
         | Command::DeckPreview { .. }
         | Command::DeckVinyl { .. }
         | Command::DeckKeylock { .. }
+        | Command::DeckKeyShift(_)
         | Command::DeckAudio { .. }
         | Command::DeckDecoded { .. }
         | Command::DeckLoadRequested { .. }
@@ -592,6 +620,7 @@ fn destructive(command: &Command) -> bool {
         | Command::MeterMaster(_)
         | Command::Master(_)
         | Command::CueMix(_)
+        | Command::MicAuxControl(_)
         | Command::Monitor(_)
         | Command::TrackGain { .. }
         | Command::ClipGain { .. }
@@ -599,6 +628,9 @@ fn destructive(command: &Command) -> bool {
         | Command::Mute { .. }
         | Command::Solo { .. }
         | Command::Arm { .. }
+            | Command::TrackArm { .. }
+            | Command::TrackMonitor { .. }
+            | Command::TrackPfl { .. }
         | Command::Browse(_)
         | Command::BrowseCrates(_)
         | Command::BrowsePanel(_)
@@ -613,6 +645,7 @@ fn destructive(command: &Command) -> bool {
         | Command::RoutedNoteOn { .. }
         | Command::LiveNoteOff { .. }
         | Command::FxWet { .. }
+        | Command::PluginParameter { .. }
         | Command::FxSelect { .. }
         | Command::Quant(_)
         | Command::Metronome
@@ -637,6 +670,8 @@ fn destructive(command: &Command) -> bool {
         | Command::SamplerBank(_)
         | Command::SamplerInst(_)
         | Command::SamplerOct(_)
+        | Command::SongContext(_)
+        | Command::SamplerScale(_)
         | Command::OpenFxTrack(_)
         | Command::OpenFxScene(_)
         | Command::CloseFx
@@ -646,11 +681,16 @@ fn destructive(command: &Command) -> bool {
     }
 }
 pub(super) fn recovery_safe(command: &Command) -> bool {
+    if let Command::SessionControl(scoped)=command{return recovery_safe(&scoped.command);}
+    if let Command::Gesture{command,..}=command{return recovery_safe(command);}
     if let Command::Remote(request) = command { return recovery_safe(&request.action.command()); }
     matches!(
         command,
         Command::Stop
             | Command::StopTrack { .. }
+            | Command::DeckPadRelease(_)
+            | Command::ClipRelease(_)
+            | Command::ClipCancel { .. }
             | Command::ReservedStop { .. }
             | Command::LiveNoteOff { .. }
             | Command::LiveNoteOn { vel: 0, .. }
@@ -753,7 +793,9 @@ impl Output {
 }
 
 pub(super) fn reject_receipt(command: &Command) {
+    super::midi_edit::reject_retired(command);
     match command {
+        Command::DeckContinue(request) => request.reject(),
         Command::Remote(request) => request.ack.reject(),
         Command::ProviderPreview(request) => request.reject(),
         Command::SessionEdit(request) => request.ack.reject(),
@@ -780,8 +822,11 @@ impl super::RtEngine {
         };
         // Finalize exact original recording targets before any gate or arm is
         // released. All bounded synth voices enter their normal release stage.
+        self.configure_clock_input(super::midi::clock_input::Config::default());
         self.history_finish_take();
         self.routing_pipe.recorder.invalidate();
+        if let Some(graph) = &mut self.routing { graph.reset_latency(); }
+        self.monitor.cancel_tone();
         self.finish_recording_all();
         self.playing = false;
         self.recording = false;
@@ -802,6 +847,9 @@ impl super::RtEngine {
             }
         }
         self.pad_targets.fill(None);
+        self.scenes.cancel();
+        self.navigation.cancel();
+        self.clip_launch_inputs.clear();
         self.release_surface_inputs();
         self.finish_sampler_audition();
         // Finite sample one-shots keep their existing Arc ownership and natural

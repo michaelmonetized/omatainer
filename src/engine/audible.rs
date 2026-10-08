@@ -34,6 +34,21 @@ pub(crate) struct Position {
     pub media_key: u64,
     pub output_frame: u64,
 }
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub(crate) struct Source {
+    pub source_frame: f64,
+    pub media_key: u64,
+}
+impl Source {
+    /// Qualify one deck's rendered source position.
+    /// Takes the deck after rendering; returns its source frame and media key, or a zero key during resynthesis and transitions.
+    pub(crate) fn from_deck(deck: &DeckRt) -> Self {
+        Self {
+            source_frame: deck.pos,
+            media_key: if deck.transition_remaining == 0 && deck.stretch_mode() != super::keylock::Mode::Locked { deck.history_key } else { 0 },
+        }
+    }
+}
 pub(super) struct Writer {
     handle: Handle,
     cursor: u64,
@@ -73,6 +88,11 @@ impl Writer {
     pub fn now_ns(&self) -> u64 {
         self.handle.now_ns()
     }
+    /// Convert one common playback timestamp to its monotonic instant.
+    /// Takes nanoseconds from the audio timing origin; returns a checked timestamp for other output schedulers.
+    pub(super) fn instant_at(&self, ns: u64) -> Option<Instant> {
+        self.handle.0.origin.checked_add(std::time::Duration::from_nanos(ns))
+    }
     /// Retire timing from a stopped output stream.
     /// Takes this writer; returns with old queued frames unavailable to a replacement stream.
     pub fn restart(&mut self) {
@@ -100,6 +120,11 @@ impl Writer {
     /// Retain the source positions used for one rendered output frame.
     /// Takes live deck states after rendering; returns without work outside an output block.
     pub fn push(&mut self, decks: &[DeckRt; DECKS]) {
+        self.push_sources(std::array::from_fn(|deck| Source::from_deck(&decks[deck])));
+    }
+    /// Retain source positions aligned with this actual output frame.
+    /// Takes graph-qualified source positions; publishes them without estimating from current playback speed.
+    pub(crate) fn push_sources(&mut self, sources: [Source; DECKS]) {
         if !self.active {
             return;
         }
@@ -118,14 +143,9 @@ impl Writer {
         if timestamp.is_none() {
             self.playback_ns = None;
         }
-        for (index, deck) in decks.iter().enumerate() {
-            frame.positions[index].store(deck.pos.to_bits(), Ordering::Relaxed);
-            let known_source = deck.transition_remaining == 0
-                && deck.keylock_mode() != super::keylock::Mode::Locked;
-            frame.keys[index].store(
-                if known_source { deck.history_key } else { 0 },
-                Ordering::Relaxed,
-            );
+        for (index, source) in sources.iter().enumerate() {
+            frame.positions[index].store(source.source_frame.to_bits(), Ordering::Relaxed);
+            frame.keys[index].store(source.media_key, Ordering::Relaxed);
         }
         frame.index.store(self.cursor + 1, Ordering::Release);
         self.cursor += 1;
@@ -355,7 +375,7 @@ mod tests {
         writer.push(&decks);
         writer.finish();
         assert_eq!(handle.positions_at(1_001_000_000).unwrap()[0].media_key, 73);
-        decks[0].audio = Some(Arc::new(super::super::Sample {
+        decks[0].audio = Some(Arc::new(super::super::Sample { spectrum: None,
             name: "grain mixture".into(),
             path: String::new(),
             sr: 48000,

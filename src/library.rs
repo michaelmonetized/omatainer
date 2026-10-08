@@ -16,6 +16,7 @@ use std::{
 };
 
 mod content;
+pub(crate) mod file_management;
 pub(crate) mod backup;
 pub(crate) mod tags;
 pub(crate) mod annotations;
@@ -35,7 +36,8 @@ pub(crate) fn hash_project_source(path: &Path, expected: FileFingerprint, active
     content::hash_file(path, expected, active)
 }
 
-const SCHEMA: u32 = 15;
+pub(crate) mod imports;
+const SCHEMA: u32 = 18;
 const MAX_BYTES: u64 = 64 * 1024 * 1024;
 const MAX_TRACKS: usize = 100_000;
 const MAX_VERSIONS: usize = 1_000_000;
@@ -99,6 +101,8 @@ pub(crate) struct Catalog {
     pub tracks: Vec<Track>,
     pub crates: crates::CrateForest<TrackId>,
     pub watched_roots: watch_roots::Book,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub imports: Vec<imports::Collection>,
     #[serde(skip)]
     index: HashMap<LibSource, usize>,
     #[serde(skip)]
@@ -111,6 +115,7 @@ impl Default for Catalog {
             tracks: vec![],
             crates: Default::default(),
             watched_roots: Default::default(),
+            imports: Vec::new(),
             index: HashMap::new(),
             relocations: HashMap::new(),
         }
@@ -171,6 +176,7 @@ impl Catalog {
             return Err(format!("unsupported library schema {}", self.schema));
         }
         self.watched_roots.validate()?;
+        imports::validate(&self.imports, &self.tracks)?;
         if self.tracks.len() > MAX_TRACKS {
             return Err("library exceeds 100000 tracks".into());
         }
@@ -316,6 +322,10 @@ impl Catalog {
             old.bpm
         } else if metadata.bpm.origin == Origin::User {
             metadata.bpm
+        } else if old.bpm.origin == Origin::Imported {
+            old.bpm
+        } else if metadata.bpm.origin == Origin::Imported {
+            metadata.bpm
         } else if old.bpm.origin == Origin::EmbeddedTag {
             old.bpm
         } else if metadata.bpm.origin == Origin::EmbeddedTag {
@@ -393,6 +403,11 @@ impl Catalog {
         let known: HashSet<_> = candidate.tracks.iter().map(|track| &track.id).collect();
         candidate.crates.merge_import(candidate.crates.revision(), &other.crates, |id| known.contains(id))
             .map_err(|error| error.to_string())?;
+        for record in other.imports {
+            if let Some(existing)=candidate.imports.iter().find(|item|item.source==record.source && item.digest==record.digest && item.key==record.key) {
+                if existing!=&record {return Err("Imported source provenance conflicts; no data was replaced".into());}
+            } else {candidate.imports.push(record);}
+        }
         candidate.validate()?;
         *self = candidate;
         Ok(())
@@ -526,9 +541,12 @@ fn catalog_from_bytes(bytes: &[u8], expected_schema: Option<u32>) -> Result<Cata
     if schema.is_some_and(|version| version < 15) && header.get("tracks").and_then(|v|v.as_array()).is_some_and(|tracks|tracks.iter().any(|track|track.get("versions").and_then(|v|v.as_array()).is_some_and(|versions|versions.iter().any(|version|version.get("analysis").is_some_and(|analysis|analysis.get("key").is_some()))))) {
         return Err("Musical-key analysis requires library schema 15; original file preserved".into());
     }
+    if schema.is_some_and(|schema|schema < 16) && header.get("tracks").and_then(|v|v.as_array()).into_iter().flatten().flat_map(|track|track.get("preparation").into_iter().chain(track.get("versions").and_then(|v|v.as_array()).into_iter().flatten().filter_map(|version|version.get("preparation")))).any(|preparation|preparation.get("saved_loops").is_some()) { return Err("Saved loop banks require library schema 16; original file preserved".into()); }
+    if schema.is_some_and(|schema|schema < 17) && header.get("tracks").and_then(|v|v.as_array()).into_iter().flatten().flat_map(|track|track.get("preparation").into_iter().chain(track.get("versions").and_then(|v|v.as_array()).into_iter().flatten().filter_map(|version|version.get("preparation")))).any(|preparation|preparation.get("saved_loops").is_some_and(|bank|bank.get("cue_loops").is_some())) { return Err("Cue-loop associations require library schema 17; original file preserved".into()); }
+    if schema.is_some_and(|schema|schema<18) && (header.get("imports").is_some() || header.get("tracks").and_then(|v|v.as_array()).into_iter().flatten().flat_map(|track|std::iter::once(track).chain(track.get("versions").and_then(|v|v.as_array()).into_iter().flatten())).any(|version|version.get("metadata").and_then(|v|v.get("bpm")).and_then(|v|v.get("origin")).and_then(|v|v.as_str())==Some("Imported"))) {return Err("DJ import provenance requires library schema 18; original file preserved".into());}
     let mut catalog = match schema {
-        Some(15) => serde_json::from_slice(bytes).map_err(|e| e.to_string())?,
-        Some(14) | Some(13) | Some(12) | Some(11) | Some(10) | Some(9) => {
+        Some(18) => serde_json::from_slice(bytes).map_err(|e| e.to_string())?,
+        Some(17) | Some(16) | Some(15) | Some(14) | Some(13) | Some(12) | Some(11) | Some(10) | Some(9) => {
             let mut old: Catalog = serde_json::from_slice(bytes).map_err(|e| e.to_string())?;
             old.schema = SCHEMA;
             old
@@ -560,6 +578,7 @@ fn catalog_from_bytes(bytes: &[u8], expected_schema: Option<u32>) -> Result<Cata
                 schema: SCHEMA,
                 crates: Default::default(),
                 watched_roots: Default::default(),
+                imports: Vec::new(),
                 index: HashMap::new(),
             relocations: HashMap::new(),
                 tracks: old
@@ -664,6 +683,9 @@ impl Store {
         })
     }
     pub(crate) fn last_save_replaced(&self) -> bool { self.last_save_replaced }
+    /// Locate this locked catalog's private operation records.
+    /// Takes the catalog owner; returns its immutable store pathname without filesystem work.
+    pub(crate) fn path(&self) -> &Path { &self.path }
     #[cfg(test)]
     pub(crate) fn save_for_test(&mut self, checkpoint: impl FnMut(u8) -> Result<(), String>) -> Result<(), String> {
         self.save_with(checkpoint)

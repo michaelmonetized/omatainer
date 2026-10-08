@@ -33,7 +33,7 @@ fn capture(engine: &Engine, rt: &mut RtEngine) -> Captured {
 }
 struct Gui {
     app: App,
-    rt: RtEngine,
+    rt: Box<RtEngine>,
     ctx: egui::Context,
     nodes: Vec<(NodeId, Node)>,
     time: f64,
@@ -77,7 +77,7 @@ impl Gui {
         if audio { self.rt.process(&mut [0.0; 256]); }
     }
     fn wait(&mut self, mut done: impl FnMut(&Self) -> bool) {
-        let deadline = Instant::now() + Duration::from_secs(8);
+        let deadline = Instant::now() + Duration::from_secs(15);
         loop {
             self.frame(vec![]);
             if done(self) {

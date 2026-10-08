@@ -6,7 +6,7 @@ fn fixture() -> (Engine, RtEngine) {
     let (engine, mut rt) = Engine::headless_for_test(48000, 64);
     rt.apply(Command::DeckAudio {
         deck: 0,
-        audio: Arc::new(Sample {
+        audio: Arc::new(Sample { spectrum: None,
             name: "NS7 analytical stereo source".into(),
             sr: 48000,
             ch: 2,

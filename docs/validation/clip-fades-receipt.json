@@ -1,0 +1,1429 @@
+{
+  "schema": 1,
+  "platform": "Linux ARM64; actual rendered PCM, native egui/AccessKit and real project/template files",
+  "sourceFiles": {
+    "src/audio_delivery/tests.rs": "dbd6605b7b8ca95953a2e65bf384323ca8046e92eed1fefcfcc334637cc8aa1a",
+    "src/engine/arrangement.rs": "fb1f1f17547e4cca41ef36ba9dfd07d65b86bac367605093e20a427fe3325c23",
+    "src/engine/arrangement/fades.rs": "e2adf0d771a710e4ac80b855f72ad3ac89ee87876df14f93f512c8582fe485ba",
+    "src/engine/arrangement/fades/tests.rs": "12d26aad0999abf970fe5f6724b1036ecce806afff9f7bd3f2f64916a966c6b1",
+    "src/engine/arrangement/playback.rs": "df5f9fb35ccc94cbd48de5a464e719b3b0c840965e0b3717bc40300c960f8ae7",
+    "src/engine/arrangement/prepare.rs": "2f77d747ab496c677b1c6e5955d77a84c44778babcde8cbb11d6cae747fb05dc",
+    "src/engine/arrangement/tests.rs": "79cf53668d79546b86899f075a3eb35cf0a333943faceb1dde4475e5f6070a37",
+    "src/engine/audio_clip.rs": "4fbc9351fe820cde34e7cc432ffa702f4a8240910d6a1752e8a0175acdb77606",
+    "src/engine/audio_clip/fades.rs": "c51b5fd6c3082c58fd79714e766f044833547078dbcf1b910b825f03131db9b1",
+    "src/engine/audio_clip/fades_tests.rs": "5867e7ccdc23100d7896f14dec2c044691e8c8beb4e781feda52406ee54ef3db",
+    "src/engine/audio_clip/tests.rs": "14d264fbedab8ca9f60e9e00a40ede125f9a5ce609ed31baf6060a9fdcbe0695",
+    "src/engine/clip_management/preset.rs": "5efdc0f18ec6e6fa5ff9b92e0d9c1441b9752150c39e320496ef9a46797b7277",
+    "src/engine/midi/routing/playback/tests.rs": "52f5079de9e02c046ccf12078f0295a5924e5e879981be847fd32918c2cc126c",
+    "src/engine/mod.rs": "ac5d86d06c0146a4fb44965d55fdac81068ffce7931cc84fda9cce638af9ef03",
+    "src/engine/project/model.rs": "a7f221c6c9cafa7d0caadb0e4ff89abf9893e6944645c1d23a0209b41cb3b0a6",
+    "src/engine/song_navigation/tests.rs": "61911969319f510bcdc90527d6250630329f7a7877c5091e4e8e5ac4269e4560",
+    "src/ui.rs": "11ccc0772bfcdb0027d3ad7a1b05fb57f6cd8f8bc5eeed52dce7ec34981864d9",
+    "src/ui/arrangement.rs": "3ebd6b600c25ab7bc2194018bef7a83fd5d89d643ea7ec1a7b88acf0b8b43e2f",
+    "src/ui/arrangement/fades.rs": "2e649792da92dbd111482beece51dfde904f34a098423bf96bab6102ddcfd8ed",
+    "src/ui/arrangement/tests.rs": "a42326dba91e2d048456ad6a0f322d411be26fd39277856d204ae50f64823c57",
+    "src/ui/audio_clips.rs": "8f65d89e13ca6f4937cdabbc53bfb46203703c62048796328d56aa118c0334a8",
+    "src/ui/audio_clips/tests.rs": "f2cba5a48c9a10b34f076f1ea3f4edb79ce9292ec82a9403d5a20a0dab6e3578",
+    "src/ui/audio_fades.rs": "52794a5ecdd89197f6f12e8a23c1466b2531ac3dfc3faf332d56c8b283607999"
+  },
+  "testBinary": {
+    "path": "target/app-backlog/qualification-bin/clip-fades-tests-third",
+    "sha256": "27be3ba3a779c67efc2b8bc209ee4666dc6e53e08ee18fdda698d5e33bec442e"
+  },
+  "compiledInventory": {
+    "path": "target/app-backlog/clip-fades-third-compiled-source-inventory.json",
+    "sha256": "67ef1402ecadab87480669e5b21b5e92a58ac44a2682400ecf0c2194ca4a1353",
+    "baseRevision": "4385cd825a41a3131a9e08feb55e1fd777e26195",
+    "files": 763
+  },
+  "embeddedInputs": {
+    "schema": 1,
+    "baselineRevision": "4385cd825a41a3131a9e08feb55e1fd777e26195",
+    "embeddedInputs": {
+      "README.md": "abab5cb8b9a15a180652402e983142ce2a3baf21f5272fe1c4e9079a5083143f",
+      "licenses/manifest.json": "8784d6d2b4c362cd1b2028e2b7ca071772129de7f988a135978efad84a767725",
+      "licenses/notices.json": "b15a146c83e362b540c860ae618b80f9ee0150cd9d8d41683a5d3d3fcb85c244"
+    }
+  },
+  "tests": {
+    "source": {
+      "path": "target/app-backlog/clip-fades-third-source-tests.log",
+      "sha256": "73cb496cd3db4dd2f45bfe6cc6c77e801c5d4e79abbe57a8eb7642d3ee8b97f9",
+      "outcome": "ok",
+      "passed": 5,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2021,
+      "seconds": 4.1
+    },
+    "arrangement": {
+      "path": "target/app-backlog/clip-fades-third-arrangement-tests.log",
+      "sha256": "9349b0fd4f127ac8c6cadd2b0fa82c6006f7d0aaf0f164288cda1d5784d6a508",
+      "outcome": "ok",
+      "passed": 4,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2022,
+      "seconds": 1.19
+    },
+    "native-source": {
+      "path": "target/app-backlog/clip-fades-third-native-source-tests.log",
+      "sha256": "5e5c0a83996232afc317e265fe092c6fb77b5e6fe9a8e1ede2e36f2f1406e268",
+      "outcome": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2025,
+      "seconds": 0.32
+    },
+    "native-arrangement": {
+      "path": "target/app-backlog/clip-fades-third-native-arrangement-tests.log",
+      "sha256": "a8be5becfb2b0017fe4723d1f1c93e135b9de65fcfbe7e3308543f73a8675b88",
+      "outcome": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2025,
+      "seconds": 0.38
+    },
+    "native-placement": {
+      "path": "target/app-backlog/clip-fades-third-native-placement-tests.log",
+      "sha256": "821fc9a7ac846620a236dba6bfe5a0f9ac3a2b94e12e1a827f6dfcc65f66d208",
+      "outcome": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2025,
+      "seconds": 0.3
+    },
+    "export": {
+      "path": "target/app-backlog/clip-fades-third-export-tests.log",
+      "sha256": "81aeadcaec045653d12b58b044b9b590630e98b319bf2b88eb6e2bc7fbd6ef1b",
+      "outcome": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2025,
+      "seconds": 20.7
+    },
+    "manual": {
+      "path": "target/app-backlog/clip-fades-third-manual-tests.log",
+      "sha256": "b32ec6b619696c6d3f81e6c92ca246a3032657f9fdbd1120cf2f273745aa27c1",
+      "outcome": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2025,
+      "seconds": 0
+    },
+    "help": {
+      "path": "target/app-backlog/clip-fades-third-help-tests.log",
+      "sha256": "b0730b1bf9ed09fda225fa5be4838d73223c336c1e11c29a5919fd00491d6b52",
+      "outcome": "ok",
+      "passed": 14,
+      "failed": 0,
+      "ignored": 1,
+      "filtered": 2011,
+      "seconds": 2.85
+    },
+    "full": {
+      "path": "target/app-backlog/clip-fades-third-full-tests.log",
+      "sha256": "bae0645772fe019d5f513c9a0a11e8c676c12f5c2a6865a3124ba794a7c4c4b8",
+      "outcome": "ok",
+      "passed": 1982,
+      "failed": 0,
+      "ignored": 44,
+      "filtered": 0,
+      "seconds": 525.49
+    }
+  },
+  "measurements": {
+    "cases": [
+      {
+        "channels": 1,
+        "faded_end_jump": 0.009740414097905159,
+        "faded_start_jump": 0,
+        "max_channel_gain_error": 0,
+        "output_rate": 8000,
+        "raw_end_jump": 0.3116932511329651,
+        "raw_start_jump": 0.1564723551273346,
+        "source_kind": 0,
+        "source_rate": 8000
+      },
+      {
+        "channels": 1,
+        "faded_end_jump": 0.006249999161809683,
+        "faded_start_jump": 0,
+        "max_channel_gain_error": 0,
+        "output_rate": 8000,
+        "raw_end_jump": 0.19999997317790985,
+        "raw_start_jump": 0.19995000958442688,
+        "source_kind": 1,
+        "source_rate": 8000
+      },
+      {
+        "channels": 1,
+        "faded_end_jump": 0.0036836748477071524,
+        "faded_start_jump": 0,
+        "max_channel_gain_error": 0,
+        "output_rate": 8000,
+        "raw_end_jump": 0.11787759512662888,
+        "raw_start_jump": 0.20622321963310242,
+        "source_kind": 2,
+        "source_rate": 8000
+      },
+      {
+        "channels": 2,
+        "faded_end_jump": 0.009740414097905159,
+        "faded_start_jump": 0,
+        "max_channel_gain_error": 0,
+        "output_rate": 8000,
+        "raw_end_jump": 0.3116932511329651,
+        "raw_start_jump": 0.1564723551273346,
+        "source_kind": 0,
+        "source_rate": 8000
+      },
+      {
+        "channels": 2,
+        "faded_end_jump": 0.006249999161809683,
+        "faded_start_jump": 0,
+        "max_channel_gain_error": 0,
+        "output_rate": 8000,
+        "raw_end_jump": 0.19999997317790985,
+        "raw_start_jump": 0.19995000958442688,
+        "source_kind": 1,
+        "source_rate": 8000
+      },
+      {
+        "channels": 2,
+        "faded_end_jump": 0.0036836748477071524,
+        "faded_start_jump": 0,
+        "max_channel_gain_error": 0,
+        "output_rate": 8000,
+        "raw_end_jump": 0.11787759512662888,
+        "raw_start_jump": 0.20622321963310242,
+        "source_kind": 2,
+        "source_rate": 8000
+      },
+      {
+        "channels": 1,
+        "faded_end_jump": 0.00013252263306640089,
+        "faded_start_jump": 0,
+        "max_channel_gain_error": 0,
+        "output_rate": 44100,
+        "raw_end_jump": 0.3116932511329651,
+        "raw_start_jump": 0.1564723551273346,
+        "source_kind": 0,
+        "source_rate": 8000
+      },
+      {
+        "channels": 1,
+        "faded_end_jump": 0.00008503400022163987,
+        "faded_start_jump": 0,
+        "max_channel_gain_error": 0,
+        "output_rate": 44100,
+        "raw_end_jump": 0.19999997317790985,
+        "raw_start_jump": 0.19995000958442688,
+        "source_kind": 1,
+        "source_rate": 8000
+      },
+      {
+        "channels": 1,
+        "faded_end_jump": 0.000050118025683332235,
+        "faded_start_jump": 0,
+        "max_channel_gain_error": 0,
+        "output_rate": 44100,
+        "raw_end_jump": 0.11787759512662888,
+        "raw_start_jump": 0.20622321963310242,
+        "source_kind": 2,
+        "source_rate": 8000
+      },
+      {
+        "channels": 2,
+        "faded_end_jump": 0.00013252263306640089,
+        "faded_start_jump": 0,
+        "max_channel_gain_error": 0,
+        "output_rate": 44100,
+        "raw_end_jump": 0.3116932511329651,
+        "raw_start_jump": 0.1564723551273346,
+        "source_kind": 0,
+        "source_rate": 8000
+      },
+      {
+        "channels": 2,
+        "faded_end_jump": 0.00008503400022163987,
+        "faded_start_jump": 0,
+        "max_channel_gain_error": 0,
+        "output_rate": 44100,
+        "raw_end_jump": 0.19999997317790985,
+        "raw_start_jump": 0.19995000958442688,
+        "source_kind": 1,
+        "source_rate": 8000
+      },
+      {
+        "channels": 2,
+        "faded_end_jump": 0.000050118025683332235,
+        "faded_start_jump": 0,
+        "max_channel_gain_error": 0,
+        "output_rate": 44100,
+        "raw_end_jump": 0.11787759512662888,
+        "raw_start_jump": 0.20622321963310242,
+        "source_kind": 2,
+        "source_rate": 8000
+      },
+      {
+        "channels": 1,
+        "faded_end_jump": 0.0016234023496508598,
+        "faded_start_jump": 0,
+        "max_channel_gain_error": 0,
+        "output_rate": 48000,
+        "raw_end_jump": 0.3116932511329651,
+        "raw_start_jump": 0.1564723551273346,
+        "source_kind": 0,
+        "source_rate": 8000
+      },
+      {
+        "channels": 1,
+        "faded_end_jump": 0.001041666604578495,
+        "faded_start_jump": 0,
+        "max_channel_gain_error": 0,
+        "output_rate": 48000,
+        "raw_end_jump": 0.19999997317790985,
+        "raw_start_jump": 0.19995000958442688,
+        "source_kind": 1,
+        "source_rate": 8000
+      },
+      {
+        "channels": 1,
+        "faded_end_jump": 0.0006139458273537457,
+        "faded_start_jump": 0,
+        "max_channel_gain_error": 0,
+        "output_rate": 48000,
+        "raw_end_jump": 0.11787759512662888,
+        "raw_start_jump": 0.20622321963310242,
+        "source_kind": 2,
+        "source_rate": 8000
+      },
+      {
+        "channels": 2,
+        "faded_end_jump": 0.0016234023496508598,
+        "faded_start_jump": 0,
+        "max_channel_gain_error": 0,
+        "output_rate": 48000,
+        "raw_end_jump": 0.3116932511329651,
+        "raw_start_jump": 0.1564723551273346,
+        "source_kind": 0,
+        "source_rate": 8000
+      },
+      {
+        "channels": 2,
+        "faded_end_jump": 0.001041666604578495,
+        "faded_start_jump": 0,
+        "max_channel_gain_error": 0,
+        "output_rate": 48000,
+        "raw_end_jump": 0.19999997317790985,
+        "raw_start_jump": 0.19995000958442688,
+        "source_kind": 1,
+        "source_rate": 8000
+      },
+      {
+        "channels": 2,
+        "faded_end_jump": 0.0006139458273537457,
+        "faded_start_jump": 0,
+        "max_channel_gain_error": 0,
+        "output_rate": 48000,
+        "raw_end_jump": 0.11787759512662888,
+        "raw_start_jump": 0.20622321963310242,
+        "source_kind": 2,
+        "source_rate": 8000
+      },
+      {
+        "channels": 1,
+        "faded_end_jump": 0.0008117011748254299,
+        "faded_start_jump": 0,
+        "max_channel_gain_error": 0,
+        "output_rate": 96000,
+        "raw_end_jump": 0.3116932511329651,
+        "raw_start_jump": 0.1564723551273346,
+        "source_kind": 0,
+        "source_rate": 8000
+      },
+      {
+        "channels": 1,
+        "faded_end_jump": 0.0005208333022892475,
+        "faded_start_jump": 0,
+        "max_channel_gain_error": 0,
+        "output_rate": 96000,
+        "raw_end_jump": 0.19999997317790985,
+        "raw_start_jump": 0.19995000958442688,
+        "source_kind": 1,
+        "source_rate": 8000
+      },
+      {
+        "channels": 1,
+        "faded_end_jump": 0.00030697291367687285,
+        "faded_start_jump": 0,
+        "max_channel_gain_error": 0,
+        "output_rate": 96000,
+        "raw_end_jump": 0.11787759512662888,
+        "raw_start_jump": 0.20622321963310242,
+        "source_kind": 2,
+        "source_rate": 8000
+      },
+      {
+        "channels": 2,
+        "faded_end_jump": 0.0008117011748254299,
+        "faded_start_jump": 0,
+        "max_channel_gain_error": 0,
+        "output_rate": 96000,
+        "raw_end_jump": 0.3116932511329651,
+        "raw_start_jump": 0.1564723551273346,
+        "source_kind": 0,
+        "source_rate": 8000
+      },
+      {
+        "channels": 2,
+        "faded_end_jump": 0.0005208333022892475,
+        "faded_start_jump": 0,
+        "max_channel_gain_error": 0,
+        "output_rate": 96000,
+        "raw_end_jump": 0.19999997317790985,
+        "raw_start_jump": 0.19995000958442688,
+        "source_kind": 1,
+        "source_rate": 8000
+      },
+      {
+        "channels": 2,
+        "faded_end_jump": 0.00030697291367687285,
+        "faded_start_jump": 0,
+        "max_channel_gain_error": 0,
+        "output_rate": 96000,
+        "raw_end_jump": 0.11787759512662888,
+        "raw_start_jump": 0.20622321963310242,
+        "source_kind": 2,
+        "source_rate": 8000
+      },
+      {
+        "channels": 1,
+        "faded_end_jump": 0.0005528252222575247,
+        "faded_start_jump": 0,
+        "max_channel_gain_error": 0,
+        "output_rate": 8000,
+        "raw_end_jump": 0.20003768801689148,
+        "raw_start_jump": 0.21635465323925018,
+        "source_kind": 0,
+        "source_rate": 44100
+      },
+      {
+        "channels": 1,
+        "faded_end_jump": 0.0005527211469598114,
+        "faded_start_jump": 0,
+        "max_channel_gain_error": 0,
+        "output_rate": 8000,
+        "raw_end_jump": 0.20000001788139343,
+        "raw_start_jump": 0.19991128146648407,
+        "source_kind": 1,
+        "source_rate": 44100
+      },
+      {
+        "channels": 1,
+        "faded_end_jump": 0.0005491611082106829,
+        "faded_start_jump": 0,
+        "max_channel_gain_error": 0,
+        "output_rate": 8000,
+        "raw_end_jump": 0.1987118273973465,
+        "raw_start_jump": 0.22128017246723175,
+        "source_kind": 2,
+        "source_rate": 44100
+      },
+      {
+        "channels": 2,
+        "faded_end_jump": 0.0005528252222575247,
+        "faded_start_jump": 0,
+        "max_channel_gain_error": 0,
+        "output_rate": 8000,
+        "raw_end_jump": 0.20003768801689148,
+        "raw_start_jump": 0.21635465323925018,
+        "source_kind": 0,
+        "source_rate": 44100
+      },
+      {
+        "channels": 2,
+        "faded_end_jump": 0.0005527211469598114,
+        "faded_start_jump": 0,
+        "max_channel_gain_error": 0,
+        "output_rate": 8000,
+        "raw_end_jump": 0.20000001788139343,
+        "raw_start_jump": 0.19991128146648407,
+        "source_kind": 1,
+        "source_rate": 44100
+      },
+      {
+        "channels": 2,
+        "faded_end_jump": 0.0005491611082106829,
+        "faded_start_jump": 0,
+        "max_channel_gain_error": 0,
+        "output_rate": 8000,
+        "raw_end_jump": 0.1987118273973465,
+        "raw_start_jump": 0.22128017246723175,
+        "source_kind": 2,
+        "source_rate": 44100
+      },
+      {
+        "channels": 1,
+        "faded_end_jump": 0.0011340004857629538,
+        "faded_start_jump": 0,
+        "max_channel_gain_error": 0,
+        "output_rate": 44100,
+        "raw_end_jump": 0.20003768801689148,
+        "raw_start_jump": 0.21635465323925018,
+        "source_kind": 0,
+        "source_rate": 44100
+      },
+      {
+        "channels": 1,
+        "faded_end_jump": 0.0011337869800627232,
+        "faded_start_jump": 0,
+        "max_channel_gain_error": 0,
+        "output_rate": 44100,
+        "raw_end_jump": 0.20000001788139343,
+        "raw_start_jump": 0.19991128146648407,
+        "source_kind": 1,
+        "source_rate": 44100
+      },
+      {
+        "channels": 1,
+        "faded_end_jump": 0.0011264843633398414,
+        "faded_start_jump": 0,
+        "max_channel_gain_error": 0,
+        "output_rate": 44100,
+        "raw_end_jump": 0.1987118273973465,
+        "raw_start_jump": 0.22128017246723175,
+        "source_kind": 2,
+        "source_rate": 44100
+      },
+      {
+        "channels": 2,
+        "faded_end_jump": 0.0011340004857629538,
+        "faded_start_jump": 0,
+        "max_channel_gain_error": 0,
+        "output_rate": 44100,
+        "raw_end_jump": 0.20003768801689148,
+        "raw_start_jump": 0.21635465323925018,
+        "source_kind": 0,
+        "source_rate": 44100
+      },
+      {
+        "channels": 2,
+        "faded_end_jump": 0.0011337869800627232,
+        "faded_start_jump": 0,
+        "max_channel_gain_error": 0,
+        "output_rate": 44100,
+        "raw_end_jump": 0.20000001788139343,
+        "raw_start_jump": 0.19991128146648407,
+        "source_kind": 1,
+        "source_rate": 44100
+      },
+      {
+        "channels": 2,
+        "faded_end_jump": 0.0011264843633398414,
+        "faded_start_jump": 0,
+        "max_channel_gain_error": 0,
+        "output_rate": 44100,
+        "raw_end_jump": 0.1987118273973465,
+        "raw_start_jump": 0.22128017246723175,
+        "source_kind": 2,
+        "source_rate": 44100
+      },
+      {
+        "channels": 1,
+        "faded_end_jump": 0.0005528252222575247,
+        "faded_start_jump": 0,
+        "max_channel_gain_error": 0,
+        "output_rate": 48000,
+        "raw_end_jump": 0.20003768801689148,
+        "raw_start_jump": 0.21635465323925018,
+        "source_kind": 0,
+        "source_rate": 44100
+      },
+      {
+        "channels": 1,
+        "faded_end_jump": 0.0005527211469598114,
+        "faded_start_jump": 0,
+        "max_channel_gain_error": 0,
+        "output_rate": 48000,
+        "raw_end_jump": 0.20000001788139343,
+        "raw_start_jump": 0.19991128146648407,
+        "source_kind": 1,
+        "source_rate": 44100
+      },
+      {
+        "channels": 1,
+        "faded_end_jump": 0.0005491611082106829,
+        "faded_start_jump": 0,
+        "max_channel_gain_error": 0,
+        "output_rate": 48000,
+        "raw_end_jump": 0.1987118273973465,
+        "raw_start_jump": 0.22128017246723175,
+        "source_kind": 2,
+        "source_rate": 44100
+      },
+      {
+        "channels": 2,
+        "faded_end_jump": 0.0005528252222575247,
+        "faded_start_jump": 0,
+        "max_channel_gain_error": 0,
+        "output_rate": 48000,
+        "raw_end_jump": 0.20003768801689148,
+        "raw_start_jump": 0.21635465323925018,
+        "source_kind": 0,
+        "source_rate": 44100
+      },
+      {
+        "channels": 2,
+        "faded_end_jump": 0.0005527211469598114,
+        "faded_start_jump": 0,
+        "max_channel_gain_error": 0,
+        "output_rate": 48000,
+        "raw_end_jump": 0.20000001788139343,
+        "raw_start_jump": 0.19991128146648407,
+        "source_kind": 1,
+        "source_rate": 44100
+      },
+      {
+        "channels": 2,
+        "faded_end_jump": 0.0005491611082106829,
+        "faded_start_jump": 0,
+        "max_channel_gain_error": 0,
+        "output_rate": 48000,
+        "raw_end_jump": 0.1987118273973465,
+        "raw_start_jump": 0.22128017246723175,
+        "source_kind": 2,
+        "source_rate": 44100
+      },
+      {
+        "channels": 1,
+        "faded_end_jump": 0.000031893763662083074,
+        "faded_start_jump": 0,
+        "max_channel_gain_error": 0,
+        "output_rate": 96000,
+        "raw_end_jump": 0.20003768801689148,
+        "raw_start_jump": 0.21635465323925018,
+        "source_kind": 0,
+        "source_rate": 44100
+      },
+      {
+        "channels": 1,
+        "faded_end_jump": 0.000031887757359072566,
+        "faded_start_jump": 0,
+        "max_channel_gain_error": 0,
+        "output_rate": 96000,
+        "raw_end_jump": 0.20000001788139343,
+        "raw_start_jump": 0.19991128146648407,
+        "source_kind": 1,
+        "source_rate": 44100
+      },
+      {
+        "channels": 1,
+        "faded_end_jump": 0.00003168236798956059,
+        "faded_start_jump": 0,
+        "max_channel_gain_error": 0,
+        "output_rate": 96000,
+        "raw_end_jump": 0.1987118273973465,
+        "raw_start_jump": 0.22128017246723175,
+        "source_kind": 2,
+        "source_rate": 44100
+      },
+      {
+        "channels": 2,
+        "faded_end_jump": 0.000031893763662083074,
+        "faded_start_jump": 0,
+        "max_channel_gain_error": 0,
+        "output_rate": 96000,
+        "raw_end_jump": 0.20003768801689148,
+        "raw_start_jump": 0.21635465323925018,
+        "source_kind": 0,
+        "source_rate": 44100
+      },
+      {
+        "channels": 2,
+        "faded_end_jump": 0.000031887757359072566,
+        "faded_start_jump": 0,
+        "max_channel_gain_error": 0,
+        "output_rate": 96000,
+        "raw_end_jump": 0.20000001788139343,
+        "raw_start_jump": 0.19991128146648407,
+        "source_kind": 1,
+        "source_rate": 44100
+      },
+      {
+        "channels": 2,
+        "faded_end_jump": 0.00003168236798956059,
+        "faded_start_jump": 0,
+        "max_channel_gain_error": 0,
+        "output_rate": 96000,
+        "raw_end_jump": 0.1987118273973465,
+        "raw_start_jump": 0.22128017246723175,
+        "source_kind": 2,
+        "source_rate": 44100
+      },
+      {
+        "channels": 1,
+        "faded_end_jump": 0.005901820491999388,
+        "faded_start_jump": 0,
+        "max_channel_gain_error": 0,
+        "output_rate": 8000,
+        "raw_end_jump": 0.1888582557439804,
+        "raw_start_jump": 0.2175666093826294,
+        "source_kind": 0,
+        "source_rate": 48000
+      },
+      {
+        "channels": 1,
+        "faded_end_jump": 0.006250000558793545,
+        "faded_start_jump": 0,
+        "max_channel_gain_error": 0,
+        "output_rate": 8000,
+        "raw_end_jump": 0.20000001788139343,
+        "raw_start_jump": 0.19991062581539154,
+        "source_kind": 1,
+        "source_rate": 48000
+      },
+      {
+        "channels": 1,
+        "faded_end_jump": 0.0064999936148524284,
+        "faded_start_jump": 0,
+        "max_channel_gain_error": 0,
+        "output_rate": 8000,
+        "raw_end_jump": 0.2079997956752777,
+        "raw_start_jump": 0.22219249606132507,
+        "source_kind": 2,
+        "source_rate": 48000
+      },
+      {
+        "channels": 2,
+        "faded_end_jump": 0.005901820491999388,
+        "faded_start_jump": 0,
+        "max_channel_gain_error": 0,
+        "output_rate": 8000,
+        "raw_end_jump": 0.1888582557439804,
+        "raw_start_jump": 0.2175666093826294,
+        "source_kind": 0,
+        "source_rate": 48000
+      },
+      {
+        "channels": 2,
+        "faded_end_jump": 0.006250000558793545,
+        "faded_start_jump": 0,
+        "max_channel_gain_error": 0,
+        "output_rate": 8000,
+        "raw_end_jump": 0.20000001788139343,
+        "raw_start_jump": 0.19991062581539154,
+        "source_kind": 1,
+        "source_rate": 48000
+      },
+      {
+        "channels": 2,
+        "faded_end_jump": 0.0064999936148524284,
+        "faded_start_jump": 0,
+        "max_channel_gain_error": 0,
+        "output_rate": 8000,
+        "raw_end_jump": 0.2079997956752777,
+        "raw_start_jump": 0.22219249606132507,
+        "source_kind": 2,
+        "source_rate": 48000
+      },
+      {
+        "channels": 1,
+        "faded_end_jump": 0.0005753939622081816,
+        "faded_start_jump": 0,
+        "max_channel_gain_error": 0,
+        "output_rate": 44100,
+        "raw_end_jump": 0.19804780185222626,
+        "raw_start_jump": 0.2175666093826294,
+        "source_kind": 0,
+        "source_rate": 48000
+      },
+      {
+        "channels": 1,
+        "faded_end_jump": 0.0005810657748952508,
+        "faded_start_jump": 0,
+        "max_channel_gain_error": 0,
+        "output_rate": 44100,
+        "raw_end_jump": 0.20000001788139343,
+        "raw_start_jump": 0.19991062581539154,
+        "source_kind": 1,
+        "source_rate": 48000
+      },
+      {
+        "channels": 1,
+        "faded_end_jump": 0.0005825803382322192,
+        "faded_start_jump": 0,
+        "max_channel_gain_error": 0,
+        "output_rate": 44100,
+        "raw_end_jump": 0.200521320104599,
+        "raw_start_jump": 0.22219249606132507,
+        "source_kind": 2,
+        "source_rate": 48000
+      },
+      {
+        "channels": 2,
+        "faded_end_jump": 0.0005753939622081816,
+        "faded_start_jump": 0,
+        "max_channel_gain_error": 0,
+        "output_rate": 44100,
+        "raw_end_jump": 0.19804780185222626,
+        "raw_start_jump": 0.2175666093826294,
+        "source_kind": 0,
+        "source_rate": 48000
+      },
+      {
+        "channels": 2,
+        "faded_end_jump": 0.0005810657748952508,
+        "faded_start_jump": 0,
+        "max_channel_gain_error": 0,
+        "output_rate": 44100,
+        "raw_end_jump": 0.20000001788139343,
+        "raw_start_jump": 0.19991062581539154,
+        "source_kind": 1,
+        "source_rate": 48000
+      },
+      {
+        "channels": 2,
+        "faded_end_jump": 0.0005825803382322192,
+        "faded_start_jump": 0,
+        "max_channel_gain_error": 0,
+        "output_rate": 44100,
+        "raw_end_jump": 0.200521320104599,
+        "raw_start_jump": 0.22219249606132507,
+        "source_kind": 2,
+        "source_rate": 48000
+      },
+      {
+        "channels": 1,
+        "faded_end_jump": 1.0993861698012797e-14,
+        "faded_start_jump": 0,
+        "max_channel_gain_error": 0,
+        "output_rate": 48000,
+        "raw_end_jump": 0.19804780185222626,
+        "raw_start_jump": 0.2175666093826294,
+        "source_kind": 0,
+        "source_rate": 48000
+      },
+      {
+        "channels": 1,
+        "faded_end_jump": 1.1102231093284513e-14,
+        "faded_start_jump": 0,
+        "max_channel_gain_error": 0,
+        "output_rate": 48000,
+        "raw_end_jump": 0.20000001788139343,
+        "raw_start_jump": 0.19991062581539154,
+        "source_kind": 1,
+        "source_rate": 48000
+      },
+      {
+        "channels": 1,
+        "faded_end_jump": 1.1131169126894509e-14,
+        "faded_start_jump": 0,
+        "max_channel_gain_error": 0,
+        "output_rate": 48000,
+        "raw_end_jump": 0.200521320104599,
+        "raw_start_jump": 0.22219249606132507,
+        "source_kind": 2,
+        "source_rate": 48000
+      },
+      {
+        "channels": 2,
+        "faded_end_jump": 1.0993861698012797e-14,
+        "faded_start_jump": 0,
+        "max_channel_gain_error": 0,
+        "output_rate": 48000,
+        "raw_end_jump": 0.19804780185222626,
+        "raw_start_jump": 0.2175666093826294,
+        "source_kind": 0,
+        "source_rate": 48000
+      },
+      {
+        "channels": 2,
+        "faded_end_jump": 1.1102231093284513e-14,
+        "faded_start_jump": 0,
+        "max_channel_gain_error": 0,
+        "output_rate": 48000,
+        "raw_end_jump": 0.20000001788139343,
+        "raw_start_jump": 0.19991062581539154,
+        "source_kind": 1,
+        "source_rate": 48000
+      },
+      {
+        "channels": 2,
+        "faded_end_jump": 1.1131169126894509e-14,
+        "faded_start_jump": 0,
+        "max_channel_gain_error": 0,
+        "output_rate": 48000,
+        "raw_end_jump": 0.200521320104599,
+        "raw_start_jump": 0.22219249606132507,
+        "source_kind": 2,
+        "source_rate": 48000
+      },
+      {
+        "channels": 1,
+        "faded_end_jump": 1.0993861698012797e-14,
+        "faded_start_jump": 0,
+        "max_channel_gain_error": 0,
+        "output_rate": 96000,
+        "raw_end_jump": 0.19804780185222626,
+        "raw_start_jump": 0.2175666093826294,
+        "source_kind": 0,
+        "source_rate": 48000
+      },
+      {
+        "channels": 1,
+        "faded_end_jump": 1.1102231093284513e-14,
+        "faded_start_jump": 0,
+        "max_channel_gain_error": 0,
+        "output_rate": 96000,
+        "raw_end_jump": 0.20000001788139343,
+        "raw_start_jump": 0.19991062581539154,
+        "source_kind": 1,
+        "source_rate": 48000
+      },
+      {
+        "channels": 1,
+        "faded_end_jump": 1.1131169126894509e-14,
+        "faded_start_jump": 0,
+        "max_channel_gain_error": 0,
+        "output_rate": 96000,
+        "raw_end_jump": 0.200521320104599,
+        "raw_start_jump": 0.22219249606132507,
+        "source_kind": 2,
+        "source_rate": 48000
+      },
+      {
+        "channels": 2,
+        "faded_end_jump": 1.0993861698012797e-14,
+        "faded_start_jump": 0,
+        "max_channel_gain_error": 0,
+        "output_rate": 96000,
+        "raw_end_jump": 0.19804780185222626,
+        "raw_start_jump": 0.2175666093826294,
+        "source_kind": 0,
+        "source_rate": 48000
+      },
+      {
+        "channels": 2,
+        "faded_end_jump": 1.1102231093284513e-14,
+        "faded_start_jump": 0,
+        "max_channel_gain_error": 0,
+        "output_rate": 96000,
+        "raw_end_jump": 0.20000001788139343,
+        "raw_start_jump": 0.19991062581539154,
+        "source_kind": 1,
+        "source_rate": 48000
+      },
+      {
+        "channels": 2,
+        "faded_end_jump": 1.1131169126894509e-14,
+        "faded_start_jump": 0,
+        "max_channel_gain_error": 0,
+        "output_rate": 96000,
+        "raw_end_jump": 0.200521320104599,
+        "raw_start_jump": 0.22219249606132507,
+        "source_kind": 2,
+        "source_rate": 48000
+      }
+    ],
+    "physical_devices_opened": false
+  },
+  "vocalPassage": {
+    "channels": 2,
+    "end_frame": 795338,
+    "measurements": [
+      {
+        "faded_end": [
+          0.0037631425075232983,
+          0.00372875458560884
+        ],
+        "faded_start": [
+          0,
+          0
+        ],
+        "output_rate": 44100,
+        "raw_end": [
+          0.6638182997703552,
+          0.657752275466919
+        ],
+        "raw_start": [
+          0.7072842121124268,
+          0.8094469308853149
+        ]
+      },
+      {
+        "faded_end": [
+          0.0029869943391531706,
+          0.0029596989043056965
+        ],
+        "faded_start": [
+          0,
+          0
+        ],
+        "output_rate": 48000,
+        "raw_end": [
+          0.6638182997703552,
+          0.657752275466919
+        ],
+        "raw_start": [
+          0.7072842121124268,
+          0.8094469308853149
+        ]
+      },
+      {
+        "faded_end": [
+          0.0012583007337525487,
+          0.0012468022760003805
+        ],
+        "faded_start": [
+          0,
+          0
+        ],
+        "output_rate": 96000,
+        "raw_end": [
+          0.6638182997703552,
+          0.657752275466919
+        ],
+        "raw_start": [
+          0.7072842121124268,
+          0.8094469308853149
+        ]
+      }
+    ],
+    "physical_devices_opened": false,
+    "source_path": "/home/michael/Projects/omatainer-work/hardware-resurrection/target/hardware/grey-album/What More Can I Say.mp3",
+    "source_rate": 44100,
+    "start_frame": 529507
+  },
+  "renderedPCM": [
+    {
+      "path": "target/app-backlog/clip-fades-third-pcm/source-0-faded.wav",
+      "sha256": "1d33f1df932de86f573d2d95846e7de37c4f5574f887306cb2bdac064f8a5835",
+      "frames": 57607,
+      "sampleRate": 48000,
+      "channels": 2,
+      "format": "float32"
+    },
+    {
+      "path": "target/app-backlog/clip-fades-third-pcm/source-1-faded.wav",
+      "sha256": "ba7da278f5de9bc023f4977022149d6e98ae2c39a52f2f5bcf742625bce36bdb",
+      "frames": 57607,
+      "sampleRate": 48000,
+      "channels": 2,
+      "format": "float32"
+    },
+    {
+      "path": "target/app-backlog/clip-fades-third-pcm/source-2-faded.wav",
+      "sha256": "23e08f3d7bcbba7f4fa963c23272513ac0be91a0276ff711028746b245c8c2a8",
+      "frames": 57607,
+      "sampleRate": 48000,
+      "channels": 2,
+      "format": "float32"
+    }
+  ],
+  "clockLoadRegression": {
+    "path": "target/app-backlog/clip-fades-third-full-output-timing.json",
+    "sha256": "7951f9cd42b5522fb58e001954f0ef9a655e9b7db2513e5e447968d566821797",
+    "physical_devices_opened": false,
+    "real_decode_egui_iterations": 5236,
+    "schema": 1,
+    "tempos": [
+      {
+        "bpm": 40,
+        "clocks": 24,
+        "delay_ns": [
+          49162,
+          48509,
+          11772,
+          138787,
+          41217,
+          106814,
+          102869,
+          113925,
+          109355,
+          138703,
+          93341,
+          58229,
+          72660,
+          71215,
+          29062,
+          117118,
+          44506,
+          113145,
+          134617,
+          106381,
+          94769,
+          115533,
+          8296,
+          161352
+        ],
+        "max_delay_ns": 161352
+      },
+      {
+        "bpm": 73,
+        "clocks": 24,
+        "delay_ns": [
+          132829,
+          30670,
+          45554,
+          11521,
+          19113,
+          141872,
+          146548,
+          140099,
+          92732,
+          72657,
+          109208,
+          117050,
+          38558,
+          111941,
+          110658,
+          79333,
+          111759,
+          57434,
+          128401,
+          86201,
+          89501,
+          118802,
+          39185,
+          85819
+        ],
+        "max_delay_ns": 146548
+      },
+      {
+        "bpm": 120,
+        "clocks": 24,
+        "delay_ns": [
+          40828,
+          57569,
+          126811,
+          9467,
+          152292,
+          95283,
+          69147,
+          120555,
+          83338,
+          144495,
+          146694,
+          77268,
+          42883,
+          111958,
+          101323,
+          154522,
+          101721,
+          149462,
+          47868,
+          124610,
+          8267,
+          88591,
+          1193173,
+          76781
+        ],
+        "max_delay_ns": 1193173
+      },
+      {
+        "bpm": 137,
+        "clocks": 24,
+        "delay_ns": [
+          15454,
+          116009,
+          34479,
+          142701,
+          8838,
+          142977,
+          56656,
+          103127,
+          15681,
+          65694,
+          20373,
+          47970,
+          101067,
+          63454,
+          82634,
+          41521,
+          52326,
+          67547,
+          58851,
+          134281,
+          136294,
+          146932,
+          148945,
+          157791
+        ],
+        "max_delay_ns": 157791
+      },
+      {
+        "bpm": 180,
+        "clocks": 24,
+        "delay_ns": [
+          65329,
+          147059,
+          128123,
+          106227,
+          43873,
+          153354,
+          56958,
+          8480,
+          83251,
+          64397,
+          168378,
+          142317,
+          131755,
+          76317,
+          133214,
+          98152,
+          143258,
+          114487,
+          26382,
+          102113,
+          102218,
+          32489,
+          149219,
+          148366
+        ],
+        "max_delay_ns": 168378
+      },
+      {
+        "bpm": 240,
+        "clocks": 24,
+        "delay_ns": [
+          15579,
+          90242,
+          4403,
+          149232,
+          113145,
+          22555,
+          86176,
+          111880,
+          63792,
+          31078,
+          149533,
+          24486,
+          60231,
+          94519,
+          34222,
+          85717,
+          54171,
+          39541,
+          27911,
+          62157,
+          54902,
+          151439,
+          8768,
+          143055
+        ],
+        "max_delay_ns": 151439
+      }
+    ]
+  },
+  "retainedPreliminaryResults": {
+    "binary": {
+      "compiledBinary": "/home/michael/Projects/omatainer-work/remaining-backlog/target/debug/deps/omatainer-700b0f43c8079203",
+      "privateBinary": "target/app-backlog/qualification-bin/clip-fades-tests-first",
+      "sha256": "898d99da7d800f2f6a4bb27e0fbdd2e50a91787f1cadb4665e73811425581a3d",
+      "compileLogSha256": "fcf20e61c7c8e06c34d02ab54b93aac6df6e6885ed7062944ad784d1ca800f71"
+    },
+    "compiledInventory": {
+      "path": "target/app-backlog/clip-fades-first-compiled-source-inventory.json",
+      "sha256": "0a8094fa347fbe7e5003fd0bdf2a873a4404535c4314791882003d652ad6fc30"
+    },
+    "tests": {
+      "source": {
+        "path": "target/app-backlog/clip-fades-first-source-tests.log",
+        "sha256": "058f984eeb1beeaee4117dc2d7684d5deda04eb948fba4090346387017d34cba",
+        "outcome": "FAILED",
+        "passed": 4,
+        "failed": 1,
+        "ignored": 0,
+        "filtered": 2021,
+        "seconds": 1.5
+      },
+      "arrangement": {
+        "path": "target/app-backlog/clip-fades-first-arrangement-tests.log",
+        "sha256": "e794bff5c4878ac4b23318d8f78ec36e7b1192fe92b7e4f380a28c80bc87679a",
+        "outcome": "ok",
+        "passed": 4,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 2022,
+        "seconds": 1.22
+      },
+      "native-source": {
+        "path": "target/app-backlog/clip-fades-first-native-source.log",
+        "sha256": "b25177212332bc2d4771c914b968cd3fe60d82f1a0e6e2fbcbcde36d3530e366",
+        "outcome": "ok",
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 2025,
+        "seconds": 0.36
+      },
+      "native-arrangement": {
+        "path": "target/app-backlog/clip-fades-first-native-arrangement.log",
+        "sha256": "23d512a769d278b5adabd1d8633005fe669935f0324b4e2cf2828aa98fa8db32",
+        "outcome": "ok",
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 2025,
+        "seconds": 0.36
+      },
+      "export": {
+        "path": "target/app-backlog/clip-fades-first-export.log",
+        "sha256": "a898b65894f6281d81ed28333372c91fd85eefe25c870576dbd02d9f6b90c7b1",
+        "outcome": "ok",
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 2025,
+        "seconds": 20.18
+      }
+    },
+    "reason": "The initial full-process Session fixture read a reusable per-track scratch tap after later tracks had overwritten it. Other source PCM, Arrangement, native editor and export tests passed. The corrected fixture marks its independent other tracks inactive, checks its actual raw rendered track signal against an independently calculated envelope and retains the ordinary default rendering path.",
+    "secondNativeDraftRegression": {
+      "binary": {
+        "compiledBinary": "/home/michael/Projects/omatainer-work/remaining-backlog/target/debug/deps/omatainer-700b0f43c8079203",
+        "privateBinary": "target/app-backlog/qualification-bin/clip-fades-tests-second",
+        "sha256": "7e6813024968adc686237af48afb4dcf9ad99181f72b8281942a11eadecda429",
+        "compileLogSha256": "4e9f04441302dc8dcc0953718e78a5e00b0e01d0072d55ae5dc17b15119d967b"
+      },
+      "compiledInventory": {
+        "path": "target/app-backlog/clip-fades-second-compiled-source-inventory.json",
+        "sha256": "3fa652bf589dbda2915086e89be21e3722dd566b9c7757e098ab46f254093248"
+      },
+      "full": {
+        "path": "target/app-backlog/clip-fades-second-full-tests.log",
+        "sha256": "88b72a8493fb470a94e749f1f01f2c0a7570e3c93c8ac7e03001187d6e55bca4",
+        "outcome": "FAILED",
+        "passed": 1981,
+        "failed": 1,
+        "ignored": 44,
+        "filtered": 0,
+        "seconds": 527.85
+      },
+      "isolated": {
+        "path": "target/app-backlog/clip-fades-second-native-placement-isolated.log",
+        "sha256": "c51893b73dc7647079b7abd86cc386de3fb275dfeb9b2e8dad12397029cca098",
+        "outcome": "FAILED",
+        "passed": 0,
+        "failed": 1,
+        "ignored": 0,
+        "filtered": 2025,
+        "seconds": 0.33
+      },
+      "reason": "The full suite reproduced an independent placement editing regression: enabling default automatic fades caused an intermediate source-offset edit to be refused before the user could shorten duration. Independent numeric and pointer geometry now retain the existing editable draft path and validate on Apply; linked groups and both partners of crossfades still use complete atomic geometry validation. The unchanged original native placement fixture verifies offset and duration through Apply and Undo/Redo."
+    }
+  },
+  "isolatedScratchAudit": {
+    "path": "target/app-backlog/clip-fades-isolated-scratch-audit.json",
+    "sha256": "d39089ee6a6a090059b098915264b7ca1907e266e250d9c5598de66b647888dc",
+    "schema": 1,
+    "checkedPrefixes": [
+      "omat-native-arrangement-",
+      "omat-native-audio-",
+      "omat-fades-",
+      "omatainer-audio-delivery-"
+    ],
+    "remainingDirectories": [],
+    "remainingCommandsScratch": "/home/michael/Projects/omatainer/t/usb",
+    "scope": "Post-cleanup audit of the known isolated test fixture prefixes. Remaining test/build commands explicitly set TMPDIR under /home."
+  },
+  "limits": "Linux ARM64 software qualification: explicit curved quarter-note fades and automatic 4 ms edges, coherent stereo gain, trimmed/reverse/transposed source loops, real Session conductor ramps and unequal rates, editable adjacent/overlap Arrangement crossfades with available source audio, aligned linked fade groups and stable track references, atomic producer edits/cancellation/stale-target refusal and one Undo/Redo, native controls, real project/template files and version 26 old-header guards. Arrangement placement overrides replace source envelopes; inherited source fades follow source offsets and repeats. Source PCM stays immutable. Complete linked take comping, warp markers and unrelated grouped edit commands in issue 318 remain separate. No physical device opened, live capture or new GUI; stage processes/state/session preserved.",
+  "node": {
+    "path": "target/app-backlog/clip-fades-third-node-tests.log",
+    "sha256": "300a8009e94b440cc6ef6394cbf68e0cbde596b6c556b142c584e663e8f2d084",
+    "passed": 15,
+    "failed": 0
+  },
+  "sourceInventory": {
+    "path": "target/app-backlog/clip-fades-third-source-inventory.log",
+    "sha256": "ae3e18908b924c838b7d3ba7243a8c84279b86c56a4eed52318bfe2d83880c24"
+  },
+  "releaseInstallation": {
+    "schema": 1,
+    "package": {
+      "path": "/home/michael/Projects/omatainer-work/hardware-resurrection/target/app-backlog/release-clip-fades-qualified",
+      "manifestSha256": "d126f052189169d1eeee8fb3d0e7b07987220d6deb0e39cdc68d00a10a6ed10a",
+      "revision": "7857c3c61a2d976c2b86164da05936cc8566eafe",
+      "version": "0.1.0+7857c3c61a2d",
+      "executableSha256": "a0e1155244460ae40ef5b6a4445c8d05273e03615361bc21e5485b372afbbb5a"
+    },
+    "installed": {
+      "schema": 1,
+      "before": "8588a5949b44c589a693e6bb6b0c2ac42bed2dfae0dad10dfb536bf1f199aa65",
+      "after": "a0e1155244460ae40ef5b6a4445c8d05273e03615361bc21e5485b372afbbb5a",
+      "installedAt": "2026-10-07T06:23:52.653Z"
+    },
+    "buildInfo": {
+      "arch": "aarch64",
+      "debug_assertions": false,
+      "os": "linux",
+      "pkg_version": "0.1.0",
+      "schema": 1
+    },
+    "applicationProcessesPreserved": [
+      {
+        "pid": 1649895,
+        "executable": "/home/michael/Projects/omatainer-work/hardware-resurrection/target/hardware/pioneer-apc/bin/omatainer",
+        "arguments": [
+          "/home/michael/Projects/omatainer-work/hardware-resurrection/target/hardware/pioneer-apc/bin/omatainer",
+          "--empty-once"
+        ],
+        "sha256": "646aa453a269d7c49feec0f5e88fcac94a030034f051468a82d2828ef05c4915"
+      },
+      {
+        "pid": 3973522,
+        "executable": "/home/michael/.local/bin/omatainer (deleted)",
+        "arguments": [
+          "/home/michael/.local/bin/omatainer",
+          "ctl",
+          "follow"
+        ],
+        "sha256": "23f88a47125de6eb19a7921d64faef6dafed56d3c25debdb89ac04d060d9b2e4"
+      }
+    ],
+    "protectedSessionPreserved": {
+      "path": "/home/michael/Projects/omatainer-work/hardware-resurrection/target/hardware/apc-restart-20261006/session.omat",
+      "sha256": "96e0b2495cdbdc549c324ecf8337fdef5590bdcbfe8916e4f014eb05d1ee827d",
+      "bytes": 162882871
+    },
+    "additionalProcessesAfterInstall": [],
+    "preinstallState": {
+      "master": 0.8188976645469666,
+      "playing": false,
+      "recording": false,
+      "decks": [
+        {
+          "title": "What More Can I Say",
+          "playing": false
+        },
+        {
+          "title": "Public Service Announcement",
+          "playing": false
+        }
+      ]
+    },
+    "postinstallState": {
+      "master": 0.8188976645469666,
+      "playing": false,
+      "recording": false,
+      "decks": [
+        {
+          "title": "What More Can I Say",
+          "playing": false
+        },
+        {
+          "title": "Public Service Announcement",
+          "playing": false
+        }
+      ]
+    },
+    "scope": "Default executable installed for next launch. Previously active independent private GUI and follower processes retained; no hardware device opened or live playback restarted. An unavailable live state is recorded when no GUI was present."
+  }
+}

@@ -5,6 +5,7 @@ use super::*;
 #[derive(Clone, Copy)]
 enum Target {
     Global,
+    Sync,
     Sampler(usize),
     Track(u8),
     Gain(u8, u16),
@@ -14,6 +15,7 @@ enum Target {
     Media(u8),
     Slot(Rack, usize),
     Effect(Rack, usize),
+    Plugin(u64,u32),
 }
 struct Plan {
     target: Target,
@@ -24,16 +26,28 @@ impl Plan {
     fn get(rt: &RtEngine, c: &Command) -> Option<Self> {
         use Command::*;
         let (target, name, key) = match c {
+            PluginParameter { namespace,id,parameter,value } if *namespace == rt.session.namespace && value.is_finite() && (0.0..=1.0).contains(value) => {
+                let graph = rt.routing.as_ref()?;
+                graph.plugin_parameter_value(*id,*parameter)?;
+                let slot=graph.model.plugins.iter().position(|p|p.id==*id)?;
+                (Target::Plugin(*id,*parameter),Name::PluginParameter,0x1000000000000000 + ((slot as u64) << 32) + u64::from(*parameter))
+            }
+            DeckSyncMode { deck, .. } => (Target::Sync, Name::Deck, 405 + u64::from(*deck)),
+            DeckSyncLeader(_) => (Target::Sync, Name::Deck, 408),
             SetBpm(_) | NudgeBpm(_) | Tap(_) => (Target::Global, Name::Tempo, 1),
             Quant(_) | ToggleQuant => (Target::Global, Name::Quantization, 2),
             Metronome => (Target::Global, Name::Metronome, 3),
             Xfader(_) => (Target::Global, Name::Crossfader, 4),
             XfaderCurve(_) => (Target::Global, Name::CrossfaderContour, 7),
             Master(_) => (Target::Global, Name::Master, 5),
-            CueMix(_) => (Target::Global, Name::CueMix, 6),
+            CueMix(_) | Monitor(super::super::monitor::Control::Blend(_)) => (Target::Global, Name::CueMix, 6),
             FxWet { slot, .. } | FxSelect { slot } if *slot < 3 => {
                 (Target::Global, Name::MasterEffect, 10 + *slot as u64)
             }
+            MicAuxConfigure(_) => (Target::Global,Name::MicAux,30),
+            MicAuxControl(c) => (Target::Global,Name::MicAux,31+u64::from(c.role)),
+            SongContext(_) => (Target::Global, Name::MusicalContext, 32),
+            SamplerScale(_) => (Target::Global, Name::Sampler, 33),
             SamplerBank(_) | SamplerInst(_) | SamplerOct(_) => (Target::Global, Name::Sampler, 20),
             SamplerEdit(edit) => (Target::Sampler(rt.sampler_edit_index(edit)?), Name::Sampler, 21),
             TrackGain { track, .. }
@@ -41,6 +55,8 @@ impl Plan {
             | Mute { track }
             | Solo { track }
             | Arm { track }
+            | TrackArm { track, .. }
+            | TrackMonitor { track, .. }
                 if (*track as usize) < rt.tracks.len() =>
             {
                 (Target::Track(*track), Name::Track, 1000 + *track as u64)
@@ -91,6 +107,7 @@ impl Plan {
             | DeckGain { deck, .. }
             | DeckEq { deck, .. }
             | DeckFilter { deck, .. }
+            | DeckChannelEffect { deck, .. }
             | DeckPfl { deck }
             | DeckLoop { deck, .. }
             | DeckLoopIn { deck }
@@ -115,7 +132,7 @@ impl Plan {
             DeckControl { deck, control: super::super::deck_controls::Control::LoopButton { .. }, .. } if rt.decks[usize::from(*deck)].controls.status().auto_loop => (
                 Target::Deck(*deck), Name::Deck, 420 + u64::from(*deck),
             ),
-            DeckControl { deck, control: super::super::deck_controls::Control::LoopScale { .. } | super::super::deck_controls::Control::Tap | super::super::deck_controls::Control::LoopToggle | super::super::deck_controls::Control::LoopSelect | super::super::deck_controls::Control::Reloop | super::super::deck_controls::Control::LoopShift { .. }, .. } => (
+            DeckControl { deck, control: super::super::deck_controls::Control::SavedLoop { .. } | super::super::deck_controls::Control::HotLoop { .. } | super::super::deck_controls::Control::LoopScale { .. } | super::super::deck_controls::Control::Tap | super::super::deck_controls::Control::LoopToggle | super::super::deck_controls::Control::LoopSelect | super::super::deck_controls::Control::Reloop | super::super::deck_controls::Control::LoopShift { .. } | super::super::deck_controls::Control::LoopBounds { .. } | super::super::deck_controls::Control::LoopMove { .. } | super::super::deck_controls::Control::LoopLength { .. }, .. } => (
                 Target::Deck(*deck), Name::Deck, 420 + u64::from(*deck),
             ),
             DeckHotCue { deck, pad, del }
@@ -132,9 +149,10 @@ impl Plan {
             DeckCueStyle { deck, pad, .. } => (
                 Target::Deck(*deck), Name::CueStyle, 440 + (*deck as u64) * 8 + *pad as u64,
             ),
+            DeckKeyShift(request) => (Target::Deck(request.deck), Name::Deck, 482 + u64::from(request.deck)),
             DeckMatch => {
                 let other = if rt.xfader <= 0.5 { 1 } else { 0 };
-                (Target::Seek(other), Name::DeckSeek, 410 + other as u64)
+                (Target::Seek(other), Name::DeckSeek, 480 + other as u64)
             }
             FxAdd(kind) => {
                 let rack = Rack::selected(rt)?;
@@ -175,6 +193,22 @@ impl RtEngine {
     /// Capture an inverse before the first mutation. A rejected command still
     /// retires its owned payload on the worker, never at this callback boundary.
     pub(in crate::engine) fn history_before(&mut self, c: Command) -> Option<Command> {
+        if matches!(&c,Command::PluginParameter {..}) && Plan::get(self,&c).is_none() {
+            self.undo.reject(Failure::Invalid); self.undo.retire_command(c); return None;
+        }
+        if matches!(&c, Command::DeckKeyShift(request) if !request.current(self)) { self.undo.reject(Failure::Invalid); self.undo.retire_command(c); return None; }
+        if matches!(&c, Command::DeckControl { deck, control, .. } if usize::from(*deck) >= DECKS || !control.valid()) {
+            self.undo.reject(Failure::Invalid); self.undo.retire_command(c); return None;
+        }
+        if let Command::DeckControl { deck, control: control @ (super::super::deck_controls::Control::LoopBounds { .. }
+            | super::super::deck_controls::Control::LoopMove { .. } | super::super::deck_controls::Control::LoopLength { .. }), .. } = &c {
+            if self.decks.get(usize::from(*deck)).and_then(|d| d.loop_edit_bounds(*control, self.sr, self.bpm)).is_none() {
+                self.undo.reject(Failure::Invalid); self.undo.retire_command(c); return None;
+            }
+        }
+        if let Command::DeckControl { deck, control: control @ super::super::deck_controls::Control::SavedLoop { .. }, .. } = &c {
+            if !self.decks[usize::from(*deck)].saved_loop_current(*control) { self.undo.reject(Failure::Invalid); self.undo.retire_command(c); return None; }
+        }
         if let Command::FxAdd(index)=&c {
             if let Some(id)=fx::FxId::all().get(*index as usize) {
                 let current=self.tracks.iter().map(|t|t.fx.slots.iter().map(fx::FxSlot::storage_bytes).sum::<usize>()).sum::<usize>()
@@ -185,6 +219,11 @@ impl RtEngine {
             }
         }
         if let Command::SessionEdit(request) = c { self.history_session(request); return None; }
+        if let Command::ClipManage(request) = c {self.history_clip_management(request);return None;}
+        if let Command::SongNavigationEdit(request) = c {self.history_song_navigation(request);return None;}
+        if matches!(&c,Command::SongNavigation(super::super::song_navigation::Action::ToggleLoop)){self.history_song_loop();return None;}
+        if let Command::ArrangementEdit(request) = c {self.history_arrangement(request);return None;}
+        if let Command::AudioClipEdit(request) = c { self.history_audio_clip(request); return None; }
         if let Command::MidiImport(request) = c {
             self.history_midi_import(request); return None;
         }
@@ -307,6 +346,7 @@ impl RtEngine {
                     + 2 * NOTE_LIMIT * std::mem::size_of::<MidiNote>()
                     + old.audio.as_ref().map_or(0, |a| sample_bytes(a))
                     + old.lanes.as_ref().map_or(0, |l| l.bytes())
+                    + match &c { Command::MidiEdit(request) => request.lanes.as_ref().map_or(0, |l| l.bytes()), _ => 0 }
             }
             Target::Slot(..) => match &c {
                 Command::FxAdd(kind) => {
@@ -341,6 +381,8 @@ impl RtEngine {
                 }
             }
             Target::Global => Patch::Global(Global::get(self)),
+            Target::Plugin(id,parameter) => Patch::PluginParameter { namespace:self.session.namespace,id,parameter,value:self.routing.as_ref().unwrap().plugin_parameter_value(id,parameter).unwrap() },
+            Target::Sync => Patch::Sync(deck_sync::Saved::get(self)),
             Target::Track(t) => Patch::Track(t, TrackControls::get(&self.tracks[t as usize])),
             Target::Gain(t, s) => Patch::ClipGain {
                 track: t,
@@ -352,6 +394,7 @@ impl RtEngine {
                 // Seeking updates cue/loop settings too. Both inverse values
                 // belong to the same validated transaction.
                 self.undo.begin(plan.name, plan.key, self.frames_done);
+                if matches!(&c, Command::DeckMatch) { self.undo.append(Patch::Sync(deck_sync::Saved::get(self))); }
                 self.undo
                     .append(Patch::Deck(d, DeckControls::get(&self.decks[d as usize])));
                 Patch::Position {
@@ -369,8 +412,9 @@ impl RtEngine {
                 Patch::Clip {
                     track: t,
                     scene: s,
-                    value: Clip {
-                        lanes: clip.lanes.clone(),
+                    value: Clip { variation: clip.variation.clone(),
+                        properties: clip.properties,
+                        audio_region: clip.audio_region, lanes: clip.lanes.clone(),
                         region: clip.region,
                         name,
                         notes,
@@ -380,7 +424,11 @@ impl RtEngine {
                         audio: clip.audio.clone(),
                     },
                     spare_notes: prepared.notes,
-                    reserved_midi_bytes: 0,
+                    reserved_audio: [None, None],
+                reserved_midi_bytes: match &c {
+                        Command::MidiEdit(request) => request.baseline.lanes.as_ref().map_or(0, |l| l.bytes()) + request.lanes.as_ref().map_or(0, |l| l.bytes()) + clip.variation.as_ref().map_or(0, |plan| plan.bytes()) + request.variation.as_ref().map_or(0, |plan| plan.bytes()),
+                        _ => 0,
+                    },
                 }
             }
             Target::Media(d) => {
@@ -431,6 +479,9 @@ impl RtEngine {
     }
     pub(super) fn history_reject(&mut self, c: Command, reason: Failure) {
         self.undo.reject(reason);
+        if let Command::MicAuxConfigure(request)=&c {request.ack.reject();}
+        if let Command::AudioClipEdit(request)=&c {request.ack.reject();}
+        if let Command::SongNavigationEdit(request)=&c {request.ack.reject();}
         super::super::midi_edit::reject_retired(&c);
         let bytes = command_bytes(&c);
         self.undo.retire(Retired::Command(c), bytes);
@@ -439,7 +490,13 @@ impl RtEngine {
 pub(super) fn command_bytes(command: &Command) -> usize {
     match command {
         Command::SessionControl(scoped) => std::mem::size_of::<Command>() + command_bytes(&scoped.command),
+        Command::DeckContinue(request) => request.bytes(),
+        Command::MicAuxConfigure(_) => std::mem::size_of::<audio::routing::mic_aux::control::Request>(),
         Command::SessionEdit(request) => request.bytes(),
+        Command::AudioClipEdit(request) => request.bytes(),
+        Command::ArrangementEdit(request) => request.bytes(),
+        Command::SongNavigationEdit(request) => request.bytes(),
+        Command::ClipManage(request) => request.bytes(),
         Command::MidiEdit(request) => request.bytes(),
         Command::MidiImport(request) => request.bytes(),
         Command::SamplerEdit(edit) => bank_bytes(&edit.bank),
@@ -462,10 +519,15 @@ pub(super) fn bank_bytes(bank: &sampler::Bank) -> usize {
 }
 
 impl RtEngine {
-    pub(in crate::engine) fn history_session(&mut self, mut request: session::Request) {
+    pub(in crate::engine) fn history_session(&mut self, mut owned: Arc<session::Request>) {
+        if Arc::get_mut(&mut owned).is_none() {
+            owned.ack.reject(); self.undo.reject(crate::engine::undo::Failure::Invalid);
+            self.undo.retire_command(Command::session_edit(owned)); return;
+        }
+        let request = Arc::get_mut(&mut owned).unwrap();
         if !request.current(self) || !request.ack.claim() {
             request.ack.reject(); self.undo.reject(crate::engine::undo::Failure::Invalid);
-            self.undo.retire_command(Command::SessionEdit(request)); return;
+            self.undo.retire_command(Command::session_edit(owned)); return;
         }
         request.inverse.as_mut().unwrap().reserve(self);
         let inverse = request.inverse.as_ref().unwrap();
@@ -475,7 +537,7 @@ impl RtEngine {
             let room = self.undo.assets.len().saturating_add(new_assets) <= self.undo.assets.capacity();
             if let Err(error) = if room { self.undo.preflight(request.bytes()) } else { Err(Failure::Budget) } {
                 request.ack.reject(); self.undo.reject(error);
-                self.undo.retire_command(Command::SessionEdit(request)); return;
+                self.undo.retire_command(Command::session_edit(owned)); return;
             }
         }
         let mut inverse = request.inverse.take().unwrap();
@@ -485,6 +547,6 @@ impl RtEngine {
             self.undo.append(crate::engine::undo::patch::Patch::Session(inverse)); self.undo.recount();
         } else { request.inverse = Some(inverse); }
         self.project.edited(); request.ack.applied();
-        self.undo.retire_command(Command::SessionEdit(request));
+        self.undo.retire_command(Command::session_edit(owned));
     }
 }

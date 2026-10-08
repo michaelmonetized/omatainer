@@ -94,7 +94,9 @@ fn subscription_outlives_request_cap_without_accepting_commands_and_releases_its
 fn cached_projection_is_exact_status_and_ignores_large_unrelated_state_without_allocation() {
     let (commands, _receiver) = CommandPort::channel(256);
     commands.midi_routing().maximum_activity_for_test();
+    commands.clock_output().maximum_activity_for_test();
     let mut snapshot = Snapshot::default();
+    snapshot.midi_clock_input = crate::engine::midi::clock_input::Status::maximum_for_test();
     snapshot.midi = vec!["\u{1}".repeat(8192); 64];
     snapshot.decks = vec![
         crate::engine::DeckSnap {
@@ -103,11 +105,20 @@ fn cached_projection_is_exact_status_and_ignores_large_unrelated_state_without_a
         };
         2
     ];
+    snapshot.sync_leader = Some(crate::engine::deck_sync::Leader::DeckB);
+    snapshot.sync_leader_ready = true;
+    snapshot.decks[0].sync_mode = crate::engine::deck_sync::Mode::Bar;
+    snapshot.decks[0].sync_aligned = true;
+    snapshot.decks[0].sync_target_bpm = 123.5;
+    snapshot.decks[0].pitch_pickup = crate::engine::pitch_pickup::Status {physical:Some(f64::from(0.1_f32)),target:0.75,acquired:false,sync:false};
     let id = json!("\u{1}".repeat(128));
     let mut cache = Cache::default();
     let first: Value =
         serde_json::from_str(cache.update(&snapshot, &commands, &id).unwrap()).unwrap();
     assert_eq!(first["state_truncated"], true);
+    assert_eq!(first["midi_clock_input"]["accepted_ticks"],u64::MAX);
+    assert_eq!(first["pitch_pickup"][0]["target"],0.75);
+    assert_eq!(first["pitch_pickup"][0]["physical"],0.1_f32 as f64);
     let shared = Arc::new(Mutex::new(snapshot.clone()));
     let (client, peer) = UnixStream::pair().unwrap();
     let port = commands.clone();
@@ -157,6 +168,10 @@ fn cached_projection_is_exact_status_and_ignores_large_unrelated_state_without_a
     assert_eq!(changed["deckALoadLocked"], true);
     assert_eq!(changed["deckBLoadLocked"], false);
     assert_eq!(cache.serializations, 5);
+    snapshot.midi_clock_input.accepted_ticks = 123;
+    let changed: Value = serde_json::from_str(cache.update(&snapshot, &commands, &id).unwrap()).unwrap();
+    assert_eq!(changed["midi_clock_input"]["accepted_ticks"],123);
+    assert_eq!(cache.serializations, 6);
     let counts = crate::engine::test_alloc::measure(|| {
         for _ in 0..1000 { assert!(cache.update(&snapshot, &commands, &id).is_ok()); }
     });
@@ -312,4 +327,34 @@ fn native_cli_multiminute_connection_counts_restart_backoff_and_clean_exit() {
     assert!(follower.0.wait().unwrap().success());
     wait_for(|| server.clients.active.load(Ordering::Acquire) == 0);
     eprintln!("native ctl follow: elapsed={:?}, updates={updates}, accepted=2, handlers=2, peak=1, outage_attempts={}, clean_exit=true", began.elapsed(), errors.len());
+}
+#[test]
+fn scene_status_exposes_names_properties_queue_and_meter_without_repeated_cache_heap_work() {
+    use crate::engine::{scene::{Properties,Signature,Empty,Pending},clip_launch::Grid,session::{Layout,Axis}};
+    let (commands,_receiver)=CommandPort::channel(256);
+    let mut s=Snapshot::default();let mut layout=Layout::fresh(["Software track".into()],2);
+    layout.scenes[0].name="Applied scene".into();layout.scenes[1].name="\u{1}".repeat(4096);
+    s.scenes.active=layout.reference(Axis::Scene,0);s.scenes.active_properties=Some(Properties::default());
+    s.scenes.pending=Some(Pending{scene:layout.reference(Axis::Scene,1).unwrap(),properties:Properties{tempo_micros:Some(500000),meter:Some(Signature{numerator:7,denominator_power:3}),grid:Grid::Bar,empty:Empty::Keep},when:12.5,additive:false});
+    s.session=Some(layout);s.meter_numerator=7;s.meter_denominator=8;
+    let mut cache=Cache::default();let id=json!("scene software fixture");let encoded=cache.update(&s,&commands,&id).unwrap();let frame:Value=serde_json::from_str(encoded).unwrap();
+    assert_eq!(frame["active_scene_name"],"Applied scene");assert_eq!(frame["queued_scene_name"].as_str().unwrap().len(),256/6);assert_eq!(frame["state_truncated"],true);assert_eq!(frame["meter"],json!([7,8]));assert_eq!(frame["scenes"]["pending"]["when"],12.5);assert_eq!(frame["scenes"]["pending"]["properties"]["meter"]["numerator"],7);
+    assert_eq!(crate::engine::test_alloc::measure(||{for _ in 0..1000{assert!(cache.update(&s,&commands,&id).is_ok());}}),Default::default());
+    let serializations=cache.serializations;s.scenes.pending=None;let frame:Value=serde_json::from_str(cache.update(&s,&commands,&id).unwrap()).unwrap();assert_eq!(frame["queued_scene_name"],"");assert!(frame["scenes"]["pending"].is_null());assert_eq!(cache.serializations,serializations+1);
+}
+
+#[test]
+fn controller_summary_survives_follow_cache_without_repeating_heap_work() {
+    let (commands, _) = crate::engine::CommandPort::channel(80);
+    let mut snapshot = Snapshot::default();
+    snapshot.midi_profiles = json!({"schema":1,"ready":true,"input_open":4,"output_open":4,"control_check":{"control":"Master","input_received":true,"captured_packets":64,"capturing":false},"physical_qualification":"pending"});
+    let mut cache = Cache::default();
+    let id = json!("controller status");
+    let first: Value = serde_json::from_str(cache.update(&snapshot,&commands,&id).unwrap()).unwrap();
+    assert_eq!(first["midi_profiles"], snapshot.midi_profiles);
+    assert_eq!(crate::engine::test_alloc::measure(||{for _ in 0..1000{cache.update(&snapshot,&commands,&id).unwrap();}}), Default::default());
+    snapshot.midi_profiles["input_open"] = json!(3);
+    let next: Value = serde_json::from_str(cache.update(&snapshot,&commands,&id).unwrap()).unwrap();
+    assert_eq!(next["midi_profiles"]["input_open"],3);
+    assert_eq!(cache.serializations,2);
 }

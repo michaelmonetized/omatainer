@@ -63,3 +63,16 @@ fn malformed_reserved_queries_fail_visibly_and_unknown_numeric_values_do_not_mat
     assert!(Query::parse(&"x".repeat(4097)).is_err());
     assert!(Query::parse(&"x ".repeat(65)).is_err());
 }
+#[test]
+fn normalized_worker_metadata_matches_all_field_semantics_without_query_heap_work() {
+    let fields=Annotations {rating:4,color:Some([255,102,0]),group:"Peak Straße".into(),tags:vec!["Clean Édit".into(),"Straße".into()],notes:"Dinner\nCafé request".into()};
+    let indexed=Indexed::new(row(&fields));
+    for played in [false,true] {
+        for text in ["","Cafe\u{301}","straße","strasse","title:CAFÉ","title:missing","artist:\"NINE INCH NAILS\"","key:AM","key:A","tag:\"clean e\u{301}dit\"","tag:clean","group:strasse","note:cafe\u{301}","color:#FF6600","rating:4","bpm:120..128 length:3:00..4:00","bpm>=125","length<=200","played:yes","played:no"] {
+            let query=Query::parse(text).unwrap();let expected=query.matches(Row {played,..row(&fields)});
+            assert_eq!(crate::engine::test_alloc::measure(||assert_eq!(query.matches_indexed(&indexed,played),expected,"{text}")),Default::default());
+        }
+    }
+    let missing=Indexed::new(Row {bpm:None,seconds:None,..row(&fields)});
+    assert!(!Query::parse("bpm>=0 length>=0").unwrap().matches_indexed(&missing,false));
+}

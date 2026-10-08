@@ -66,11 +66,11 @@ impl App {
             .is_some_and(|(request, _)| request > self.snap.selected_deck_request);
         ui.label(if queued { tr!("load target (queued)") } else { tr!("load target") });
         for deck in 0..DECKS {
-            if ui.selectable_label(self.load_target() == deck, { let __omatainer_args = (&((b'A' + deck as u8) as char),); crate::localization::format("Deck {}", &[format!("{}", __omatainer_args.0)]) })
-                .help(ui, HelpControl::DeckSelect)
-                .clicked() {
-                self.select_deck(deck);
-            }
+            let selected=self.load_target()==deck;
+            let label=(b'A'+deck as u8) as char;
+            let response=ui.selectable_label(selected,crate::localization::format("Deck {}", &[label.to_string()])).help(ui,HelpControl::DeckSelect);
+            accessibility::button(ui,&response,&crate::localization::format("Load target deck {0}", &[label.to_string()]),Some(selected));
+            if response.clicked() {self.select_deck(deck);}
         }
     }
 }

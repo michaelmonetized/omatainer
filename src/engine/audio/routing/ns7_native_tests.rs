@@ -312,7 +312,7 @@ fn original_ns7_headphone_listening() {
                 [sample; 2]
             })
             .collect();
-        deck.audio = Some(Arc::new(Sample {
+        deck.audio = Some(Arc::new(Sample { spectrum: None,
             name: format!("Quiet headphone check {}", slot + 1),
             sr: 44100,
             ch: 2,

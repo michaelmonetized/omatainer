@@ -31,6 +31,15 @@ fn reconnect(handle: &Handle) -> Result<Arc<Status>, String> {
 
 #[test]
 fn lost_output_finalizes_real_recording_and_preserves_project_route_and_input_recovery() {
+    retained_recording(false);
+}
+
+#[test]
+fn output_cpu_budget_breach_retains_recording_save_reopen_and_explicit_recovery() {
+    retained_recording(true);
+}
+
+fn retained_recording(cpu_exhausted: bool) {
     let (engine, audio, controls) = tests::fixture();
     for command in [
         Command::Master(0.37),
@@ -45,8 +54,10 @@ fn lost_output_finalizes_real_recording_and_preserves_project_route_and_input_re
     engine.cmd.send(Command::PerformanceMode(true)).unwrap();
     std::thread::sleep(Duration::from_millis(20));
     let before = engine.project.capture(&AtomicBool::new(false)).unwrap();
+    if cpu_exhausted { controls.active_telemetry.lock().as_ref().unwrap().cpu_budget_exhausted(); }
     fault(&audio, &controls);
     let state = audio.handle.status();
+    assert_eq!(state.message.contains("exceeded its real-time CPU limit"), cpu_exhausted);
     let target = state.recovery.as_ref().unwrap();
     assert_eq!(target.plan.rate, 48000);
     assert_eq!(target.identity.as_deref(), Some("unit-1"));
@@ -65,7 +76,7 @@ fn lost_output_finalizes_real_recording_and_preserves_project_route_and_input_re
     assert_eq!(notes.len(), 1);
     assert!(notes[0].len > 0.0);
     let path =
-        std::env::temp_dir().join(format!("omatainer-device-loss-{}.omat", std::process::id()));
+        std::env::temp_dir().join(format!("omatainer-device-loss-{}-{cpu_exhausted}.omat", std::process::id()));
     let bundle = crate::project_file::Bundle {
         state: captured.state,
         media: captured.media,
@@ -100,6 +111,13 @@ fn lost_output_finalizes_real_recording_and_preserves_project_route_and_input_re
     wait(|| engine.snapshot().playing);
     let after = engine.project.capture(&AtomicBool::new(false)).unwrap();
     assert_eq!(after.state.tracks[4].clips[3].notes, notes);
+    if cpu_exhausted {
+        fault(&audio, &controls);
+        assert!(!audio.handle.status().message.contains("exceeded its real-time CPU limit"));
+        let retained = engine.project.capture(&AtomicBool::new(false)).unwrap();
+        assert_eq!(retained.state.tracks[4].clips[3].notes, notes);
+        assert_eq!(engine.cmd.audio_metrics().cpu_budget_exhaustions, 1);
+    }
 }
 
 #[test]
@@ -234,7 +252,7 @@ fn managed_transport_resume_ramps_exactly_two_milliseconds_without_callback_heap
         let (_, mut rt) = Engine::headless_for_test(48000, 256);
         rt.apply(Command::DeckAudio {
             deck: 0,
-            audio: Arc::new(crate::engine::dsp::Sample {
+            audio: Arc::new(crate::engine::dsp::Sample { spectrum: None,
                 name: "ramp".into(),
                 sr: 48000,
                 ch: 2,

@@ -21,6 +21,83 @@ use std::path::PathBuf;
 use std::time::Instant;
 
 #[test]
+fn beat_jump_api_jobs_report_applied_positions_sizes_and_strict_immediate_targets() {
+    let mut service = Service::new();
+    let namespace = service.state()["expected"]["namespace"].clone();
+    for deck in 0..2 {
+        service.rt.decks[deck].pos = service.rt.decks[deck].audio.as_ref().unwrap().frames() as f64 * 0.5;
+        let old = service.rt.decks[deck].pos; let other = service.rt.decks[1 - deck].pos;
+        for control in [json!({"op":"beat_jump_size","index":3}), json!({"op":"beat_jump","forward":true})] {
+            let response = service.query(json!({"op":"command","namespace":namespace,"action":{"op":"deck_control","deck":deck,"control":control}}));
+            assert_eq!(response["ok"], true); assert_eq!(service.complete(&response["result"]["job"])["result"]["status"], "applied");
+        }
+        assert!(service.rt.decks[deck].pos > old); assert_eq!(service.rt.decks[1 - deck].pos, other);
+        let response = service.query(json!({"op":"command","namespace":namespace,"action":{"op":"deck_control","deck":deck,"control":{"op":"beat_jump","forward":false}}}));
+        assert_eq!(service.complete(&response["result"]["job"])["result"]["status"], "applied");
+        assert!((service.rt.decks[deck].pos - old).abs() < 1.0e-6); assert!(!service.rt.decks[deck].playing);
+        service.publish(); assert_eq!(service.state()["decks"][deck]["controls"]["beat_jump_size"], 3);
+    }
+    for control in [json!({"op":"beat_jump_size","index":10}), json!({"op":"beat_jump_size","index":-1}), json!({"op":"beat_jump","forward":0}), json!({"op":"beat_jump","forward":true,"extra":1})] {
+        assert_eq!(service.query(json!({"op":"command","namespace":namespace,"action":{"op":"deck_control","deck":0,"control":control}}))["ok"], false);
+    }
+    assert_eq!(service.query(json!({"op":"schedule","namespace":namespace,"beat":4.0,"action":{"op":"deck_control","deck":0,"control":{"op":"beat_jump","forward":true}}}))["error_code"], "invalid_schedule");
+}
+
+#[test]
+fn loop_edit_api_reports_stale_or_unusable_regions_as_rejected_and_applied_exact_bounds() {
+    let mut service=Service::new();let namespace=service.state()["expected"]["namespace"].clone();
+    let key=service.state()["decks"][0]["media_key"].clone();
+    let request=|control|json!({"op":"command","namespace":namespace,"action":{"op":"deck_control","deck":0,"control":control}});
+    let response=service.query(request(json!({"op":"loop_bounds","media_key":key,"start_seconds":0.1,"end_seconds":0.2})));
+    assert_eq!(response["ok"],true);assert_eq!(service.complete(&response["result"]["job"])["result"]["status"],"applied");
+    let old=(service.rt.decks[0].loop_start,service.rt.decks[0].loop_len);
+    for control in [json!({"op":"loop_bounds","media_key":key,"start_seconds":0.1,"end_seconds":100000}),
+        json!({"op":"loop_length","media_key":(key.as_str().unwrap().parse::<u64>().unwrap()+1).to_string(),"beats":4})] {
+        let response=service.query(request(control));assert_eq!(response["ok"],true);
+        assert_eq!(service.complete(&response["result"]["job"])["result"]["status"],"rejected");
+        assert_eq!((service.rt.decks[0].loop_start,service.rt.decks[0].loop_len),old);
+    }
+    for control in [json!({"op":"loop_bounds","media_key":key,"start_seconds":0.2,"end_seconds":0.1}),
+        json!({"op":"loop_length","media_key":key,"beats":0}),
+        json!({"op":"loop_move","media_key":key,"beats":0}),
+        json!({"op":"loop_move","media_key":key,"beats":1,"unknown":1}),
+        json!({"op":"loop_move","media_key":9223372036854775809_u64,"beats":1}),
+        json!({"op":"loop_move","media_key":"01","beats":1})] {
+        assert_eq!(service.query(request(control))["ok"],false);
+    }
+    service.publish();assert!(!service.state()["decks"][0]["playing"].as_bool().unwrap());
+    assert_eq!(service.state()["decks"][1]["loop_region"],serde_json::Value::Null);
+}
+
+#[test]
+fn deck_quantization_api_reports_pending_onsets_separately_from_accepted_gestures() {
+    let mut service = Service::new();
+    let namespace = service.state()["expected"]["namespace"].clone();
+    let request = |control| json!({"op":"command","namespace":namespace,"action":{"op":"deck_control","deck":0,"control":control}});
+    for invalid in [json!({"op":"quantize","enabled":true,"division":6}), json!({"op":"quantize","enabled":1,"division":3}),
+        json!({"op":"quantize","enabled":true,"division":3,"unknown":1})] {
+        assert_eq!(service.query(request(invalid))["ok"], false);
+    }
+    let response = service.query(request(json!({"op":"quantize","enabled":true,"division":1})));
+    assert_eq!(service.complete(&response["result"]["job"])["result"]["status"], "applied");
+    service.publish(); let state = service.state();
+    assert_eq!(state["decks"][0]["controls"]["quantize"], true);
+    assert_eq!(state["decks"][0]["controls"]["quantize_division"], 1);
+    assert_eq!(state["decks"][1]["controls"]["quantize"], false);
+    service.rt.apply(Command::DeckSeek { deck: 0, frac: 0.2 });
+    service.rt.apply(Command::DeckHotCue { deck: 0, pad: 0, del: false });
+    service.rt.apply(Command::DeckPlay { deck: 0 });
+    service.rt.apply(Command::DeckSeek { deck: 0, frac: 0.031 });
+    let response = service.query(request(json!({"op":"hold","button":{"hot_cue":0},"on":true})));
+    assert_eq!(response["ok"], true, "{response}");
+    assert_eq!(service.complete(&response["result"]["job"])["result"]["status"], "applied");
+    service.publish(); assert_eq!(service.state()["decks"][0]["controls"]["pending"]["action"]["kind"], "hot_cue");
+    let response = service.query(request(json!({"op":"hold","button":{"hot_cue":0},"on":false})));
+    assert_eq!(service.complete(&response["result"]["job"])["result"]["status"], "applied");
+    service.publish(); assert!(service.state()["decks"][0]["controls"]["pending"].is_null());
+}
+
+#[test]
 fn shipped_cli_builds_typed_versioned_envelopes_before_connecting() {
     let args = vec!["api".into(), r#"{"op":"discover"}"#.into()];
     assert_eq!(
@@ -400,4 +477,69 @@ fn state_pages_remain_within_the_wire_budget_for_escaped_names_and_maximal_count
         assert!(serde_json::to_vec(&response).unwrap().len() < ipc_transport::RESPONSE_BYTES);
         assert_eq!(response["result"]["objects"].as_array().unwrap().len(), 16);
     }
+}
+
+#[test]
+fn now_playing_api_bounds_worst_case_labels_and_drops_expired_or_disabled_data() {
+    let service=Service::new();let feed=service.engine.cmd.now_playing();
+    assert_eq!(service.query(json!({"op":"now_playing"}))["result"]["status"],"disabled");
+    let config=crate::performance_history::now_playing::Config{enabled:true,title:true,artist:true,identity:true};feed.configure(config);
+    let (generation,_)=feed.config();
+    let source=crate::performance_history::Source::Catalog{track_id:"a".repeat(32),version:u32::MAX,title:"\\".repeat(1024),artist:"音".repeat(341)};
+    feed.publish(generation,true,[Some(source.clone()),Some(source)]);
+    let value=service.query(json!({"op":"now_playing"}));assert_eq!(value["ok"],true);assert!(value.to_string().len()<crate::ipc_transport::RESPONSE_BYTES);
+    assert_eq!(value["result"]["decks"][0]["labels_truncated"],true);assert_eq!(value["result"]["decks"][0]["title"].as_str().unwrap().len(),512);assert_eq!(value["result"]["decks"][0]["artist"].as_str().unwrap().len(),510);
+    assert!(service.query(json!({"op":"discover"}))["result"]["requests"].get("now_playing").is_some());
+    std::thread::sleep(Duration::from_millis(1050));
+    let value=service.query(json!({"op":"now_playing"}));assert_eq!(value["result"]["status"],"stale");assert_eq!(value["result"]["decks"],json!([]));
+    feed.configure(Default::default());feed.publish(generation,true,[Some(crate::performance_history::Source::Unresolved),None]);
+    assert_eq!(service.query(json!({"op":"now_playing"}))["result"]["status"],"disabled");
+}
+
+#[test]
+fn headphone_api_validates_values_and_rejects_unavailable_checks_without_changing_program() {
+    let mut service=Service::new();let namespace=service.state()["expected"]["namespace"].clone();
+    let request=|control|json!({"op":"command","namespace":namespace,"action":{"op":"monitor","control":control}});
+    let master=service.rt.master;
+    for control in [json!({"op":"source","value":"pfl"}),json!({"op":"volume","value":0.5}),
+        json!({"op":"blend","value":0.75}),json!({"op":"split","value":true}),
+        json!({"op":"pfl","value":{"deck":0,"enabled":true}})] {
+        let response=service.query(request(control));assert_eq!(response["ok"],true,"{response}");
+        assert_eq!(service.complete(&response["result"]["job"])["result"]["status"],"applied");
+    }
+    service.publish();let state=service.state();assert_eq!(state["monitor"]["source"],"pfl");
+    assert_eq!(state["monitor"]["volume"],0.5);assert_eq!(state["monitor"]["blend"],0.75);assert_eq!(state["monitor"]["split"],true);
+    assert_eq!(service.rt.master,master);
+    let revision=state["expected"]["revision"].clone();
+    service.rt.apply(Command::Undo);service.publish();
+    assert_eq!(service.state()["monitor"]["blend"],0.0);
+    assert_ne!(service.state()["expected"]["revision"],revision);
+    service.rt.apply(Command::Redo);service.publish();assert_eq!(service.state()["monitor"]["blend"],0.75);
+    for control in [json!({"op":"volume","value":1.1}),json!({"op":"split","value":1}),json!({"op":"tone","value":2}),
+        json!({"op":"pfl","value":{"deck":2,"enabled":true}}),json!({"op":"volume","value":0.5,"extra":1})] {
+        assert_eq!(service.query(request(control))["ok"],false);
+    }
+    let response=service.query(request(json!({"op":"tone","value":0})));assert_eq!(response["ok"],true);
+    assert_eq!(service.complete(&response["result"]["job"])["result"]["status"],"rejected");
+    assert_eq!(service.query(json!({"op":"schedule","namespace":namespace,"beat":4,"action":{"op":"monitor","control":{"op":"volume","value":0.5}}}))["error_code"],"invalid_schedule");
+}
+
+#[test]
+fn track_input_api_retains_exact_targets_modes_arm_cue_and_saved_undo() {
+    use crate::engine::input_monitor::Mode;
+    let mut service = Service::new(); let state = service.state();
+    let target = state["objects"][2]["target"].clone(); let namespace = state["expected"]["namespace"].clone();
+    for action in [json!({"op":"track_monitor","target":target,"mode":"auto"}),json!({"op":"track_arm","target":target,"value":true}),json!({"op":"track_cue","target":target,"value":true})] {
+        let response = service.query(json!({"op":"command","namespace":namespace,"action":action})); assert_eq!(response["ok"],true,"{response}"); assert_eq!(service.complete(&response["result"]["job"])["result"]["status"],"applied");
+    }
+    assert_eq!(service.rt.tracks[2].input_monitor,Some(Mode::Auto)); assert!(service.rt.tracks[2].armed && service.rt.tracks[2].pfl);
+    service.publish(); let input=service.state()["objects"][2]["input"].clone(); assert_eq!(input["mode"],"auto"); assert_eq!(input["armed"],true); assert_eq!(input["cue"],true);
+    service.rt.apply(Command::Undo); assert!(!service.rt.tracks[2].armed); service.rt.apply(Command::Undo); assert_eq!(service.rt.tracks[2].input_monitor,None);
+    service.rt.apply(Command::Redo); assert_eq!(service.rt.tracks[2].input_monitor,Some(Mode::Auto));
+    for action in [json!({"op":"track_monitor","target":target,"mode":"sideways"}), json!({"op":"track_monitor","target":target,"mode":0}), json!({"op":"track_arm","target":target,"value":1}), json!({"op":"track_cue","target":target,"value":true,"extra":true})] { assert_eq!(service.query(json!({"op":"command","namespace":namespace,"action":action}))["ok"],false); }
+    let response = service.query(json!({"op":"command","namespace":namespace,"action":{"op":"track_monitor","target":target,"mode":"off"}})); assert_eq!(response["ok"],true);
+    let id = service.rt.session.tracks[2].id;
+    let (remove, _) = session::Request::metadata(&service.rt.session, service.engine.undo.checkpoint().epoch, session::Action::Delete { axis: session::Axis::Track, id }).unwrap();
+    service.rt.apply(Command::session_edit(remove));
+    assert_eq!(service.complete(&response["result"]["job"])["result"]["status"],"rejected"); assert_eq!(service.rt.tracks[2].input_monitor,Some(Mode::Auto)); assert!(!service.rt.session.tracks[2].active);
 }

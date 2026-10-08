@@ -39,20 +39,53 @@ impl OnePole {
 pub struct Svf {
     pub ic1eq: f32,
     pub ic2eq: f32,
+    coefficients: Option<([u32; 3], [f32; 4])>,
 }
 
+type FilterCoefficients = Option<([u32; 3], [f32; 4])>;
+
 impl Svf {
+    /// Render one filter frame with exact retained coefficients.
+    /// Takes the input, cutoff, resonance, output rate and morph; returns the original trapezoidal response while recalculating coefficients only when their inputs change.
     pub fn process(&mut self, x: f32, cutoff: f32, res: f32, sr: f32, morph: f32) -> f32 {
-        // Clamp frequency before prewarping. Clamping the angle to 0.45
-        // instead incorrectly plateaus near 6.875 kHz at a 48 kHz rate.
-        const MIN_HZ: f32 = 48_000.0 * 0.0001 / std::f32::consts::PI;
-        let max_hz = 0.45 * sr;
-        let hz = cutoff.clamp(MIN_HZ.min(max_hz), max_hz);
-        let g = (std::f32::consts::PI * hz / sr).tan();
-        let k = 2.0 - res.clamp(0.0, 0.95) * 1.8;
-        let a1 = 1.0 / (1.0 + g * (g + k));
-        let a2 = g * a1;
-        let a3 = g * a2;
+        let coefficients = self.prepare(cutoff, res, sr);
+        self.apply(x, morph, coefficients)
+    }
+
+    /// Reuse equal filter coefficients across voices in one instrument frame.
+    /// Takes filter inputs and the preceding voice's coefficients; returns the exact response with independent integrator state.
+    fn process_shared(&mut self, x: f32, cutoff: f32, res: f32, sr: f32, morph: f32, shared: &mut FilterCoefficients) -> f32 {
+        let parameters = [cutoff.to_bits(),res.to_bits(),sr.to_bits()];
+        if shared.is_some_and(|(prior,_)|prior == parameters) { self.coefficients = *shared; }
+        let coefficients = self.prepare(cutoff,res,sr);
+        *shared = self.coefficients;
+        self.apply(x,morph,coefficients)
+    }
+
+    /// Prepare exact coefficients for a retained parameter tuple.
+    /// Takes cutoff, resonance and output rate; returns the original coefficients and updates their fixed cache only when necessary.
+    fn prepare(&mut self, cutoff: f32, res: f32, sr: f32) -> [f32;4] {
+        let parameters = [cutoff.to_bits(), res.to_bits(), sr.to_bits()];
+        match self.coefficients {
+            Some((prior, coefficients)) if prior == parameters => coefficients,
+            _ => {
+                const MIN_HZ: f32 = 48_000.0 * 0.0001 / std::f32::consts::PI;
+                let max_hz = 0.45 * sr;
+                let hz = cutoff.clamp(MIN_HZ.min(max_hz), max_hz);
+                let g = (std::f32::consts::PI * hz / sr).tan();
+                let k = 2.0 - res.clamp(0.0, 0.95) * 1.8;
+                let a1 = 1.0 / (1.0 + g * (g + k));
+                let a2 = g * a1;
+                let coefficients = [k, a1, a2, g * a2];
+                self.coefficients = Some((parameters, coefficients));
+                coefficients
+            }
+        }
+    }
+
+    /// Advance this filter's independent integrators.
+    /// Takes one input, morph and exact prepared coefficients; returns the selected filter response.
+    fn apply(&mut self, x: f32, morph: f32, [k,a1,a2,a3]: [f32;4]) -> f32 {
         let v3 = x - self.ic2eq;
         let v1 = a1 * self.ic1eq + a2 * v3;
         let v2 = self.ic2eq + a2 * self.ic1eq + a3 * v3;
@@ -388,6 +421,12 @@ impl Voice {
         self.env.on();
     }
     pub fn tick(&mut self, sr: f32, cutoff: f32, res_svf: &mut Svf) -> f32 {
+        self.tick_filtered(sr,cutoff,|input,hz|res_svf.process(input,hz,0.35,sr,0.0))
+    }
+
+    /// Render one voice through a supplied filter operation.
+    /// Takes output rate, cutoff and the voice's own filter operation; returns the same oscillator and envelope result without sharing voice state.
+    fn tick_filtered(&mut self, sr: f32, cutoff: f32, mut filter: impl FnMut(f32,f32)->f32) -> f32 {
         if !self.env.active() {
             return 0.0;
         }
@@ -397,19 +436,28 @@ impl Voice {
             self.sample_rate = sr;
             self.refresh_pitch();
         }
-        self.phase = (self.phase + self.phase_increment) % 1.0;
-        self.phase2 = (self.phase2 + self.detuned_increment) % 1.0;
+        let phase = self.phase + self.phase_increment;
+        self.phase = if (0.0..1.0).contains(&phase) { phase } else { phase % 1.0 };
+        let phase = self.phase2 + self.detuned_increment;
+        self.phase2 = if (0.0..1.0).contains(&phase) { phase } else { phase % 1.0 };
         let saw = self.phase * 2.0 - 1.0;
-        let sq = if self.phase < 0.5 { 0.7 } else { -0.7 };
-        let sine = (self.phase * std::f32::consts::TAU).sin();
         let osc = match self.kind {
-            SynthInstrument::Analog => saw * 0.7 + sq * 0.3,
-            SynthInstrument::Keys => saw * 0.35 + sine * 0.65,
-            SynthInstrument::Pad => sine * 0.6 + (self.phase2 * 2.0 - 1.0) * 0.4,
+            SynthInstrument::Analog => {
+                let square = if self.phase < 0.5 { 0.7 } else { -0.7 };
+                saw * 0.7 + square * 0.3
+            }
+            SynthInstrument::Keys => {
+                let sine = (self.phase * std::f32::consts::TAU).sin();
+                saw * 0.35 + sine * 0.65
+            }
+            SynthInstrument::Pad => {
+                let sine = (self.phase * std::f32::consts::TAU).sin();
+                sine * 0.6 + (self.phase2 * 2.0 - 1.0) * 0.4
+            }
         };
         let e = self.env.tick();
         let cf = (cutoff + e * 1800.0).clamp(80.0, sr * 0.42);
-        let y = res_svf.process(osc * e * self.vel, cf, 0.35, sr, 0.0);
+        let y = filter(osc * e * self.vel, cf);
         y * 0.35 * self.clip_gain
     }
 }
@@ -553,8 +601,9 @@ impl Poly {
         if self.offline.is_some() { return 0.0; }
         let mut s = 0.0;
         let cut = self.cutoff;
+        let mut coefficients = None;
         for (v, f) in self.voices.iter_mut().zip(self.filters.iter_mut()) {
-            s += v.tick(sr, cut, f);
+            s += v.tick_filtered(sr,cut,|input,hz|f.process_shared(input,hz,0.35,sr,0.0,&mut coefficients));
         }
         s
     }
@@ -568,6 +617,7 @@ pub struct Sample {
     pub data: Vec<f32>,
     /// Immutable analysis metadata, prepared once with the media and shared by snapshots.
     pub peaks: std::sync::Arc<Vec<[f32; 3]>>,
+    pub(crate) spectrum: Option<std::sync::Arc<super::waveform::Waveform>>,
     pub bpm: f32,
     pub path: String,
 }

@@ -4,7 +4,7 @@ Generated from the in-app help catalogue. Hardware observations remain separate 
 
 ## Audio setup
 
-Start with the output quiet. Audio devices and latency reports the backend-accepted logical output, observed callback sizes and active project routing; physical negotiated rate and converter latency are unavailable through CPAL. Projects without explicit routing use outputs 1/2, mono sums them, and additional outputs are silent. Audio routing defines stable mono/stereo/multichannel aliases, independent tracks, buses, deck taps and record sources. Review and confirm changes while stopped; Save and Open retain them. Physical channel meters and quiet channel tests help verify connections. Live inputs require separate preview and confirmation. Linux profiles support ALSA and an existing JACK server, including PipeWire through its JACK library. The graph server owns rate, quantum and scheduling. Named graph ports and exact saved links appear after profile discovery; missing endpoints stay disconnected until they return. Rate changes and server loss retain the project for explicit stopped reconnect. Graph outputs do not run the ALSA physical loopback probe. Settings profiles separate saved preferences from running audio: Apply and save persists audio choices without changing the stream. Preview saved audio, Use saved audio now, then Stop and change output explicitly stops performance and changes the stream, or restart to use the saved setup. A failed change restores the prior output when possible; if rollback also fails, the retained session can still Save, New/Open and Close. Playback never resumes automatically. Optional Measure loopback requires a suitable line-level cable/interface route and explicit confirmation; it reports qualified host callback-to-callback return timing only after three reliable probes, not physical converter roundtrip. Cancellation, missing loopback and corrupt evidence produce no current measurement. The main mixer is stereo; independent routing can address additional physical outputs. the cue blend does not provide a separate headphone output. Load a built-in stem, play it, then verify sound at your physical output. Connection and meter evidence cannot prove that speakers or headphones are audible.
+Start with the output quiet. Audio devices and latency reports the backend-accepted logical output, observed callback sizes and active project routing; physical negotiated rate and converter latency are unavailable through CPAL. Projects without explicit routing use outputs 1/2, mono sums them, and additional outputs are silent. Audio routing defines stable mono/stereo/multichannel aliases, independent tracks, buses, deck taps and record sources. Review and confirm changes while stopped; Save and Open retain them. Physical channel meters and quiet channel tests help verify connections. Live inputs require separate preview and confirmation. Linux profiles support ALSA and an existing JACK server, including PipeWire through its JACK library. The graph server owns rate, quantum and scheduling. Named graph ports and exact saved links appear after profile discovery; missing endpoints stay disconnected until they return. Rate changes and server loss retain the project for explicit stopped reconnect. Graph outputs do not run the ALSA physical loopback probe. Settings profiles separate saved preferences from running audio: Apply and save persists audio choices without changing the stream. Preview saved audio, Use saved audio now, then Stop and change output explicitly stops performance and changes the stream, or restart to use the saved setup. A failed change restores the prior output when possible; if rollback also fails, the retained session can still Save, New/Open and Close. Playback never resumes automatically. Optional Measure loopback requires a suitable line-level cable/interface route and explicit confirmation; it reports qualified host callback-to-callback return timing only after three reliable probes, not physical converter roundtrip. Cancellation, missing loopback and corrupt evidence produce no current measurement. The main mixer is stereo; independent routing can address additional physical outputs. Headphone monitoring uses a chosen separate stereo output; it never replaces the main mix. Select cues, blend cue/master, set level and optional split cue in Audio routing. Load a built-in stem, play it, then verify sound at your physical output. Connection and meter evidence cannot prove that speakers or headphones are audible.
 
 Guided example (use Start this lesson in Help; Next requires observed evidence):
 
@@ -26,7 +26,7 @@ Guided example (use Start this lesson in Help; Next requires observed evidence):
 
 ## Edit and undo
 
-Open a clip's alternate actions and choose Edit clip gain. Gain changes future note onsets; already held notes retain their onset gain. Use Edit → Undo / Redo, or the active shortcut bindings, to compare. A continuous slider gesture is one named history entry. History is bounded; admission failures or truncation are shown explicitly. Transport and physical held gates are not creative edits. Piano roll offers note drawing, pointer/keyboard edits and explicit clip/loop ranges with stable note identities. It uses the same session History after Apply. This build offers frame-based picture placement alongside Session transport; it does not offer an Arrange timeline, warp editor, automation lanes or plugins.
+Open a clip's alternate actions and choose Edit clip gain. Gain changes future note onsets; already held notes retain their onset gain. Use Edit → Undo / Redo, or the active shortcut bindings, to compare. A continuous slider gesture is one named history entry. History is bounded; admission failures or truncation are shown explicitly. Transport and physical held gates are not creative edits. Piano roll offers note drawing, pointer/keyboard edits and explicit clip/loop ranges with stable note identities. It uses the same session History after Apply. Arrangement, Session, supported automation and native Linux VST3 instruments/effects use the same renderer and project History. Ableton migration retains original source state and shows playback differences before publishing a new project. Review its support matrix for warp, rack and platform limits.
 
 Guided example (use Start this lesson in Help; Next requires observed evidence):
 
@@ -59,7 +59,7 @@ Guided example (use Start this lesson in Help; Next requires observed evidence):
 
 ## Connect a controller
 
-Open the MIDI window and Retry / rescan MIDI. Settings can request all inputs, selected exact port names or disabled inputs. Check requested versus applied policy and per-port errors before playing. The native callback only queues bounded input; overflow releases that source's gates and reports counters. Factory profiles are limited, documented mappings; a matching device name is not physical compatibility proof. NS7 motorized platter and NS7II support remain unverified. MIDI clock input is an observable tick hook, not tempo synchronization or clock output. There is no editable MIDI-learn mapping UI.
+Open the MIDI window and Retry / rescan MIDI. Settings can request all inputs, selected exact port names or disabled inputs. Check requested versus applied policy and per-port errors before playing. The native callback only queues bounded input; overflow releases that source's gates and reports counters. Factory profiles and the original NS7 bridge have separate compatibility receipts; a matching device name is not physical compatibility proof. NS7II remains unverified. MIDI clock input is an observable tick hook, not tempo synchronization or clock output. MIDI Learn captures and reviews compatible controls; named mapping presets save and transfer their factory overrides with explicit exact-port activation.
 
 Guided example (use Start this lesson in Help; Next requires observed evidence):
 
@@ -89,10 +89,42 @@ Guided example (use Start this lesson in Help; Next requires observed evidence):
 
 ## Offline operation
 
-Omatainer starts without an account or cloud session. Locally available media, native projects with embedded PCM, user sampler banks, built-in instruments/effects, Help and license notices work locally. Reusable bank definitions reference local sources: retain those files or use a verified library relocation; missing sources remain explicit. Native projects embed their playable audio. Free To Use search and licensed non-premium previews require explicitly enabled internet access. Provider offline storage is unavailable. Audio plugin hosting, cloud transfer, account authentication and credential storage are not implemented. No account tokens are collected. Preferences, project envelopes and support reports reject unknown credential fields; project names, paths and audio are intentional user content, not redacted documents. Support export is a reviewed local file with an allowlisted schema, never an upload. License Source record links explicitly hand off to an external browser; that browser and host Unix proxies are outside the network-denied application test. Network filesystems, remote display/audio servers and source-build package downloads also need their own availability. Safe mode starts stopped without audio/MIDI devices; it can Open, Recover and Save locally. Network-denied fixtures qualify local software paths, not physical controllers, OS audio dropouts or perceived quality.
+Omatainer starts without an account or cloud session. Locally available media, native projects with embedded PCM, user sampler banks, built-in instruments/effects, Help and license notices work locally. Reusable bank definitions reference local sources: retain those files or use a verified library relocation; missing sources remain explicit. Native projects embed their playable audio. Free To Use search and licensed non-premium previews require explicitly enabled internet access. Provider offline storage is unavailable. Catalogued native Linux VST3 plugins work locally when their installed binaries and authorization remain available. Cloud transfer, account authentication and credential storage are not implemented. No account tokens are collected. Preferences, project envelopes and support reports reject unknown credential fields; project names, paths and audio are intentional user content, not redacted documents. Support export is a reviewed local file with an allowlisted schema, never an upload. License Source record links explicitly hand off to an external browser; that browser and host Unix proxies are outside the network-denied application test. Network filesystems, remote display/audio servers and source-build package downloads also need their own availability. Safe mode starts stopped without audio/MIDI devices; it can Open, Recover and Save locally. Network-denied fixtures qualify local software paths, not physical controllers, OS audio dropouts or perceived quality.
 
 
 ## Control reference
+
+### Arrange a song
+
+Shared sources and independent musical-beat placements
+
+Open Arrangement timeline in Setup. Retain a reviewed Session audio or MIDI clip, choose a destination track and place it at the selected range start or double-click an empty track row. Copies share source audio and keep independent start, offset, duration, repetition and gain. Drag to move; Shift-drag trims the end. Use exact beat fields, snap, zoom, selected range and the overview for long songs. The instance chooser includes placements whose track was deleted; choose a destination and move the instance to recover it. Review Use Arrangement playback and Apply with transport, decks and recording stopped in Studio mode. Apply creates one Undo entry. Play, Pause, Rewind and Seek range start use the actual transport and tempo map; the playhead follows the renderer. Save keeps sources and instances, and selected-track imports copy their song placements. Export audio offers Arrangement using the same renderer. Audio pitch resampling changes pitch and duration; independent time stretching is separate. Open Song sections and loop to create named stable-ID locators, move/rename/delete them and Save song sections during playback or recording. Previous/Next and section jumps use inherited, immediate, beat or meter-aware bar timing. Exact beat/time entry supports long songs. Set and save loop braces, toggle looping, or Loop section to next. Queued movement is visible and cancellable. Jumps exit the old loop, release old song notes and chase destination MIDI state; physical held inputs remain held. Jumps and wraps finish the current clip recording take. Stop/project replacement discard pending jumps; reopening keeps braces and loop state for deliberate Play. MIDI learn maps stable section IDs and navigation buttons.
+
+Workflow: Edit and undo.
+
+### Manage Session clips
+
+Create, organize and reuse complete clip content
+
+Open Session clips in Setup or the clip grid alternate Manage clip action. Choose source and destination by track and scene. Create MIDI clips with Ctrl+N or use Edit or import audio for audio sources. Rename, disable, choose an exact RGB color and set launch mode, musical timing and legato; commit properties with Ctrl+Enter. Ctrl+D duplicates with fresh note identities; Ctrl+M moves the original content; Ctrl+Shift+Backspace deletes. Copy and move require an empty destination and retain notes, lanes, regions, gain, reverse, loop and color settings. MIDI uses the destination track instrument and routes; audio shares immutable PCM. Stop affected clips and recording before applying in Studio mode. Every edit is one atomic Undo operation. Save a new .omatclip preset with Ctrl+Shift+S; existing files are preserved. Inspect with Ctrl+O, insert into an empty destination and audition through its normal instrument and mixer, then stop its track. Presets embed up to 128 MiB audio and preserve complete clip settings. Refresh after another project edit before audition or apply. Source files stay intact.
+
+Workflow: Edit and undo.
+
+### Edit Session audio clips
+
+Source frames, tempo, pitch, reverse, gain and loops
+
+Choose an empty or audio slot, then open Audio clip in Setup or use the clip's alternate audio action. Inspect a supported local file or reuse a shared project source. Review the rainbow waveform, zoom and source scroll; trim and loop bounds use exact half-open source frames. Pitch resampling changes pitch and duration; source tempo places the audio against the musical clock. Gain, reverse and source settings are nondestructive. Stop the target clip and recording and use Studio mode before Apply. A bounded worker decodes and prepares the edit; the renderer acknowledges one complete Undo entry. Stale targets preserve current work. Save retains the embedded shared source and all settings. Older clips keep whole-buffer stretching until explicitly converted by Apply. Use Arrangement timeline in Setup to retain a reviewed clip as a shared song source and place independent instances on tracks.
+
+Workflow: Edit and undo.
+
+### MIDI controller lanes
+
+Wire channels 1–16; CC/pressure 0–127; pitch bend 0–16383
+
+Open MIDI controller lanes in the piano roll. Choose channel and lane, enter an exact musical beat and value, then Insert controller point. Select a point in the plot or list to change or delete it. Save device label names a controller or a specific bank/program patch. Bank/program insertion sends CC 0 MSB, CC 32 LSB, then the two-byte Program Change. Pitch bend center is 8192. Apply prepares source ticks on a worker, commits one Undo entry and saves labels in project schema 15. Seek and launch restore earlier scalar controllers and the last patch before active notes. Stop releases owned notes/pedals and restores another managed owner's bend, pressure, modulation, breath or expression on a shared channel; otherwise those controls return to neutral. Volume, pan, arbitrary CC and patch selection retain their values. Imported RPN/NRPN/data-entry/channel-mode transactions retain normal playback/export but are not inferred during seek. Dense output still uses the existing 256-event block refusal limit.
+
+Workflow: Edit and undo.
 
 ### Prepare upcoming tracks
 
@@ -190,6 +222,30 @@ Render the selected Session scene from project zero with fresh DSP state, includ
 
 Workflow: Edit and undo.
 
+### Mic and auxiliary mixer
+
+Reviewed live inputs, independent mixes and deliberate talkover
+
+Open Mic & aux and review retained aliases. Select a mono or stereo input, then master, booth and raw recording mixes independently. New sources start muted. Stop playback and recording and use Studio mode before applying or removing selection. Use Audio routing to enable the intended native input; this panel never opens a device. Live gain, mute, optional three-band tone and talkover remain available in Performance Mode. Talkover offers a voice threshold, attenuation, attack/release and automatic, held or bypassed ducking. Source changes fade out before the new source fades in. Meters show source availability and decaying input/output peaks. Final-output recording includes the actual audience mix; select a raw recording alias for independent voice exclusion. Save and History retain controls; foreign selective imports keep the current external-source choices.
+
+Workflow: Offline operation.
+
+### Export master audio
+
+Reviewed scene/session range, repeats, tails and delivery format
+
+Open Audio export & recording, review the source, then choose the currently launched session or a scene. Ranges begin at the captured cursor or scene zero. Choose an exact program alias for routed projects, mono/stereo, rate, integer dither and optional peak normalization. Preroll rebuilds effects; repeated ranges copy the same audio and release sources once before the final tail. Native float32/PCM16/PCM24 WAV works without a codec tool; FLAC16/FLAC24/320 kbps MP3 requires FFmpeg. Physical input routes require real-time recording. A cancellable worker publishes a new folder only when rendering and encoding finish; existing outputs and live playback stay intact.
+
+Workflow: Offline operation.
+
+### Record a performance
+
+Exact final output or raw routed return; bounded WAV segments
+
+Review the source in Audio export & recording, choose an exact source alias, format, duration and new folder, then start recording. Final outputs include the limiter, output conversion and recovery fades; raw record aliases keep their selected tap and channel order. Recording works during Performance Mode and does not change Auto monitoring for a final-output capture. Native files split at 256 MiB. Stop or source loss finalizes the valid prefix and reports missing frames or disk errors. FLAC/MP3 encoding follows capture and retains original WAV files. Existing folders are never replaced. Review an interrupted recording folder, then recover its exact unchanged WAV prefixes; active files, foreign headers, linked files and changed reviews are refused.
+
+Workflow: Record a held note.
+
 ### Cancel video work
 
 Pending decoder or render
@@ -228,6 +284,8 @@ Workflow: Audio setup.
 
 Apply and refresh routes, choose a record alias and new WAV path, then capture on a worker. Stop keeps completed audio; Cancel removes the partial file. Missing frames, overflow, invalid samples and file failures prevent incomplete publication. Existing files are preserved. Routing, project, audio and emergency-stop changes finish the current capture.
 
+After a completed mono/stereo capture, stop transport and decks, choose its destination track and review recording placement. The review uses the original time map and captured graph delay. Place recording on song adds an editable one-shot source without changing the WAV or enabling song playback. Arrangement timeline edits its start, trim and fades. History restores the previous song; Save retains the audio and full tempo precision. Choose suitable destination effects because a print already contains its source processing. A stopped, jumped or changed recording clock refuses automatic placement and keeps the WAV for manual review. Changed files, incompatible receipts, cancellation and stale project state preserve the song.
+
 Workflow: Record a held note.
 
 ### Test a physical output
@@ -235,6 +293,22 @@ Workflow: Record a held note.
 One second at −40 dBFS; stopped transports
 
 Play a ramped 997 Hz tone on one active physical channel. Starting playback, cancellation or performance protection ends it. The tone and every independently routed output obey emergency silence. Digital meters and private software loopback do not prove hardware converter or interface behavior.
+
+Workflow: Audio setup.
+
+### Audio input monitoring
+
+In / Auto / Off; Arm; Cue
+
+In hears routed audio and suppresses audio-clip playback. Auto hears input on an armed track while no clip is sounding or a recording is active. Off hears clips and removes software input monitoring for direct hardware monitoring. Pending launches keep input until onset. Migrated tracks retain their additive route until a mode is chosen; new and duplicated tracks use Auto, disarmed. Imported tracks use Off because external input routes are excluded. Audio routing chooses exact input and record aliases and shows the input cushion, gaps and availability. Monitoring changes never open devices or change raw input recording. Cue selects this track's post-effect, pre-fader signal in the separate headphone PFL bus. Arm and mode persist with project state and Undo; Cue is transient. Input buffering and effects add latency; complete graph compensation is separate.
+
+Workflow: Audio setup.
+
+### Headphone mixing
+
+Independent stereo output, level and cue/master blend
+
+In Audio routing, choose a stereo headphone output alias and review/apply the stopped routing draft. Headphone channels cannot overlap any program route. Missing channels stay silent. Select PFL to hear selected tracks before channel gain and selected decks before channel and crossfader gains, or deck A/B to retain the original NS7 front-panel policy. Cue/master blend affects PFL headphones only; main stays unchanged. Split cue folds selected cue to the left and master to the right at half the stereo sum. Level and source changes ramp over five milliseconds. Quiet left/right checks run for one second only while stopped on an available pair; playback, route/project/output changes, cancellation and emergency stop retire them. Digital availability and meters do not prove physical sound.
 
 Workflow: Audio setup.
 
@@ -688,9 +762,17 @@ Workflow: Prepare a DJ deck.
 
 ### Export performance session
 
-New local JSON file
+New JSON, text, CSV or M3U8 file
 
-Export labels, opaque catalog IDs, boundaries and measurement counts. Media paths and fingerprints are omitted. Review user-supplied labels before sharing. Existing files are never overwritten. Performance protection excludes exports.
+JSON, text and CSV retain measured history and manual marks without media paths. M3U8 includes only played entries and requires explicit file-location consent plus the exact recorded local version. Unavailable entries refuse the whole playlist. Existing files are never overwritten. Performance protection excludes exports.
+
+Workflow: Prepare a DJ deck.
+
+### Optional now-playing feed
+
+Preferences → Automation and remote control
+
+Off by default. Apply enables a read-only now_playing automation endpoint and chooses title, artist and opaque identity fields. Only recent renderer-confirmed digital output contributes tracks. Muted, paused, disabled, stale and disconnected feeds remove labels. Paths and fingerprints are never published. This does not measure speakers or listening.
 
 Workflow: Prepare a DJ deck.
 
@@ -723,6 +805,14 @@ Workflow: Prepare a DJ deck.
 Saved collections; All tracks is a virtual view
 
 Choose a named crate or All tracks. Search crate names separately from tracks, filter saved favorites, or reveal the selected track’s direct manual and automatic memberships. Choosing discovery results retains the original track query, selection and scroll for Return to previous crate view. Nested children are separate views. Use Alt+Up/Down to browse the filtered results and Alt+Home/End for the first/last. Learn Browse crates with an explicit relative encoder and Return with a note button; controller events capture exact crate identities. Browsing remains available during performance protection; pinning and edits require Studio. Closing this manager does not cancel an admitted edit.
+
+Workflow: Prepare a DJ deck.
+
+### Import local playlists
+
+M3U, Apple XML, rekordbox XML, NML 19 and legacy Serato; 4096 references in 128 nodes
+
+Open Import playlists from Named crates. Choose an absolute UTF-8 file and optional explicit path-prefix mapping. Review resolved local containers, missing paths, protected/provider-only entries and duplicates. Select playlists and explicitly permit any reported exclusions before importing. Folder hierarchy and first-occurrence membership are retained; original repeated order and source metadata stay in import provenance. Smart rules are not recreated. Unchanged sources preserve native edits; changed sources require an explicit new snapshot. Sibling name conflicts are shown in review. Existing exact versions retain preparation. Changed media refuses publication and requires another review. Closing the panel does not cancel an admitted operation; Cancel works before the catalog save claim. Source files are never rewritten.
 
 Workflow: Prepare a DJ deck.
 
@@ -794,7 +884,7 @@ Workflow: Prepare a DJ deck.
 
 Local redacted evidence
 
-Inspect bounded structured events, numeric routing and performance counters. No uploader or audio plugin host exists. Original media, paths, titles, device names, raw errors, credentials and panic payloads are excluded.
+Inspect bounded structured events, numeric routing and performance counters. Reports stay local. Plugin hosting uses isolated native processes; support reports retain only their allowlisted counters. Original media, paths, titles, device names, raw errors, credentials and panic payloads are excluded.
 
 Workflow: Stop and recover.
 
@@ -1486,6 +1576,22 @@ Cancel keeps the previous applied routing when it wins before the worker's commi
 
 Workflow: Connect a controller.
 
+### External song clock input
+
+One source; 24 clocks per quarter; 40–240 BPM
+
+Choose one connected MIDI input by its exact name and identity. New sessions use Internal. Start starts at beat zero on the next clock; Continue resumes the held or complete song-position sixteenth on the next clock. Stop preserves clip identities and releases their notes while independent live notes and unsynced DJ decks keep their owners. Small timing errors correct forward speed smoothly. Select Keep playing at last tempo or Stop song for loss after 250–2,000 ms. Accepted clocks, estimated tempo, jitter, loss and reacquisition are confirmed runtime status. Local song transport, seeking or tempo edits return to Internal; source changes, safety recovery and project replacement discard old pending transport. Imported conductor maps remain stored. Following an output clock echo is refused. The choice applies to this session; MIDI timing from physical devices requires separate qualification.
+
+Workflow: Connect a controller.
+
+### Song MIDI clock output
+
+24 pulses per quarter; 1–8 exact outputs; −500 to +500 ms
+
+Choose clock outputs independently of MIDI inputs and track note routes. Save the profile, then check the applied destinations and sync status in the MIDI panel. Clock, Start, Continue, Stop and song position follow song/session audio samples rather than repaint. DJ decks remain separate. Count-in does not start the external song. Positive compensation delays output; negative compensation advances within available audio lookahead. Unknown backend timing uses a one-buffer estimate and is visible. Stop the song before changing active destinations or compensation; disabling clock can stop external transport while the song continues. Realtime transport echoed from clock destinations is ignored, including a short guard after output stop; musical controls and received clock counters remain available. Position resumes use MIDI's six-clock song-position units; sub-sixteenth positions round down. Starting after beat 4095.75 refuses because song position cannot represent it. A stream already running beyond that beat continues. Missing or ambiguous ports never substitute another device. Output failure, queue overflow, callback loss and emergency recovery stop external transport and require explicit retry. Sent means the output backend accepted messages; device-side timing needs physical qualification.
+
+Workflow: Connect a controller.
+
 ### All notes off / reset MIDI outputs
 
 Explicit output-owner reset
@@ -1834,7 +1940,7 @@ Workflow: Prepare a DJ deck.
 
 Percent; selected ±8, ±16 or ±50 range
 
-Adjust playback rate around zero. Pitch lock determines whether the file's pitch follows the rate. Center resets to the original rate.
+Adjust playback rate around zero. GUI and relative encoder changes are direct; absolute MIDI faders wait until they reach or cross the visible orange software target. The first crossing acquires without moving the base pitch. Changes to source, deck layer, range, Sync mode or another pitch editor require pickup again. Sync stays enabled until you explicitly choose Off. Hold the native −/+ buttons with mouse, Space or Enter for an 8 percent temporary bend; release returns to the base rate. Original source BPM, local grid BPM, effective BPM and range appear separately in Sync settings. Pitch lock determines whether the file's pitch follows the rate. Center resets to the original rate.
 
 Workflow: Prepare a DJ deck.
 
@@ -2054,11 +2160,27 @@ Rehash the reviewed file and recheck its captured filesystem location before sav
 
 Workflow: Prepare a DJ deck.
 
-### Hot cue
+### Deck performance pads
 
-Eight positions per deck
+Eight fixed pad IDs; independent performance modes
 
-An empty slot stores the current position; a filled slot jumps there. Shift-click or Delete cue in alternate actions removes it. Loading and preparation follow the exact source identity.
+Choose Hot Cue, Roll, Slice, Sampler, Saved Loop, Auto Loop, Manual Loop, Velocity Sampler or Pitch Cue independently on each deck. Parameter buttons change size, slice length or bank; Shift changes the slice domain or moves the loop. Held pads release their original action after mode, profile or deck-layer changes. Hot Cue stores or jumps to a position; Shift or Delete cue removes it. Saved loop pads retain their fixed IDs and source-qualified names.
+
+Workflow: Prepare a DJ deck.
+
+### DJ FX units
+
+Two units · three slots · independently assigned sources
+
+Assign each unit to Deck A/B, a selected sampler destination, or Master. Several assignments process each source separately; a deck plus Master applies the unit twice. Deck pre/post placement is around the crossfader and leaves PFL before it; sampler placement is around sampler volume, then follows its ordinary track route; master placement is around master volume. Echo follows the musical clock or explicit milliseconds, capped by its prepared two-second history with the applied duration shown. Reverb decay and lowpass cutoff use the same parameter control. Switching a slot or source off fades new wet input over two milliseconds while keeping dry audio and stereo tails. Change placement/destination only with all slots off after tails settle. Choosing another effect explicitly resets that slot history. These live units retain the existing controller banks and do not alter manufacturer addresses.
+
+Workflow: Prepare a DJ deck.
+
+### Chromatic cue pads
+
+Cue root; three eight-note ranges; original-key reset
+
+Choose Pitch Cue on the named deck and select an existing cue. Low gives -6 through +1 semitones; Center -3 through +4; High -1 through +6. Each pad displays its interval and retriggers that cue immediately, independently of deck quantization. The newest held pad owns the note; releasing it returns to an older surviving pad or the saved deck key. A stopped cue auditions while held, then returns to its cue. Playing playback continues at the chosen source position. Shift-pad chooses an existing root; ordinary parameter changes the range and Shift-parameter selects another existing cue. Original key cancels pad holds and resets saved transposition to zero in one undoable edit. Mode, root/range changes, focus loss, source replacement and safety stop retire original pad actions. Forward tempo/pitch ratios 0.5–1.5 are supported; scratch, reverse and wider tempo visibly bypass cue pitch. Root, range and mode are transient; existing cue positions and base key remain saved. Manufacturer mode IDs remain unchanged; a learned note can explicitly select Pitch Cue.
 
 Workflow: Prepare a DJ deck.
 
@@ -2099,6 +2221,22 @@ Workflow: Prepare a DJ deck.
 0–source duration in seconds
 
 Seek within loaded media. Seeking resets grain history with a bounded transition; it does not change the stored file. A stopped deck stays stopped.
+
+Workflow: Prepare a DJ deck.
+
+### Beat jump
+
+1/8–64 quarter-note beats; default 4
+
+Jump backward or forward by the displayed size without starting a stopped deck or changing its cue. Manual tempo anchors define the musical distance; otherwise use the source BPM. Active loops retain their bounds and wrap the destination within their musical span. Integer jumps preserve fractional beat phase except at file limits or when wrapping a non-integer loop. Bleep, roll and slip return clocks move by the same musical distance. Shift+[ / Shift+] jump on the selected deck; Alt+[ / Alt+] change its size. MIDI Learn exposes backward, forward, smaller and larger Note actions for either deck. Sizes remain for this launch across source loads; they are not saved preparation.
+
+Workflow: Prepare a DJ deck.
+
+### Hold Cue audition
+
+Press / release; independent inputs
+
+From pause, Cue stores the current main cue and auditions while held. Release returns to that cue and pauses unless Play was pressed during the hold. While playing, Cue stops and returns; release does not restart. Repeated taps stutter from the cue. Hold the visible CUE button, focused Space/Enter or the deck's Cue shortcut (A/L by default). Assistive Click toggles a visible hold; Press/Release Cue actions are also available. MIDI Learn provides Deck hold Cue audition for Note On/Off; existing one-shot Deck set/return Cue remains available. Local and MIDI owners release independently. Focus loss, dialogs, source replacement and safety stops retire local holds. The command palette and platter's Cue action retain one-shot set/return behavior.
 
 Workflow: Prepare a DJ deck.
 
@@ -2144,9 +2282,9 @@ Workflow: Prepare a DJ deck.
 
 ### Quantize
 
-On / off
+Deck on / off; 1/8 to 4 beats
 
-Toggle session launch and supported deck cue/loop quantization. Pending clip launches display queued until the selected beat boundary.
+Toggle this deck's cue and loop quantization independently of session launches. Choose a division beneath the waveform. Queued onsets show their mapped beat and source time; release, scratch, stop or an input reset cancels them. Unprepared tracks use their source BPM. Settings last for this app launch.
 
 Workflow: Prepare a DJ deck.
 
@@ -2155,6 +2293,14 @@ Workflow: Prepare a DJ deck.
 Source positions
 
 Primary action sets loop in; right-click or Loop out action sets loop out. The loop needs a valid ordered region.
+
+Workflow: Prepare a DJ deck.
+
+### Loop editor
+
+64 source frames minimum; 1/8–64 beat presets
+
+Expand Loop editor below each platter. Edit exact source seconds, drag at one-source-frame precision, or nudge either edge one frame. The waveform shows the applied boundaries. Choose a fractional or multi-bar length, then Set loop length; this prepares the region without starting playback or enabling a stopped loop. Move by the selected beat increment while preserving the complete musical length through tempo anchors. Track edges shift the whole loop into range; an oversized or reversed region is refused. A changed source identity or a held roll/slice refuses the edit. Moves preserve the active playhead's relative musical position. Applied regions follow the existing preparation, project and Undo owners; size selectors are local drafts. The saved-loop panel keeps eight named slots with stable IDs. Save copies the applied bounds; Recall prepares a slot without starting; Activate jumps to its start and honors deck quantization. Rename, move up/down and Delete share native Undo. Display order never retargets learned pad bindings. Reload restores saved slots, selection and armed region with playback stopped. Cue loop controls explicitly move a selected cue to a saved loop start and link the two. Ordinary cue triggers then jump and activate that region together at the selected deck quantization. Linked cues display the saved slot ID. Cue only jumps without activating the region and disables a current active loop. Reordering keeps the association; deleting either marker clears its link. Preparation follows exact media versions and the existing catalog save/import/export and project owners.
 
 Workflow: Prepare a DJ deck.
 
@@ -2187,6 +2333,22 @@ Workflow: Prepare a DJ deck.
 Effective beats per minute
 
 Match the unfavored deck to the favored deck's file BPM times pitch rate. If both play, align the unfavored phase. The favored position does not jump.
+
+Workflow: Prepare a DJ deck.
+
+### Deck sync mode
+
+Off; Tempo; Beat; Bar (4 beats)
+
+Tempo follows the selected leader without changing your beat offset. Beat aligns the nearest beat; Bar aligns the first beat of a four-beat DJ bar. A stopped deck stays armed without starting playback. Jog, scratch or seek keeps the new offset in Tempo mode; select Beat or Bar again to re-arm. Re-arm beat always requests beat alignment.
+
+Workflow: Prepare a DJ deck.
+
+### Sync leader
+
+Transport; Deck A; Deck B
+
+Choose the clock that sets the shared tempo. A deck leader follows its pitch control. The other deck follows only when its sync mode is enabled. Stopping, unloading or replacing the leader retains the last tempo and releases active phase alignment. No new leader is chosen automatically. Re-arm alignment explicitly after the leader returns.
 
 Workflow: Prepare a DJ deck.
 
@@ -2293,6 +2455,30 @@ Source quarter-note beats and velocity 1–127
 Enter pitch, start, length, velocity and mute. Add note creates a new identity; Set selected note values applies these values to each selected note while retaining its identity. Movement buttons change selected positions relatively.
 
 Workflow: Record a held note.
+
+### MIDI step entry
+
+Stopped transport; quarter-note, straight or triplet steps
+
+Choose a step duration and the visible cursor. Insert cursor pitch, advance with a held chord, rest, tie the previous chord or delete the last step. Enable Computer musical keyboard and focus its input button: A W S E D F T G Y H U J K play C through C; Z/X change octave; C/V change velocity; Space advances, Shift+Space ties and Backspace deletes. Record steps on key release inserts a complete chord when its last key is released. Repeats are ignored; focus loss, text entry, Apply and closing release audition notes. Apply commits the draft as one Undo entry.
+
+Workflow: Record a held note.
+
+### Rhythm generation
+
+Up to eight voices, 64 steps per voice and 8192 notes
+
+Set each voice's pitch, independent steps and duration, pulses, rotation, density, velocity and accent interval. Swing and gate use fractions: 0.2 swing delays odd steps by 20% of one step; 0.5 gate holds for half a step. Density 0 is empty and 1 retains all pulses. The exact integer seed makes variations repeatable. Preview spans the least-common loop, keeps existing notes unless Replace draft notes is selected, and writes ordinary editable notes. Restore works until preview notes or loop bounds are edited; Apply commits one Undo change. Common periods above 262144 beats or 65536 generated steps are refused. Timing stays in quarter-note beats through meter or scale changes; pitches remain explicit.
+
+Workflow: Record a held note.
+
+### MIDI transformations
+
+Reversible selected-note drafts
+
+Choose a stable note selection and preview Quantize, Recombine, Velocity curve, Stretch, Reverse or Time curve. Starts/ends and strength are explicit. Draw curves or edit points; seeded settings history regenerates from the original selection. Restore returns the original notes and lanes; Keep makes this preview the next draft original. Apply MIDI edit commits the complete draft once through History. Poly pressure and explicitly chosen MPE member expression follow unique note identities; ambiguous voices refuse the operation. Other channel automation and metadata retain their timeline. Source-tick rounding and before/after extent, gaps, overlap and duration are visible. Ordinary note editing waits until Keep or Restore.
+
+Workflow: Edit and undo.
 
 ### MIDI clip and loop bounds
 
@@ -2520,9 +2706,9 @@ Workflow: Record a held note.
 
 ### Sampler waveform
 
-256 sampled PCM positions
+Source peaks and frequency energy
 
-Display bounded actual PCM samples in separate left and right lanes, plus prepared range markers. This sampled preview can miss narrow peaks and is not a complete peak analysis; audition checks the prepared sound.
+Display prepared stereo peak envelopes with left above and right below, plus range markers. Red represents bass, followed by orange, yellow, green, cyan, blue and violet toward treble. Overlapping frequency bands are measured at the source sample rate. Detail follows screen pixels and preserves narrow transients. Legacy samples without detailed analysis use the sampled PCM preview.
 
 Workflow: Record a held note.
 
@@ -2606,6 +2792,46 @@ Broaden the current query without changing the named crate. Returning restores t
 
 Workflow: Prepare a DJ deck.
 
+### Phrase slicer
+
+Moving or repeating source domain; independent trigger timing
+
+Select Slice pad mode on either deck. Choose a 2–64-beat phrase, Moving to follow the original background playhead or Repeating to retain that phrase. Eight pads address eight exact source ranges through every manual tempo anchor; the phrase bar shows their boundaries and active or waiting slice. Repeat length changes the held loop length; Trigger timing separately chooses Immediate or a 1/8–4-beat onset against the original background rather than the audible slice loop. Releasing a pending pad cancels its original request; the final release returns to the background and restores the prior loop. Leaving the mode, pausing, explicit seeking, source replacement and safety stop retire temporary work and restore the original loop. Settings are independent transient deck controls.
+
+Workflow: Prepare a DJ deck.
+
+### Reverse and censor
+
+Independent native latch and momentary holds
+
+REV toggles reverse until changed; physical reverse holds remain independent. CENSOR reverses temporarily while retaining an advancing forward timeline, then returns on the final local or controller release. Hold mouse, Space, Enter or touch; assistive Click toggles a visible hold and Press Censor/Release Censor are explicit actions. Native key holds end when focus moves. Source, project, safety and deliberate native workspace boundaries retire original holds. Waveform direction and native status are renderer-confirmed; controller feedback shares that state. Active loops wrap backward inside their original bounds; file start clamps without wrapping to the file end. Reverse bypasses tempo-only key processing while retaining the saved requested key settings. Reverse latch is transient and clears at media/project/safety replacement. Roll uses the deck quantization division for onset when enabled, otherwise starts immediately at the actual source position. The newest held roll has priority; release restores the newest remaining hold, and final release resumes the advancing original timeline and loop.
+
+Workflow: Prepare a DJ deck.
+
+### Slip playback
+
+Independent deck; immediate or musical release
+
+Open slip… to enable each deck and choose Immediate or a beat division. Scratch, held cue/hotcue and temporary roll/slice gestures share one background timeline. Overlapping gestures keep the original root; the final release returns immediately or waits for the selected musical boundary through manual variable-tempo anchors. The panel shows the shadow and pending source return position. Pause, explicit seeking, source change, project replacement and safety stop cancel that transient timeline. New app instances start with Slip disabled; no physical input is required to configure it.
+
+Workflow: Prepare a DJ deck.
+
+### Deck key shift
+
+−6–+6 semitones; source-qualified
+
+Open key shift… for confirmed independent offsets, Reset, original/effective source key provenance and an explicit chosen target. Match chooses the closest same-mode offset and enables key lock in one undo edit. Manual shift leaves lock independent: with lock off the tempo fader still bends the shifted key. Supported forward tempo is 50–150%, further bounded by the displayed interval when key lock is on. Scratch, reverse and out-of-range processing visibly bypass the shift. Unknown keys and opposite major/minor mode refuse matching. Offsets save in project state version 28; source tags and files are unchanged.
+
+Workflow: Prepare a DJ deck.
+
+### Continuous playback
+
+Independent deck · manual crate order · finite or repeat
+
+Enable a deck to continue through a captured manual ordered crate. A playing track finishes first; a paused crate member resumes. Otherwise the first member loads. Missing or unreadable tracks are skipped and reported. Repeat returns to the first member, but an entirely unavailable pass stops. Disable cancels future automatic starts and leaves current playback under manual control. Manual track or transport changes, project decisions and safety changes stop automatic playback. Other decks and mixer levels remain independent. Reopening starts disabled.
+
+Workflow: Prepare a DJ deck.
+
 ### Scan library
 
 Background filesystem discovery
@@ -2650,7 +2876,7 @@ Workflow: Prepare a DJ deck.
 
 128 tracks, 512 scenes; worker preparation and bounded Undo
 
-Create audio/MIDI tracks and scenes; rename, reorder by display position, choose RGB colors, duplicate or delete. Go to track and Go to scene reveal any active cell, including offscreen rows and columns. All controls accept keyboard and assistive actions. Reorder preserves playing clips, automation, compose targets and stable controller slots. Duplicates share immutable embedded audio and copy notes/settings with fresh IDs, starting stopped. Delete ends that target's captures and voices; Undo restores content without inventing a held key or restarting playback. Limits are 65536 session notes, 8192 per clip, 16 MiB MIDI lanes, 64 MiB native metadata and 256 MiB prepared effect buffers, plus existing PCM/edit/undo budgets. A refused or cancelled edit preserves current work. MIDI routing Apply/Retry attaches a route to the current track identity after deletion/reuse or project change.
+Create audio/MIDI tracks and scenes; rename, reorder by display position, choose RGB colors, duplicate or delete. Scene launch properties offer an optional 40–240 BPM tempo, time signature, launch grid and Stop/Keep policy for empty slots. Save creates one Undo entry. A scene changes all participating tracks and timing at one boundary; disabled clips remain untouched and Add scene keeps empty tracks. A chosen tempo or meter replaces the song tempo map from that boundary; inherited timing keeps the map. Odd meters drive click, count-in, bar labels and bar launch grids. Queued scene changes can be cancelled; Stop, seek, scene deletion or changed properties discard them. Save retains scene properties and current meter; queued launches never resume on reopen. Go to track and Go to scene reveal any active cell, including offscreen rows and columns. All controls accept keyboard and assistive actions. Reorder preserves playing clips, automation, compose targets and stable controller slots. Duplicates share immutable embedded audio and copy notes/settings with fresh IDs, starting stopped. Delete ends that target's captures and voices; Undo restores content without inventing a held key or restarting playback. Limits are 65536 session notes, 8192 per clip, 16 MiB MIDI lanes, 64 MiB native metadata and 256 MiB prepared effect buffers, plus existing PCM/edit/undo budgets. A refused or cancelled edit preserves current work. MIDI routing Apply/Retry attaches a route to the current track identity after deletion/reuse or project change.
 
 Workflow: Edit and undo.
 
@@ -2682,7 +2908,7 @@ Workflow: Mix a session.
 
 Track × scene
 
-Click launches once; right-click launches looping. Shift-click explicitly arms composition; Alt-click opens gain. Shift+F10 exposes named actions. Queued launch is distinct from playing.
+Use Session clips to choose Trigger, Gate, Toggle or Repeat, inherited Global timing or an explicit musical grid, and Legato. Primary mouse or held Space/Enter uses those settings. Trigger starts on press; Gate stops on release; Toggle stops on the next press; Repeat retriggers while held, on its grid or at clip length for Immediate. A queued switch keeps the old clip sounding until its boundary. Legato carries its musical phase into the new length. Right-click launches looping; Shift-click explicitly arms composition; Alt-click opens gain. Shift+F10 exposes configured Press/Release and Cancel queued clip transition, plus explicit one-shot and loop actions. Assistive click toggles Gate/Repeat holds; Trigger/Toggle click sends a complete press. Queued, playing and stopping states are distinct. Releasing outside the clip or changing selection still releases the original held target. Native reopening retains settings, but Gate/Repeat never resume without a new hold.
 
 Workflow: Record a held note.
 
@@ -2754,7 +2980,15 @@ Workflow: Connect a controller.
 
 256 exact-port assignments; one captured gesture
 
-Choose a performance action, target and compatible message type. Relative encoders require an explicit format and sensitivity. Capture consumes one gesture for review; unrelated controls retain their mapping. Conflicts require Replace. Test submits the captured action through ordinary control admission. Add/Replace/Edit/Remove affect this run; Save MIDI assignments retains the active profile after its durable preferences receipt. Remove restores any built-in action. Cancel, close, timeout and disconnect end learning; existing assignments remain. Input changes release older source gates and fence stale queued messages. Missing exact ports remain unavailable until recaptured.
+Choose a performance action, target and compatible message type. Song named section uses the stable ID displayed in Arrangement; previous/next, loop toggle and cancel need no deck target. Song jumps use global timing and press edges. Deleted or undone section IDs are never reused for a new section. Choose absolute CC, a 14-bit CC pair, pitch bend or relative CC for scalar controls. Relative formats are explicit: offset binary centers at 64; two’s complement centers at 0; signed bit treats 0/64 as neutral, 1 as forward and 65 as backward. Direction, limits and sensitivity belong to each assignment. Paired controllers 0–31/32–63 share a port and channel. Standard order clears the fine value on a coarse update and retains coarse state for later fine updates. Choose LSB-first paired order explicitly for controllers that use it. Capture waits for both bytes within one second; mapping changes and input resets clear pair state. Relative parameters follow the current engine value, including edits from the UI or another controller. Capture consumes one gesture for review; unrelated controls retain their mapping. Conflicts require Replace. Test submits the captured action through ordinary control admission. Add/Replace/Edit/Remove affect this run; Save MIDI assignments retains the active profile after its durable preferences receipt. Remove restores any built-in action. Cancel, close, timeout and disconnect end learning; existing assignments remain. Input changes release older source gates and fence stale queued messages. Missing exact ports remain unavailable until recaptured.
+
+Workflow: Connect a controller.
+
+### MIDI mapping presets
+
+32 named factory overlays per profile; 256 active assignments
+
+Save a selected exact port's learned overrides as a named definition. Duplicate, rename, delete or export definitions without changing active assignments. Portable version 6 JSON omits backend port IDs; Import validates the entire file for explicit review and bank save. A conflicting name needs a new name. Review load or factory defaults for one unique connected exact port; Apply checks its config revision, source owner and active profile again. Reconnects and other edits require fresh review. Unlisted factory controls and other port assignments remain intact. Save MIDI assignments persists the applied layer; bank save alone does not activate it. All file work is cancellable and owned by Preferences. A failed save retains previous settings and live assignments.
 
 Workflow: Connect a controller.
 
@@ -3220,15 +3454,19 @@ The in-app Help window shows the active bindings. Defaults follow; text fields a
 - 7: Launch scene 7
 - 8: Launch scene 8
 - Q: Play / pause deck A
-- A: Cue deck A
+- A: Hold Cue audition deck A
 - W: Toggle deck A tempo sync
 - P: Play / pause deck B
-- L: Cue deck B
+- L: Hold Cue audition deck B
 - O: Toggle deck B tempo sync
 - [: Crossfader fully to A
 - ]: Crossfader fully to B
 - F: Load selected crate item onto selected deck
 - ? (Shift+/): Show / hide contextual help and lessons
+- Shift+[: Beat jump backward on selected deck
+- Shift+]: Beat jump forward on selected deck
+- Alt+[: Smaller beat jump on selected deck
+- Alt+]: Larger beat jump on selected deck
 - F1: Show / hide contextual help and lessons
 - Ctrl+M: Show / hide MIDI window
 - Escape: Close effect chain

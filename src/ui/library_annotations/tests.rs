@@ -30,8 +30,9 @@ impl Drop for Files {
     }
 }
 pub(in crate::ui) struct Gui {
+    pub(in crate::ui) audio: [f32;256],
     pub(in crate::ui) app: App,
-    pub(in crate::ui) rt: RtEngine,
+    pub(in crate::ui) rt: Box<RtEngine>,
     ctx: egui::Context,
     nodes: Vec<(NodeId, Node)>,
     time: f64,
@@ -50,8 +51,9 @@ impl Gui {
         let ctx = egui::Context::default();
         ctx.enable_accesskit();
         let mut gui = Self {
+            audio: [0.0;256],
             app,
-            rt,
+            rt: Box::new(rt),
             ctx,
             nodes: vec![],
             time: 0.0,
@@ -77,7 +79,7 @@ impl Gui {
             |ctx| self.app.update_frame(ctx),
         );
         self.nodes = out.platform_output.accesskit_update.unwrap().nodes;
-        self.rt.process(&mut [0.0; 256]);
+        self.rt.process(&mut self.audio);
         self.rt.publish_for_test();
     }
     pub(in crate::ui) fn wait(&mut self, mut condition: impl FnMut(&Self) -> bool) {

@@ -1,0 +1,44 @@
+# DJ library discovery and reviewed migration
+
+This implementation belongs to the single completion todo [#511](https://github.com/michaelmonetized/omatainer/issues/511) and PR [#510](https://github.com/michaelmonetized/omatainer/pull/510). It extends the existing native **Named crates → Import playlists** route. Open **Discovered DJ libraries**, inspect source candidates, choose **Review source**, select folders/playlists and review failures and conversion warnings before importing. The review also accepts an explicit file path and one exact source-to-local prefix mapping.
+
+## Format support
+
+| Source | Accepted data | Retained native fields | Reported limits |
+| --- | --- | --- | --- |
+| M3U/M3U8 | UTF-8/ASCII; extended M3U magic also works with unusual filenames | Playlist name, first-occurrence membership, ordered original references and source title/artist hints | Legacy encodings require UTF-8 export; providers remain unresolved |
+| Apple Music/iTunes XML | XML plist 1.0, UTF-8 or BOM-labelled UTF-16 | Persistent playlist/folder identities, hierarchy, names and exported membership | Smart rules become static snapshots; protected/subscription references remain unresolved |
+| rekordbox XML | DJ_PLAYLISTS Version 1.0.0, UTF-8; KeyType 0/1 | Folders/order, BPM/text key, ratings, genre/group/comments/color, eight hot cues, eight saved loops and bounded 4/4 tempo anchors | Memory cues, extra slots, other meters and source-only fields are reported; album/credits/play counts are retained as source notes, not native metadata |
+| Traktor NML | NML VERSION 19, UTF-8; static LIST playlists | Folders/order, BPM/text key, genre/comments, hot cues, loops, load cue and first fixed-tempo grid marker | Numeric musical keys, ranking, additional grid markers, other cue types and source-only fields are reported; smart/dynamic lists require static export |
+| Serato legacy crates | vrsn = 1.0/Serato ScratchLive Crate; framed UTF-16BE ptrk records | Crate hierarchy encoded by Parent%%Child names and volume-relative ordered membership | Crates contain no supported cue/grid database payload; database V2 and newer Serato library formats need a supported export |
+| Other vendor databases/player media | Named candidates such as master.db, export.pdb and database V2 | Source location and actionable diagnostic | Encrypted/unknown layouts are refused, with XML/NML/M3U export routes; an empty library is never fabricated |
+
+Parsers are independently authored. The rekordbox fields follow its [published XML format](https://cdn.rekordbox.com/files/20200410160904/xml_format_list.pdf). The legacy Serato framing follows the [format author's published notes](https://github.com/mixxxdj/mixxx/wiki/Serato-Database-Format), while [Serato's own documentation](https://support.serato.com/hc/en-us/articles/204022904-What-is-in-the-Serato-folder) identifies home/external-drive library locations. NML 19 field interpretation was cross-checked against its public exporter implementations; no vendor executable script, database code or music is copied into the app.
+
+## Discovery boundaries
+
+The app probes each root's known vendor directories before its general tree, preserving explicit custom-root priority. Each page visits at most 10000 entries, publishes at most 1024 candidates and stops its traversal after three seconds. Unprotected discovery automatically resumes retained pages; Cancel pauses that work. A stalled worker receives termination after ten seconds, and prior sources remain visible. Kernel-blocked reads can delay process exit; at most four such workers await retirement. Parent-directory file notifications and mount changes trigger debounced fresh scans. Stale cursors refuse changed mount inventories; changed directory membership restarts that directory behind the other roots, with at most two retries and an explicit notice when it remains unstable.
+
+Bounds include 64 explicit roots, 256 initial mount roots, 64 directory levels, 4096 pending directories, 16384 visited directory identities, a 1 MiB cursor reserve, 2 MiB requests and 8 MiB responses. The UI retains at most 4096 source candidates. Each page shows at most 127 individual notices plus an explicit overflow notice. Depth/queue/memory exclusions require narrower roots and are shown in the result. Process/device/runtime trees are excluded; build/cache trees are skipped by default and can be selected through an exact custom library directory. Symlinks are skipped and repeated directory device/inode identities are suppressed. Source files over the 32 MiB import limit require a smaller export. Closing the panel does not cancel an admitted scan/import; Cancel and performance protection have separate explicit effects.
+
+These are last discovered candidates. Reviewing a source rechecks its current descriptor, mount and bytes. Confirming the review rechecks its SHA-256 digest, captured mount view, media version and catalog identities. Discovery and import perform no source writes and no audio/MIDI callback filesystem work. An inaccessible root is reported; it is not described as searched successfully.
+
+Removable block filesystems use the existing real filesystem UUID plus relative path and reject ambiguous cloned identities. Current mount/namespace guards protect accesses. Internal paths and namespaces without an enrolled block identity, including some FUSE/network recovery views, remain local File references and require explicit relinking after path changes. This does not promise a portable UUID for every filesystem namespace.
+
+## Catalog and repeat imports
+
+Schema 18 stores source identity, format/version, exact source digest, collection identity, original ordered references and supported/source-only track metadata. All repeated positions remain in provenance even though native crate membership holds each track once. The provenance reserve is 32 MiB with at most 4096 collections and 100000 original references. Older catalogs migrate without invented provenance; older headers cannot hide new fields.
+
+An unchanged source reuses the imported crate identity and preserves native edits, including renamed/moved folders. A changed source requires **Import a changed source as a new snapshot**, retaining earlier crates. Name conflicts get distinct destination names shown before publication. Required ancestors and empty exported folders/playlists are retained. Existing exact tracks keep native preparation and metadata; newly added tracks receive the supported imported preparation. Imported tempo survives embedded-tag rescans and analysis, while user corrections take precedence. Source title/artist hints and unsupported fields remain available in provenance.
+
+The sole catalog owner publishes tracks, hierarchy and provenance as one candidate transaction. Cancellation, source mutation, a stale catalog or a failed pre-replacement save keeps the previous catalog. A post-replacement durability warning uses the actual persistence receipt. Backup/restore and native reopen retain provenance.
+
+## Qualification
+
+The source-bound receipt is [dj-library-migration-receipt.json](dj-library-migration-receipt.json). The independently authored parser/model/native egui fixtures cover content detection, Unicode, ordering, folder ancestry, duplicate source/track identities, imported preparation, unchanged/changed snapshots, naming conflicts, original source-only fields, provenance limits, corruption, cancellation, exact version checks, native publication, save/reopen and backup/restore. The actual compiled worker exercises IPC, paging, notification enrollment, cancellation and failed children.
+
+A native 10021-entry authored local fixture took two pages: 154 ms and 14 ms wall time, 82 ms and 12 ms worker traversal time. Five-millisecond process sampling observed a 19184 KiB peak RSS and five descriptors. These measurements describe this fixture and binary; the 256 MiB scheduler reservation is not a universal RSS guarantee.
+
+The installed GUI also reviewed a user-owned legacy Serato crate through a read-only Music-volume view, resolved all seven references, published its native catalog transaction, saved a project copy and reopened that copy in the fresh optimized build. The source crate's hash was unchanged. Private filenames and music remain outside public fixtures.
+
+That network volume exposed a real blocked FUSE directory read. The parent stayed responsive and preserved the existing library and session, but the blocked child could not finish until its owned SSHFS daemon ended. This is not physical USB hot-removal/remount proof. No source-application listening comparison or scan impact during physical playback is claimed here. Those remaining acceptance checks belong to #511. This milestone does not complete the combined producer/plugin/controller/audio-release scope.

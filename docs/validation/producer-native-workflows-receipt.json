@@ -1,0 +1,639 @@
+{
+  "schema": 1,
+  "recordedAt": "2026-10-08T06:16:37.925Z",
+  "scope": "Native producer UI, source retention, cancellation/refusal and VST3 parameter save/reopen; full issue 511 remains open",
+  "currentSource": "bffa77d63b6fd1c8c66cc605f2ba3bd8f6c601b0",
+  "sourceFiles": [
+    {
+      "path": "src/ui/ableton.rs",
+      "bytes": 23475,
+      "sha256": "e2a67b3f18a710311adf0f108cf55e76c3f51d7e301a37b717648421439d92bc"
+    },
+    {
+      "path": "src/ui/ableton/library.rs",
+      "bytes": 8855,
+      "sha256": "477ecdaa9ec9a94d9e9eb9fa482c76fb5c3f0b38e0addd81ba871de9feef6afd"
+    },
+    {
+      "path": "src/ui/audio_routing.rs",
+      "bytes": 41852,
+      "sha256": "cf761942a4b8096d0a38f911d98aff92bb092cf2ccbd8c4a30e48a913213e664"
+    },
+    {
+      "path": "src/ui/audio_routing/tests.rs",
+      "bytes": 25185,
+      "sha256": "a7b35d21b2c98072b30eddc12d3962eebeb50741fba3e334063fc3721579d149"
+    },
+    {
+      "path": "src/plugin_host/mod.rs",
+      "bytes": 11407,
+      "sha256": "cecd7fb3e61b89b2ad39c7ed96fa8d70642242b257f614acb55327d50cebeac6"
+    },
+    {
+      "path": "src/plugin_host/worker.rs",
+      "bytes": 13418,
+      "sha256": "66de7dafc6fdb9482909c31e1ddea5b6993c248faea4226983fa25804f93aa21"
+    },
+    {
+      "path": "src/plugin_host/realtime.rs",
+      "bytes": 26181,
+      "sha256": "9c2f6e52460f82d1434bc3c97e40a6c2b5ff8853196ff04078b0ee050c1e6461"
+    },
+    {
+      "path": "src/engine/audio/routing/plugins.rs",
+      "bytes": 5390,
+      "sha256": "d5317d28ac034da28019cc3cd2b3e664caefca7d543d52960e1c752e6895c96f"
+    }
+  ],
+  "binaries": {
+    "release3": {
+      "path": "target/validation/combined-completion/release-qualified/3/omatainer",
+      "bytes": 46126488,
+      "sha256": "e7efe87165a1a5bc3c195fc4910fea0b768c3e496eaf6bc83f95392541971191",
+      "base": "955c21f21f2029195dd98527f36f4b50ab47a6cd",
+      "patch": null
+    },
+    "release5": {
+      "path": "target/validation/combined-completion/release-qualified/5/omatainer",
+      "bytes": 46343232,
+      "sha256": "6fbf83bc72fde8320a2bd65d05523091ded924ffab89b62ba9ad4ce1ca5e5852",
+      "base": "23da6fe286800c10d4eda9a82581ceb4f9f3e52d",
+      "patch": {
+        "path": "target/validation/combined-completion/release-qualified/5/source-changes.patch",
+        "bytes": 16837,
+        "sha256": "900ecfcf59c02df6cf187e69414ac3e5346513793a5bcb21c1a32466b4847e33"
+      }
+    },
+    "tests31": {
+      "path": "target/validation/combined-completion/profiles-qualified/31/omatainer-tests",
+      "bytes": 587150176,
+      "sha256": "a6cf67729586d69a00c69e6a9c92c4ac0e6504b53b0e7dc8fa27c364f1ce31bf",
+      "base": "23da6fe286800c10d4eda9a82581ceb4f9f3e52d",
+      "patch": {
+        "path": "target/validation/combined-completion/profiles-qualified/31/source-changes.patch",
+        "bytes": 16837,
+        "sha256": "900ecfcf59c02df6cf187e69414ac3e5346513793a5bcb21c1a32466b4847e33"
+      }
+    },
+    "tests27": {
+      "path": "target/validation/combined-completion/profiles-qualified/27/omatainer-tests",
+      "sha256": "0d1e9ad1ad8ef698a65caa35aed6b73bef05587770ab7d2ec9806724e3669b14",
+      "archived": {
+        "path": "target/validation/combined-completion/profiles-qualified/27/omatainer-tests.gz",
+        "bytes": 132537740,
+        "sha256": "63e857405f4c1cf7fe2fa3c7538bf8e12a67a4643fa6cce33cff8af8f4d41bca"
+      },
+      "base": "23da6fe286800c10d4eda9a82581ceb4f9f3e52d"
+    }
+  },
+  "logs": [
+    {
+      "path": "target/validation/combined-completion/merged-27-ableton_.log",
+      "bytes": 1124,
+      "sha256": "d23bbececc09d928032e13ab76ffd88308329667cb2bdfd0fa83cfe4c516f906",
+      "summaries": [],
+      "passed": false
+    },
+    {
+      "path": "target/validation/combined-completion/merged-27-stack-ableton_.log",
+      "bytes": 3297,
+      "sha256": "9c51b849fc23119d738f4b305224183356d7bdd50e7360facd9afc7bccb2eba6",
+      "summaries": [
+        "test result: ok. 12 passed; 0 failed; 9 ignored; 0 measured; 2286 filtered out; finished in 8.61s"
+      ],
+      "passed": true
+    },
+    {
+      "path": "target/validation/combined-completion/merged-27-stack-producer_library_.log",
+      "bytes": 1246,
+      "sha256": "22f7b15463c8aab4675013e46c6de3c9a186ce720f09bdf6da224e0f387341c7",
+      "summaries": [
+        "test result: ok. 5 passed; 0 failed; 3 ignored; 0 measured; 2299 filtered out; finished in 1.35s"
+      ],
+      "passed": true
+    },
+    {
+      "path": "target/validation/combined-completion/merged-27-stack-dj_library_.log",
+      "bytes": 776,
+      "sha256": "df65a47f11f976cd4e1f21aa4fb770d72b29b87fe97387f9dc4898a501fad679",
+      "summaries": [
+        "test result: ok. 5 passed; 0 failed; 1 ignored; 0 measured; 2301 filtered out; finished in 1.09s"
+      ],
+      "passed": true
+    },
+    {
+      "path": "target/validation/combined-completion/merged-27-stack-plugin_host_.log",
+      "bytes": 1529,
+      "sha256": "b44785a572e4b44b027a53990a5868257f9b6417d3f984678447dc21c85827de",
+      "summaries": [
+        "test result: ok. 6 passed; 0 failed; 4 ignored; 0 measured; 2297 filtered out; finished in 0.09s"
+      ],
+      "passed": true
+    },
+    {
+      "path": "target/validation/combined-completion/merged-27-stack-engine_audio_routing_.log",
+      "bytes": 8170,
+      "sha256": "ed8e08f942072c94b9c5adc42374a0366dc8fc7ad7fb23e9dd132e607ed3e8ce",
+      "summaries": [
+        "test result: ok. 43 passed; 0 failed; 12 ignored; 0 measured; 2252 filtered out; finished in 133.51s"
+      ],
+      "passed": true
+    },
+    {
+      "path": "target/validation/combined-completion/hidden-parameter-native-regression.log",
+      "bytes": 729,
+      "sha256": "9188b4eb70a93bc267461f8d9ab2ab9c20a474e37cd0ebe24fcc814ee9ab164d",
+      "summaries": [
+        "test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 2307 filtered out; finished in 11.18s"
+      ],
+      "passed": false
+    },
+    {
+      "path": "target/validation/combined-completion/hidden-parameter-native-synchronized.log",
+      "bytes": 226,
+      "sha256": "5e0107657ac95d9bc9b7b8ffead0da2d4e68ceab2b2281a2d39737c43bc49bbd",
+      "summaries": [
+        "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 2307 filtered out; finished in 2.66s"
+      ],
+      "passed": true
+    },
+    {
+      "path": "target/validation/combined-completion/hidden-parameter-realtime-regression.log",
+      "bytes": 525,
+      "sha256": "e46316b8717aac7619bc19f72b2350fa22a4b89d4b6aaa390a6037ec0cbf1984",
+      "summaries": [
+        "test result: ok. 2 passed; 0 failed; 1 ignored; 0 measured; 2305 filtered out; finished in 0.06s"
+      ],
+      "passed": true
+    },
+    {
+      "path": "target/validation/combined-completion/combined-release-5-native-ableton-ui.log",
+      "bytes": 846,
+      "sha256": "d1d7d84685f9b6a97868cea47f3816524e5cab4942287ac044f958eed17d090b",
+      "summaries": [
+        "test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 2302 filtered out; finished in 5.79s"
+      ],
+      "passed": true
+    },
+    {
+      "path": "target/validation/combined-completion/combined-release-5-native-graph.log",
+      "bytes": 1127,
+      "sha256": "963e551f56e3180a4b4464add507afc864db007073985af491e9f76ef76eef14",
+      "summaries": [
+        "test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 2300 filtered out; finished in 11.21s"
+      ],
+      "passed": true
+    },
+    {
+      "path": "target/validation/combined-completion/combined-release-5-browser-graph.log",
+      "bytes": 238,
+      "sha256": "4c78ff146edb1ebf44e90bf08f24b0529cbfe58bb633bb2f8a3f8a1a1e6e8f49",
+      "summaries": [
+        "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 2307 filtered out; finished in 1.16s"
+      ],
+      "passed": true
+    }
+  ],
+  "nativeGuiEvidence": [
+    {
+      "path": "t/nui/evidence/release-3-chain-refreshed-atspi.json",
+      "bytes": 120138,
+      "sha256": "de156c663992bebd5573b4ba9b4e4eda590dfe9f1fb5bfdeec9e864ceb597d30"
+    },
+    {
+      "path": "t/nui/evidence/release-3-corrupt-input-refused-atspi.json",
+      "bytes": 116669,
+      "sha256": "4246521f02431d4a190f1951e046859072eaa0af426814234410437166a5af77"
+    },
+    {
+      "path": "t/nui/evidence/release-3-corrupt-parser-refused-atspi.json",
+      "bytes": 135578,
+      "sha256": "4d7d5559b3ebde81e65b274f6dba59407c309614bf26dc2399b4e54b1c6a31dd"
+    },
+    {
+      "path": "t/nui/evidence/release-3-effect-routing-draft-atspi.json",
+      "bytes": 119604,
+      "sha256": "238d912e730dd27fd2a86e89c016cd922c063e7a43878a1d505238a0b71eaca1"
+    },
+    {
+      "path": "t/nui/evidence/release-3-instrument-applied-atspi.json",
+      "bytes": 59754,
+      "sha256": "45b021f67ac730a0c0a619f41d6ab1228b5c0e68fc1d0eac9c59fd6e6a8ccc17"
+    },
+    {
+      "path": "t/nui/evidence/release-3-instrument-before-apply-atspi.json",
+      "bytes": 61889,
+      "sha256": "7a536d9ba2ccd94aa291e01b7f557025a4f84690b959df6af84543353d1bf985"
+    },
+    {
+      "path": "t/nui/evidence/release-3-instrument-effect-applied-atspi.json",
+      "bytes": 63744,
+      "sha256": "ac08ca95f72d04bc4867e159c9091a4ecd4822117933affc1f9e2f90a23a1c38"
+    },
+    {
+      "path": "t/nui/evidence/release-3-instrument-effect-save-proof.json",
+      "bytes": 1042,
+      "sha256": "d17f006e3a26330fc32a017e8ca3807a7207be2bbb54f2a8cd4988d6524c8391"
+    },
+    {
+      "path": "t/nui/evidence/release-3-instrument-effect-saved-atspi.json",
+      "bytes": 63738,
+      "sha256": "ec07baf0633a205ca80700897a0612b97b49eb7374c70fd63a51083492ba1465"
+    },
+    {
+      "path": "t/nui/evidence/release-3-instrument-inspected-atspi.json",
+      "bytes": 63253,
+      "sha256": "255503bcbee13c0758f141db3a41e51056d37a72be4557cbecedacafb4dabe7d"
+    },
+    {
+      "path": "t/nui/evidence/release-3-instrument-routing-draft-atspi.json",
+      "bytes": 66023,
+      "sha256": "7d5f3c5d9e3fac452c867b477d73bcdcb5613e9c68f9e59570ddb6ac65f444f3"
+    },
+    {
+      "path": "t/nui/evidence/release-3-library-current-status.json",
+      "bytes": 3854,
+      "sha256": "f908dc62efc387bec44c3d8fdb09dcbf4eecf66acad605ba8e4293eb70200413"
+    },
+    {
+      "path": "t/nui/evidence/release-3-live10-bottom-atspi.json",
+      "bytes": 401275,
+      "sha256": "579237d468644d0f012eb4c6026b6a4928e90d6541ec02eb47ff4e298653fc8c"
+    },
+    {
+      "path": "t/nui/evidence/release-3-live10-existing-pending-atspi.json",
+      "bytes": 399095,
+      "sha256": "2b8c143bc02d02fbe50c4c6cf8c045f96e87edaa0e07fb86c54d54962c670394"
+    },
+    {
+      "path": "t/nui/evidence/release-3-live10-existing-refusal-atspi.json",
+      "bytes": 398789,
+      "sha256": "80cbaebf2f67fb4a4c158e018c17de8fa3b2142a4d7685646032f9ddeb3c8d2d"
+    },
+    {
+      "path": "t/nui/evidence/release-3-live10-existing-result-atspi.json",
+      "bytes": 399095,
+      "sha256": "0bee9189dd786c461c1b724bf8d68595aff68208838d1d76c2885b597fd2c02a"
+    },
+    {
+      "path": "t/nui/evidence/release-3-live10-minimum-bottom.png",
+      "bytes": 148492,
+      "sha256": "b678437248f916cbe0b38b38b6aab7185928eb33a7f49792405f797328d43323"
+    },
+    {
+      "path": "t/nui/evidence/release-3-live10-minimum-scrolled.png",
+      "bytes": 176473,
+      "sha256": "8fa3de2dfb5b728ef8ab239e5fc652e3e88398c75e217d6c6f8b7b2786881a93"
+    },
+    {
+      "path": "t/nui/evidence/release-3-live10-minimum.png",
+      "bytes": 148817,
+      "sha256": "e5f9262189dc7ce5be25aef0fa388b3771c3b0eda0df9e634665ccb0b101f8e8"
+    },
+    {
+      "path": "t/nui/evidence/release-3-live10-open-decision-atspi.json",
+      "bytes": 398988,
+      "sha256": "a472d8a0cca97e29a0ddb57888a21d57674c48e492a98b889e71b39f3b1ced74"
+    },
+    {
+      "path": "t/nui/evidence/release-3-live10-opened-atspi.json",
+      "bytes": 399095,
+      "sha256": "6304de5de9e04bbda2724abb95a05df2dc677b316200650eafafcdedc5f9de78"
+    },
+    {
+      "path": "t/nui/evidence/release-3-live10-opened-status.json",
+      "bytes": 3853,
+      "sha256": "c9bb5d28d90ba4a2fc112e98325466fc618ba8d4ab216d82035819ee22a88137"
+    },
+    {
+      "path": "t/nui/evidence/release-3-live10-published-atspi.json",
+      "bytes": 400980,
+      "sha256": "7b3efdda4fd9d73b3b92bb78ae3c360ca2b4ef9b0c62a46828558b54b6a68c27"
+    },
+    {
+      "path": "t/nui/evidence/release-3-live10-rereview-atspi.json",
+      "bytes": 398804,
+      "sha256": "6b6fdb4ba7e28e3a38ad9c4487b97e1565c021a2aac3662f3879decb26b9887f"
+    },
+    {
+      "path": "t/nui/evidence/release-3-live10-reviewed-atspi.json",
+      "bytes": 402961,
+      "sha256": "d10b2ae732f7bd5eb1c6c1d7eef431f2712c9cbea3bf9094ee3f6fd99a93d196"
+    },
+    {
+      "path": "t/nui/evidence/release-3-live10-scrolled-atspi.json",
+      "bytes": 400689,
+      "sha256": "dd0a8c1bf575386f3552689324262cbf1cb23755ea244929a956bc1753a4b8f7"
+    },
+    {
+      "path": "t/nui/evidence/release-3-manifest-change-refused-atspi.json",
+      "bytes": 119754,
+      "sha256": "e08bd946d96183daaa9a320b04e1e65490020b380065d129a67966baf92bede1"
+    },
+    {
+      "path": "t/nui/evidence/release-3-mverb-editor-atspi.json",
+      "bytes": 120138,
+      "sha256": "344c862504df7a3f4d79c487ed5f7f39d040e147cc856997dbcb709e43cec43b"
+    },
+    {
+      "path": "t/nui/evidence/release-3-mverb-editor-root.png",
+      "bytes": 302524,
+      "sha256": "c028df38c1639f559cbe29214f188e7c83165c3f3fbac6af30304791a5f89557"
+    },
+    {
+      "path": "t/nui/evidence/release-3-nekobi-editor-atspi.json",
+      "bytes": 63255,
+      "sha256": "c18983694be194d6331cbcfe82675a2555438acf21edfe0234885912005f1abf"
+    },
+    {
+      "path": "t/nui/evidence/release-3-nekobi-editor-root.png",
+      "bytes": 303930,
+      "sha256": "bab091170b75f885884f0287fd9a847e54d3f3540adb04f31c36dc0a5ad8825d"
+    },
+    {
+      "path": "t/nui/evidence/release-3-nekobi-parameters-atspi.json",
+      "bytes": 115099,
+      "sha256": "ff5b32ae971b6cbf8c9a53b2cdeff8bb4d549516d95f8d91455f609f74209dc6"
+    },
+    {
+      "path": "t/nui/evidence/release-3-pack-reviewed-atspi.json",
+      "bytes": 477567,
+      "sha256": "dd4497a127ec0fe5d96d4631767e6e5b15603d2fcce2172eb96551298364dc23"
+    },
+    {
+      "path": "t/nui/evidence/release-3-pack-selected-atspi.json",
+      "bytes": 477574,
+      "sha256": "61c9ef493a989d22555fb78f85c879b24452a4a81f2f1223ef61909b6b874a51"
+    },
+    {
+      "path": "t/nui/evidence/release-3-plugin-scan-atspi.json",
+      "bytes": 61583,
+      "sha256": "47b66dd77c808aff60bfcb70cfa9aabbe13b2e6c601405d0549e37373332c0c9"
+    },
+    {
+      "path": "t/nui/evidence/release-3-preset-before-manifest-change-atspi.json",
+      "bytes": 119768,
+      "sha256": "353a79375d8718d524f9bd4d9feeef04b0773b330b90bd8e4819162bab6c347d"
+    },
+    {
+      "path": "t/nui/evidence/release-3-preset-first-publication-atspi.json",
+      "bytes": 50043,
+      "sha256": "112ad0b1d9ab77962c127c63d8e7960283e80be7b7b031a8f592934e47f606ff"
+    },
+    {
+      "path": "t/nui/evidence/release-3-preset-opened-atspi.json",
+      "bytes": 41111,
+      "sha256": "bcd488a1ad36ad54d9e06ad0553b6d54663f305178aba456d1a5141cf313b116"
+    },
+    {
+      "path": "t/nui/evidence/release-3-preset-opened-status.json",
+      "bytes": 3859,
+      "sha256": "c622286e17bbbabb1dd6e2579d6a69fedc5444e8df7060976eefa9c84add5417"
+    },
+    {
+      "path": "t/nui/evidence/release-3-preset-path-atspi.json",
+      "bytes": 50043,
+      "sha256": "112ad0b1d9ab77962c127c63d8e7960283e80be7b7b031a8f592934e47f606ff"
+    },
+    {
+      "path": "t/nui/evidence/release-3-preset-published-atspi.json",
+      "bytes": 50429,
+      "sha256": "29e0276a806c834321663dfedcd554b2d5d5ecb538bf98d9d1e9c915f584e077"
+    },
+    {
+      "path": "t/nui/evidence/release-3-producer-discovery-atspi.json",
+      "bytes": 475878,
+      "sha256": "7e47227f9c5e6e51ab266bfddc3d61cc938db5ac9187dd7a2b8f1e2f68ca5fb3"
+    },
+    {
+      "path": "t/nui/evidence/release-3-producer-minimum-bottom.png",
+      "bytes": 184111,
+      "sha256": "631ad877f3a61347523c05ba33492be242c71554919a55d317bb4eeca1f17d9f"
+    },
+    {
+      "path": "t/nui/evidence/release-3-producer-minimum-review.png",
+      "bytes": 168719,
+      "sha256": "c0b01a60797f5a3968b2648c4ad5901686991d02fd564345e7fcbf567bf966a5"
+    },
+    {
+      "path": "t/nui/evidence/release-3-producer-scrolled-atspi.json",
+      "bytes": 68999,
+      "sha256": "da6c62793f824a9de0375e5db3eb6472b500452c7659730b18381ef2c57ddb82"
+    },
+    {
+      "path": "t/nui/evidence/release-3-review-cancelled-atspi.json",
+      "bytes": 135613,
+      "sha256": "87bc6328f3a1c8714872102cbe1d99bd3f07c6124e9224f21ce055c05eacc21a"
+    },
+    {
+      "path": "t/nui/evidence/release-3-routing-cancelled-atspi.json",
+      "bytes": 61889,
+      "sha256": "fa35e99dd586382c0db27212d4d24e3d97cdffb2c1f2541986af2231d3b24ac1"
+    },
+    {
+      "path": "t/nui/evidence/release-3-routing-confirmation-atspi.json",
+      "bytes": 62569,
+      "sha256": "ad878184f1f0f866e719bb7d7e026d7ceee9314ee104b40d909f4e93a0860685"
+    },
+    {
+      "path": "t/nui/evidence/release-3-scanned-catalog.json",
+      "bytes": 2609,
+      "sha256": "4996efc48225c5ede5208bae803ad0c2d0d7695b378a4e9e77002bfb28de6937"
+    },
+    {
+      "path": "t/nui/evidence/release-3-startup-atspi.json",
+      "bytes": 34684,
+      "sha256": "cbeda10820f655a831a630bf4870ea28a45d7afac4a11ba485acdc53c93690db"
+    },
+    {
+      "path": "t/nui/evidence/release-3-unsaved-open-cancelled-atspi.json",
+      "bytes": 50429,
+      "sha256": "eb3a2baf66e79218751478a6f345641618ebe8782fe4202821d079efebd54216"
+    },
+    {
+      "path": "t/nui/evidence/release-3-unsaved-open-decision-atspi.json",
+      "bytes": 51028,
+      "sha256": "c982395309fa213e2db46a2b389e8a160889382efdcb6fad04ce77d025ad5310"
+    },
+    {
+      "path": "t/nui/evidence/release-3-user-preset-reviewed-atspi.json",
+      "bytes": 68999,
+      "sha256": "356fc30becd3a96ade2c5e4b3201713a37f0fd8b5cf8ba4771bf063f68fb0c6f"
+    },
+    {
+      "path": "t/nui/evidence/release-5-gui-cutoff-reopen-proof.json",
+      "bytes": 741,
+      "sha256": "a96e61ab50e2e5fd3a2e92d869524771bb66d08b78737673a860c2b2d3e667b6"
+    },
+    {
+      "path": "t/nui/evidence/release-5-gui-cutoff-save-proof.json",
+      "bytes": 402,
+      "sha256": "3721cb98c79f8e2d8d29edf350b572793d0a1badf7edd71e45cdc9688abb816a"
+    },
+    {
+      "path": "t/nui/evidence/release-5-native-reopen.png",
+      "bytes": 275732,
+      "sha256": "acabf4c8b8ac23858e40d804002e68fb12ee701900e0fa9a0045c8501e39f9da"
+    },
+    {
+      "path": "t/nui/evidence/release-5-offline-source-opened-atspi.json",
+      "bytes": 35646,
+      "sha256": "0a6c11d1de4229a2eea884595127474606d868d78558c1bdac0d7cac3ae81926"
+    },
+    {
+      "path": "t/nui/evidence/release-5-open-dialog-atspi.json",
+      "bytes": 48305,
+      "sha256": "2561d949bdf346de7a3dbd50483b0a2390b66cdaafd59784dc543f717ccafd2f"
+    },
+    {
+      "path": "t/nui/evidence/release-5-parameter-saved-atspi.json",
+      "bytes": 45303,
+      "sha256": "48dcbe43991cdd43cb064f82aadd24b5861a770a9c8852fc639be575f91c0594"
+    },
+    {
+      "path": "t/nui/evidence/release-5-project-menu-action.json",
+      "bytes": 54,
+      "sha256": "d9747b0ba77e3d05bbf4208f23c668ddfa0a9fb3b8fac3d1942704b099f815e4"
+    },
+    {
+      "path": "t/nui/evidence/release-5-project-menu-atspi.json",
+      "bytes": 38176,
+      "sha256": "a21458d8bd6fa567a05a316bce4accfca5d07ff126855df08caac1ba63542a27"
+    },
+    {
+      "path": "t/nui/evidence/release-5-reopen-action.json",
+      "bytes": 62,
+      "sha256": "44bed62e8f22a48f2e1f20d64bc24f0350b7dc1ab1fb6eb6de16300601301a31"
+    },
+    {
+      "path": "t/nui/evidence/release-5-reopen-dialog-atspi.json",
+      "bytes": 36012,
+      "sha256": "02005553e06a7413eb5dc93d0bbed74aa2410563282ac31e0ac748a41280e22d"
+    },
+    {
+      "path": "t/nui/evidence/release-5-reopen-dialog-ready-atspi.json",
+      "bytes": 36251,
+      "sha256": "285813d76c17887cff17af3f93955bcd6a09181a5270cd56ded5ae8fb9ba9bee"
+    },
+    {
+      "path": "t/nui/evidence/release-5-reopen-focus.json",
+      "bytes": 44,
+      "sha256": "399e5cdf004cf10ba3d57ffa88ebd0e5a6b1d9696df4a20ee99879b636f015c3"
+    },
+    {
+      "path": "t/nui/evidence/release-5-reopen-open.json",
+      "bytes": 51,
+      "sha256": "d94e0ca0634542546d72077c41d5053ac35ed289f8c60e521c6fc1ccb96457d7"
+    },
+    {
+      "path": "t/nui/evidence/release-5-reopen-path.json",
+      "bytes": 139,
+      "sha256": "5de13abfded2e5f715c563c56f2eccc9750f8ad1f6aae0877c3783258fd9c9c8"
+    },
+    {
+      "path": "t/nui/evidence/release-5-reopened-atspi.json",
+      "bytes": 35646,
+      "sha256": "5fe8c09be996ef4fe1c4eddd3bdc853a770d3ac1dfe77bad3f33609bf01f1aa7"
+    },
+    {
+      "path": "t/nui/evidence/release-5-reopened-cutoff.json",
+      "bytes": 33,
+      "sha256": "c7ab1f0555520e367e26055abd4754030ca3dbe559d133ae63994b4ff3bd2c88"
+    },
+    {
+      "path": "t/nui/evidence/release-5-reopened-processors-atspi.json",
+      "bytes": 41991,
+      "sha256": "814d82fbad558b3baab7dd8a290d0107eb8e027fda31e1835693f27406a2ec86"
+    },
+    {
+      "path": "t/nui/evidence/release-5-reopened-routing-action.json",
+      "bytes": 60,
+      "sha256": "a72bb74faf4881f2206418c7480beaecbb14425f385239d041fb3fb3b4d6c58b"
+    },
+    {
+      "path": "t/nui/evidence/release-5-reopened-routing-atspi.json",
+      "bytes": 45309,
+      "sha256": "8ede2916759cce17e210f76c42780b5bea4ba42ef9c0a9c0840638bdcfc336c2"
+    },
+    {
+      "path": "t/nui/evidence/release-5-routing-closed-atspi.json",
+      "bytes": 35640,
+      "sha256": "aa49b56235f38413762bcb223b7ad751d7239bf53436fdea960b1d2dc157d26c"
+    },
+    {
+      "path": "t/nui/evidence/release-5-startup-atspi.json",
+      "bytes": 51826,
+      "sha256": "945235d6f8b6a83bcd9ee9f3c85cd47021cba6a6a86dcdb693661f52860057d4"
+    },
+    {
+      "path": "t/nui/evidence/release-5-startup-status.json",
+      "bytes": 3846,
+      "sha256": "d7b1269cde4e592374f4e1baffe9b3fb14d428193568f0a32dd822e70e6776ea"
+    },
+    {
+      "path": "t/nui/evidence/release-5-visible-parameters-atspi.json",
+      "bytes": 45310,
+      "sha256": "fb49252dc76cebc988afd861ffec678084deae78544e984c133c5371d553d0ee"
+    }
+  ],
+  "parameterSave": {
+    "nativeSha256": "242d7ff6a9f9e2dc7573aef9884eebbd0c139221b36ca75615a7b5ba0e624a89",
+    "bytes": 11013,
+    "projectVersion": 34,
+    "pluginCount": 2,
+    "sourceDeviceKinds": [
+      "Eq8"
+    ],
+    "packCount": 1,
+    "cutoff": {
+      "id": 2084,
+      "value": 0.625
+    },
+    "stateBytes": 163,
+    "stateSha256": "b0170fbf0a0b1ce9d75031f5caef3cfdb84c04cd200d1148efead1b660340dce",
+    "originalSourceOffline": true
+  },
+  "parameterReopen": {
+    "nativeSha256": "242d7ff6a9f9e2dc7573aef9884eebbd0c139221b36ca75615a7b5ba0e624a89",
+    "bytes": 11013,
+    "projectVersion": 34,
+    "pluginCount": 2,
+    "sourceDeviceKinds": [
+      "Eq8"
+    ],
+    "packCount": 1,
+    "cutoff": {
+      "id": 2084,
+      "value": 0.625
+    },
+    "stateBytes": 163,
+    "stateSha256": "b0170fbf0a0b1ce9d75031f5caef3cfdb84c04cd200d1148efead1b660340dce",
+    "originalSourceOffline": true,
+    "observedControl": {
+      "label": "Cutoff",
+      "value": 0.625
+    },
+    "terminalLabel": "Owned-preset.omatainer · saved",
+    "processors": [
+      "Nekobi 2 · class 2046504473616C636B654E4400000000 · version 1.1.0",
+      "MVerb 3 · class 2046504473616C636272564D00000000 · version 1.0.0"
+    ],
+    "verifiedAt": "2026-10-08T06:15:03.716Z"
+  },
+  "boundaries": {
+    "display": "private authenticated Xvfb 1540x960; minimum-size checks 860x640",
+    "audio": "private non-real-time JACK dummy, 48kHz, 256-frame blocks, no physical audio links",
+    "midi": "disabled in private app; installed main controller inputs untouched",
+    "ordinarySelectedPasses": 71,
+    "nativeSelectedPasses": 18,
+    "defaultStackRunAborted": true,
+    "successfulTestThreadStackBytes": 67108864,
+    "completeSuite": false,
+    "latestRetrospectiveMidiMergeQualified": false,
+    "physicalAudio": false,
+    "liveReferencePrintComparison": false,
+    "templateClipCount": 0,
+    "stagePerformance": false,
+    "privateSourceFixturesCommitted": false
+  }
+}

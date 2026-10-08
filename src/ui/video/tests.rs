@@ -5,7 +5,7 @@ use egui::accesskit::{Action, ActionData, ActionRequest, Node, NodeId};
 use std::sync::atomic::AtomicBool;
 struct Gui {
     app: App,
-    rt: RtEngine,
+    rt: Box<RtEngine>,
     ctx: egui::Context,
     nodes: Vec<(NodeId, Node)>,
     time: f64,
@@ -26,7 +26,7 @@ impl Gui {
         ctx.enable_accesskit();
         let mut gui = Self {
             app,
-            rt,
+            rt: Box::new(rt),
             ctx,
             nodes: vec![],
             time: 0.0,

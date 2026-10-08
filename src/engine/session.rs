@@ -26,6 +26,8 @@ pub struct Item {
     pub active: bool,
     pub name: String,
     pub color: Option<[u8; 3]>,
+    #[serde(default, skip_serializing_if = "super::scene::Properties::is_default")]
+    pub(crate) scene: super::scene::Properties,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -56,6 +58,7 @@ impl Layout {
                 active: true,
                 name,
                 color: None,
+                scene: Default::default(),
             };
             next_id += 1;
             result
@@ -100,6 +103,7 @@ impl Layout {
                 return Err("Invalid or repeated session identity or name".into());
             }
         }
+        if self.tracks.iter().any(|item| !item.scene.is_default()) || self.scenes.iter().any(|item| !item.scene.valid()) { return Err("Scene properties must be valid and belong only to scenes".into()); }
         fn order(items: &[Item], slots: impl IntoIterator<Item = usize>) -> bool {
             let mut seen = vec![false; items.len()];
             for slot in slots {
@@ -145,6 +149,7 @@ impl Layout {
             active: false,
             name: String::new(),
             color: None,
+            scene: Default::default(),
         };
         self.tracks.resize_with(track_names.len(), empty);
         self.scenes.resize_with(scene_names.len(), empty);
@@ -188,6 +193,7 @@ impl Layout {
             out.id = item.id;
             out.active = item.active;
             out.color = item.color;
+            out.scene = item.scene;
             out.name.clear();
             out.name.push_str(&item.name);
         }
@@ -262,6 +268,7 @@ impl Layout {
             active: true,
             name,
             color,
+            scene: Default::default(),
         };
         let items = self.items_mut(axis);
         if slot == items.len() {
@@ -294,6 +301,15 @@ impl Layout {
             .resolve(axis, id)
             .ok_or("Session identity no longer exists")?;
         self.items_mut(axis)[slot].color = color;
+        self.changed()
+    }
+    /// Set one scene launch policy.
+    /// Takes its stable identity and validated properties; returns one generation change or a refusal without mutation.
+    pub(crate) fn scene_properties(&mut self, id: Id, properties: super::scene::Properties) -> Result<(), String> {
+        self.can_change()?;
+        if !properties.valid() { return Err("Use a scene tempo of 40–240 BPM and a valid time signature".into()); }
+        let slot = self.resolve(Axis::Scene, id).ok_or("Scene identity no longer exists")?;
+        self.scenes[slot].scene = properties;
         self.changed()
     }
     pub fn reorder(&mut self, axis: Axis, id: Id, position: usize) -> Result<(), String> {

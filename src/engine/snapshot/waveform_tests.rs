@@ -3,7 +3,7 @@ use super::*;
 use crate::engine::test_alloc;
 
 fn media(name: &str, buckets: usize) -> Arc<Sample> {
-    Arc::new(Sample {
+    Arc::new(Sample { spectrum: Some(Arc::new(super::super::waveform::Waveform::analyze(&vec![0.25; 48_000 * 2], 2, 48_000, || false).unwrap())),
         name: name.into(),
         sr: 48_000,
         ch: 2,
@@ -36,6 +36,7 @@ fn waveform_identity_changes_only_with_media_across_real_periodic_snapshots() {
 
     let first = media("first", 2048);
     let first_peaks = first.peaks.clone();
+    let first_spectrum = first.spectrum.clone().unwrap();
     let original_data = first.data.as_ptr();
     let original_peaks = first.peaks.as_ptr();
     rt.apply(Command::DeckAudio {
@@ -50,6 +51,7 @@ fn waveform_identity_changes_only_with_media_across_real_periodic_snapshots() {
     );
     assert_eq!(rt.snap.lock().decks[0].peaks.as_ptr(), original_peaks);
     assert_periodic_identity(&mut rt, &first_peaks);
+    assert!(Arc::ptr_eq(rt.snap.lock().decks[0].spectrum.as_ref().unwrap(), &first_spectrum));
 
     // New media with identical analysis values still has its own identity.
     let second = media("second", 2048);
@@ -68,6 +70,7 @@ fn waveform_identity_changes_only_with_media_across_real_periodic_snapshots() {
     rt.apply(Command::DeckUnload { deck: 0 });
     rt.publish_for_test();
     assert_periodic_identity(&mut rt, &empty);
+    assert!(rt.snap.lock().decks[0].spectrum.is_none());
     // Reloading the same immutable built-in/file object reuses that object's
     // metadata. It does not duplicate peaks just because a deck was unloaded.
     rt.apply(Command::DeckAudio {

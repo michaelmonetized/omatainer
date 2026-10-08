@@ -23,6 +23,7 @@ struct Event {
     note: usize,
     repeating: bool,
     boundary: bool,
+    cycle: u64,
 }
 
 impl Event {
@@ -57,6 +58,8 @@ pub(super) struct MidiSchedule {
     events: BinaryHeap<Reverse<Event>>,
     held: [usize; 256],
     loop_beats: f64,
+    variation: Option<std::sync::Arc<super::note_variation::Plan>>,
+    seed: u64,
     pub paused: bool,
     #[cfg(test)]
     pub rebuilds: usize,
@@ -74,6 +77,8 @@ impl Default for MidiSchedule {
             events: BinaryHeap::new(),
             held: [0; 256],
             loop_beats: 1.0,
+            variation: None,
+            seed: super::note_variation::DEFAULT_SEED,
             paused: false,
             #[cfg(test)]
             rebuilds: 0,
@@ -92,6 +97,12 @@ impl MidiSchedule {
         self.events.capacity() * std::mem::size_of::<Reverse<Event>>()
     }
 
+    /// Retain the worker-prepared musical decision rules.
+    /// Takes the current clip plan and saved project seed; updates the boundary scheduler without allocating.
+    pub fn set_variation(&mut self, variation: Option<std::sync::Arc<super::note_variation::Plan>>, seed: u64) {
+        self.variation = variation;
+        self.seed = seed;
+    }
     pub fn has_length(&self, loop_beats: f64) -> bool {
         self.loop_beats == loop_beats
     }
@@ -185,6 +196,8 @@ impl MidiSchedule {
             let end = start + duration;
             let mut on = start;
             let mut off = end;
+            let mut on_cycle = 0;
+            let mut off_cycle = 0;
             if let Some(now) = elapsed {
                 let count = |first: f64| -> usize {
                     if now < first {
@@ -197,11 +210,14 @@ impl MidiSchedule {
                 };
                 let ons = count(start);
                 let offs = count(end);
-                let active = ons.saturating_sub(offs);
+                on_cycle = ons as u64;
+                off_cycle = offs as u64;
+                let velocity = self.variation.as_ref().map_or(Some(note.vel), |plan| plan.velocity(index, self.seed, ons.saturating_sub(1) as i64, note.vel));
+                let active = if velocity.is_some() { ons.saturating_sub(offs) } else { 0 };
                 held[note.pitch as usize] = held[note.pitch as usize].saturating_add(active);
                 if active > 0 {
                     let last_on = start + ons.saturating_sub(1) as f64 * loop_beats;
-                    let candidate = (last_on, index, note.vel);
+                    let candidate = (last_on, index, velocity.unwrap());
                     if latest[note.pitch as usize].is_none_or(|old| candidate > old) {
                         latest[note.pitch as usize] = Some(candidate);
                     }
@@ -228,6 +244,7 @@ impl MidiSchedule {
                         note: index,
                         repeating,
                         boundary: true,
+                        cycle: if matches!(gate, Gate::On(_, _)) { on_cycle } else { off_cycle },
                     }));
                 }
             }
@@ -256,6 +273,7 @@ impl MidiSchedule {
                         note: pitch,
                         repeating: false,
                         boundary: false,
+                        cycle: 0,
                     }));
                 }
             }
@@ -276,7 +294,7 @@ impl MidiSchedule {
             .peek()
             .is_some_and(|event| event.0.beat < elapsed - BEAT_EPSILON)
         {
-            let Reverse(event) = self.events.pop().unwrap();
+            let Reverse(mut event) = self.events.pop().unwrap();
             #[cfg(test)]
             {
                 self.events_visited += 1;
@@ -286,10 +304,15 @@ impl MidiSchedule {
                 // Also guards precision exhaustion after extreme timeline
                 // values: reinserting an unchanged time could otherwise spin.
                 if beat.is_finite() && beat > event.beat {
-                    self.events.push(Reverse(Event { beat, ..event }));
+                    self.events.push(Reverse(Event { beat, cycle: event.cycle.saturating_add(1), ..event }));
                 }
             }
             if event.boundary {
+                if let Some(plan) = &self.variation {
+                    let original = match event.gate { Gate::On(_, velocity) => velocity, Gate::Off(_) => 1 };
+                    let Some(velocity) = i64::try_from(event.cycle).ok().and_then(|cycle| plan.velocity(event.note, self.seed, cycle, original)) else { continue };
+                    if let Gate::On(pitch, _) = event.gate { event.gate = Gate::On(pitch, velocity); }
+                }
                 match event.gate {
                     Gate::On(pitch, _) => {
                         self.held[pitch as usize] = self.held[pitch as usize].saturating_add(1);

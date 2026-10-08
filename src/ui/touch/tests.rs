@@ -2,9 +2,26 @@ use super::*;
 use crate::engine::{dsp::InputKey, RtEngine, SamplerInstrument, SynthInstrument};
 use egui::accesskit::{Action, ActionRequest, Node, NodeId};
 
+#[test]
+fn native_deck_pad_touch_contacts_preserve_both_decks_and_release_outside_after_mode_changes() {
+    let mut gui=Gui::new();
+    for deck in 0..2 {gui.rt.apply(Command::DeckControl {source:1928,deck,control:crate::engine::deck_controls::Control::PadMode {mode:1}});}
+    gui.rt.publish_for_test();gui.frame(vec![]);gui.frame(vec![]);
+    gui.frame(vec![gui.start(191,1,Target::DeckPad{deck:0,pad:3},Some(0.5)),gui.start(191,2,Target::DeckPad{deck:1,pad:4},Some(0.7))]);
+    let snap=gui.app.engine.snapshot();assert_eq!(snap.decks[0].controls.roll,Some(3));assert_eq!(snap.decks[1].controls.roll,Some(4));
+    let other_pad=gui.hit(Target::DeckPad{deck:1,pad:4}).rect;
+    gui.rt.apply(Command::DeckControl {source:1928,deck:0,control:crate::engine::deck_controls::Control::PadMode {mode:2}});gui.rt.publish_for_test();
+    gui.frame(vec![release(191,1,egui::TouchPhase::End)]);
+    let snap=gui.app.engine.snapshot();assert!(snap.decks[0].controls.roll.is_none());assert!(snap.decks[0].controls.slice.is_none());assert_eq!(gui.hit(Target::DeckPad{deck:1,pad:4}).rect,other_pad,"Changing another deck's pad mode must preserve this held pad's geometry");assert_eq!(snap.decks[1].controls.roll,Some(4));
+    gui.frame(vec![release(191,2,egui::TouchPhase::Cancel)]);
+    assert!(gui.app.engine.snapshot().decks[1].controls.roll.is_none());
+    gui.frame(vec![gui.start(191,3,Target::DeckPad{deck:0,pad:3},None)]);assert_eq!(gui.app.engine.snapshot().decks[0].controls.slice,Some(3));
+    gui.frame(vec![release(191,3,egui::TouchPhase::End)]);assert!(gui.app.engine.snapshot().decks[0].controls.slice.is_none());
+}
+
 struct Gui {
     app: App,
-    rt: RtEngine,
+    rt: Box<RtEngine>,
     ctx: egui::Context,
     nodes: Vec<(NodeId, Node)>,
     time: f64,
@@ -23,7 +40,7 @@ impl Gui {
         ctx.enable_accesskit();
         let mut gui = Self {
             app: App::with_loader(engine, Theme::default(), None),
-            rt,
+            rt: Box::new(rt),
             ctx,
             nodes: Vec::new(),
             time: 0.0,
@@ -64,7 +81,7 @@ impl Gui {
             .hits
             .into_iter()
             .find(|hit| hit.target == target && hit.enabled)
-            .expect("actual rendered touch target")
+            .unwrap_or_else(||panic!("Missing rendered {target:?}"))
     }
     fn held(&self, pad: u8) -> bool {
         self.rt.sampler_poly.voices.iter().any(|voice| {

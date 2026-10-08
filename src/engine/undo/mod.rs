@@ -3,6 +3,10 @@
 //! replenishes recording and inverse scratch; it never owns or locks the live renderer.
 mod capture;
 mod midi_import;
+mod audio_clip;
+mod arrangement;
+mod song_navigation;
+mod clip_management;
 mod patch;
 mod recording;
 #[cfg(test)]
@@ -49,11 +53,17 @@ pub enum Name {
     CrossfaderContour,
     Master,
     CueMix,
+    MicAux,
     MasterEffect,
     Sampler,
     Track,
     ClipGain,
     ClipNotes,
+    AudioClip,
+    Arrangement,
+    SongNavigation,
+    MusicalContext,
+    ClipManagement,
     RecordNotes,
     Deck,
     DeckSeek,
@@ -62,8 +72,10 @@ pub enum Name {
     LoadMedia,
     AddEffect,
     Effect,
+    PluginParameter,
     ComposeClip,
     Multiple,
+    NoteSeed,
 }
 impl Name {
     pub fn label(self) -> &'static str {
@@ -77,11 +89,18 @@ impl Name {
             Self::CrossfaderContour => "Set crossfader contour",
             Self::Master => "Set master gain",
             Self::CueMix => "Set cue mix",
+            Self::MicAux => "Edit mic/aux",
             Self::MasterEffect => "Edit master effect",
             Self::Sampler => "Edit sampler",
             Self::Track => "Edit track mixer",
             Self::ClipGain => "Set clip gain",
             Self::ClipNotes => "Edit clip notes",
+            Self::AudioClip => "Edit audio clip",
+            Self::Arrangement => "Edit arrangement",
+            Self::NoteSeed => "Set note variation seed",
+            Self::SongNavigation => "Edit song sections and loop",
+            Self::MusicalContext => "Set song key and scale",
+            Self::ClipManagement => "Manage clips",
             Self::RecordNotes => "Record notes",
             Self::Deck => "Edit deck",
             Self::DeckSeek => "Seek deck",
@@ -90,6 +109,7 @@ impl Name {
             Self::LoadMedia => "Replace deck media",
             Self::AddEffect => "Add effect",
             Self::Effect => "Edit effect",
+            Self::PluginParameter => "Edit plugin parameter",
             Self::ComposeClip => "Create compose clip",
             Self::Multiple => "Edit objects",
         }
@@ -136,6 +156,7 @@ enum TargetLabel {
     Clip(u8, u16),
     Deck(u8),
     Effect(Rack, usize),
+    Plugin(u64),
     Multiple,
 }
 impl Item {
@@ -151,6 +172,7 @@ impl Item {
                 Rack::Scene(s) => format!("{name} · Scene {}, FX {}", s + 1, slot + 1),
             },
             TargetLabel::Multiple => format!("{name} · Multiple objects"),
+            TargetLabel::Plugin(id) => format!("{name} · Processor {id}"),
         }
     }
 }
@@ -674,6 +696,17 @@ impl RtEngine {
             self.undo.reject(Failure::Invalid);
             return;
         }
+        if let Some(graph) = &self.routing {
+            let mut events=[0usize;audio::routing::plugins::MAX_PLUGINS];
+            for patch in self.undo.entries[index].as_ref().unwrap().patches.iter().flatten() {
+                if let Patch::PluginParameter {id,..}=patch {
+                    let slot=graph.model.plugins.iter().position(|p|p.id==*id).unwrap(); events[slot]+=1;
+                }
+            }
+            if graph.plugins.iter().zip(events).any(|(plugin,count)|count>plugin.endpoint.as_ref().map_or(0,|e|e.parameter_slots())) {
+                self.undo.reject(Failure::Capacity); return;
+            }
+        }
         let current = self.tracks.iter().map(|track| track.fx.slots.iter().map(fx::FxSlot::storage_bytes).sum::<usize>()).sum::<usize>()
             + self.scene_fx.iter().map(|rack| rack.slots.iter().map(fx::FxSlot::storage_bytes).sum::<usize>()).sum::<usize>();
         let restored = current as i128 + self.undo.entries[index].as_ref().unwrap().patches.iter().flatten()
@@ -814,8 +847,10 @@ pub(crate) fn is_gesture_edit(command: &Command) -> bool {
             | Command::XfaderCurve(_)
             | Command::Master(_)
             | Command::CueMix(_)
+            | Command::MicAuxControl(_)
             | Command::FxWet { .. }
             | Command::FxSelect { .. }
+            | Command::PluginParameter { .. }
             | Command::SamplerBank(_)
             | Command::SamplerInst(_)
             | Command::SamplerOct(_)
@@ -835,7 +870,10 @@ pub(crate) fn is_gesture_edit(command: &Command) -> bool {
             | Command::DeckGain { .. }
             | Command::DeckEq { .. }
             | Command::DeckFilter { .. }
+            | Command::DeckChannelEffect { .. }
             | Command::DeckSync { .. }
+            | Command::DeckSyncMode { .. }
+            | Command::DeckSyncLeader(_)
             | Command::DeckPfl { .. }
             | Command::DeckHotCue { .. }
             | Command::DeckCueStyle { .. }
@@ -847,6 +885,7 @@ pub(crate) fn is_gesture_edit(command: &Command) -> bool {
             | Command::DeckLoopOut { .. }
             | Command::DeckVinyl { .. }
             | Command::DeckKeylock { .. }
+            | Command::DeckKeyShift(_)
             | Command::DeckLoopDouble { .. }
             | Command::DeckLoopHalf { .. }
             | Command::DeckReloop { .. }
@@ -863,6 +902,11 @@ pub(crate) fn is_gesture_edit(command: &Command) -> bool {
 
 impl Journal {
     pub(super) fn retire_command(&mut self, command: Command) {
+        if let Command::MicAuxConfigure(request)=&command {request.ack.reject();}
+        if let Command::AudioClipEdit(request)=&command {request.ack.reject();}
+        if let Command::ArrangementEdit(request)=&command {request.ack.reject();}
+        if let Command::SongNavigationEdit(request)=&command {request.ack.reject();}
+        if let Command::DeckContinue(request) = &command { request.reject(); }
         if let Command::Remote(request) = &command { request.ack.reject(); }
         super::midi_edit::reject_retired(&command);
         super::beatgrid::reject_retired(&command);
@@ -872,10 +916,16 @@ impl Journal {
         if self.enabled
             && matches!(
                 command,
-                Command::Remote(_)
+                Command::MicAuxConfigure(_)
+                    | Command::DeckContinue(_)
+                    | Command::Remote(_)
                     | Command::SessionControl(_)
                     | Command::SessionEdit(_)
                     | Command::Gesture { .. }
+                    | Command::AudioClipEdit(_)
+                    | Command::ArrangementEdit(_)
+                    | Command::SongNavigationEdit(_)
+                    | Command::ClipManage(_)
                     | Command::MidiImport(_)
             | Command::MidiEdit(_)
                     | Command::SetNotes { .. }
@@ -937,7 +987,15 @@ impl Journal {
                     _ => p.heap_bytes(),
                 })
                 .sum::<usize>();
-        if prospective > self.budget {
+        let mut preparation_failed = false;
+        if prospective <= self.budget {
+            for entry in self.entries.iter_mut().flatten() {
+                for patch in entry.patches.iter_mut().flatten() {
+                    if let Patch::Session(value) = patch { preparation_failed |= value.prepare_rate(sr).is_err(); }
+                }
+            }
+        }
+        if preparation_failed || prospective > self.budget {
             // This method only runs while output is stopped. Allocate the
             // replacement fixed timeline here, and send the entire discarded
             // allocation as one owned message. Never expand old processors
@@ -993,7 +1051,6 @@ impl Journal {
         }
         for entry in self.entries.iter_mut().flatten() {
             for patch in entry.patches.iter_mut().flatten() {
-                if let Patch::Session(value) = patch { value.prepare_rate(sr); }
                 if let Patch::Sampler { value: Some(bank), .. } = patch {
                     // A historical inverse retains exact embedded PCM after a
                     // device-rate change, without inferring factory identity.

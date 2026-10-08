@@ -154,6 +154,21 @@ impl Gui {
         }
         self.frame(vec![]);
     }
+    fn capture(&mut self) -> crate::engine::project::Captured {
+        let deadline = Instant::now() + Duration::from_secs(8);
+        let cancel = AtomicBool::new(false);
+        loop {
+            match self.app.engine.project.capture(&cancel) {
+                Ok(captured) => return captured,
+                Err(crate::engine::project::Error::Busy) => {
+                    assert!(Instant::now() < deadline, "support project capture remained busy");
+                    self.frame(vec![]);
+                    std::thread::sleep(Duration::from_millis(2));
+                }
+                Err(error) => panic!("support project capture failed: {error}"),
+            }
+        }
+    }
     fn open_support(&mut self) {
         self.click("Project");
         self.click("Support and crash reports…");
@@ -338,7 +353,7 @@ fn actual_audio_owner_fault_is_collected_without_device_names_or_backend_error_t
         gui.app.engine.cmd.send(Command::Play).unwrap_err(),
         crate::engine::SubmissionError::Performance(crate::engine::performance::Error::Recovery)
     );
-    gui.app.engine.project.capture(&AtomicBool::new(false)).unwrap();
+    gui.capture();
     gui.app.engine.cmd.performance().acknowledge_inputs_released().unwrap();
     gui.wait(|g| !g.app.engine.cmd.performance().status().recovery);
     assert_eq!(
@@ -392,12 +407,7 @@ fn actual_recovery_enospc_reports_typed_failure_and_links_only_a_confirmed_durab
 fn support_link_finds_exact_recovery_and_actual_preview_restores_stopped_untitled_copy() {
     let mut gui = Gui::safe();
     let root = gui._files.0.join("recovery");
-    let captured = gui
-        .app
-        .engine
-        .project
-        .capture(&AtomicBool::new(false))
-        .unwrap();
+    let captured = gui.capture();
     let mut document = project::Document {
         engine: captured.state,
         view: gui.app.project_view(),
@@ -455,12 +465,7 @@ fn support_link_finds_exact_recovery_and_actual_preview_restores_stopped_untitle
                 .project_message_for_recovery_test()
                 .is_some_and(|m| m.contains("Recovered as an unsaved untitled copy"))
     });
-    let actual = gui
-        .app
-        .engine
-        .project
-        .capture(&AtomicBool::new(false))
-        .unwrap();
+    let actual = gui.capture();
     assert_eq!(actual.state.bpm, 137.0);
     assert!(!gui.app.snap.playing);
     assert!(gui.app.recovery_project_path().is_none());
@@ -518,7 +523,7 @@ fn retained_consent_and_export_actions_cannot_review_a_new_report() {
 fn retained_linked_recovery_action_cannot_open_a_new_exact_candidate() {
     let mut gui = Gui::safe();
     let root = gui._files.0.join("linked-recovery");
-    let captured = gui.app.engine.project.capture(&AtomicBool::new(false)).unwrap();
+    let captured = gui.capture();
     let mut document = project::Document {
         engine: captured.state, view: gui.app.project_view(),
         mapping_schema: project::FACTORY_MAPPING_SCHEMA,
@@ -560,7 +565,7 @@ fn retained_linked_recovery_action_cannot_open_a_new_exact_candidate() {
     gui.wait(|g| g.nodes.iter().any(|(_, node)| node.label() == Some("Restore as untitled copy")));
     gui.click("Restore as untitled copy");
     gui.wait(|g| g.app.project_message_for_recovery_test().is_some_and(|message| message.contains("Recovered as an unsaved untitled copy")));
-    assert_eq!(gui.app.engine.project.capture(&AtomicBool::new(false)).unwrap().state.bpm, 132.0);
+    assert_eq!(gui.capture().state.bpm, 132.0);
 }
 
 #[test]

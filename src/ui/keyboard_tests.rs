@@ -227,7 +227,7 @@ fn restored_load_key_uses_filtered_selection_and_selected_deck() {
 }
 
 #[test]
-fn restored_bindings_reject_modifiers_and_repeats_outside_text_focus() {
+fn unbound_modifiers_and_repeats_are_rejected_while_modified_brackets_dispatch_jump_controls() {
     let mut gui = Gui::new();
     gui.frame(vec![], Default::default());
     let before = gui.command_count();
@@ -238,18 +238,24 @@ fn restored_bindings_reject_modifiers_and_repeats_outside_text_focus() {
                 alt: bits & 1 != 0, ctrl: bits & 2 != 0, shift: bits & 4 != 0,
                 mac_cmd: bits & 8 != 0, command: bits & 16 != 0,
             };
+            let previous = gui.command_count();
+            let jump = matches!(pressed, Key::OpenBracket | Key::CloseBracket)
+                && (mods == egui::Modifiers::SHIFT || mods == egui::Modifiers::ALT);
             gui.stroke(pressed, mods, None);
+            assert_eq!(gui.command_count(), previous + u64::from(jump));
         }
         // egui derives repeat from held-key state, overriding the input flag.
         // Hold a modified (suppressed) press, then release Ctrl while the key
         // keeps repeating; that repeat must not trigger a new global action.
+        let previous = gui.command_count();
         gui.frame(vec![key(pressed, true, egui::Modifiers::CTRL)], egui::Modifiers::CTRL);
         let mut repeated = key(pressed, true, Default::default());
         if let egui::Event::Key { repeat, .. } = &mut repeated { *repeat = true; }
         gui.frame(vec![repeated], Default::default());
         gui.frame(vec![key(pressed, false, Default::default())], Default::default());
+        assert_eq!(gui.command_count(), previous);
     }
-    assert_eq!(gui.command_count(), before);
+    assert_eq!(gui.command_count(), before + 4);
     assert!(gui.fixture.decoder_jobs.try_recv().is_err());
 }
 
@@ -329,7 +335,7 @@ fn unfocused_global_bindings_work_and_respect_each_events_modifiers() {
     for pressed in [Key::Q, Key::P, Key::A, Key::L, Key::Space, Key::Escape] {
         gui.stroke(pressed, Default::default(), None);
     }
-    assert_eq!(gui.command_count(), before + 6);
+    assert_eq!(gui.command_count(), before + 8);
     gui.stroke(Key::F1, Default::default(), None);
     assert!(gui.fixture.app.keys_open);
     gui.stroke(Key::Slash, egui::Modifiers::SHIFT, None);

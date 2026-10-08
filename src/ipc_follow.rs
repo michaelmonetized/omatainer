@@ -30,9 +30,20 @@ struct SmallStatus {
     bar: u32,
     beat: f32,
     xfader: f32,
+    sync_leader: Option<crate::engine::deck_sync::Leader>,
+    sync_leader_ready: bool,
+    sync_modes: [crate::engine::deck_sync::Mode; 2],
+    sync_aligned: [bool; 2],
+    sync_target_bpm: [f32; 2],
+    pitch_pickup: [crate::engine::pitch_pickup::Status;2],
     monitor: crate::engine::monitor::Status,
+    latency: crate::engine::audio::routing::latency::Status,
     master_fx: MasterFx,
     midi_clock: MidiClockInput,
+    midi_clock_output: crate::engine::midi::clock::Counters,
+    midi_clock_input: crate::engine::midi::clock_input::Status,
+    scenes: crate::engine::scene::State,
+    meter: [u16; 2],
     midi_routing: crate::engine::midi::routing::Summary,
     midi_feedback: crate::engine::midi::FeedbackStats,
     midi_input: crate::engine::midi::InputStats,
@@ -58,12 +69,23 @@ impl SmallStatus {
             bar: snapshot.bar,
             beat: snapshot.beat_in_bar,
             xfader: snapshot.xfader,
+            sync_leader: snapshot.sync_leader,
+            sync_leader_ready: snapshot.sync_leader_ready,
+            sync_modes: std::array::from_fn(|i| snapshot.decks.get(i).map_or(Default::default(), |deck| deck.sync_mode)),
+            sync_aligned: std::array::from_fn(|i| snapshot.decks.get(i).is_some_and(|deck| deck.sync_aligned)),
+            sync_target_bpm: std::array::from_fn(|i| snapshot.decks.get(i).map_or(0.0, |deck| deck.sync_target_bpm)),
+            pitch_pickup: std::array::from_fn(|i|snapshot.decks.get(i).map_or(Default::default(),|deck|deck.pitch_pickup)),
             monitor: snapshot.monitor,
+            latency: snapshot.latency,
             master_fx: MasterFx {
                 types: snapshot.fx_kind,
                 wet: snapshot.fx_wet,
             },
             midi_clock: snapshot.midi_clock,
+            midi_clock_output: commands.clock_output().counters(),
+            midi_clock_input: snapshot.midi_clock_input,
+            scenes: snapshot.scenes,
+            meter: [u16::from(snapshot.meter_numerator), snapshot.meter_denominator],
             midi_routing: commands.midi_routing().summary(),
             midi_feedback: snapshot.midi_feedback,
             midi_input: snapshot.midi_input,
@@ -81,29 +103,34 @@ impl SmallStatus {
 
 #[derive(Default, Serialize)]
 struct Metadata {
+    midi_profiles: Value,
     midi: Vec<String>,
     #[serde(rename = "deckA")]
     deck_a: String,
     #[serde(rename = "deckB")]
     deck_b: String,
     state_truncated: bool,
+    active_scene_name: String,
+    queued_scene_name: String,
 }
 impl Metadata {
     fn refresh(&mut self, s: &Snapshot) -> bool {
         let a = s
             .decks
             .first()
-            .map(|d| ipc_transport::short_text(&d.title,ipc_transport::STATUS_DECK_TITLE_BYTES))
+            .map(|d| ipc_transport::short_json_text(&d.title, ipc_transport::STATUS_DECK_TITLE_BYTES))
             .unwrap_or("");
         let b = s
             .decks
             .get(1)
-            .map(|d| ipc_transport::short_text(&d.title,ipc_transport::STATUS_DECK_TITLE_BYTES))
+            .map(|d| ipc_transport::short_json_text(&d.title, ipc_transport::STATUS_DECK_TITLE_BYTES))
             .unwrap_or("");
-        let truncated = s.midi.len() > 8
-            || s.midi.iter().take(8).any(|s| s.len() > ipc_transport::STATUS_MIDI_NAME_BYTES)
-            || s.decks.iter().take(2).any(|d| d.title.len() > ipc_transport::STATUS_DECK_TITLE_BYTES);
-        let changed = self.deck_a != a
+        let active = ipc_transport::short_json_text(s.scene_name(false), 256);
+        let queued = ipc_transport::short_json_text(s.scene_name(true), 256);
+        let truncated = active.len() < s.scene_name(false).len() || queued.len() < s.scene_name(true).len() || s.midi.len() > 8
+            || s.midi.iter().take(8).any(|s| ipc_transport::short_json_text(s, ipc_transport::STATUS_MIDI_NAME_BYTES).len() < s.len())
+            || s.decks.iter().take(2).any(|d| ipc_transport::short_json_text(&d.title, ipc_transport::STATUS_DECK_TITLE_BYTES).len() < d.title.len());
+        let changed = self.midi_profiles != s.midi_profiles || self.active_scene_name != active || self.queued_scene_name != queued || self.deck_a != a
             || self.deck_b != b
             || self.state_truncated != truncated
             || self.midi.len() != s.midi.len().min(8)
@@ -111,8 +138,11 @@ impl Metadata {
                 .midi
                 .iter()
                 .zip(&s.midi)
-                .any(|(a, b)| a != ipc_transport::short_text(b, ipc_transport::STATUS_MIDI_NAME_BYTES));
+                .any(|(a, b)| a != ipc_transport::short_json_text(b, ipc_transport::STATUS_MIDI_NAME_BYTES));
         if changed {
+            self.midi_profiles = s.midi_profiles.clone();
+            self.active_scene_name.clear(); self.active_scene_name.push_str(active);
+            self.queued_scene_name.clear(); self.queued_scene_name.push_str(queued);
             self.deck_a.clear();
             self.deck_a.push_str(a);
             self.deck_b.clear();
@@ -122,7 +152,7 @@ impl Metadata {
                 s.midi
                     .iter()
                     .take(8)
-                    .map(|s| ipc_transport::short_text(s, ipc_transport::STATUS_MIDI_NAME_BYTES).to_owned()),
+                    .map(|s| ipc_transport::short_json_text(s, ipc_transport::STATUS_MIDI_NAME_BYTES).to_owned()),
             );
             self.state_truncated = truncated;
         }

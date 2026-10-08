@@ -61,7 +61,7 @@ fn stateful_surface_controls_reach_the_production_input_worker() {
     sp1.push(&[0xb4, 0x22, 0]);
     assert!(matches!(receiver.try_recv(), Ok(Command::Surface(crate::engine::surface_controls::Input::FxValue { bank: 0, slot: 0, parameter: false, value })) if (value - 8192.0 / 16383.0).abs() < 0.00001));
     sp1.push(&[0x9a, 15, 127]);
-    assert!(matches!(receiver.try_recv(), Ok(Command::DeckHotCue { deck: 1, pad: 7, del: true })));
+    assert!(matches!(receiver.try_recv(), Ok(Command::DeckPadPress(crate::engine::deck_pads::Press { source:71, deck:1, id:8, mode:Some(crate::engine::deck_pads::Mode::HotCue), shifted:true, .. }))));
     let mut ns7 = hub.open_for_test(&commands, 72, surface::numark_ns7(), "synthetic NS7", "fixture:ns7");
     ns7.push(&[0xb0, 0, 127]);
     assert!(matches!(receiver.try_recv(), Ok(Command::DeckSpindle { source:72, deck:0, motion }) if motion.ticks == 0 && motion.rate == 0.0));
@@ -108,7 +108,7 @@ fn ns7_controls_strip_release_preserves_the_last_touch_and_playback_on_each_deck
     for deck in 0..2 {
         rt.apply(Command::DeckAudio {
             deck,
-            audio: Arc::new(Sample {
+            audio: Arc::new(Sample { spectrum: None,
                 name: "NS7 strip release".into(),
                 sr: 48000,
                 ch: 2,
@@ -219,6 +219,8 @@ fn validation_rejects_duplicates_conflicts_wildcards_and_decoder_aliases() {
         deck: 1,
         extra: 0,
         relative: None,
+        controls: None,
+        pair_order: None,
     };
     let mut second = pitch;
     second.data = 127; // Dispatch ignores data1 for pitch bend.
@@ -349,12 +351,12 @@ fn apc40_generations_use_separate_clip_grids_and_ignore_unmapped_buttons() {
         for track in 0..8u8 {
             for scene in 0..5u8 {
                 let address = if mk2 {
-                    [0x90, scene * 8 + track, 127]
+                    [0x90, [32, 24, 16, 8, 0][scene as usize] + track, 127]
                 } else {
                     [0x90 | track, 0x35 + scene, 127]
                 };
                 assert!(
-                    matches!(observe(&map, &address).as_slice(), [Command::LaunchClip {track: t, scene: s}] if *t == track && *s == scene as u16)
+                    matches!(observe(&map, &address).as_slice(), [Command::ClipPress(crate::engine::clip_launch::Press {source:1,target:crate::engine::clip_launch::Target::Slot {track:t,scene:s,looping:true},..})] if *t == track && *s == scene as u16)
                 );
                 if mk2 {
                     // MkII grid notes identify their own track; the MIDI
@@ -362,7 +364,7 @@ fn apc40_generations_use_separate_clip_grids_and_ignore_unmapped_buttons() {
                     for channel in 0..16 {
                         assert!(
                             matches!(observe(&map, &[0x90 | channel, address[1], 127]).as_slice(),
-                            [Command::LaunchClip {track: t, scene: s}] if *t == track && *s == scene as u16)
+                            [Command::ClipPress(crate::engine::clip_launch::Press {source:1,target:crate::engine::clip_launch::Target::Slot {track:t,scene:s,looping:true},..})] if *t == track && *s == scene as u16)
                         );
                     }
                 }

@@ -315,7 +315,7 @@ fn independent_track_deck_and_bus_taps_preserve_pre_mixer_audio() {
     rt.legacy_gain_math = true;
     rt.tracks[0].mute = true;
     rt.tracks[0].fx.slots.clear();
-    rt.decks[0].audio = Some(Arc::new(Sample {
+    rt.decks[0].audio = Some(Arc::new(Sample { spectrum: None,
         name: "Independent source".into(),
         sr: 48000,
         ch: 2,

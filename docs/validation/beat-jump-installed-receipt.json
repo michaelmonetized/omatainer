@@ -1,0 +1,56 @@
+{
+  "schema": 1,
+  "installedAt": "2026-10-06T09:26:23.841Z",
+  "sourceRevision": "a9e66d6c48906af8d50776fb7f37333d7c6988de",
+  "version": "0.1.0+a9e66d6c4890",
+  "manifestSha256": "69e47cd4802f83ca70d753aaacfeaa960d06889f5f2ee97334321d94ae396916",
+  "executableSha256": "3794bbf8dd8639880fbf9080f006a2f75a93d612516a147cc38b81a35538428c",
+  "platform": {
+    "os": "linux",
+    "architecture": "arm64",
+    "glibc": "2.43",
+    "installer": "Node.js 22 or newer"
+  },
+  "documentSchemas": {
+    "preferences": 16,
+    "project": 15,
+    "policy": "Installation preserves preferences, projects, libraries and plugins. Opening documents may migrate their format; retain document backups when rolling back.",
+    "automatic": false
+  },
+  "checks": {
+    "freshRelease": true,
+    "packageFilesVerified": 29,
+    "installedAndRunningExecutableMatched": true,
+    "captureServicesStopped": true,
+    "independentControlFollowerPreserved": true,
+    "masterMuted": true,
+    "transportPaused": true,
+    "nowPlayingDisabled": true,
+    "pausedExactDeckJumpAndRoundtrip": true
+  },
+  "state": {
+    "master": 0,
+    "playing": false,
+    "recording": false,
+    "decks": [
+      {
+        "title": "What More Can I Say",
+        "playing": false,
+        "positionSeconds": 264.6466297819919,
+        "keylock": false
+      },
+      {
+        "title": "Public Service Announcement",
+        "playing": false,
+        "positionSeconds": 3.9060474438022594,
+        "keylock": true
+      }
+    ]
+  },
+  "softwareEvidence": "docs/validation/beat-jump-receipt.json",
+  "evidenceDirectory": "target/app-backlog/visible-beat-jump-app/",
+  "limits": [
+    "No new physical gestures or listening qualification",
+    "Native UI interaction proof uses the headless software renderer"
+  ]
+}

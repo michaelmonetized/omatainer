@@ -3,36 +3,94 @@ use super::*;
 #[test]
 fn exported_ramp_roundtrips_midi_ticks_and_agrees_with_independent_timestamp_integration() {
     use crate::engine::midi_data::{Meter, Tempo, TimingSettings};
-    let map = Conductor::native(960, vec![Tempo::new(0, 120.0, true).unwrap(), Tempo::new(8160, 180.0, false).unwrap()], vec![Meter { tick: 0, numerator: 7, denominator_power: 3, clocks: 12, thirty_seconds: 8 }], TimingSettings::default()).unwrap();
+    let map = Conductor::native(
+        960,
+        vec![
+            Tempo::new(0, 120.0, true).unwrap(),
+            Tempo::new(8160, 180.0, false).unwrap(),
+        ],
+        vec![Meter {
+            tick: 0,
+            numerator: 7,
+            denominator_power: 3,
+            clocks: 12,
+            thirty_seconds: 8,
+        }],
+        TimingSettings::default(),
+    )
+    .unwrap();
     let b = 60000000.0 / f64::from(map.tempos[1].micros);
     for ppqn in [480, 960, 1920] {
         let mut meta = export_conductor(&map, ppqn, u64::from(ppqn) * 16, &mut || false).unwrap();
         meta.sort_by_key(|m| (m.tick, m.order));
-        let file = smf::File { format: smf::Format::Single, ppqn, tracks: vec![smf::Track { end_tick: u64::from(ppqn) * 16, meta, ..Default::default() }], warnings: vec![] };
+        let file = smf::File {
+            format: smf::Format::Single,
+            ppqn,
+            tracks: vec![smf::Track {
+                end_tick: u64::from(ppqn) * 16,
+                meta,
+                ..Default::default()
+            }],
+            warnings: vec![],
+        };
         let bytes = smf::encode(&file, false).unwrap();
         let decoded = smf::decode(&bytes).unwrap();
         assert_eq!(musical(decoded.clone()), musical(file));
-        let tempos: Vec<_> = decoded.tracks[0].meta.iter().filter_map(|m| if let MetaValue::Tempo(micros) = m.value { Some((m.tick, micros)) } else { None }).collect();
+        let tempos: Vec<_> = decoded.tracks[0]
+            .meta
+            .iter()
+            .filter_map(|m| {
+                if let MetaValue::Tempo(micros) = m.value {
+                    Some((m.tick, micros))
+                } else {
+                    None
+                }
+            })
+            .collect();
         let exported_seconds = |beat: f64| {
-            let target = beat * f64::from(ppqn); let mut seconds = 0.0; let mut tick = 0.0; let mut micros = 500000;
+            let target = beat * f64::from(ppqn);
+            let mut seconds = 0.0;
+            let mut tick = 0.0;
+            let mut micros = 500000;
             for &(next, value) in &tempos {
-                if next as f64 > target { break; }
-                seconds += (next as f64 - tick) * f64::from(micros) / (f64::from(ppqn) * 1_000_000.0);
-                tick = next as f64; micros = value;
+                if next as f64 > target {
+                    break;
+                }
+                seconds +=
+                    (next as f64 - tick) * f64::from(micros) / (f64::from(ppqn) * 1_000_000.0);
+                tick = next as f64;
+                micros = value;
             }
             seconds + (target - tick) * f64::from(micros) / (f64::from(ppqn) * 1_000_000.0)
         };
         for beat in [0.5_f64, 3.5, 5.0, 8.5, 12.5, 16.0] {
-            let n = 20000; let length = beat.min(8.5); let h = length / f64::from(n);
+            let n = 20000;
+            let length = beat.min(8.5);
+            let h = length / f64::from(n);
             let f = |x: f64| 60.0 / (120.0 + (b - 120.0) * x / 8.5);
             let mut sum = f(0.0) + f(length);
-            for i in 1..n { sum += f(f64::from(i) * h) * if i % 2 == 0 { 2.0 } else { 4.0 }; }
+            for i in 1..n {
+                sum += f(f64::from(i) * h) * if i % 2 == 0 { 2.0 } else { 4.0 };
+            }
             let expected = sum * h / 3.0 + (beat - 8.5).max(0.0) * 60.0 / b;
-            assert!((exported_seconds(beat) - expected).abs() < 1.0 / 96000.0, "{ppqn} beat{beat}: {} vs{expected}", exported_seconds(beat));
+            assert!(
+                (exported_seconds(beat) - expected).abs() < 1.0 / 96000.0,
+                "{ppqn} beat{beat}: {} vs{expected}",
+                exported_seconds(beat)
+            );
         }
     }
     assert!(export_conductor(&map, 960, 15360, &mut || true).is_err());
-    let huge = Conductor::native(960, vec![Tempo::new(0, 40.0, true).unwrap(), Tempo::new(960 * 100, 240.0, false).unwrap()], map.meters.clone(), TimingSettings::default()).unwrap();
+    let huge = Conductor::native(
+        960,
+        vec![
+            Tempo::new(0, 40.0, true).unwrap(),
+            Tempo::new(960 * 100, 240.0, false).unwrap(),
+        ],
+        map.meters.clone(),
+        TimingSettings::default(),
+    )
+    .unwrap();
     assert!(export_conductor(&huge, 32767, 32767 * 100, &mut || false).is_err());
 }
 use crate::engine::{midi_edit::Outcome, test_alloc};
@@ -776,4 +834,224 @@ fn all_sixty_four_destinations_plus_conductor_are_one_bounded_inverse() {
         }
     }
     assert!(undone.state.conductor.is_none());
+}
+
+fn combined_editor_fixture() -> (Engine, RtEngine) {
+    let (engine, mut rt) = Engine::headless_for_test(48000, 256);
+    let mut file = fixture();
+    file.tracks = file
+        .tracks
+        .into_iter()
+        .filter(|t| !t.notes.is_empty())
+        .take(2)
+        .collect();
+    assert_eq!(file.tracks.len(), 1);
+    file.tracks.push(file.tracks[0].clone());
+    file.format = smf::Format::Parallel;
+    assert_eq!(file.tracks.len(), 2);
+    let mappings = vec![
+        Mapping {
+            source: Source {
+                track: 0,
+                channel: None,
+            },
+            destination: Some((2, 6)),
+        },
+        Mapping {
+            source: Source {
+                track: 1,
+                channel: None,
+            },
+            destination: Some((3, 7)),
+        },
+    ];
+    let (request, ack) = Request::prepare(
+        capture(&engine, &mut rt),
+        &file,
+        &mappings,
+        false,
+        false,
+        TempoChoice::KeepSession,
+        false,
+        false,
+    )
+    .unwrap();
+    engine.send(Command::MidiImport(request)).unwrap();
+    rt.process(&mut []);
+    assert_eq!(ack.state(), Outcome::Applied);
+    for (track, scene, color, loop_length) in
+        [(2, 6, [18, 92, 190], 12.0), (3, 7, [202, 110, 35], 24.0)]
+    {
+        assert!(rt.tracks[track]
+            .poly
+            .set_tuning_hz(if track == 2 { 432.0 } else { 442.0 }));
+        let clip = &mut rt.tracks[track].clips[scene];
+        clip.properties.color = Some(color);
+        let mut region = clip.region.unwrap_or_else(|| Region::full(clip.bars));
+        region.loop_end = region.loop_start + loop_length;
+        assert!(region.valid());
+        assert!(region.allows(&clip.notes));
+        clip.region = Some(region);
+    }
+    (engine, rt)
+}
+fn combined_editor_requests(
+    engine: &Engine,
+    rt: &mut RtEngine,
+) -> Vec<super::super::midi_edit::Request> {
+    [(2, 6), (3, 7)]
+        .into_iter()
+        .map(|(track, scene)| {
+            let base = Document::capture(capture(engine, rt), track, scene).unwrap();
+            let mut notes = base.notes.clone();
+            assert!(!notes.is_empty());
+            for note in &mut notes {
+                note.vel = note.vel.saturating_add(7).min(127);
+            }
+            super::super::midi_edit::Request::with_lanes(
+                base.clone(),
+                base.name.clone(),
+                base.playback_region(),
+                notes,
+                base.lanes.clone(),
+            )
+            .unwrap()
+            .0
+        })
+        .collect()
+}
+#[test]
+fn combined_editor_preserves_owned_regions_lanes_properties_and_stable_notes_in_one_allocation_free_undo(
+) {
+    let (engine, mut rt) = combined_editor_fixture();
+    let before = capture(&engine, &mut rt);
+    let edits = combined_editor_requests(&engine, &mut rt);
+    let previous = engine.undo.view().cursor;
+    let (request, ack, next) =
+        Request::prepare_edits(capture(&engine, &mut rt), edits, &AtomicBool::new(false)).unwrap();
+    assert_eq!(request.targets.len(), 2);
+    assert_eq!(next.len(), 2);
+    assert!(request.metadata_baseline.is_some());
+    engine.send(Command::MidiImport(request)).unwrap();
+    assert_eq!(
+        test_alloc::measure(|| rt.process(&mut [])),
+        test_alloc::Counts::default()
+    );
+    assert_eq!(ack.state(), Outcome::Applied);
+    assert_eq!(engine.undo.view().cursor, previous + 1);
+    assert_eq!(engine.undo.view().items[previous].unwrap().patches, 2);
+    let changed = capture(&engine, &mut rt);
+    for (track, scene) in [(2, 6), (3, 7)] {
+        let old = &before.state.tracks[track].clips[scene];
+        let new = &changed.state.tracks[track].clips[scene];
+        assert_eq!(old.region, new.region);
+        assert_eq!(old.properties, new.properties);
+        assert_eq!(old.lanes, new.lanes);
+        assert_eq!(old.gain, new.gain);
+        for (old, new) in old.notes.iter().zip(&new.notes) {
+            assert_eq!(old.id, new.id);
+            assert_eq!(old.source_timing, new.source_timing);
+            assert_eq!(old.pitch, new.pitch);
+            assert_eq!(old.channel, new.channel);
+            assert_eq!(new.vel, old.vel.saturating_add(7).min(127));
+        }
+    }
+    engine.send(Command::Undo).unwrap();
+    assert_eq!(
+        test_alloc::measure(|| rt.process(&mut [])),
+        test_alloc::Counts::default()
+    );
+    let undone = capture(&engine, &mut rt);
+    for (track, scene) in [(2, 6), (3, 7)] {
+        assert_eq!(
+            serde_json::to_vec(&undone.state.tracks[track].clips[scene]).unwrap(),
+            serde_json::to_vec(&before.state.tracks[track].clips[scene]).unwrap()
+        );
+    }
+    engine.send(Command::Redo).unwrap();
+    assert_eq!(
+        test_alloc::measure(|| rt.process(&mut [])),
+        test_alloc::Counts::default()
+    );
+    let redone = capture(&engine, &mut rt);
+    for (track, scene) in [(2, 6), (3, 7)] {
+        assert_eq!(
+            serde_json::to_vec(&redone.state.tracks[track].clips[scene]).unwrap(),
+            serde_json::to_vec(&changed.state.tracks[track].clips[scene]).unwrap()
+        );
+    }
+}
+#[test]
+fn combined_editor_refuses_every_target_when_metadata_or_one_captured_owner_changes_and_cancel_preserves_truth(
+) {
+    for change in [0, 1, 2] {
+        let (engine, mut rt) = combined_editor_fixture();
+        let before = capture(&engine, &mut rt);
+        let edits = combined_editor_requests(&engine, &mut rt);
+        let (request, ack, _) =
+            Request::prepare_edits(capture(&engine, &mut rt), edits, &AtomicBool::new(false))
+                .unwrap();
+        match change {
+            0 => {
+                engine
+                    .send(Command::TrackGain {
+                        track: 5,
+                        value: 0.31,
+                    })
+                    .unwrap();
+                rt.process(&mut []);
+            }
+            1 => {
+                rt.tracks[3].clips[7].name = "Changed original target".into();
+            }
+            _ => {
+                assert!(ack.cancel());
+            }
+        }
+        let previous = engine.undo.view().cursor;
+        engine.send(Command::MidiImport(request)).unwrap();
+        assert_eq!(
+            test_alloc::measure(|| rt.process(&mut [])),
+            test_alloc::Counts::default()
+        );
+        assert_eq!(
+            ack.state(),
+            if change == 2 {
+                Outcome::Cancelled
+            } else {
+                Outcome::Rejected
+            }
+        );
+        assert_eq!(engine.undo.view().cursor, previous);
+        let after = capture(&engine, &mut rt);
+        for (track, scene) in [(2, 6), (3, 7)] {
+            assert_eq!(
+                after.state.tracks[track].clips[scene].notes,
+                before.state.tracks[track].clips[scene].notes
+            );
+            assert_eq!(
+                after.state.tracks[track].clips[scene].lanes,
+                before.state.tracks[track].clips[scene].lanes
+            );
+        }
+    }
+}
+#[test]
+fn combined_editor_preparation_refuses_duplicates_stale_notes_and_cancellation_without_partial_prepared_targets(
+) {
+    for failure in [0, 1, 2] {
+        let (engine, mut rt) = combined_editor_fixture();
+        let mut edits = combined_editor_requests(&engine, &mut rt);
+        match failure {
+            0 => edits.push(edits[0].clone()),
+            1 => rt.tracks[3].clips[7].notes[0].vel = 1,
+            _ => {}
+        }
+        assert!(Request::prepare_edits(
+            capture(&engine, &mut rt),
+            edits,
+            &AtomicBool::new(failure == 2)
+        )
+        .is_err());
+    }
 }

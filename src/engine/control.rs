@@ -20,9 +20,9 @@ pub const MAX_QUEUED_PAYLOAD_BYTES: usize = 256 * 1024 * 1024;
 pub struct CommandPort {
     support: Option<crate::support::worker::Port>,
     input_epoch: Option<u64>,
+    midi_context: [u64; 3],
     theme_requests: crate::theme::requests::Port,
     remote_jobs: std::sync::Arc<super::remote::Jobs>,
-    sender: crossbeam_channel::Sender<Command>,
     shared: std::sync::Arc<AdmissionShared>,
     admission: std::sync::Arc<parking_lot::Mutex<Admission>>,
     capacity: usize,
@@ -66,6 +66,8 @@ enum GateKey {
     Pad(u8),
     MidiPad { source: u64, pad: u8 },
     SurfaceShift(u64),
+    ClipPad { source: u64, key: u32 },
+    DeckPad { source: u64, key: u32 },
     Audition(u64),
     Piano(u64),
     Touch { source: u64, deck: u8 },
@@ -75,6 +77,7 @@ enum GateKey {
 }
 
 struct Admission {
+    producer: rtrb::Producer<Command>,
     gates: [Option<GateKey>; MAX_COMMANDS],
     held: usize,
     stop_reserve: usize,
@@ -84,8 +87,12 @@ struct Admission {
 }
 
 struct AdmissionShared {
+    now_playing: std::sync::Arc<crate::performance_history::now_playing::Shared>,
     midi_learn: std::sync::Arc<super::midi::learn::Shared>,
     midi_routing: std::sync::Arc<super::midi::routing::Shared>,
+    clock_output: std::sync::Arc<super::midi::clock::Shared>,
+    clock_input: std::sync::Arc<super::midi::clock_input::Shared>,
+    retrospective: std::sync::Arc<super::retrospective::Shared>,
     performance: super::performance::Handle,
     project_writers: std::sync::atomic::AtomicU64,
     audio_offline: std::sync::atomic::AtomicBool,
@@ -148,14 +155,21 @@ impl AdmissionShared {
 /// store, never a producer-mutex operation or a blocking acknowledgment send.
 pub struct CommandReceiver {
     performance: super::performance::Handle,
-    receiver: crossbeam_channel::Receiver<Command>,
+    receiver: CommandInput,
     shared: Option<std::sync::Arc<AdmissionShared>>,
 }
 
+enum CommandInput {
+    Ring(std::cell::RefCell<rtrb::Consumer<Command>>),
+    #[cfg(test)]
+    Fixture(crossbeam_channel::Receiver<Command>),
+}
+
+#[cfg(test)]
 impl From<crossbeam_channel::Receiver<Command>> for CommandReceiver {
     fn from(receiver: crossbeam_channel::Receiver<Command>) -> Self {
         Self {
-            receiver,
+            receiver: CommandInput::Fixture(receiver),
             performance: super::performance::Handle::default(),
             shared: None,
         }
@@ -173,22 +187,65 @@ impl Drop for CommandReceiver {
 }
 
 impl CommandReceiver {
+    /// Prepare an offline renderer with no command producer.
+    /// Takes no arguments; returns an empty disconnected ring with no admission or device owners.
+    pub(crate) fn disconnected() -> Self {
+        let (producer, receiver) = rtrb::RingBuffer::new(1);
+        drop(producer);
+        Self {
+            performance: super::performance::Handle::default(),
+            receiver: CommandInput::Ring(std::cell::RefCell::new(receiver)),
+            shared: None,
+        }
+    }
+
+    /// Share the bounded output clock queue with an audio graph.
+    /// Takes this receiver; returns its persistent clock state or isolated offline state.
+    pub(crate) fn clock_output(&self) -> std::sync::Arc<super::midi::clock::Shared> {self.shared.as_ref().map_or_else(||std::sync::Arc::new(super::midi::clock::Shared::default()),|shared|shared.clock_output.clone())}
+    pub(crate) fn clock_input(&self) -> std::sync::Arc<super::midi::clock_input::Shared> {self.shared.as_ref().map_or_else(||std::sync::Arc::new(super::midi::clock_input::Shared::default()),|shared|shared.clock_input.clone())}
     pub(crate) fn midi_routing(&self) -> std::sync::Arc<super::midi::routing::Shared> {
         self.shared.as_ref().map_or_else(||std::sync::Arc::new(super::midi::routing::Shared::default()),|s|s.midi_routing.clone())
     }
+    /// Share the input cancellation fence with the audio owner.
+    /// Takes this command receiver; returns its MIDI owner or an isolated owner for offline fixtures.
+    pub(crate) fn midi_learning(&self) -> std::sync::Arc<super::midi::learn::Shared> {
+        self.shared.as_ref().map_or_else(|| std::sync::Arc::new(super::midi::learn::Shared::default()), |shared| shared.midi_learn.clone())
+    }
     pub(super) fn performance(&self) -> &super::performance::Handle { &self.performance }
     pub fn len(&self) -> usize {
-        self.receiver.len()
+        match &self.receiver {
+            CommandInput::Ring(receiver) => receiver.borrow().slots(),
+            #[cfg(test)]
+            CommandInput::Fixture(receiver) => receiver.len(),
+        }
     }
     pub fn is_empty(&self) -> bool {
-        self.receiver.is_empty()
+        self.len() == 0
+    }
+
+    /// Read only a completely published command.
+    /// Takes this audio-owned receiver; returns one command or leaves unfinished producer work for a later block.
+    fn receive_raw(&self) -> Result<Command, crossbeam_channel::TryRecvError> {
+        match &self.receiver {
+            CommandInput::Ring(receiver) => {
+                let mut receiver = receiver.borrow_mut();
+                receiver.pop().map_err(|_| {
+                    if receiver.is_abandoned() {
+                        crossbeam_channel::TryRecvError::Disconnected
+                    } else {
+                        crossbeam_channel::TryRecvError::Empty
+                    }
+                })
+            }
+            #[cfg(test)]
+            CommandInput::Fixture(receiver) => receiver.try_recv(),
+        }
     }
 
     /// Single-command consumers release credit on dequeue. The renderer batch
     /// holds all credits until its bounded receive loop has finished instead.
     pub fn try_recv(&self) -> Result<Command, crossbeam_channel::TryRecvError> {
-        self.receiver
-            .try_recv()
+        self.receive_raw()
             .inspect(|command| self.release_payload(owned_payload_bytes(command)))
     }
 
@@ -403,10 +460,20 @@ pub struct QueuePressure {
 }
 
 impl CommandPort {
+    /// Access optional label publication outside the native callback.
+    /// Takes no arguments; returns the history-worker and local API owner.
+    pub(crate) fn now_playing(&self) -> std::sync::Arc<crate::performance_history::now_playing::Shared> { self.shared.now_playing.clone() }
     /// Access bounded learning and assignment state outside the native callback.
     /// Takes no arguments; returns the shared MIDI dispatch/editor owner.
     pub(crate) fn midi_learn(&self) -> std::sync::Arc<super::midi::learn::Shared> { self.shared.midi_learn.clone() }
+    /// Access clock configuration and status outside the native callback.
+    /// Takes this producer; returns its shared bounded clock scheduler state.
+    pub(crate) fn clock_output(&self) -> &std::sync::Arc<super::midi::clock::Shared> {&self.shared.clock_output}
+    pub(crate) fn clock_input(&self) -> &std::sync::Arc<super::midi::clock_input::Shared> {&self.shared.clock_input}
     pub(crate) fn midi_routing(&self) -> &std::sync::Arc<super::midi::routing::Shared> { &self.shared.midi_routing }
+    /// Access opt-in recent MIDI history outside the audio renderer.
+    /// Takes this producer; returns the bounded memory owner used by monitored input and native review.
+    pub(crate) fn retrospective(&self) -> &std::sync::Arc<super::retrospective::Shared> { &self.shared.retrospective }
     pub(crate) fn attach_support(&mut self,port:crate::support::worker::Port) {self.support=Some(port);}
     /// IPC/GUI producer use only, never from a renderer or raw MIDI callback.
     pub(crate) fn support_event(&self,code:crate::support::Code,failure:Option<crate::support::FailureClass>) {
@@ -416,7 +483,7 @@ impl CommandPort {
     pub fn queue_pressure(&self) -> QueuePressure {
         use std::sync::atomic::Ordering::Relaxed;
         QueuePressure {
-            pending: self.sender.len(),
+            pending: self.len(),
             capacity: self.capacity,
             observed_high_water: self.shared.observed_high_water.load(Relaxed),
             reserved_releases: self.shared.reserved_releases.load(Relaxed),
@@ -464,10 +531,14 @@ impl CommandPort {
             capacity <= MAX_COMMANDS,
             "queue exceeds fixed reservation storage"
         );
-        let (sender, receiver) = crossbeam_channel::bounded(capacity);
+        let (producer, receiver) = rtrb::RingBuffer::new(capacity);
         let shared = std::sync::Arc::new(AdmissionShared {
+            now_playing: std::sync::Arc::new(crate::performance_history::now_playing::Shared::default()),
             midi_learn: std::sync::Arc::new(super::midi::learn::Shared::default()),
             midi_routing: std::sync::Arc::new(super::midi::routing::Shared::default()),
+            clock_output: std::sync::Arc::new(super::midi::clock::Shared::default()),
+            clock_input: std::sync::Arc::new(super::midi::clock_input::Shared::default()),
+            retrospective: std::sync::Arc::new(super::retrospective::Shared::default()),
             performance: super::performance::Handle::default(),
             project_writers: std::sync::atomic::AtomicU64::new(0),
             audio_offline: std::sync::atomic::AtomicBool::new(false),
@@ -489,11 +560,12 @@ impl CommandPort {
         let port = Self {
             support: None,
             input_epoch: None,
+            midi_context: [0; 3],
             theme_requests: crate::theme::requests::Port::default(),
             remote_jobs: std::sync::Arc::new(super::remote::Jobs::default()),
-            sender,
             shared: shared.clone(),
             admission: std::sync::Arc::new(parking_lot::Mutex::new(Admission {
+                producer,
                 gates: [None; MAX_COMMANDS],
                 held: 0,
                 stop_reserve: DEFAULT_STOP_LANES,
@@ -507,7 +579,7 @@ impl CommandPort {
             port,
             CommandReceiver {
                 performance: shared.performance.clone(),
-                receiver,
+                receiver: CommandInput::Ring(std::cell::RefCell::new(receiver)),
                 shared: Some(shared),
             },
         )
@@ -522,7 +594,7 @@ impl CommandPort {
     pub(crate) fn session_scene_exists(&self, slot: usize) -> bool { self.shared.midi_routing.identity.scene_exists(slot) }
     pub(crate) fn session_scene_count(&self) -> usize { self.shared.midi_routing.identity.scene_count() }
     pub fn len(&self) -> usize {
-        self.sender.len()
+        self.capacity - self.admission.lock().producer.slots()
     }
     pub fn stats(&self) -> SubmissionStats {
         self.shared.stats()
@@ -538,6 +610,8 @@ impl CommandPort {
     /// its release, so input overflow can retire exactly that source's gates
     /// even while ordinary engine queue capacity is exhausted.
     pub(super) fn release_midi_source(&self, source: u64) {
+        self.shared.clock_input.retire(source, super::midi::clock_input::Loss::Retired);
+        self.shared.midi_learn.retire_pending();
         let gates = self.admission.lock().gates;
         for gate in gates.into_iter().flatten() {
             let command = match gate {
@@ -558,6 +632,8 @@ impl CommandPort {
                 GateKey::DeckButton { source: owner, deck, button } if owner == source => Command::DeckControl { source, deck, control: super::deck_controls::Control::Hold { button, on: false } },
                 GateKey::MidiPad { source: owner, pad } if owner == source => Command::MidiSamplerPad { source, pad, on: false, pressure: 0.0 },
                 GateKey::SurfaceShift(owner) if owner == source => Command::Surface(super::surface_controls::Input::Shift { source, on: false }),
+                GateKey::ClipPad { source: owner, key } if owner == source => Command::ClipRelease(super::clip_launch::Release { source, key }),
+                GateKey::DeckPad { source: owner, key } if owner == source => Command::DeckPadRelease(super::deck_pads::Release { source, key }),
                 _ => continue,
             };
             let _ = self.send(command);
@@ -572,10 +648,14 @@ impl CommandPort {
         self.shared.ui_requests.stats()
     }
 
-    /// Accepted means queued, not executed. Coalesced means an equivalent
-    /// release is already ordered and no intervening accepted onset exists.
-    /// No producer waits for queue capacity; only the small admission section
-    /// serializes producers. Construct media/instruments before calling here.
+    /// Retain one input worker’s overflow, assignment and routing generations.
+    /// Takes three captured generations; returns an independent producer fence that leaves other input ports unchanged.
+    pub(super) fn for_midi_context(&self, context: [u64; 3]) -> Self {let mut port=self.clone();port.midi_context=context;port}
+    /// Read the input worker generations for a source-owned absolute pitch sample.
+    /// Takes this producer; returns fixed scalar context without locking or allocating.
+    pub(super) fn midi_context(&self) -> [u64; 3] {self.midi_context}
+    /// Retain the performance safety fence captured with one input packet.
+    /// Takes its input epoch; returns a producer that refuses stale onsets while retaining admitted releases.
     pub(super) fn for_input_epoch(&self, epoch: u64) -> Self {
         let mut port = self.clone(); port.input_epoch = Some(epoch); port
     }
@@ -585,12 +665,17 @@ impl CommandPort {
         }
         self.shared.performance.check(command, None)
     }
+    /// Accepted means queued, not executed. Coalesced means an equivalent
+    /// release is already ordered and no intervening accepted onset exists.
+    /// No producer waits for queue capacity; only the small admission section
+    /// serializes producers. Construct media/instruments before calling here.
     pub fn send(&self, command: Command) -> Result<SubmissionOutcome, SubmissionError> {
+        let edit_ack = super::midi_edit::admission_ack(&command);
         let sampler_ack = super::sampler::admission_ack(&command);
         let session_ack = super::session::admission_ack(&command);
         let remote_ack = match &command { Command::Remote(request) => Some(request.ack.clone()), _ => None };
         let result = self.send_after_preflight(command, || {});
-        if result.is_err() { if let Some(ack) = remote_ack { ack.reject(); } if let Some(ack) = sampler_ack { ack.reject(); } if let Some(ack) = session_ack { ack.reject(); } }
+        if result.is_err() { if let Some(ack)=edit_ack{ack.reject();} if let Some(ack) = remote_ack { ack.reject(); } if let Some(ack) = sampler_ack { ack.reject(); } if let Some(ack) = session_ack { ack.reject(); } }
         result
     }
 
@@ -656,8 +741,17 @@ impl CommandPort {
             return fail(SubmissionError::InvalidTarget);
         }
         if matches!(&command, Command::DeckControl { deck, control, .. } if usize::from(*deck) >= super::DECKS || !control.valid()) { return fail(SubmissionError::InvalidTarget); }
+        if matches!(&command, Command::DeckPadParameter { deck, .. } if *deck >= 2) { return fail(SubmissionError::InvalidTarget); }
+        if matches!(&command, Command::DeckSyncMode { deck, .. } if *deck >= 2) { return fail(SubmissionError::InvalidTarget); }
+        if matches!(&command, Command::DeckKeyShift(request) if !request.valid()) { return fail(SubmissionError::InvalidTarget); }
+        if matches!(&command, Command::DeckPadPress(press) if !press.valid()) { return fail(SubmissionError::InvalidTarget); }
+        if matches!(&command, Command::ClockFollow(config) if !config.valid()) {return fail(SubmissionError::InvalidTarget);}
+        if matches!(&command, Command::MidiPitch(input) if !input.valid()) { return fail(SubmissionError::InvalidTarget); }
+        if matches!(&command, Command::MidiAdjust(adjust) if !adjust.valid()) { return fail(SubmissionError::InvalidTarget); }
         if matches!(&command, Command::Surface(input) if !input.valid()) { return fail(SubmissionError::InvalidTarget); }
         if matches!(&command, Command::MidiSamplerPad { pad, pressure, .. } if *pad >= 16 || !pressure.is_finite() || !(0.0..=1.0).contains(pressure)) { return fail(SubmissionError::InvalidTarget); }
+        if matches!(&command,Command::ClipPress(super::clip_launch::Press {target:super::clip_launch::Target::Apc(pad),..}) if *pad>=40)
+            || matches!(&command,Command::ClipPress(super::clip_launch::Press {target:super::clip_launch::Target::Slot{track,scene,..},..}) if usize::from(*track)>=super::session::MAX_TRACKS||usize::from(*scene)>=super::session::MAX_SCENES) {return fail(SubmissionError::InvalidTarget);}
         if let Command::DeckLoadSelected { deck } = command {
             return self.shared.submit_ui(self.shared.ui_requests.load(deck));
         }
@@ -678,6 +772,7 @@ impl CommandPort {
         {
             return fail(SubmissionError::InvalidTarget);
         }
+        if matches!(&command, Command::DeckChannelEffect { deck, .. } if usize::from(*deck) >= super::DECKS) { return fail(SubmissionError::InvalidTarget); }
         if matches!(&command,Command::RoutedNoteOn {track,ch,note,vel,..} if usize::from(*track)>=super::session::MAX_TRACKS || *ch>15 || *note>127 || *vel>127) {
             return fail(SubmissionError::InvalidTarget);
         }
@@ -687,6 +782,8 @@ impl CommandPort {
         if matches!(&command, Command::TimelineSeek(seconds) if !seconds.is_finite() || !(0.0..=86400.0).contains(seconds)) {
             return fail(SubmissionError::InvalidTarget);
         }
+        if matches!(&command,Command::SongNavigation(action) if !action.valid()){return fail(SubmissionError::InvalidTarget);}
+        if matches!(&command,Command::SongSeek(beat) if !beat.is_finite()||!(0.0..=262144.0).contains(beat)){return fail(SubmissionError::InvalidTarget);}
         if matches!(&command, Command::XfaderCurve(value) if !value.is_finite() || !(0.0..=1.0).contains(value)) {
             return fail(SubmissionError::InvalidTarget);
         }
@@ -758,7 +855,7 @@ impl CommandPort {
         let reserves_new_gate = gate.is_some_and(|(_, down)| down && existing_gate.is_none());
         if stop_lane.is_none()
             && !releasing
-            && self.sender.len() + state.held + stop_reserve + 1 + usize::from(reserves_new_gate)
+            && self.capacity - state.producer.slots() + state.held + stop_reserve + 1 + usize::from(reserves_new_gate)
                 > self.capacity
         {
             return fail(SubmissionError::Full);
@@ -783,7 +880,7 @@ impl CommandPort {
         if !self.shared.reserve_payload(payload_bytes) {
             return fail(SubmissionError::PayloadFull);
         }
-        match self.sender.try_send(command) {
+        match state.producer.push(command) {
             Ok(()) => {
                 state.stop_reserve = stop_reserve;
                 if let Some(lane) = stop_lane {
@@ -807,7 +904,7 @@ impl CommandPort {
                 }
                 self.shared
                     .observed_high_water
-                    .fetch_max(self.sender.len() as u64, Relaxed);
+                    .fetch_max((self.capacity - state.producer.slots()) as u64, Relaxed);
                 self.shared
                     .reserved_releases
                     .store(state.held as u64, Relaxed);
@@ -821,14 +918,8 @@ impl CommandPort {
                 // Drop rejected command payloads only after releasing the
                 // producer mutex (large clips/media must not extend contention).
                 drop(state);
-                let reason = match &error {
-                    crossbeam_channel::TrySendError::Full(_) => SubmissionError::Full,
-                    crossbeam_channel::TrySendError::Disconnected(_) => {
-                        SubmissionError::Disconnected
-                    }
-                };
                 drop(error);
-                fail(reason)
+                fail(SubmissionError::Full)
             }
         }
     }
@@ -858,6 +949,10 @@ fn owned_payload_bytes(command: &Command) -> usize {
     match command {
         Command::SessionControl(scoped) => size_of::<Command>().saturating_add(owned_payload_bytes(&scoped.command)),
         Command::SessionEdit(request) => request.bytes(),
+        Command::AudioClipEdit(request) => request.bytes(),
+        Command::ArrangementEdit(request) => request.bytes(),
+        Command::SongNavigationEdit(request) => request.bytes(),
+        Command::ClipManage(request) => request.bytes(),
         Command::MidiEdit(request) => request.bytes(),
         Command::MidiImport(request) => request.bytes(),
         Command::ProviderPreview(request) => request.bytes(),
@@ -865,6 +960,7 @@ fn owned_payload_bytes(command: &Command) -> usize {
         Command::SamplerEdit(edit) => edit.bank.data.metadata_bytes() + edit.bank.data.audio.iter().flatten().map(|audio| {
             size_of::<super::dsp::Sample>() + 4 * size_of::<usize>() + size_of::<Vec<[f32; 3]>>()
                 + audio.data.capacity() * size_of::<f32>() + audio.name.capacity() + audio.path.capacity() + audio.peaks.capacity() * size_of::<[f32; 3]>()
+                + audio.spectrum.as_ref().map_or(0, |waveform| waveform.storage_bytes())
         }).sum::<usize>(),
         Command::Gesture { command, .. } => {
             size_of::<Command>().saturating_add(owned_payload_bytes(command))
@@ -885,12 +981,15 @@ fn owned_payload_bytes(command: &Command) -> usize {
                 .saturating_add(audio.name.capacity())
                 .saturating_add(audio.path.capacity())
                 .saturating_add(audio.peaks.capacity().saturating_mul(size_of::<[f32; 3]>()))
+                .saturating_add(audio.spectrum.as_ref().map_or(0, |waveform| waveform.storage_bytes()))
         }
         _ => 0,
     }
 }
 
 fn project_release(command: &Command) -> bool {
+    if let Command::SessionControl(scoped)=command{return project_release(&scoped.command);}
+    if let Command::Gesture{command,..}=command{return project_release(command);}
     if let Command::Remote(request) = command { return project_release(&request.action.command()); }
     matches!(
         command,
@@ -911,6 +1010,9 @@ fn project_release(command: &Command) -> bool {
             | Command::DeckControl { control: super::deck_controls::Control::Hold { on: false, .. }, .. }
             | Command::Stop
             | Command::StopTrack { .. }
+            | Command::DeckPadRelease(_)
+            | Command::ClipRelease(_)
+            | Command::ClipCancel { .. }
             | Command::ReservedStop { .. }
     )
 }
@@ -955,8 +1057,14 @@ mod gui_routing_tests {
 }
 
 fn gate_change(command: &Command) -> Option<(GateKey, bool)> {
+    if let Command::SessionControl(scoped)=command{return gate_change(&scoped.command);}
+    if let Command::Gesture{command,..}=command{return gate_change(command);}
     if let Command::Remote(request) = command { return gate_change(&request.action.command()); }
     match *command {
+        Command::DeckPadPress(super::deck_pads::Press { source, key, .. }) => Some((GateKey::DeckPad { source, key }, true)),
+        Command::DeckPadRelease(super::deck_pads::Release { source, key }) => Some((GateKey::DeckPad { source, key }, false)),
+        Command::ClipPress(super::clip_launch::Press { source, key, .. }) => Some((GateKey::ClipPad { source, key }, true)),
+        Command::ClipRelease(super::clip_launch::Release { source, key }) => Some((GateKey::ClipPad { source, key }, false)),
         Command::LiveNoteOn {
             source,ch,note,vel,
         } | Command::RoutedNoteOn {
@@ -1011,8 +1119,11 @@ fn gate_change(command: &Command) -> Option<(GateKey, bool)> {
 }
 
 fn blocked_by_stop(command: &Command, pending: &[u64; STOP_LANES]) -> bool {
+    if let Command::SessionControl(scoped)=command{return blocked_by_stop(&scoped.command,pending);}
+    if let Command::Gesture{command,..}=command{return blocked_by_stop(command,pending);}
     if let Command::Remote(request) = command { return blocked_by_stop(&request.action.command(), pending); }
     let clip_track = match *command {
+        Command::ClipPress(super::clip_launch::Press { target: super::clip_launch::Target::Slot { track, .. }, .. }) => Some(track as usize),
         Command::LaunchClip { track, .. } | Command::FireClip { track, .. } => Some(track as usize),
         _ => None,
     };
@@ -1026,14 +1137,16 @@ fn blocked_by_stop(command: &Command, pending: &[u64; STOP_LANES]) -> bool {
     let transport_start = matches!(
         command,
         Command::Play | Command::TogglePlay | Command::Record
-    ) || matches!(command, Command::Surface(super::surface_controls::Input::Apc { control: 0..=0x27 | 0x52..=0x56 | 0x5b | 0x5d | 0x66, value: 1..=127, note: true, .. }) | Command::Surface(super::surface_controls::Input::Recording(true)));
+    ) || matches!(command, Command::ClipPress(super::clip_launch::Press {target:super::clip_launch::Target::Apc(_),..}) | Command::Surface(super::surface_controls::Input::Apc { control: 0..=0x27 | 0x52..=0x56 | 0x5b | 0x5d | 0x66, value: 1..=127, note: true, .. }) | Command::Surface(super::surface_controls::Input::Recording(true)));
     let pad = match *command {
         Command::SamplerPad { pad, on: true } => Some(usize::from(pad % 16)),
         Command::SamplerPadPressure { pad, .. } => Some(usize::from(pad)),
         Command::MidiSamplerPad { pad, on: true, .. } => Some(usize::from(pad)),
+        Command::DeckPadPress(press) => Some(usize::from(press.deck) * 8 + usize::from(press.id - 1)),
         _ => None,
     };
     pad.is_some_and(|pad| pending[SAMPLER_STOP_BASE + pad] != 0)
+        || (pending[0] != 0 && matches!(command, Command::DeckPadPress(_)))
         || (pending[0] != 0 && (clip_track.is_some() || scene_start || transport_start))
         || clip_track.is_some_and(|track| track < super::session::MAX_TRACKS && pending[track + 1] != 0)
         || (scene_start && pending[1..SAMPLER_STOP_BASE].iter().any(|ticket| *ticket != 0))
@@ -1086,7 +1199,7 @@ impl CommandBatch {
         self.received = 0; self.applied = 0; self.backlog = 0; self.queue_depth = rx.len();
         let mut payload_bytes = 0usize;
         for _ in 0..COMMANDS_PER_BLOCK {
-            let Ok(command) = rx.receiver.try_recv() else {
+            let Ok(command) = rx.receive_raw() else {
                 break;
             };
             payload_bytes = payload_bytes.saturating_add(owned_payload_bytes(&command));
@@ -1155,6 +1268,7 @@ fn parameter_key(command: &Command) -> Option<(u8, usize, usize)> {
         Command::DeckGain { deck, .. } => Some((7, deck as usize, 0)),
         Command::DeckEq { deck, band, .. } => Some((8, deck as usize, band as usize)),
         Command::DeckFilter { deck, .. } => Some((9, deck as usize, 0)),
+        Command::DeckChannelEffect { deck, .. } => Some((28, deck as usize, 0)),
         Command::FxWet { slot, .. } => Some((10, slot as usize, 0)),
         Command::FxMix { slot, .. } => Some((11, slot, 0)),
         Command::FxParam { slot, p, .. } => Some((12, slot, p as usize)),
@@ -1278,6 +1392,8 @@ mod tests {
 }
 
 fn history_monitoring(command: &Command) -> bool {
+    if let Command::SessionControl(scoped)=command{return history_monitoring(&scoped.command);}
+    if let Command::Gesture{command,..}=command{return history_monitoring(command);}
     matches!(
         command,
         Command::PrepareSelected { .. }
@@ -1291,6 +1407,8 @@ fn history_monitoring(command: &Command) -> bool {
             | Command::MidiAudition { .. }
             | Command::SamplerPad { .. }
             | Command::MidiSamplerPad { .. }
+            | Command::DeckPadPress(_)
+            | Command::DeckPadParameter { .. }
             | Command::SamplerPadPressure { .. }
             | Command::SamplerSlotStop { .. }
             | Command::DeckPreview { on: false, .. }
@@ -1301,15 +1419,20 @@ fn history_monitoring(command: &Command) -> bool {
             | Command::DeckControl { .. }
             | Command::Stop
             | Command::StopTrack { .. }
+            | Command::DeckPadRelease(_)
+            | Command::ClipRelease(_)
+            | Command::ClipCancel { .. }
             | Command::ReservedStop { .. }
             | Command::Play
             | Command::TogglePlay
             | Command::MidiClock { .. }
+            | Command::ClockFollow(_)
     )
 }
 
 fn same_parameter(a: &Command, b: &Command) -> bool {
     match (a, b) {
+        (Command::MicAuxControl(a),Command::MicAuxControl(b))=>a.namespace==b.namespace&&a.role==b.role&&a.input==b.input&&match(a.parameter,b.parameter){(super::audio::routing::mic_aux::control::Parameter::Eq{band:a,..},super::audio::routing::mic_aux::control::Parameter::Eq{band:b,..})=>a==b,(a,b)=>std::mem::discriminant(&a)==std::mem::discriminant(&b)},
         (Command::SessionControl(a), Command::SessionControl(b)) => a.track == b.track && a.scene == b.scene && same_parameter(&a.command, &b.command),
         (Command::SessionControl(_), _) | (_, Command::SessionControl(_)) => false,
         (Command::Gesture { id: a, command: ac }, Command::Gesture { id: b, command: bc }) => {
@@ -1318,4 +1441,16 @@ fn same_parameter(a: &Command, b: &Command) -> bool {
         (Command::Gesture { .. }, _) | (_, Command::Gesture { .. }) => false,
         _ => parameter_key(a).is_some() && parameter_key(a) == parameter_key(b),
     }
+}
+
+#[cfg(test)]
+#[test]
+fn mic_aux_absolute_controls_coalesce_only_the_same_reviewed_source_and_parameter(){
+    use super::audio::routing::mic_aux::control::{Control,Parameter};
+    let control=Control{namespace:[1,2],role:0,input:Some(2),parameter:Parameter::Gain(1.0)};
+    let (tx,rx)=crossbeam_channel::bounded(256);let rx=CommandReceiver::from(rx);
+    for i in 0..COMMANDS_PER_BLOCK {tx.send(Command::MicAuxControl(Control{parameter:Parameter::Gain(i as f32/32.0),..control})).unwrap();}
+    let batch=CommandBatch::receive(&rx);assert_eq!(batch.received,COMMANDS_PER_BLOCK);assert_eq!(batch.applied,1);
+    tx.send(Command::MicAuxControl(control)).unwrap();tx.send(Command::MicAuxControl(Control{namespace:[3,4],..control})).unwrap();tx.send(Command::MicAuxControl(Control{input:Some(3),..control})).unwrap();tx.send(Command::MicAuxControl(Control{role:1,..control})).unwrap();tx.send(Command::MicAuxControl(Control{parameter:Parameter::Mute(true),..control})).unwrap();
+    let batch=CommandBatch::receive(&rx);assert_eq!(batch.applied,5);
 }

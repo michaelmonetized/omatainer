@@ -1,0 +1,115 @@
+{
+  "schema": 1,
+  "qualifiedAt": "2026-10-06T10:06:32.338Z",
+  "baseRevision": "8c9b168c949a77e9fc29376ae43192406f191a50",
+  "kind": "Native input ownership, actual learned MIDI worker, Cue/Play transport orders and rendered stereo source reference",
+  "sourceFiles": {
+    "README.md": "518d77798d3100f4e9bf5511c432e3282edfd814854c7bb35a97db5fead395a9",
+    "docs/backlog/app-checklist.json": "79aab9c8ae06c0e586dd9da560b57036f01548239135dc956db8f3a467db2156",
+    "docs/backlog/app-checklist.md": "7b5e76849fbd3f3b8643e155145b8ce793d94315ff764eea429620b9d94c0eee",
+    "docs/backlog/capability-status.json": "e26700a735ee70102ed400161d0319dc13da53c7b047ba6b50aa56c5da5db4a0",
+    "docs/capability-matrix.md": "9c1a3515586581b5f64021d7b32d0aa71991577e226a17cb03cbd5b9ce8e2b71",
+    "docs/manual.md": "17a52f259d10107d4ad9000c82e535601fdc71a3450147c4c68061db8b42b6be",
+    "docs/shortcuts.md": "42211716e2788cc01fd7f78591ff64f4c20df8f8e2f56ee2e6ede825d4572249",
+    "docs/validation/cue-audition.md": "926873ac0f198a52a0dc248bdbb5ae9da34734638b48092690629d0be1421fcb",
+    "licenses/manifest.json": "b46d89a3d61db2263e81ce5b3724fa73eb5b35cfbdde844d37b247343b59dc87",
+    "src/engine/deck_controls.rs": "e2f2269580eebbe41d8ba814a11b7155fcd892f2e73ca98b90ce9028a3a748b2",
+    "src/engine/deck_controls/cue_audition_tests.rs": "25f20c48006af3d1a59cfc7811fc3eaea19e6123c396c6fb51c2e1108558fc54",
+    "src/engine/midi.rs": "13d8078b7d62afd9e5838cfdc5fb30f13e6bad4005f2bcfd1b5783b89b13a93e",
+    "src/engine/midi/handoff/tests.rs": "4a9782189b4faa62e9f9d44f229bcc322fa72d09f95ce06fc5a279e351268504",
+    "src/engine/midi/learn.rs": "a2b9a870ea535ef6bb1f4e8affba1b809a7db594744184a3b10e54a9523201bd",
+    "src/engine/midi/profile.rs": "ea07d579610913228f55f89958b754a2a54ebac5247803ec189616e45afb6ef2",
+    "src/engine/mod.rs": "2b65fa7dbb041129ff7657117fbcad1b9778a2e189dd1f7db898d55b74eddd8c",
+    "src/preferences/mod.rs": "1842868448f4c8145e1c128c0a8ee9fcb14c0cf07eba1849890f811a224cb9de",
+    "src/preferences/storage.rs": "be344430ee09e707c72ded3cb7ecc9d2b1ddc4bf4afe8d12cc84a192874176e2",
+    "src/ui.rs": "59ea821c63305b47241f6aca69a9ff849554b3d2d0c4f39974f26e2fc1499692",
+    "src/ui/beat_jump.rs": "3d5c32774b5c8870cd6c0cfc937db141ee7594dda9bf9cf63f54d8cdba275ab9",
+    "src/ui/command_palette.rs": "d93cb88b2b06bfe7b8a01475304b7c15b324b31f6c49277d96e176bf2f02d51f",
+    "src/ui/cue_audition.rs": "1212795c3013a01dc243c881d3115eaf234798722a47c1e395e82558a5ac6c1f",
+    "src/ui/cue_audition/tests.rs": "98dc50b413cc96446fa37cbf015fb52ae62248b99d78e3f7f4402248fca67dc2",
+    "src/ui/help/catalogue.rs": "a1b69881303001ffb1fff026acb04e8d25d9e08767bf935ff940539aad460823",
+    "src/ui/keyboard_tests.rs": "101de7929261a2dc720e77c15c19d98fb5467eebea6c49c9a56d11ffc6d8fb0e",
+    "src/ui/midi_learn.rs": "560686bcb64c6a4ddf695ecf186aa5d7b5c09cff73487443520b596c7ecd2b6c",
+    "src/ui/project.rs": "9ffa258274df3087f03e6d8afe6282eb6e41bf09a6fcba5dad503d7e63886a10",
+    "src/ui/shortcuts.rs": "046bff3fe6ea7b7cc0d22df2b5dc0878e1704fe646eacecb92346fcaa7ad503f",
+    "src/ui/touch.rs": "7d9ab6932086cc5ac71b3cc15cd271246975204338dcb0a58294847bb5f5b8f5",
+    "src/ui/workspace.rs": "3abe5d176e416f6b6534c191128c5883fd090b909371b32f7666eacd630168f7"
+  },
+  "testBinary": {
+    "path": "/home/michael/Projects/omatainer-work/remaining-backlog/target/debug/deps/omatainer-700b0f43c8079203",
+    "sha256": "2231f62dc22fa7e803f55af01cd9b440e2e010a124830992a29a7dc6f18b33f6"
+  },
+  "logs": {
+    "target/app-backlog/cue-audition-final-complete-build.log": "398aa57163024c6cb2aa40db991cc07472135813ec389e40eae7cc026045331e",
+    "target/app-backlog/cue-audition-first-build.log": "2eda6310ef6014db86f4edbcd694383fbac54abcac89b7543c1e930de1dd7efb",
+    "target/app-backlog/cue-audition-corrected-build.log": "8902811d30374a0a089baf33e564a660fcdc90cf901b46bc3897df2799af439b",
+    "target/app-backlog/cue-audition-first-tests.log": "65dfd425fc73e3a034cc68f5698217ab5cf03fc1b564d2b5d2d56cd6a638bbe8",
+    "target/app-backlog/cue-audition-midi-tests.log": "284839d28988ef18c88de672a213d4178d688a5f387a423171b5570f5bacba03",
+    "target/app-backlog/cue-audition-overload-repro.log": "7c36c9233a23e569f83fee3e311db541c3dbe72724dff6fc8d7bf74c2bddad15",
+    "target/app-backlog/cue-audition-keyboard-repro.log": "e04c0c1b2332e59cd7231e09e163ab5b11624a790bce9e2ace7d48599cf82711",
+    "target/app-backlog/cue-audition-lock-backtrace.log": "2aa66dd945443b6a346346377b5b0c73ddbbddf677de53d84bede171b1abb708",
+    "target/app-backlog/cue-audition-lock-fix-build.log": "c34f5007bb271e6fb46c34f6b5f3dc0ed444cbc23b269cae1c88e6bddd7b060d",
+    "target/app-backlog/cue-audition-lock-fix-tests.log": "845b4407f466d47e9e6db7f79aa1b8e4f457926a16e699c888b77d6cbcf46f65",
+    "target/app-backlog/cue-audition-complete-build.log": "32cab1e8a63301a908f52058360d02ca358c4ff8808b930527f6885c95ad2628",
+    "target/app-backlog/cue-audition-complete-tests.log": "63dbac83126e082df931875f4c88c9b957b07894419099a10ab3303b2d0d56a0",
+    "target/app-backlog/cue-audition-complete-midi-tests.log": "d288a613d545a92fb7fc869754e6ddd1e333effb5c56214b6a7a7e12c22a5fa3",
+    "target/app-backlog/cue-audition-final-build.log": "dfdd7e7fb34e83ad75c8bffd84d3638ce134870d20b80ef05abccf41960ecf43",
+    "target/app-backlog/cue-audition-manual.log": "4b0f69c73ca95560766859f4f0cb3058930594b445c8b28e0ff80f31b9230e28",
+    "target/app-backlog/cue-audition-keyboard-tests.log": "83f2a3637f81e53aca612986a9de6ab29263d0686baab2dd36343487f03b126b",
+    "target/app-backlog/cue-audition-touch-tests.log": "249431df6090248e83432d5ce5399f2456e83c4eb53787710d08fb25d241eb00",
+    "target/app-backlog/cue-audition-existing-controls-tests.log": "d3a02945ab56d5a566b843d3756ea83beb11222bbf9676e60f06d16329f3d805",
+    "target/app-backlog/cue-audition-final-focused-tests.log": "3ca70bfb1b9c5f451082f4c45e3e38cb7d541ffa945e3acf4e2baab7002d3e28",
+    "target/app-backlog/cue-audition-final-midi-tests.log": "f268f868f6cd2afb0181bd1691cd79726852b43edf3d5a5f0779a7df6c167225",
+    "target/app-backlog/cue-audition-node-tests.log": "8969baa4f5cd8ff80d090d191761cbe51f77c9709739c5145562892357d2160a",
+    "target/app-backlog/cue-audition-full-tests.log": "edd144557d4f8d0e6c18d32eb57716988373d8f63927e61fd551dfa6b4b0a260"
+  },
+  "tests": {
+    "fullSerialRust": {
+      "passed": 1760,
+      "failed": 0,
+      "ignored": 43,
+      "filtered": 0,
+      "seconds": 442.08,
+      "threads": 1
+    },
+    "focused": {
+      "cueAndMigration": 9,
+      "learnedMidi": 1,
+      "keyboardRegressions": 11,
+      "touchRegressions": 11,
+      "existingDeckControls": 10
+    },
+    "node": {
+      "passed": 15,
+      "failed": 0
+    },
+    "corrections": "The initial native fixture required the shared workspace release helper to be visible within the UI module. The first focused run exposed a nested egui context lookup under its input lock; dispatch now uses the window ID captured before that lock. The overload fixture initially chose a queue too small for dedicated stop reservations, then expected its FIFO tail within one block. It now fills a valid bounded queue, verifies reserved releases over bounded 32-command batches and keeps allocation/free assertions. The alternate-action menu explicitly starts its source-qualified hold after the menu closes. A final build was deliberately stopped for a documentation whitespace/inventory correction; qualification uses the later complete build after the generated manual and final inventory were synchronized."
+  },
+  "checks": {
+    "renderedSourceAndOutputRate": 48000,
+    "independentStereoReference": true,
+    "nonzeroEnergyInBothChannels": true,
+    "maxStereoNullErrorLessThan": 0.000001,
+    "callbackAllocationsAndFrees": 0,
+    "allCuePlayOrders": true,
+    "ownedMouseKeysAssistiveAndMultitouch": true,
+    "alternateMenuPressAndRelease": true,
+    "capturedKeyDeckAndModifierIndependentRelease": true,
+    "remoteAndMidiOwnersIndependent": true,
+    "queueReleaseReservationsAndBoundedFifo": true,
+    "sourceWorkerProjectAndSafetyRetirement": true,
+    "customJumpBindingsPreservedDuringMigration": true,
+    "offlineManualSynchronized": true,
+    "sourceInventoryFiles": 678
+  },
+  "documentSchemas": {
+    "preferences": 17,
+    "shortcutBundle": 2,
+    "project": 15
+  },
+  "limits": [
+    "Physical captures and new listening acceptance remain paused",
+    "Main cue retains existing library preparation persistence; original source bytes are not changed",
+    "Existing one-shot Cue remains available in command palette, platter alternatives and MIDI Learn"
+  ]
+}

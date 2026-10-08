@@ -12,7 +12,7 @@ fn fixture() -> (Engine, RtEngine) {
     (engine, rt)
 }
 pub(super) fn native_sample() -> Arc<Sample> {
-    Arc::new(Sample {
+    Arc::new(Sample { spectrum: None,
         name: "Native-rate source".into(),
         sr: 16_000,
         ch: 2,

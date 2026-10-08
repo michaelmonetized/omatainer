@@ -19,6 +19,36 @@ fn held(rt: &RtEngine) -> usize {
 }
 
 #[test]
+fn returned_input_reopens_while_recovery_keeps_notes_and_transport_stopped() {
+    let (mut engine, mut rt) = Engine::headless_for_test(48_000, 80);
+    rt.selected_track = 1;
+    let control = install(&mut engine);
+    control.discover(&[("1", "Keyboard A")]);
+    let first = control.connect("1", Ok(()));
+    applied(&engine, 1);
+    engine.cmd.send(Command::SafetyStop(crate::engine::performance::Safety::Stop)).unwrap();
+    rt.process(&mut [0.0; 256]);
+    assert!(engine.cmd.performance().status().recovery);
+    control.discover(&[]);
+    until(|| first.is_closed());
+    control.discover(&[("1", "Keyboard A")]);
+    let returned = control.connect("1", Ok(()));
+    until(|| !engine.midi.connections_busy());
+    returned.push(&[0x90, 60, 100]);
+    until(|| engine.midi.input_stats().dispatched > 0);
+    rt.process(&mut [0.0; 256]);
+    assert_eq!(held(&rt), 0);
+    assert!(!rt.playing);
+    assert!(engine.cmd.performance().status().recovery);
+    assert!(engine.cmd.send(Command::Play).is_err());
+    returned.push(&[0x80, 60, 0]);
+    engine.cmd.performance().acknowledge_inputs_released().unwrap();
+    rt.process(&mut [0.0; 256]);
+    assert!(!engine.cmd.performance().status().recovery);
+    assert!(!rt.playing);
+}
+
+#[test]
 fn startup_disabled_and_exact_selected_names_never_expand_to_all() {
     let ports = [
         ("1", "Keyboard A"),

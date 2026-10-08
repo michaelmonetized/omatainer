@@ -14,7 +14,7 @@ fn fixture() -> (OutputCallback, CommandPort) {
     let mut rt = RtEngine::new(48_000.0, rx, snap);
     rt.apply(Command::DeckAudio {
         deck: 0,
-        audio: Arc::new(Sample {
+        audio: Arc::new(Sample { spectrum: None,
             name: "continuous signal".into(),
             sr: 48_000,
             ch: 2,
@@ -41,7 +41,7 @@ fn captured_clicks_follow_retained_output_positions_during_reverse_and_mapped_te
             let frame = frame + index % 13;
             pcm[frame*2] = 0.1; pcm[frame*2+1] = 0.1;
         }
-        let sample = Arc::new(Sample { name: "captured click timeline".into(),sr:48000,ch:2,
+        let sample = Arc::new(Sample { spectrum: None, name: "captured click timeline".into(),sr:48000,ch:2,
             data:pcm.clone(),peaks:vec![].into(),bpm:120.0,path:String::new() });
         callback.rt.playing = false;
         callback.rt.decks[0].audio = Some(sample.clone());

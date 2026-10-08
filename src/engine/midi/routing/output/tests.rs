@@ -5,6 +5,25 @@ use crate::engine::{test_alloc, Command, Engine, RtEngine};
 use parking_lot::Mutex;
 use std::time::Instant;
 
+#[test]
+fn controller_stop_restores_a_shared_channel_owner_then_releases_bend_pressure_expression() {
+    let (engine, _rt) = Engine::headless_for_test(48000, 256);
+    let fixture = Arc::new(Fixture::default());
+    let mut routes = config(); routes.routes[1].output_channel = Some(4);
+    let manager = Manager::start_backend(engine.cmd.clone(), routes, Fake(fixture.clone())).unwrap();
+    until(|| !manager.status().pending); assert!(manager.status().error.is_none()); fixture.trace.lock().clear();
+    let shared = engine.cmd.midi_routing();
+    for (track, packets) in [(2, vec![vec![0xe0, 3, 70],vec![0xd0, 12],vec![0xb0,11,90]]), (3, vec![vec![0xe0,9,80],vec![0xd0,55],vec![0xb0,11,40]])] {
+        for bytes in packets { assert!(shared.emit_owned(track, super::super::packet::Packet::new(&bytes).unwrap(), Owner::ClipLane(track))); }
+    }
+    until(|| fixture.trace.lock().len() == 6);
+    assert!(shared.clear_clip(3)); until(|| fixture.trace.lock().len() == 9);
+    assert_eq!(&fixture.trace.lock()[6..], &[vec![0xb4,11,90],vec![0xe4,3,70],vec![0xd4,12]]);
+    assert!(shared.clear_clip(2)); until(|| fixture.trace.lock().len() == 12);
+    assert_eq!(&fixture.trace.lock()[9..], &[vec![0xb4,11,127],vec![0xe4,0,64],vec![0xd4,0]]);
+    drop(manager);
+}
+
 #[derive(Default)]
 struct Fixture {
     trace: Mutex<Vec<Vec<u8>>>,
@@ -350,7 +369,7 @@ fn clip_stop_preserves_a_live_gate_on_the_same_external_pitch() {
     let clip = &mut rt.tracks[2].clips[0];
     clip.kind = crate::engine::ClipKind::Midi;
     clip.bars = 1.0;
-    clip.notes = vec![crate::engine::MidiNote {
+    clip.notes = vec![crate::engine::MidiNote { variation: None,
         id: crate::engine::midi_edit::NoteId::new(),
         channel: 0,
         release_vel: 37,
@@ -438,14 +457,14 @@ fn last_track_clear_preserves_other_track_shared_pitch_and_sustain_owners() {
     let id = rt.session.tracks[127].id;
     let (request, ack) = crate::engine::session::Request::metadata(&rt.session, rt.undo.checkpoint().epoch,
         crate::engine::session::Action::Move {axis:crate::engine::session::Axis::Track,id,position:64}).unwrap();
-    engine.send(Command::SessionEdit(request)).unwrap();
+    engine.send(Command::session_edit(request)).unwrap();
     assert_eq!(test_alloc::measure(|| rt.process(&mut [])), test_alloc::Counts::default());
     assert_eq!(ack.state(), crate::engine::midi_edit::Outcome::Applied);
     assert!(shared.emit_owned(127, super::super::packet::Packet::new(&[0xc0,9]).unwrap(), owner));
     until(|| fixture.trace.lock().iter().any(|packet| packet == &[0xc4,9]));
     let (request, ack) = crate::engine::session::Request::metadata(&rt.session, rt.undo.checkpoint().epoch,
         crate::engine::session::Action::Delete {axis:crate::engine::session::Axis::Track,id}).unwrap();
-    engine.send(Command::SessionEdit(request)).unwrap();
+    engine.send(Command::session_edit(request)).unwrap();
     assert_eq!(test_alloc::measure(|| rt.process(&mut [])), test_alloc::Counts::default());
     assert_eq!(ack.state(), crate::engine::midi_edit::Outcome::Applied);
     assert!(!shared.emit_owned(127, super::super::packet::Packet::new(&[0x90,62,100]).unwrap(), owner));
@@ -864,9 +883,15 @@ fn cancel_after_publication_claim_reports_applied_and_recovery_resets_output() {
     a.push(&[0xc0, 9]);
     a.push(&[0xb0, 1, 64]);
     until(|| counters.snapshot().dispatched == 3);
-    assert!(fixture.trace.lock().is_empty());
     assert!(engine.cmd.performance().status().recovery);
     drop(a);
     drop(guard);
     drop(manager);
+    let trace = fixture.trace.lock();
+    assert!(trace.iter().all(|packet| match packet.as_slice() {
+        [status, 120 | 121 | 123, 0] => status & 0xf0 == 0xb0,
+        [status, 0, 64] => status & 0xf0 == 0xe0,
+        [status, 0] => status & 0xf0 == 0xd0,
+        _ => false,
+    }), "Recovery emitted MIDI beyond its channel resets: {trace:?}");
 }

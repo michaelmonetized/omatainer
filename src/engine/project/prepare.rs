@@ -8,17 +8,21 @@ pub struct Prepared {
 
 impl Prepared {
     pub fn from_state(
-        mut state: State,
+        state: State,
         media: Vec<Arc<Sample>>,
         output_sr: u32,
     ) -> Result<Self, Error> {
+        Self::from_state_cancelled(state,media,output_sr,&AtomicBool::new(false))
+    }
+    pub(crate) fn from_state_cancelled(mut state:State,media:Vec<Arc<Sample>>,output_sr:u32,cancel:&AtomicBool) -> Result<Self,Error> {
+        if cancel.load(Ordering::Acquire) { return Err(Error::Cancelled); }
         state.validate(&media).map_err(Error::Invalid)?;
         state.validate_processor_storage(output_sr).map_err(Error::Invalid)?;
         state.migrate_notes();
         if !(8000..=384000).contains(&output_sr) {
             return Err(Error::Invalid("unsupported output sample rate".into()));
         }
-        let (_, rx) = crossbeam_channel::bounded(1);
+        let rx = crate::engine::control::CommandReceiver::disconnected();
         let mut rt = Box::new(RtEngine::try_new(
             output_sr as f32,
             rx,
@@ -44,7 +48,10 @@ impl Prepared {
             fx_wet,
             sampler_bank,
             sampler_inst,
-            sampler_oct
+            sampler_oct,
+            musical_context,
+            note_seed,
+            sampler_scale
         );
         rt.timeline_anchor = state.timeline_seconds;
         rt.timeline_frames = 0;
@@ -79,10 +86,16 @@ impl Prepared {
             layout
         };
         if state.version < 7 && rt.fx_view >= 100 { rt.fx_view += session::SCENE_FX_BASE - 100; }
-        rt.routing = state.routing.take().map(|model| audio::routing::prepared::Prepared::new(model, &rt.session).map(Box::new)).transpose().map_err(Error::Invalid)?;
+        rt.routing = state.routing.take().map(|model| audio::routing::prepared::Prepared::with_cancel(model, &rt.session,rt.sr as u32,cancel).map(Box::new)).transpose().map_err(Error::Invalid)?;
+        rt.mic_aux.set(state.mic_aux);
         rt.tracks.clear();
         rt.tracks.reserve(session::MAX_TRACKS);
         rt.conductor = state.conductor.as_ref().map(|c| c.prepare()).transpose().map_err(Error::Invalid)?;
+        rt.navigation.saved = state.navigation.clone();
+        rt.migration = state.migration.take();
+        rt.scenes.timing = state.scene_timing;
+        rt.deck_sync.leader = state.sync_leader;
+        rt.arrangement=arrangement::Playback::new(state.arrangement.as_ref().map(|model|arrangement::Plan::prepare_with_seed(model.clone(),&media,&rt.session,state.note_seed,&AtomicBool::new(false))).transpose().map_err(Error::Invalid)?,state.beat);
         rt.sync_midi_clock();
         rt.playing = false;
         rt.recording = false;
@@ -91,6 +104,7 @@ impl Prepared {
         for (i, saved) in state.tracks.into_iter().enumerate() {
             rt.session.tracks[i].name = saved.name.clone();
             let mut track = prepare_track(saved, &media, output_sr).map_err(Error::Invalid)?;
+            track.note_seed = state.note_seed;
             track.rebuild_midi_schedule(state.beat, state.beat);
             rt.tracks.push(track);
         }
@@ -104,10 +118,13 @@ impl Prepared {
                 pitch,
                 vinyl,
                 keylock,
+                key_shift,
                 sync,
+                sync_phase,
                 gain,
                 filter_morph,
                 filter_amt,
+                channel_effect,
                 pfl,
                 loop_on,
                 loop_start,
@@ -121,6 +138,7 @@ impl Prepared {
             );
             deck.title = saved.title;
             deck.audio = saved.audio.map(|index| media[index].clone());
+            if let Some(audio) = &deck.audio { deck.controls.restore_saved_loops(saved.saved_loops, audio.sr, audio.frames()); }
             let level = deck.audio.as_ref().map(|sample| crate::track_gain::measure_channels(&sample.data, sample.ch, || false)).transpose().map_err(|error| Error::Invalid(error.into()))?;
             deck.source_gain = crate::track_gain::Resolved::prepare(saved.source_gain, level).map_err(|error| Error::Invalid(error.into()))?;
             deck.history_key = 0;
@@ -178,7 +196,7 @@ impl Prepared {
         if !(8000..=384000).contains(&output_sr) {
             return Err(Error::Invalid("unsupported output sample rate".into()));
         }
-        let (_, rx) = crossbeam_channel::bounded(1);
+        let rx = crate::engine::control::CommandReceiver::disconnected();
         let mut rt = Box::new(RtEngine::try_new(
             output_sr as f32,
             rx,
@@ -200,12 +218,15 @@ impl Prepared {
 
     /// Give a preparing worker sole ownership of an offline graph.
     /// Takes this prepared graph; returns its renderer without device or GUI ownership.
-    pub(crate) fn into_offline(self) -> Box<RtEngine> { self.rt }
+    pub(crate) fn into_offline(mut self) -> Box<RtEngine> { if let Some(graph) = &mut self.rt.routing { graph.offline(); } self.rt }
 
     pub(in crate::engine) fn swap_into(&mut self, rt: &mut RtEngine) {
+        rt.configure_clock_input(super::super::midi::clock_input::Config::default());
+        rt.monitor.cancel_tone();
         for deck in 0..DECKS { rt.performance.deck_media_changed(deck); }
         rt.routing_pipe.recorder.invalidate();
         rt.transport_epoch = rt.transport_epoch.wrapping_add(1);
+        rt.plugin_midi.reset(); rt.routing_plugin_instruments = 0;
         rt.midi_routing.reset_outputs();
         if let Some(active) = &rt.sampler_audition { active.ended(); }
         // Supersede old identities, while keeping their receipt/media ownership
@@ -227,7 +248,15 @@ impl Prepared {
             midi_beat,
             midi_beat_reference,
             conductor,
+            musical_context,
+            note_seed,
+            sampler_scale,
+            arrangement,
+            navigation,
+            migration,
+            scenes,
             routing,
+            mic_aux,
             last_midi_step,
             quant,
             view,
@@ -302,22 +331,29 @@ pub(in crate::engine) fn effects(values: Vec<Effect>, sr: u32) -> fx::FxChain {
 }
 
 /// Builds only the edited node; existing playing nodes and DSP histories stay live.
-pub(in crate::engine) fn prepare_track(mut saved: Track, media: &[Arc<Sample>], sr: u32) -> Result<Box<TrackRt>, String> {
+pub(in crate::engine) fn prepare_track(saved: Track, media: &[Arc<Sample>], sr: u32) -> Result<Box<TrackRt>, String> {
     let drums = saved.drums.map(|index| media[index].clone());
     let mut track = Box::new(TrackRt::empty(sr as f32, saved.name, saved.kind, drums, 0));
-    for c in &mut saved.clips { c.lanes = c.lanes.as_ref().map(|l| l.prepare()).transpose()?; }
     track.scene_bus = saved.scene_bus;
     track.gain = saved.gain; track.pan = saved.pan;
-    track.mute = saved.mute; track.solo = saved.solo; track.armed = saved.armed;
+    track.mute = saved.mute; track.solo = saved.solo; track.armed = saved.armed; track.input_monitor = saved.input_monitor;
     track.poly = synth(saved.synth, sr); track.eq = eq(saved.eq, sr); track.eq_right = track.eq;
     track.fx = effects(saved.fx, sr);
-    track.clips = saved.clips.into_iter().map(|c| Clip {
-        region: c.region, lanes: c.lanes, kind: c.kind, name: c.name,
-        bars: c.bars, notes: c.notes, gain: c.gain, audio: c.audio.map(|i| media[i].clone()),
-    }).collect();
+    track.clips = saved.clips.into_iter().map(|c|prepare_clip(c,media)).collect::<Result<Vec<_>,String>>()?;
     track.clips.reserve(session::MAX_SCENES - track.clips.len());
-    track.project_resume = saved.launch.map(|p| PlayingClip { scene: p.scene,
+    track.project_resume = saved.launch.filter(|p|!track.clips[usize::from(p.scene)].properties.disabled && !matches!(track.clips[usize::from(p.scene)].properties.launch.mode,clip_launch::Mode::Gate|clip_launch::Mode::Repeat)).map(|p| PlayingClip { scene: p.scene,
         start_beat: p.start_beat, midi_start_beat: p.start_beat, last_beat: -0.0001, looping: p.looping });
     track.midi_schedule.prepare_history(8192); track.recorded_playback.reserve(8192);
     Ok(track)
+}
+
+/// Prepare a retained clip on its producer.
+/// Takes validated musical content and the shared media table; returns renderer-ready source regions and MIDI indexes without copying PCM.
+pub(in crate::engine) fn prepare_clip(cell:SavedClip,media:&[Arc<Sample>])->Result<Clip,String> {
+    cell.validate(STATE_VERSION,media)?;
+    let audio=cell.audio.map(|i|media[i].clone());
+    let audio_region=cell.audio_region.map(|r|r.prepare(audio.as_deref().ok_or("Audio region has no source")?).map_err(str::to_owned)).transpose()?;
+    let lanes=cell.lanes.as_ref().map(|l|l.prepare()).transpose()?;
+    let variation=note_variation::Plan::prepare(&cell.notes,lanes.as_deref(),&AtomicBool::new(false))?;
+    Ok(Clip{variation,properties:cell.properties,audio_region,region:cell.region,lanes,kind:cell.kind,name:cell.name,bars:cell.bars,notes:cell.notes,gain:cell.gain,audio})
 }

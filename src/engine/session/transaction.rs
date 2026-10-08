@@ -13,6 +13,7 @@ mod tests;
 
 #[derive(Clone, Debug)]
 pub(crate) enum Action {
+    SceneProperties { id: Id, properties: crate::engine::scene::Properties },
     Rename {
         axis: Axis,
         id: Id,
@@ -34,7 +35,7 @@ pub(crate) enum Action {
     },
 }
 
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub(crate) struct Request {
     pub(super) namespace: [u64; 2],
     pub(super) generation: u64,
@@ -45,7 +46,7 @@ pub(crate) struct Request {
     receipt: Option<(u64, u32)>,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub(crate) struct Inverse {
     layout: Layout,
     routing: Option<Option<Box<crate::engine::audio::routing::prepared::Prepared>>>,
@@ -106,9 +107,17 @@ impl Request {
     /// Prepare an atomic routing edit.
     /// Takes a captured project, output rate and optional saved graph; returns a guarded, undoable edit and acknowledgment.
     pub(crate) fn routing(captured: crate::engine::project::Captured, rate: u32, model: Option<std::sync::Arc<crate::engine::audio::routing::model::Model>>) -> Result<(Self, Ack), String> {
+        Self::routing_cancelled(captured,rate,model,&std::sync::atomic::AtomicBool::new(false))
+    }
+    pub(crate) fn routing_cancelled(mut captured: crate::engine::project::Captured, rate: u32, model: Option<std::sync::Arc<crate::engine::audio::routing::model::Model>>, cancel: &std::sync::atomic::AtomicBool) -> Result<(Self,Ack),String> {
+        let original=std::mem::replace(&mut captured.state.routing,model.clone());
+        crate::project_file::validate_metadata(&crate::project_file::Bundle {state:&captured.state,media:captured.media.clone()},&Default::default(),cancel).map_err(|e|e.to_string())?;
+        captured.state.routing=original;
         let layout = captured.state.session.as_ref().ok_or("Session identity is unavailable")?;
         layout.validate()?;
-        let prepared = model.map(|model| crate::engine::audio::routing::prepared::Prepared::new(model, layout).map(Box::new)).transpose()?;
+        if let Some(cfg)=captured.state.mic_aux {cfg.validate(model.as_deref()).map_err(str::to_owned)?;}
+        let latency_only = model.as_deref().zip(captured.state.routing.as_deref()).is_some_and(|(next, old)| next.latency_edit_of(old));
+        let prepared = model.map(|model| crate::engine::audio::routing::prepared::Prepared::with_cancel(model, layout,rate,cancel).map(Box::new)).transpose()?;
         let ack = Ack::new();
         Ok((Self {
             namespace: layout.namespace, generation: layout.generation, epoch: captured.checkpoint.epoch,
@@ -116,7 +125,7 @@ impl Request {
                 layout: layout.clone(), routing: Some(prepared), track_name: None, focus: None,
                 bus_mask: 0, scene_buses: [0; super::MAX_TRACKS], content: None,
                 reserved_heap: 0, media: Vec::new(), fx_storage: Vec::new(), reserved_fx_bytes: 0,
-            })), ack: ack.clone(), disruptive: true, receipt: Some((captured.revision, rate)),
+            })), ack: ack.clone(), disruptive: !latency_only, receipt: Some((captured.revision, rate)),
         }, ack))
     }
     /// Producer only. No mutation has happened when validation returns an error.
@@ -126,6 +135,7 @@ impl Request {
         let mut next = layout.clone();
         let mut track_name = None;
         match action {
+            Action::SceneProperties { id, properties } => next.scene_properties(id, properties)?,
             Action::Rename { axis, id, name } => {
                 let slot = next
                     .resolve(axis, id)
@@ -195,6 +205,8 @@ impl Request {
             && self.generation == rt.session.generation
             && rt.session.generation < u64::MAX
             && self.inverse.as_ref().is_none_or(|inverse| inverse.routing.is_none() || inverse.content.is_some()
+                || !self.disruptive && !rt.recording && !rt.routing_pipe.recorder.busy()
+                    && rt.routing.as_ref().is_some_and(|graph| graph.latency_status().transition_frames == 0 && graph.latency_status().priming_frames == 0)
                 || !rt.playing && !rt.recording && !rt.decks.iter().any(|deck| deck.playing || deck.touching))
             && self.receipt.is_none_or(|(revision, rate)| {
                 rt.project.revision() == revision && rt.sr as u32 == rate
@@ -249,7 +261,8 @@ impl Inverse {
                 .map_or(0, |(_, name)| name.capacity())
     }
     pub(crate) fn valid(&self, rt: &RtEngine) -> bool {
-        self.layout.namespace == rt.session.namespace
+        rt.mic_aux.configuration().is_none_or(|cfg|cfg.validate(self.routing.as_ref().map_or_else(||rt.routing.as_ref().map(|r|r.model.as_ref()),|routing|routing.as_ref().map(|r|r.model.as_ref()))).is_ok())
+            && self.layout.namespace == rt.session.namespace
             && rt.session.generation < u64::MAX
             && match &self.content {
                 Some(Content::Import(import)) => import.valid(rt),
@@ -333,6 +346,7 @@ impl Inverse {
                     .is_none_or(|next| !next.active || next.id != rt.session.scenes[slot].id)
             {
                 for track in 0..rt.tracks.len() {
+                    rt.tracks[track].launch.cancel_scene(slot as u16);
                     if rt.tracks[track].scene_bus == slot {
                         self.scene_buses[track] = slot;
                         self.bus_mask |= 1u128 << track;
@@ -353,9 +367,15 @@ impl Inverse {
             content.swap(rt, &self.layout);
         }
         std::mem::swap(&mut rt.session, &mut self.layout);
-        if let Some(routing) = &mut self.routing { std::mem::swap(&mut rt.routing, routing); }
+        if let Some(routing) = &mut self.routing {
+            let compatible = routing.as_ref().zip(rt.routing.as_ref()).is_some_and(|(next,prior)| next.model.latency_edit_of(&prior.model));
+            if let(Some(next),Some(prior))=(routing.as_mut(),rt.routing.as_mut()){next.inherit(prior);}
+            if !compatible { rt.plugin_midi.reset(); for track in &mut rt.tracks { track.midi_output.invalidate(); } }
+            std::mem::swap(&mut rt.routing, routing);
+        }
         rt.session.generation = generation;
         rt.session.next_id = next_id;
+        if let Some(routing) = &mut rt.routing { routing.bind_positions(&rt.session); }
         rt.midi_routing.identity.publish(&rt.session);
         if let Some((slot, name)) = &mut self.track_name {
             std::mem::swap(&mut rt.tracks[*slot].name, name);
@@ -412,6 +432,7 @@ impl Inverse {
                 rt.fx_view = -1;
             }
         }
+        rt.scene_metadata_changed();
         let next_focus = Focus {
             track: rt.selected_track,
             scene: rt.selected_scene,
@@ -461,7 +482,7 @@ impl Content {
 impl Inverse {
     pub(crate) fn reserve(&mut self, rt: &RtEngine) {
         self.reserved_heap = match &self.content {
-            Some(Content::Import(import)) => import.bytes(),
+            Some(Content::Import(import)) => import.bytes() + if import.arrangement.is_some() {rt.arrangement.storage_bytes()} else {0},
             None => 0,
             Some(Content::Track { slot, node }) => {
                 node.as_ref().map_or(0, |node| node.retained_bytes())
@@ -505,14 +526,28 @@ impl Inverse {
 
 impl Inverse {
     pub(crate) fn rate_bytes(&self, sr: f32) -> usize {
-        self.bytes().saturating_sub(self.reserved_fx_bytes)
+        let graph = self.routing.as_ref().and_then(Option::as_ref);
+        let routing_bytes = match graph.map(|graph| graph.rate_bytes(&self.layout, sr as u32)).transpose() {
+            Ok(bytes) => bytes.unwrap_or(0),
+            Err(_) => return usize::MAX / 1024,
+        };
+        self.bytes().saturating_sub(self.reserved_fx_bytes).saturating_sub(graph.map_or(0, |graph| graph.bytes()))
+            .saturating_sub(graph.map_or(0, |graph| self.reserved_heap.min(graph.bytes())))
+            .saturating_add(routing_bytes)
+            .saturating_add(routing_bytes)
             + self
                 .fx_storage
                 .iter()
                 .map(|id| crate::engine::fx::FxSlot::required_storage(*id, sr))
                 .sum::<usize>()
     }
-    pub(crate) fn prepare_rate(&mut self, sr: f32) {
+    pub(crate) fn prepare_rate(&mut self, sr: f32) -> Result<(),String> {
+        if let Some(Some(graph)) = &mut self.routing {
+            self.reserved_heap = self.reserved_heap.saturating_sub(graph.bytes());
+            let model = graph.checkpoint(&std::sync::atomic::AtomicBool::new(false))?;
+            **graph = crate::engine::audio::routing::prepared::Prepared::at_rate(model, &self.layout, sr as u32)?;
+            self.reserved_heap = self.reserved_heap.saturating_add(graph.bytes());
+        }
         if let Some(content) = &mut self.content {
             match content {
                 Content::Import(import) => import.prepare_rate(sr),
@@ -524,6 +559,7 @@ impl Inverse {
                     node.eq.set_sample_rate(sr);
                     node.eq_right.set_sample_rate(sr);
                     node.mixer_gain = crate::engine::mixer_gain::GainPair::default();
+                    node.input_gain = crate::engine::mixer_gain::GainPair::default();
                     node.stop_clip();
                     node.drum_pos.fill(None);
                 }
@@ -540,5 +576,6 @@ impl Inverse {
             .sum::<usize>();
         self.reserved_heap = self.reserved_heap.saturating_sub(self.reserved_fx_bytes) + next;
         self.reserved_fx_bytes = next;
+        Ok(())
     }
 }

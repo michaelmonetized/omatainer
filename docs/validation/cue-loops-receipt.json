@@ -1,0 +1,526 @@
+{
+  "schema": 1,
+  "platform": "Linux ARM64; actual renderer/native egui/AccessKit/production MIDI worker; real native project/library files",
+  "sourceFiles": {
+    "src/engine/deck_controls.rs": "bdff78e5d8935818e5ead7e7243455e566570951581547d909788c8f72f43d0b",
+    "src/engine/deck_controls/cue_loops.rs": "273f741a985c5f369ae9675eb56ac19032fae60dea640b92b770bd34e1b4fcb3",
+    "src/engine/deck_controls/quantization.rs": "ebe101318ec10d0770f6f76e2231eb4c58ed7099854e5c418765116230239241",
+    "src/engine/deck_controls/saved.rs": "ab92099a7204391138f78fb97b153cb9823e0aeb0a54a749015d17cb35f40c72",
+    "src/engine/midi/handoff/tests.rs": "42d0130102c7a23ba86ddaf560ace792682b9024a10abde1eab50fc6c12405b4",
+    "src/engine/mod.rs": "fef16ff59db901d394905a8a0c065cd3c9d9970c618ed4016b387c4691314e8a",
+    "src/engine/preparation.rs": "3a4d45b36d6c7908539d14669b183b96fa43b2f19e8dc0f02f1d61328486b0f2",
+    "src/engine/project/model.rs": "75ea4039386d32676ede28451a994c200fae1b459e874b59d5df1000c7254b4a",
+    "src/engine/saved_loops.rs": "7afa064c831f66d1a1f3127f04e643b830313682220a6d4781ebb99c38155ecd",
+    "src/engine/saved_loops/tests.rs": "8542718f16a4069c1740ea54f4734b37f6a36504a72af9bc53211b98feb410e9",
+    "src/library.rs": "3f55fff4148e904d8745cc9cd47cff57c2e741df221f7385f8dc75a90f04fd80",
+    "src/library/tests.rs": "5c2022322cde71e20cab7984fd989032d46c1e0062b96298469dc6dbb629348e",
+    "src/ui.rs": "5932a6f2fdc9b952e4135f70495bcc4aed629ed667633348184c9235144ef936",
+    "src/ui/cue_editor.rs": "d27acbf200c383b4f4dd8b76e21257f7bebc2694a4123fb8d93d5bb32e251ad7",
+    "src/ui/cue_editor/tests.rs": "2b5423b93a41f9d735019634cb73c7b05fbad973967e08d123b3c9f4caf93d2c",
+    "src/ui/deck_pads.rs": "179d43591a0f6e3f4a35a49c51ffec792d9f2aaef8a022ba538ee4c2b1493a24",
+    "src/ui/deck_quantization.rs": "8f5fb2c9b95a6caf8dd6e5b99d3c44b2b94e99c574a47bca2ca76bfbe93cc93a",
+    "src/ui/help/catalogue.rs": "e7a68ffe8bdf60db666a4597e279aa71742da10fb0b7032cda6a7a1f2ce43226",
+    "src/ui/loop_editor.rs": "0a5f59a2f44913161e400d50d8a35e363a92a24d31263d6b9fba9e0403b97178",
+    "src/ui/loop_editor/saved.rs": "bd15958040df75488740f2d68297c51fd35bbad522d725e8b5b75a006eb15cc3",
+    "src/ui/loop_editor/tests.rs": "95e3e4d22a2726f2a4907ce6073190236be0643467f7c24f46adab0b23e7cf2b"
+  },
+  "testBinary": {
+    "path": "target/app-backlog/qualification-bin/cue-loops-tests-second",
+    "sha256": "027ccef357afba75910baa10834a2c005f47f503aecbcaa91c915f2b0b9bd90c"
+  },
+  "compiledInventory": {
+    "path": "target/app-backlog/cue-loops-second-compiled-source-inventory.json",
+    "sha256": "fb9dc7949a8a1530bd9a3351a0e33a6e2614b57fed9fed97818f8945f845df1a",
+    "baseRevision": "1192a2e4cf4cf43242be21011120893e91023232",
+    "files": 764
+  },
+  "embeddedInputs": {
+    "schema": 1,
+    "baselineRevision": "1192a2e4cf4cf43242be21011120893e91023232",
+    "embeddedInputs": {
+      "README.md": "abab5cb8b9a15a180652402e983142ce2a3baf21f5272fe1c4e9079a5083143f",
+      "licenses/manifest.json": "411bc724b7df7d97b04d230123886465b5ac7253d05203205724ba431c798f2f",
+      "licenses/notices.json": "b15a146c83e362b540c860ae618b80f9ee0150cd9d8d41683a5d3d3fcb85c244"
+    }
+  },
+  "tests": {
+    "core": {
+      "path": "target/app-backlog/cue-loops-second-core.log",
+      "sha256": "12b132e8e3599eedf81450528ffc4dfd1974e29c7ba09faf11bd8309d9a58753",
+      "outcome": "ok",
+      "passed": 10,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2025,
+      "seconds": 5.38
+    },
+    "library": {
+      "path": "target/app-backlog/cue-loops-second-library.log",
+      "sha256": "7ba46a75e1990eb23b9b86acdb0d73509b6adcb10ca7d5316684ba3375d7710a",
+      "outcome": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2034,
+      "seconds": 0.18
+    },
+    "native-loop": {
+      "path": "target/app-backlog/cue-loops-second-native-loop.log",
+      "sha256": "6107df047c0827ea8af95bb9df89ffee94a6b3800b6b92b2adf2881d81b2ada5",
+      "outcome": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2034,
+      "seconds": 0.2
+    },
+    "native-cue": {
+      "path": "target/app-backlog/cue-loops-second-native-cue.log",
+      "sha256": "0b15ce0c5ea30f5e777d16b11c296a012cc265c793dd5fb69f0d0890faa36dd5",
+      "outcome": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2034,
+      "seconds": 0.15
+    },
+    "midi": {
+      "path": "target/app-backlog/cue-loops-second-midi.log",
+      "sha256": "921dc0489889ffb2a4e21af5707931e346f2562cc32c3b0ccc2690aac370439b",
+      "outcome": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2034,
+      "seconds": 0.11
+    },
+    "library-regression": {
+      "path": "target/app-backlog/cue-loops-second-library-regression.log",
+      "sha256": "e2f845a1f7df726cf95e1896f567292cb3da922b9c371382ddd8851d5a517b81",
+      "outcome": "ok",
+      "passed": 30,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2005,
+      "seconds": 0.55
+    },
+    "loop-regression": {
+      "path": "target/app-backlog/cue-loops-second-loop-regression.log",
+      "sha256": "b14262d542262e0ae8cace019f2dc5ceeb461d905d14f7fe0534e7b66c716af0",
+      "outcome": "ok",
+      "passed": 4,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2031,
+      "seconds": 0.71
+    },
+    "cue-regression": {
+      "path": "target/app-backlog/cue-loops-second-cue-regression.log",
+      "sha256": "c63e5e888339f68c701ebf0938cf72451ac24fd4cac354b3722a2a17d808a70d",
+      "outcome": "ok",
+      "passed": 6,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2029,
+      "seconds": 2.17
+    },
+    "manual": {
+      "path": "target/app-backlog/cue-loops-second-manual.log",
+      "sha256": "8bee5bbc1263d0f5f20c35114a4f4f1e548b9940c61210396d99e4aac121bace",
+      "outcome": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2034,
+      "seconds": 0
+    },
+    "help": {
+      "path": "target/app-backlog/cue-loops-second-help.log",
+      "sha256": "7177d502ac41c082027cd110faad2f96f6d180b0f71427b6828243536cca88df",
+      "outcome": "ok",
+      "passed": 14,
+      "failed": 0,
+      "ignored": 1,
+      "filtered": 2020,
+      "seconds": 2.92
+    },
+    "full": {
+      "path": "target/app-backlog/cue-loops-second-full.log",
+      "sha256": "a95b03ed6506d35143392f25f57066f40526113974e89a453f7156e676937359",
+      "outcome": "ok",
+      "passed": 1991,
+      "failed": 0,
+      "ignored": 44,
+      "filtered": 0,
+      "seconds": 521.74
+    }
+  },
+  "clockLoadRegression": {
+    "path": "target/app-backlog/cue-loops-second-full-output-timing.json",
+    "sha256": "195861516edfd4bf16070e4d2a0a1dbe5db50b50f694a562e5195c7885cdb3de",
+    "physical_devices_opened": false,
+    "real_decode_egui_iterations": 5155,
+    "schema": 1,
+    "tempos": [
+      {
+        "bpm": 40,
+        "clocks": 24,
+        "delay_ns": [
+          105363,
+          92278,
+          292527,
+          147609,
+          144607,
+          123773,
+          74355,
+          14520,
+          39060,
+          17392,
+          113141,
+          155057,
+          123306,
+          46304,
+          49219,
+          146010,
+          20175,
+          16841,
+          54173,
+          10963,
+          90546,
+          22461,
+          114418,
+          122584
+        ],
+        "max_delay_ns": 292527
+      },
+      {
+        "bpm": 73,
+        "clocks": 24,
+        "delay_ns": [
+          60113,
+          17647,
+          106098,
+          48298,
+          101333,
+          58575,
+          35401,
+          22686,
+          21137,
+          23046,
+          143289,
+          19156,
+          59524,
+          55099,
+          76133,
+          130126,
+          30910,
+          88070,
+          128896,
+          18846,
+          95714,
+          118873,
+          88407,
+          76233
+        ],
+        "max_delay_ns": 143289
+      },
+      {
+        "bpm": 120,
+        "clocks": 24,
+        "delay_ns": [
+          50737,
+          83918,
+          9640,
+          85778,
+          172168,
+          43514,
+          47194,
+          135958,
+          155305,
+          19151,
+          16665,
+          55179,
+          69942,
+          82206,
+          153928,
+          133441,
+          19538,
+          107261,
+          136357,
+          146662,
+          118760,
+          94147,
+          22869,
+          18133
+        ],
+        "max_delay_ns": 172168
+      },
+      {
+        "bpm": 137,
+        "clocks": 24,
+        "delay_ns": [
+          31071,
+          130615,
+          121742,
+          72076,
+          105328,
+          84330,
+          116748,
+          34291,
+          139793,
+          61919,
+          106254,
+          94756,
+          71633,
+          33343,
+          108011,
+          37263,
+          106264,
+          105224,
+          146351,
+          76519,
+          91354,
+          19522,
+          146649,
+          136192
+        ],
+        "max_delay_ns": 146649
+      },
+      {
+        "bpm": 180,
+        "clocks": 24,
+        "delay_ns": [
+          119738,
+          127720,
+          123118,
+          102474,
+          111372,
+          101061,
+          50917,
+          83941,
+          21713,
+          111445,
+          102843,
+          151741,
+          78181,
+          127870,
+          105643,
+          96458,
+          19564,
+          38378,
+          77109,
+          102841,
+          80865,
+          26221,
+          26160,
+          111683
+        ],
+        "max_delay_ns": 151741
+      },
+      {
+        "bpm": 240,
+        "clocks": 24,
+        "delay_ns": [
+          46987,
+          22162,
+          72085,
+          3591,
+          25849,
+          94230,
+          85654,
+          127453,
+          100418,
+          16424,
+          84807,
+          156105,
+          88070,
+          22160,
+          107125,
+          38506,
+          130139,
+          80854,
+          17235,
+          127035,
+          21333,
+          156256,
+          10721,
+          106103
+        ],
+        "max_delay_ns": 156256
+      }
+    ]
+  },
+  "retainedPreliminaryResults": {
+    "binary": {
+      "compiledBinary": "/home/michael/Projects/omatainer-work/remaining-backlog/target/debug/deps/omatainer-700b0f43c8079203",
+      "privateBinary": "target/app-backlog/qualification-bin/cue-loops-tests-first",
+      "sha256": "ef75be021b873bdb5a831e3d5b227014bbb08bf8060d7fc7e81e134991a2831e",
+      "compileLogSha256": "89ae2ccd16a7111e68d9d090f7dbaa04556b196eb2873099aea4a446e18cc163"
+    },
+    "compiledInventory": {
+      "path": "target/app-backlog/cue-loops-first-compiled-source-inventory.json",
+      "sha256": "a306fdd1d92dafead9e903b4510d97bff5d243967e557adbec034cf623b202ca"
+    },
+    "tests": {
+      "core": {
+        "path": "target/app-backlog/cue-loops-first-core.log",
+        "sha256": "2e54cefe0adeec0e3b44e458287c7c1127b2cd0c8285352cded088bfec1b3c27",
+        "outcome": "ok",
+        "passed": 10,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 2025,
+        "seconds": 5.51
+      },
+      "library": {
+        "path": "target/app-backlog/cue-loops-first-library.log",
+        "sha256": "7ba46a75e1990eb23b9b86acdb0d73509b6adcb10ca7d5316684ba3375d7710a",
+        "outcome": "ok",
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 2034,
+        "seconds": 0.18
+      },
+      "native-loop": {
+        "path": "target/app-backlog/cue-loops-first-native-loop.log",
+        "sha256": "6107df047c0827ea8af95bb9df89ffee94a6b3800b6b92b2adf2881d81b2ada5",
+        "outcome": "ok",
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 2034,
+        "seconds": 0.2
+      },
+      "native-cue": {
+        "path": "target/app-backlog/cue-loops-first-native-cue.log",
+        "sha256": "fbdf9de072f14983ff23e7a68b3da444524ed0208e390372b941894df7cb3b42",
+        "outcome": "FAILED",
+        "passed": 0,
+        "failed": 1,
+        "ignored": 0,
+        "filtered": 2034,
+        "seconds": 0.13
+      },
+      "midi": {
+        "path": "target/app-backlog/cue-loops-first-midi.log",
+        "sha256": "8d1d58ca89bb93a8ba8d363e8bb58e5497c318450e434b08008d44ce65cb04a8",
+        "outcome": "ok",
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 2034,
+        "seconds": 0.12
+      },
+      "library-regression": {
+        "path": "target/app-backlog/cue-loops-first-library-regression.log",
+        "sha256": "64982cc54d2b91f2c8ecebbfa9523c4d4e502d4ce5bbe0f93f32012ab66d5822",
+        "outcome": "ok",
+        "passed": 30,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 2005,
+        "seconds": 0.54
+      },
+      "loop-regression": {
+        "path": "target/app-backlog/cue-loops-first-loop-regression.log",
+        "sha256": "7749ca2dc750ce64a3224f207ea25455e3a5b71dcda1391e794379a804c49a3e",
+        "outcome": "ok",
+        "passed": 4,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 2031,
+        "seconds": 0.74
+      }
+    },
+    "reason": "The initial executable passed all core, real library, native loop-link and production MIDI worker checks. The native cue editor check exposed identical unscoped cues… labels on both existing deck opener buttons. Each opener now uses the deck-scoped accessibility helper and the unchanged workflow is exercised through its actual Cue editor control. No assertion was weakened."
+  },
+  "limits": "Linux ARM64 software qualification: source-qualified cue-to-fixed-loop associations; exact cue/region atomic dispatch at existing musical output boundaries across source-tempo anchors and unequal rates; exact off-grid cue-only override that retires active looping and retains the association; bounded map codec and coherent preparation; slot reorder, resize/delete, held release and source/routing cancellation; complete native Undo/Redo; real native project and library save/backup/restore/merge/reload; state 27/library 17 strict old-header injection guards; actual native egui/AccessKit chooser/link/unlink/override and synthetic learned production MIDI worker. Reopen remains stopped and no preset/profile version changes are required. No physical device opened, new GUI or capture started, physical acceptance or current competitor comparison claimed; independent stage processes and session preserved.",
+  "node": {
+    "path": "target/app-backlog/cue-loops-second-node.log",
+    "sha256": "8fc4296c74bd76b27da9efc05d0d3e72f6357d455fe51f7d4727a694e46eb583",
+    "passed": 15,
+    "failed": 0
+  },
+  "releaseInstallation": {
+    "schema": 1,
+    "package": {
+      "path": "/home/michael/Projects/omatainer-work/hardware-resurrection/target/app-backlog/release-cue-loops-qualified",
+      "manifestSha256": "4d0013660e88bc2edb561ef6e0ceaa2d27282c1f277e11196636fff441b78268",
+      "revision": "43f6b2f9f98266c4c788b9bb2e9b459049d66570",
+      "version": "0.1.0+43f6b2f9f982",
+      "executableSha256": "2bbc99dfdb277f2ca452c22ee8be6e829a55c778b1a409e5410722cd5196b85a"
+    },
+    "installed": {
+      "schema": 1,
+      "before": "a0e1155244460ae40ef5b6a4445c8d05273e03615361bc21e5485b372afbbb5a",
+      "after": "2bbc99dfdb277f2ca452c22ee8be6e829a55c778b1a409e5410722cd5196b85a",
+      "installedAt": "2026-10-07T06:56:42.347Z"
+    },
+    "buildInfo": {
+      "arch": "aarch64",
+      "debug_assertions": false,
+      "os": "linux",
+      "pkg_version": "0.1.0",
+      "schema": 1
+    },
+    "applicationProcessesPreserved": [
+      {
+        "pid": 1649895,
+        "executable": "/home/michael/Projects/omatainer-work/hardware-resurrection/target/hardware/pioneer-apc/bin/omatainer",
+        "arguments": [
+          "/home/michael/Projects/omatainer-work/hardware-resurrection/target/hardware/pioneer-apc/bin/omatainer",
+          "--empty-once"
+        ],
+        "sha256": "646aa453a269d7c49feec0f5e88fcac94a030034f051468a82d2828ef05c4915"
+      },
+      {
+        "pid": 3973522,
+        "executable": "/home/michael/.local/bin/omatainer (deleted)",
+        "arguments": [
+          "/home/michael/.local/bin/omatainer",
+          "ctl",
+          "follow"
+        ],
+        "sha256": "23f88a47125de6eb19a7921d64faef6dafed56d3c25debdb89ac04d060d9b2e4"
+      }
+    ],
+    "protectedSessionPreserved": {
+      "path": "/home/michael/Projects/omatainer-work/hardware-resurrection/target/hardware/apc-restart-20261006/session.omat",
+      "sha256": "96e0b2495cdbdc549c324ecf8337fdef5590bdcbfe8916e4f014eb05d1ee827d",
+      "bytes": 162882871
+    },
+    "additionalProcessesAfterInstall": [],
+    "preinstallState": {
+      "master": 0.8188976645469666,
+      "playing": false,
+      "recording": false,
+      "decks": [
+        {
+          "title": "What More Can I Say",
+          "playing": false
+        },
+        {
+          "title": "Public Service Announcement",
+          "playing": false
+        }
+      ]
+    },
+    "postinstallState": {
+      "master": 0.8188976645469666,
+      "playing": false,
+      "recording": false,
+      "decks": [
+        {
+          "title": "What More Can I Say",
+          "playing": false
+        },
+        {
+          "title": "Public Service Announcement",
+          "playing": false
+        }
+      ]
+    },
+    "scope": "Default executable installed for next launch. Previously active independent private GUI and follower processes retained; no hardware device opened or live playback restarted. An unavailable live state is recorded when no GUI was present."
+  }
+}

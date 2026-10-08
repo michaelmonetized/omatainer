@@ -29,7 +29,7 @@ pub(in crate::engine) struct Measurement {
     capture: bool,
     frame_count: usize,
     active: bool,
-    prepare_state: u64,
+    monitor_state: [u64; 2],
     window_playing: Option<[u64; 2]>,
     session: u64,
     endpoint: Endpoint,
@@ -50,7 +50,7 @@ impl Measurement {
         sidecar.try_reserve_exact(MAX_FRAMES).map_err(|_| "history conversion storage unavailable")?;
         sidecar.resize(MAX_FRAMES, Rendered::default());
         let (sender, receiver) = crossbeam_channel::bounded(EVENTS);
-        Ok(Self { tracker, available: true, routing_compatible: true, rate, sidecar, capture: false, frame_count: 0, active: false, prepare_state: 0, window_playing: None, session: 0, endpoint: Endpoint::new(receiver), callback_wall_ns: 0, window_wall_ns: 0,
+        Ok(Self { tracker, available: true, routing_compatible: true, rate, sidecar, capture: false, frame_count: 0, active: false, monitor_state: [0; 2], window_playing: None, session: 0, endpoint: Endpoint::new(receiver), callback_wall_ns: 0, window_wall_ns: 0,
             clock: 0, windows: None, window_episodes: [None; LANES], sender,
             incomplete: false, dropped: 0 })
     }
@@ -108,14 +108,15 @@ impl Measurement {
         }
         self.endpoint.measurement_available(self.available && self.routing_compatible);
     }
+    fn monitoring(&self) -> bool { self.monitor_state.iter().any(|state|state & 1 != 0) }
     pub fn begin_output(&mut self, frames: usize) {
-        let state = self.endpoint.prepare_state();
-        if state != self.prepare_state && !self.active { self.windows = None; self.window_playing = None; }
-        self.prepare_state = state;
+        let state = self.endpoint.monitor_state();
+        if state != self.monitor_state && !self.active { self.windows = None; self.window_playing = None; }
+        self.monitor_state = state;
         self.capture = true;
         self.callback_wall_ns = self.endpoint.clock().unwrap_or(0);
         self.frame_count = frames;
-        if (self.active || self.prepare_state & 1 != 0) && frames > MAX_FRAMES {
+        if (self.active || self.monitoring()) && frames > MAX_FRAMES {
             self.flush(); self.windows = None;
             self.incomplete = true;
             self.dropped = self.dropped.saturating_add(frames as u64);
@@ -124,7 +125,7 @@ impl Measurement {
     pub fn record_rendered(&mut self, index: usize, contribution: Contribution,
         before_limiter: [f32; 2], master: f32, safety: &performance::Output, playing: [u64; 2],
     ) {
-        if !self.capture || (!self.active && self.prepare_state & 1 == 0) || !self.available || !self.routing_compatible || self.frame_count > MAX_FRAMES { return; }
+        if !self.capture || (!self.active && !self.monitoring()) || !self.available || !self.routing_compatible || self.frame_count > MAX_FRAMES { return; }
         if index >= self.frame_count { self.incomplete = true; return; }
         self.incomplete |= contribution.incomplete;
         let actual = safety.preview(before_limiter.map(|v| (v * master).tanh()));
@@ -152,7 +153,7 @@ impl Measurement {
         let channels = channels.max(1);
         let frames = output.len() / channels;
         if frames != self.frame_count { self.incomplete = true; return; }
-        if (self.active || self.prepare_state & 1 != 0) && self.available && self.routing_compatible && frames <= MAX_FRAMES {
+        if (self.active || self.monitoring()) && self.available && self.routing_compatible && frames <= MAX_FRAMES {
             for i in 0..frames {
                 let record = self.sidecar[i];
                 if self.windows.is_none() || record.episodes != self.window_episodes {
@@ -214,7 +215,7 @@ impl Measurement {
     }
     fn publish(&mut self, observations: Option<[Option<Observation>; LANES]>) {
         for mut observation in observations.into_iter().flatten().flatten() {
-            if self.prepare_state & 1 != 0 && observation.classification == super::Classification::Active
+            if self.monitoring() && observation.classification == super::Classification::Active
                 && observation.frames >= self.rate.div_ceil(100) && observation.episode.deck < 2
                 && self.window_playing.is_some_and(|playing| playing[usize::from(observation.episode.deck)] == observation.episode.load)
                 && self.window_wall_ns != 0 {

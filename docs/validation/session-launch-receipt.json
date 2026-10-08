@@ -1,0 +1,394 @@
+{
+  "schema": 1,
+  "platform": "Linux ARM64; unopened-device renderer, actual MIDI dispatch workers, native egui/AccessKit/key/pointer handlers and real native project/preset files",
+  "sourceFiles": {
+    "src/engine/clip_launch.rs": "151e9693432bcd0d1a1de79a415fd9ecf33a1f84ff78c22f5cc7b89e8d64dc8f",
+    "src/engine/clip_launch/tests.rs": "f4e705dbc86c00dda8616f020c92514f68e59e83aaa4a5185d94c12d5cfb9536",
+    "src/engine/clip_management.rs": "5fb8bb835e714277887ea7912446e618e6d12fab52ab57d4a7addeb3595890e8",
+    "src/engine/clip_management/edit.rs": "39788842c854a29ff64e876100f3d56b0c8055e3600953bfd21f3a5d8af40acd",
+    "src/engine/clip_management/preset.rs": "786597e57ea2dafee6d4c0446eeb43669a9ec50c7ea8c7bdf042fad7f3ac0934",
+    "src/engine/clip_management/tests.rs": "bb2f908e91c98d5f1cb7ca2af9c5a416140eecbf5569944b8b86236a380b46a1",
+    "src/engine/control.rs": "d071646ad49a6b103401212caeaf155184e1e8067ea4436f04a545fafa37a894",
+    "src/engine/midi.rs": "8ac5a7b103a8aa81edb6682666eded7b9cb7a671e9d3804ef0042f4613d6e135",
+    "src/engine/midi/handoff.rs": "a77a1e3c78a4a576a24ac98475482ed66f89e19a97d2438652c01e2634988b5b",
+    "src/engine/midi/profile_tests.rs": "a068789671207c997bd858113060063b47ee927a4cbfdb7a4bff35784475a699",
+    "src/engine/midi/surface.rs": "360645f8b48de6be707d7b8e5c2fde70f12ea88c8ed5d4d1b6e49eb1faf515ac",
+    "src/engine/midi/surface_tests.rs": "ac17d8ffac9a4824ad25e37cb9584b2dab407032c6fe7aa31f8fab616cd5a1fb",
+    "src/engine/midi_data/lanes.rs": "85f2b7eae3b1350df171b7d6131a93f85a2be44c04334ee3730119bf7cc97e46",
+    "src/engine/mod.rs": "57ec34860755b30b8d450cb89d800c61efbb85032d7515c72a4e8481416d95ec",
+    "src/engine/performance.rs": "7fcdeacc95c215a7281df3196d68f26de2828071a621be971831f18f59d3d48d",
+    "src/engine/project/model.rs": "84a446baa741719b43eb277fe177594d3b1a3150b272f68d4c40f7b57f834194",
+    "src/engine/project/prepare.rs": "4b311965a42d9294c5b715afb311c651d62e198f484f025b1fe7453075779f98",
+    "src/engine/session/scoped.rs": "7a0771f73cd0d02d53c02d74cf45b6a363e63426c126f4c4743a561221fc5989",
+    "src/engine/session/transaction.rs": "e73557f680dcda878f117366b4b60909c1d918cf79b1f6ecc883d55929d97d01",
+    "src/engine/snapshot.rs": "6512a6332aae404f5f5a24977b25134380941b15081117ab3532bb9f8fad029e",
+    "src/engine/video_transport.rs": "47c6098d0e6715b104cc6eaa65af6e01d80dd302584e2d49b7470b7e008b5eea",
+    "src/ui.rs": "013a444e8b118396a91a3e80bef93d693202ac664095d3f01b6b170c5699c069",
+    "src/ui/clip_launch.rs": "2dc86994657ada97cf7aa16890a250c9e9251107e9df52e15aadd20a2133958e",
+    "src/ui/clip_manager.rs": "e7fb5b8a2b0124813286b3be84807e4254ef8bc0ac828dec369d5ce7c91cdf3b",
+    "src/ui/clip_manager/tests.rs": "aad50796a1b2bbc25ff0bbf2255530275286574f1e4b063977c94c5fd7194889",
+    "src/ui/help/catalogue.rs": "103dbcbdad4f42ee467906b789007f6a4ce7cae22e45d15327477c74d8307fcc"
+  },
+  "testBinary": {
+    "path": "target/app-backlog/qualification-bin/session-launch-tests-seventh",
+    "sha256": "82c5742c54a29bdaeff1d2990f9cb43c3fee3dada2b46ef60530ec789096aecc"
+  },
+  "compiledInventory": {
+    "path": "target/app-backlog/session-launch-seventh-compiled-source-inventory.json",
+    "sha256": "7b830d2bf1468c3c6f43d4549850507eb7a6079e95b1ebafbbd0f114089c3275",
+    "baseRevision": "83c5cd70d53386d16d855b115e3481c343bba181",
+    "files": 721
+  },
+  "embeddedInputs": {
+    "schema": 1,
+    "embeddedInputs": {
+      "README.md": "abab5cb8b9a15a180652402e983142ce2a3baf21f5272fe1c4e9079a5083143f",
+      "licenses/manifest.json": "73d903c6f4d2cf66b5016c04bcf7363aca8c576c95d00046b7d8e08f80336756",
+      "licenses/notices.json": "b15a146c83e362b540c860ae618b80f9ee0150cd9d8d41683a5d3d3fcb85c244"
+    },
+    "scope": "Inputs frozen before seventh source build and rechecked before qualification."
+  },
+  "tests": {
+    "focused": {
+      "path": "target/app-backlog/session-launch-seventh-focused-tests.log",
+      "sha256": "532f65fa0655f1f536ed1c38803a7219576f9925695e1baca2982e34a4ae0a33",
+      "outcome": "ok",
+      "passed": 15,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 1918,
+      "seconds": 1.32
+    },
+    "full": {
+      "path": "target/app-backlog/session-launch-seventh-full-tests.log",
+      "sha256": "a223bc74639d3be6addfee6e75a2df4cc13e5e209ee9a707ee425e431a4b1a7e",
+      "outcome": "ok",
+      "passed": 1889,
+      "failed": 0,
+      "ignored": 44,
+      "filtered": 0,
+      "seconds": 475.22
+    },
+    "manual": {
+      "path": "target/app-backlog/session-launch-seventh-manual-regenerate.log",
+      "sha256": "f4eae49f7de5fc4bd02c87c4fe81c46474b5e71fa20cfbf0713ffbbb40196dd6",
+      "outcome": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 1932,
+      "seconds": 0.01
+    },
+    "profiles": {
+      "path": "target/app-backlog/session-launch-seventh-profiles-tests.log",
+      "sha256": "c150675b56fd14f329fc7373d68738a392ca4ae37404f85bf2a65cc0067c9703",
+      "outcome": "ok",
+      "passed": 13,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 1920,
+      "seconds": 0.62
+    },
+    "recording": {
+      "path": "target/app-backlog/session-launch-seventh-recording-tests.log",
+      "sha256": "2b72cd69fc512ba409c93b5fc7baafaf0a7f22a6c0beff9d46ecd040a1979cb6",
+      "outcome": "ok",
+      "passed": 9,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 1924,
+      "seconds": 2.64
+    }
+  },
+  "node": {
+    "path": "target/app-backlog/session-launch-seventh-node-tests.log",
+    "sha256": "275282a02d07d3c7ce3bec997abe2188861e92d5e7b9c1dd39c6f23dd54a96ac",
+    "passed": 15,
+    "failed": 0
+  },
+  "retainedPreliminaryResults": [
+    {
+      "reason": "Initial PCM/MIDI checks detected one-sample-early launch consumption; native mode choices also needed named AccessKit selectors.",
+      "testBinary": {
+        "path": "target/app-backlog/qualification-bin/session-launch-tests-first",
+        "sha256": "17e86370547aa4487222b4bb371002988e8be426cf15d1b855748ca3a2ce8f0c"
+      },
+      "compiledInventory": {
+        "path": "target/app-backlog/session-launch-first-compiled-source-inventory.json",
+        "sha256": "7cc89fccb7b0e35ae248b4faa2ed55f8c1548a34276eadede89c966614f7d0d4",
+        "files": 721
+      },
+      "embeddedInputs": {
+        "schema": 1,
+        "embeddedInputs": {
+          "README.md": "abab5cb8b9a15a180652402e983142ce2a3baf21f5272fe1c4e9079a5083143f",
+          "licenses/manifest.json": "73d903c6f4d2cf66b5016c04bcf7363aca8c576c95d00046b7d8e08f80336756",
+          "licenses/notices.json": "b15a146c83e362b540c860ae618b80f9ee0150cd9d8d41683a5d3d3fcb85c244"
+        },
+        "scope": "Embedded inputs matched the prior frozen values during this build; they will be rechecked before qualification. Source licensing is refreshed after qualification."
+      },
+      "test": {
+        "path": "target/app-backlog/session-launch-first-focused-tests.log",
+        "sha256": "5cca1d846b8a3a91d59eab77b8aea9545947d61f07a6cc9745a9623c3190dcfa",
+        "outcome": "FAILED",
+        "passed": 7,
+        "failed": 3,
+        "ignored": 0,
+        "filtered": 1918,
+        "seconds": 0.7
+      }
+    },
+    {
+      "reason": "Native key release did not enter the renderer. Per-frame native input tracking was hardened before isolating queue admission.",
+      "testBinary": {
+        "path": "target/app-backlog/qualification-bin/session-launch-tests-second",
+        "sha256": "eb01d67e2f2ec088e6303bccd090f0bc611da3bf4a20484a5248721af110ed5e"
+      },
+      "compiledInventory": {
+        "path": "target/app-backlog/session-launch-second-compiled-source-inventory.json",
+        "sha256": "f062b1bf49d6063e018b823141550dfc224c2c75a6c9b1d48a27cdcc8dd6f0e8",
+        "files": 721
+      },
+      "embeddedInputs": {
+        "schema": 1,
+        "embeddedInputs": {
+          "README.md": "abab5cb8b9a15a180652402e983142ce2a3baf21f5272fe1c4e9079a5083143f",
+          "licenses/manifest.json": "73d903c6f4d2cf66b5016c04bcf7363aca8c576c95d00046b7d8e08f80336756",
+          "licenses/notices.json": "b15a146c83e362b540c860ae618b80f9ee0150cd9d8d41683a5d3d3fcb85c244"
+        },
+        "scope": "Embedded inputs matched the prior frozen values during this build; they will be rechecked before qualification. Source licensing is refreshed after qualification."
+      },
+      "test": {
+        "path": "target/app-backlog/session-launch-second-focused-tests.log",
+        "sha256": "7c8765d747539334c13b46055c7ec4602fd87e737b0f1ddc02636ad329aa862a",
+        "outcome": "FAILED",
+        "passed": 10,
+        "failed": 1,
+        "ignored": 0,
+        "filtered": 1918,
+        "seconds": 0.94
+      }
+    },
+    {
+      "reason": "Native diagnostics showed held release consumed locally but no renderer stop; queue admission did not unwrap the retained Session identity.",
+      "testBinary": {
+        "path": "target/app-backlog/qualification-bin/session-launch-tests-third",
+        "sha256": "d9b4ff47ad7761fcc5e30fe04f314890e535eeb0f58ab9fc4f703938e4b9e7a4"
+      },
+      "compiledInventory": {
+        "path": "target/app-backlog/session-launch-third-compiled-source-inventory.json",
+        "sha256": "220f3a00f2b9522155cffb626c158c8d0e1de2b9c46c78ce80de16d3733bd41b",
+        "files": 721
+      },
+      "embeddedInputs": {
+        "schema": 1,
+        "embeddedInputs": {
+          "README.md": "abab5cb8b9a15a180652402e983142ce2a3baf21f5272fe1c4e9079a5083143f",
+          "licenses/manifest.json": "73d903c6f4d2cf66b5016c04bcf7363aca8c576c95d00046b7d8e08f80336756",
+          "licenses/notices.json": "b15a146c83e362b540c860ae618b80f9ee0150cd9d8d41683a5d3d3fcb85c244"
+        },
+        "scope": "Embedded inputs matched the prior frozen values during this build; they will be rechecked before qualification. Source licensing is refreshed after qualification."
+      },
+      "test": {
+        "path": "target/app-backlog/session-launch-third-focused-tests.log",
+        "sha256": "6fffd76c5e55f320af8a8bf76bddf9945587abc73c3fbc473ed9481f223bb321",
+        "outcome": "FAILED",
+        "passed": 10,
+        "failed": 1,
+        "ignored": 0,
+        "filtered": 1918,
+        "seconds": 0.9
+      }
+    },
+    {
+      "reason": "Actual native releases, PCM timing, meter-aware repeat and native file reopening passed. The new saturation fixture used an invalid Undo Gesture around transport; producer refusal was correct. The final fixture uses the real retained Session wrapper. Final review also added emergency hold reset and recovery qualification.",
+      "testBinary": {
+        "path": "target/app-backlog/qualification-bin/session-launch-tests-fourth",
+        "sha256": "31e40d5b93f2a011a7ed4769c852ea1890b04af88656882c1f63e3ecf827be72"
+      },
+      "compiledInventory": {
+        "path": "target/app-backlog/session-launch-fourth-compiled-source-inventory.json",
+        "sha256": "0c6deaccfafcb8d280bbe52aad8770cacab21ad1bc00a62178e6bafcc5f228d0",
+        "files": 721
+      },
+      "embeddedInputs": {
+        "schema": 1,
+        "embeddedInputs": {
+          "README.md": "abab5cb8b9a15a180652402e983142ce2a3baf21f5272fe1c4e9079a5083143f",
+          "licenses/manifest.json": "73d903c6f4d2cf66b5016c04bcf7363aca8c576c95d00046b7d8e08f80336756",
+          "licenses/notices.json": "b15a146c83e362b540c860ae618b80f9ee0150cd9d8d41683a5d3d3fcb85c244"
+        },
+        "scope": "Embedded inputs matched the prior frozen values during this build; they will be rechecked before qualification. Source licensing is refreshed after qualification."
+      },
+      "test": {
+        "path": "target/app-backlog/session-launch-fourth-focused-tests.log",
+        "sha256": "3a4ceaf001d41831cebccc6ee17da3930bc66595c3dd977f5257103b61319459",
+        "outcome": "FAILED",
+        "passed": 12,
+        "failed": 1,
+        "ignored": 0,
+        "filtered": 1918,
+        "seconds": 1.16
+      }
+    },
+    {
+      "reason": "All fourteen focused checks passed. The first complete suite reported two failures: the older factory APC fixture still expected LaunchClip rather than the new source-owned ClipPress, and queued same-clip restarts allowed recording onsets into the old phase. The factory expectation now verifies the source-owned target, a real empty-slot stop regression was added, and recording onsets remain monitor-only while their target is queued.",
+      "testBinary": {
+        "path": "target/app-backlog/qualification-bin/session-launch-tests-fifth",
+        "sha256": "00a9d36a8b5f825e76a0da264ed6048154452c266c5d64932a9765bb8553eee3"
+      },
+      "compiledInventory": {
+        "path": "target/app-backlog/session-launch-fifth-compiled-source-inventory.json",
+        "sha256": "affb492741752d80569418da0523ae23f06edc35d5561b70f758494f81d3d409",
+        "files": 721
+      },
+      "embeddedInputs": {
+        "schema": 1,
+        "embeddedInputs": {
+          "README.md": "abab5cb8b9a15a180652402e983142ce2a3baf21f5272fe1c4e9079a5083143f",
+          "licenses/manifest.json": "73d903c6f4d2cf66b5016c04bcf7363aca8c576c95d00046b7d8e08f80336756",
+          "licenses/notices.json": "b15a146c83e362b540c860ae618b80f9ee0150cd9d8d41683a5d3d3fcb85c244"
+        },
+        "scope": "Embedded inputs matched the prior frozen values during this build; they will be rechecked before qualification. Source licensing is refreshed after qualification."
+      },
+      "test": {
+        "path": "target/app-backlog/session-launch-fifth-focused-tests.log",
+        "sha256": "037f69c255a130f17b68fd517643b6aab4b8bac1ea22783b1d5f15b3159a06f4",
+        "outcome": "ok",
+        "passed": 14,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 1918,
+        "seconds": 1.17
+      },
+      "full": {
+        "path": "target/app-backlog/session-launch-fifth-full-tests.log",
+        "sha256": "17695ae68a96690f3da615fa70b27816986ac5f5acef64d276fbde79fb7e697f",
+        "outcome": "FAILED",
+        "passed": 1886,
+        "failed": 2,
+        "ignored": 44,
+        "filtered": 0,
+        "seconds": 478.42
+      }
+    },
+    {
+      "reason": "All fifteen focused, thirteen profile, nine recording-duration and the complete unfiltered 1,889-test suite passed. Final timing review added a stopped off-grid repeat fixture and aligned positive subdivisions to the absolute musical grid; Immediate repeats remain relative to clip length.",
+      "testBinary": {
+        "path": "target/app-backlog/qualification-bin/session-launch-tests-sixth",
+        "sha256": "d0879c6a56d21dd23e3ce100f7d5b9aeedc3cf5de04a4fec425a5ef5c4c7d9b8"
+      },
+      "compiledInventory": {
+        "path": "target/app-backlog/session-launch-sixth-compiled-source-inventory.json",
+        "sha256": "dda86da5b707724bb4b8339be616c08a139b1335a41d522edab245507dfa3aa7",
+        "files": 721
+      },
+      "embeddedInputs": {
+        "schema": 1,
+        "embeddedInputs": {
+          "README.md": "abab5cb8b9a15a180652402e983142ce2a3baf21f5272fe1c4e9079a5083143f",
+          "licenses/manifest.json": "73d903c6f4d2cf66b5016c04bcf7363aca8c576c95d00046b7d8e08f80336756",
+          "licenses/notices.json": "b15a146c83e362b540c860ae618b80f9ee0150cd9d8d41683a5d3d3fcb85c244"
+        },
+        "scope": "Embedded inputs matched the prior frozen values during this build; they will be rechecked before qualification. Source licensing is refreshed after qualification."
+      },
+      "test": {
+        "path": "target/app-backlog/session-launch-sixth-focused-tests.log",
+        "sha256": "9d2d25ac0111d6f1b2ebddb9a866bcaabe193fe89f3e04705ff6df49469b288b",
+        "outcome": "ok",
+        "passed": 15,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 1918,
+        "seconds": 1.22
+      },
+      "full": {
+        "path": "target/app-backlog/session-launch-sixth-full-tests.log",
+        "sha256": "7cc37517cbb900334c95b183312e452031076466a8ae5bfa0ba642213d2259bd",
+        "outcome": "ok",
+        "passed": 1889,
+        "failed": 0,
+        "ignored": 44,
+        "filtered": 0,
+        "seconds": 477.58
+      }
+    }
+  ],
+  "limits": "No physical controller or audio device was opened. Timestamped MIDI traces, independent audio PCM boundary oracles, renderer heap counters, production synthetic MIDI callbacks and native UI/file handlers prove the recorded software paths. Complete physical acceptance remains open.",
+  "installation": {
+    "schema": 1,
+    "package": {
+      "path": "/home/michael/Projects/omatainer-work/hardware-resurrection/target/app-backlog/release-session-launch-qualified",
+      "manifestSha256": "383fe862eb3e7acb3c464fb3584624f4b1e99a06faed9f620980d07afbb31384",
+      "revision": "3090d154934f3e98af203adb861b966ea7a97ad6",
+      "version": "0.1.0+3090d154934f",
+      "executableSha256": "9d85fb54e53dcd3e40ea0d676c25ce331babda60bc2bb5e83a8f52d43d3a7970"
+    },
+    "installed": {
+      "schema": 1,
+      "before": "4bb19c8badccaad87bc11eb67a1691ad1a0a96b09982bb70c4d137bcb2e8808a",
+      "after": "9d85fb54e53dcd3e40ea0d676c25ce331babda60bc2bb5e83a8f52d43d3a7970",
+      "installedAt": "2026-10-06T22:50:50.759Z"
+    },
+    "buildInfo": {
+      "arch": "aarch64",
+      "debug_assertions": false,
+      "os": "linux",
+      "pkg_version": "0.1.0",
+      "schema": 1
+    },
+    "applicationProcessesPreserved": [
+      {
+        "pid": 1649895,
+        "executable": "/home/michael/Projects/omatainer-work/hardware-resurrection/target/hardware/pioneer-apc/bin/omatainer",
+        "arguments": [
+          "/home/michael/Projects/omatainer-work/hardware-resurrection/target/hardware/pioneer-apc/bin/omatainer",
+          "--empty-once"
+        ],
+        "sha256": "646aa453a269d7c49feec0f5e88fcac94a030034f051468a82d2828ef05c4915"
+      },
+      {
+        "pid": 3973522,
+        "executable": "/home/michael/.local/bin/omatainer (deleted)",
+        "arguments": [
+          "/home/michael/.local/bin/omatainer",
+          "ctl",
+          "follow"
+        ],
+        "sha256": "23f88a47125de6eb19a7921d64faef6dafed56d3c25debdb89ac04d060d9b2e4"
+      }
+    ],
+    "additionalProcessesAfterInstall": [],
+    "preinstallState": {
+      "master": 0.8188976645469666,
+      "playing": false,
+      "recording": false,
+      "decks": [
+        {
+          "title": "What More Can I Say",
+          "playing": false
+        },
+        {
+          "title": "Public Service Announcement",
+          "playing": false
+        }
+      ]
+    },
+    "postinstallState": {
+      "master": 0.8188976645469666,
+      "playing": false,
+      "recording": false,
+      "decks": [
+        {
+          "title": "What More Can I Say",
+          "playing": false
+        },
+        {
+          "title": "Public Service Announcement",
+          "playing": false
+        }
+      ]
+    },
+    "scope": "Default executable installed for next launch. Previously active independent private GUI and follower processes retained; no hardware device opened or live playback restarted. An unavailable live state is recorded when no GUI was present."
+  }
+}

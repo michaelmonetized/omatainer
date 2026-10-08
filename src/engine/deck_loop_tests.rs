@@ -6,7 +6,7 @@ fn engine() -> RtEngine {
 }
 
 fn sample(name: &str, frames: usize) -> Arc<Sample> {
-    Arc::new(Sample {
+    Arc::new(Sample { spectrum: None,
         name: name.into(),
         sr: 48_000,
         ch: 1,

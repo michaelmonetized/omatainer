@@ -14,7 +14,7 @@ impl Drop for Playback {
 }
 fn player() -> (Engine, OutputCallback) {
     let (engine, mut rt) = Engine::headless_for_test(48_000, 256);
-    let sample = Arc::new(Sample {
+    let sample = Arc::new(Sample { spectrum: None,
         name: "Original 440 Hz callback reference".into(),
         sr: 48_000,
         ch: 2,

@@ -1,6 +1,7 @@
 use super::*;
 use crate::engine::{fx, midi_edit::NoteId, project, Clip, Sample, TrackRt};
 use std::sync::Arc;
+mod routing;
 #[cfg(test)]
 mod tests;
 
@@ -26,6 +27,9 @@ pub(super) struct Import {
     heap_bytes: usize,
     fx_bytes: usize,
     fx_ids: Vec<fx::FxId>,
+    pub(super) arrangement: Option<Box<crate::engine::arrangement::Playback>>,
+    migration: Option<Option<Arc<crate::ableton::Migration>>>,
+    routing_changed: bool,
 }
 impl Import {
     pub(super) fn bytes(&self) -> usize {
@@ -47,7 +51,9 @@ impl Import {
         } else {
             (self.base_tracks, self.base_scenes)
         };
-        rt.tracks.len() == tracks
+        (self.arrangement.is_none() && !self.routing_changed
+            || !rt.playing && !rt.recording && !rt.decks.iter().any(|d| d.playing || d.touching))
+            && rt.tracks.len() == tracks
             && rt.scene_fx.len() == scenes
             && rt.tracks.capacity() >= self.base_tracks + self.added_tracks
             && rt.scene_fx.capacity() >= self.base_scenes + self.added_scenes
@@ -80,6 +86,13 @@ impl Import {
             rt.tracks.append(&mut self.nodes);
             rt.scene_fx.append(&mut self.racks);
         }
+        if let Some(arrangement) = &mut self.arrangement {
+            std::mem::swap(arrangement, &mut rt.arrangement);
+            rt.arrangement.reset(rt.precise_midi_beat());
+        }
+        if let Some(migration) = &mut self.migration {
+            std::mem::swap(migration, &mut rt.migration);
+        }
         self.installed = !self.installed;
     }
     pub(super) fn prepare_rate(&mut self, sr: f32) {
@@ -89,6 +102,7 @@ impl Import {
             node.eq.set_sample_rate(sr);
             node.eq_right.set_sample_rate(sr);
             node.mixer_gain = crate::engine::mixer_gain::GainPair::default();
+            node.input_gain = crate::engine::mixer_gain::GainPair::default();
             node.stop_clip();
             node.drum_pos.fill(None);
         }
@@ -231,6 +245,9 @@ impl Request {
                 .clips
                 .extend((0..scenes.len()).map(|_| super::structural::empty_cell()));
         }
+        let before_song=state.arrangement.clone();
+        let before_media=media.clone();
+        let mut imported_tracks=std::collections::HashMap::new();
         let mut remap = std::collections::HashMap::new();
         let mut pins = Vec::new();
         let mut index = |original: usize| -> usize {
@@ -245,6 +262,18 @@ impl Request {
             let mut track = source.tracks[source_slot].clone();
             track.launch = None;
             track.armed = false;
+            let internal_bus = selection.devices
+                && source.migration.as_ref().is_some_and(|m| {
+                    m.sources.iter().flat_map(|s| &s.tracks).any(|t| {
+                        t.native == source_layout.reference(Axis::Track, source_slot).unwrap()
+                            && matches!(t.role.as_str(), "GroupTrack" | "ReturnTrack")
+                    })
+                });
+            track.input_monitor = Some(if internal_bus {
+                crate::engine::input_monitor::Mode::In
+            } else {
+                crate::engine::input_monitor::Mode::Off
+            });
             track.solo = false;
             track.scene_bus = mapped_scenes
                 .get(&track.scene_bus)
@@ -286,8 +315,95 @@ impl Request {
                 Axis::Track,
                 source_layout.tracks[source_slot].clone(),
             )?;
+            imported_tracks.insert(source_layout.reference(Axis::Track,source_slot).unwrap(),next.reference(Axis::Track,state.tracks.len()).unwrap());
             state.tracks.push(track);
         }
+        let mut song_changed=false;
+        if selection.clips{if let Some(source_song)=&source.arrangement{let mut song=state.arrangement.as_deref().cloned().unwrap_or_default();let mut source_ids=std::collections::HashMap::new();for instance in &source_song.instances{let Some(&target)=imported_tracks.get(&instance.track)else{continue};let source_id=if let Some(&id)=source_ids.get(&instance.source){id}else{let mut shared=source_song.sources.iter().find(|s|s.id==instance.source).ok_or("Imported song source disappeared")?.clone();let id=song.identity()?;shared.id=id;shared.clip.audio=shared.clip.audio.map(&mut index);source_ids.insert(instance.source,id);song.sources.push(shared);id};let mut instance=*instance;instance.id=song.identity()?;instance.source=source_id;instance.track=target;song.instances.push(instance);song_changed=true;}if song_changed{state.arrangement=Some(Arc::new(song));}}}
+        drop(index);
+        let mut imported_plugins = std::collections::BTreeMap::new();
+        if selection.devices {
+            if let Some(source_graph) = &source.routing {
+                let (graph, plugins) = routing::merge(
+                    state.routing.as_ref(),
+                    source_graph,
+                    &source_layout,
+                    &next,
+                    &imported_tracks,
+                    &mapped_scenes,
+                )?;
+                state.routing = Some(graph);
+                imported_plugins = plugins;
+            }
+        }
+        let migration_changed = source.migration.is_some();
+        let mut migration_bytes = 0;
+        if let Some(source_migration) = &source.migration {
+            let mut migration =
+                state
+                    .migration
+                    .as_deref()
+                    .cloned()
+                    .unwrap_or(crate::ableton::Migration {
+                        schema: 1,
+                        sources: Vec::new(),
+                    });
+            migration.schema=migration.schema.max(source_migration.schema);
+            migration_bytes += state
+                .migration
+                .as_ref()
+                .map(|m| m.bytes())
+                .transpose()?
+                .unwrap_or(0);
+            for origin in &source_migration.sources {
+                let mut origin = origin.clone();
+                origin.tracks.retain_mut(|track| {
+                    if let Some(&target) = imported_tracks.get(&track.native) {
+                        track.native = target;
+                        true
+                    } else {
+                        false
+                    }
+                });
+                origin.renders.retain_mut(|render| {
+                    render.restorable = false;
+                    let Some(&audio_track) = imported_tracks.get(&render.audio_track) else {
+                        return false;
+                    };
+                    render.audio_track = audio_track;
+                    render.target = match render.target {
+                        Some(old) => match imported_tracks.get(&old) {
+                            Some(&next) => Some(next),
+                            None => return false,
+                        },
+                        None => None,
+                    };
+                    (render.muted_tracks, render.original_mutes) = render
+                        .muted_tracks
+                        .iter()
+                        .zip(&render.original_mutes)
+                        .filter_map(|(old, mute)| {
+                            imported_tracks.get(old).map(|&next| (next, *mute))
+                        })
+                        .unzip();
+                    !render.muted_tracks.is_empty()
+                });
+                for device in &mut origin.devices {
+                    if let Some(resolution) = &mut device.resolution {
+                        if let Some(&id) = imported_plugins.get(&resolution.native_id) {
+                            resolution.native_id = id;
+                        } else {
+                            device.resolution = None;
+                        }
+                    }
+                }
+                migration.sources.push(origin);
+            }
+            migration.validate(media.len())?;
+            migration_bytes += migration.bytes()?;
+            state.migration = Some(Arc::new(migration));
+        }
+        state.version = project::STATE_VERSION;
         state.session = Some(next.clone());
         state.capture_media_order(&mut media)?;
         state.validate_processor_storage(rate)?;
@@ -298,6 +414,8 @@ impl Request {
             return Err("Imported dependencies exceed native project limits".into());
         }
         preflight(&state, &media)?;
+        let mut song_bytes=0;
+        let arrangement=if song_changed{let plan=crate::engine::arrangement::Plan::prepare(state.arrangement.as_ref().unwrap().clone(),&media,&next,&std::sync::atomic::AtomicBool::new(false))?;song_bytes+=plan.bytes();for audio in plan.media(){pins.push(audio.clone());}if let Some(song)=before_song{let before_plan=crate::engine::arrangement::Plan::prepare(song,&before_media,&before,&std::sync::atomic::AtomicBool::new(false))?;song_bytes+=before_plan.bytes();for audio in before_plan.media(){pins.push(audio.clone());}}Some(crate::engine::arrangement::Playback::new(Some(plan),state.beat))}else{None};
         let nodes = state
             .tracks
             .into_iter()
@@ -323,7 +441,10 @@ impl Request {
             .iter()
             .map(|id| fx::FxSlot::required_storage(*id, rate as f32))
             .sum();
-        let heap_bytes = fx_storage.len() * std::mem::size_of::<fx::FxId>()
+        let heap_bytes = migration_bytes
+            + song_bytes
+            + arrangement.as_ref().map_or(0, |p| p.storage_bytes())
+            + fx_storage.len() * std::mem::size_of::<fx::FxId>()
             + nodes.capacity() * std::mem::size_of::<Box<TrackRt>>()
             + nodes.iter().map(|t| t.retained_bytes()).sum::<usize>()
             + racks.capacity() * std::mem::size_of::<fx::FxChain>()
@@ -345,6 +466,9 @@ impl Request {
             heap_bytes,
             fx_bytes: reserved_fx_bytes,
             fx_ids: fx_storage.clone(),
+            arrangement,
+            migration: migration_changed.then(|| state.migration.clone()),
+            routing_changed: selection.devices && source.routing.is_some(),
         };
         let ack = Ack::new();
         Ok((
@@ -353,7 +477,7 @@ impl Request {
                 generation: before.generation,
                 epoch: checkpoint.epoch,
                 inverse: Some(Box::new(Inverse {
-                    routing: state.routing.as_ref().map(|model| crate::engine::audio::routing::prepared::Prepared::new(model.clone(), &next).map(|graph| Some(Box::new(graph)))).transpose()?,
+                    routing: state.routing.as_ref().map(|model| crate::engine::audio::routing::prepared::Prepared::at_rate(model.clone(), &next, rate).map(|graph| Some(Box::new(graph)))).transpose()?,
                     layout: next,
                     track_name: None,
                     focus: None,

@@ -102,7 +102,7 @@ fn private_graph_loopback_quantum_reconnect_and_rate_change_retain_project() {
     let (engine, mut rt) = Engine::headless_for_test(48000, 256);
     rt.apply(Command::DeckAudio {
         deck: 0,
-        audio: Arc::new(crate::engine::Sample {
+        audio: Arc::new(crate::engine::Sample { spectrum: None,
             name: "Retained native probe".into(),
             path: String::new(),
             sr: 48000,

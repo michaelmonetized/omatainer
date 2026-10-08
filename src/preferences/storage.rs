@@ -113,6 +113,58 @@ pub fn decode(bytes: &[u8]) -> Result<(Preferences, bool), Error> {
         .ok_or_else(|| Error::Invalid("Preferences need an integer version".into()))?;
     let profiles: Vec<_> = if version == 1 { value.get("profile").into_iter().collect() }
         else { value.get("profiles").and_then(|p| p.as_object()).map_or(Vec::new(), |p| p.values().collect()) };
+    if version < 26 && profiles.iter().any(|profile| {
+        let channel = |binding: &serde_json::Value| binding.get("action").and_then(|a| a.as_str()) == Some("DeckChannelEffect");
+        profile.get("midi_learn").and_then(|v| v.get("mappings")).and_then(|v| v.as_array()).is_some_and(|rows| rows.iter().any(|row| row.get("binding").is_some_and(channel)))
+        || profile.get("midi_presets").and_then(|v| v.as_array()).is_some_and(|rows| rows.iter().any(|row| row.get("version").and_then(|v| v.as_u64()).is_some_and(|v| v > 6) || row.get("bindings").and_then(|v| v.as_array()).is_some_and(|rows| rows.iter().any(channel))))
+    }) { return Err(Error::Invalid("Channel effect assignments require preferences version 26".into())); }
+    if version < 25 && profiles.iter().any(|profile| profile.get("retrospective").is_some()) {
+        return Err(Error::Invalid("Recent MIDI privacy preferences require version 25".into()));
+    }
+    if version < 24 && profiles.iter().any(|profile| {
+        let sync = |binding: &serde_json::Value| binding.get("action").and_then(|a| a.as_str()).is_some_and(|a| matches!(a, "DeckSyncMode" | "DeckSyncLeader") || a == "DeckPadMode" && binding.get("extra").and_then(|v| v.as_u64()) == Some(8));
+        profile.get("midi_learn").and_then(|v| v.get("mappings")).and_then(|v| v.as_array()).is_some_and(|rows| rows.iter().any(|row| row.get("binding").is_some_and(sync)))
+        || profile.get("midi_presets").and_then(|v| v.as_array()).is_some_and(|rows| rows.iter().any(|row| row.get("version").and_then(|v| v.as_u64()).is_some_and(|v| v > 5) || row.get("bindings").and_then(|v| v.as_array()).is_some_and(|rows| rows.iter().any(sync))))
+    }) { return Err(Error::Invalid("Sync and chromatic pad assignments require preferences version 24".into())); }
+    if version < 23 && profiles.iter().any(|profile| {
+        let pad = |binding: &serde_json::Value| binding.get("action").and_then(|a| a.as_str()).is_some_and(|a| matches!(a, "DeckPad"|"DeckPadMode"|"DeckPadParameterLeft"|"DeckPadParameterRight"|"DeckPadParameterShiftLeft"|"DeckPadParameterShiftRight"));
+        profile.get("midi_learn").and_then(|v| v.get("mappings")).and_then(|v| v.as_array()).is_some_and(|rows| rows.iter().any(|row| row.get("binding").is_some_and(pad)))
+        || profile.get("midi_presets").and_then(|v| v.as_array()).is_some_and(|rows| rows.iter().any(|row| row.get("version").and_then(|v| v.as_u64()).is_some_and(|v| v > 4) || row.get("bindings").and_then(|v| v.as_array()).is_some_and(|rows| rows.iter().any(pad))))
+    }) { return Err(Error::Invalid("Deck pad modes require preferences version 23".into())); }
+    if version < 22 && profiles.iter().any(|profile| {
+        let saved = |binding: &serde_json::Value| binding.get("action").and_then(|a|a.as_str()).is_some_and(|a|matches!(a,"DeckSavedLoopRecall"|"DeckSavedLoopSave"|"DeckSavedLoopDelete"));
+        profile.get("midi_learn").and_then(|v|v.get("mappings")).and_then(|v|v.as_array()).is_some_and(|rows|rows.iter().any(|row|row.get("binding").is_some_and(saved)))
+        || profile.get("midi_presets").and_then(|v|v.as_array()).is_some_and(|rows|rows.iter().any(|row|row.get("version").and_then(|v|v.as_u64()).is_some_and(|v|v>3) || row.get("bindings").and_then(|v|v.as_array()).is_some_and(|rows|rows.iter().any(saved))))
+    }) { return Err(Error::Invalid("Saved loop assignments require preferences version 22".into())); }
+    if version < 21 && profiles.iter().any(|profile|profile.get("midi_clock").is_some()) {
+        return Err(Error::Invalid("MIDI clock output requires preferences version 21".into()));
+    }
+    if version < 20 && profiles.iter().any(|profile| {
+        let navigation = |binding: &serde_json::Value| binding.get("action").and_then(|a|a.as_str()).is_some_and(|a|matches!(a,"SongLocator"|"SongPrevious"|"SongNext"|"SongLoop"|"SongCancel"));
+        profile.get("midi_learn").and_then(|v|v.get("mappings")).and_then(|v|v.as_array()).is_some_and(|rows|rows.iter().any(|row|row.get("binding").is_some_and(navigation)))
+        || profile.get("midi_presets").and_then(|v|v.as_array()).is_some_and(|rows|rows.iter().any(|row|row.get("version").and_then(|v|v.as_u64()).is_some_and(|v|v>2) || row.get("bindings").and_then(|v|v.as_array()).is_some_and(|rows|rows.iter().any(navigation))))
+    }) { return Err(Error::Invalid("Song navigation requires preferences version 20".into())); }
+    if version < 19 && profiles.iter().any(|profile| {
+        let assignments = profile.get("midi_learn").and_then(|v| v.get("mappings")).and_then(|v| v.as_array());
+        let presets = profile.get("midi_presets").and_then(|v| v.as_array());
+        assignments.is_some_and(|rows| rows.iter().any(|row| row.get("binding").is_some_and(crate::engine::midi::controls::new_fields)))
+            || presets.is_some_and(|rows| rows.iter().any(|row| row.get("version").and_then(|v| v.as_u64()).is_some_and(|version| version > 1)
+                || row.get("bindings").and_then(|v| v.as_array()).is_some_and(|bindings| bindings.iter().any(crate::engine::midi::controls::new_fields))))
+    }) { return Err(Error::Invalid("Encoder controls require preferences version 19".into())); }
+    if version < 17 && profiles.iter().any(|p| p.get("midi_learn").and_then(|v| v.get("mappings")).and_then(|v| v.as_array()).is_some_and(|rows| rows.iter().any(|row|
+        row.get("binding").and_then(|v| v.get("action")).and_then(|v| v.as_str()) == Some("DeckCueHold")))) {
+        return Err(Error::Invalid("Held Cue assignments require preferences version 17".into()));
+    }
+    if version < 16 && profiles.iter().any(|p| {
+        p.get("shortcuts").and_then(|v| v.as_object()).is_some_and(|v| v.keys().any(|key| key.starts_with("beat_jump_")))
+            || p.get("midi_learn").and_then(|v| v.get("mappings")).and_then(|v| v.as_array()).is_some_and(|rows| rows.iter().any(|row|
+                row.get("binding").and_then(|v| v.get("action")).and_then(|v| v.as_str()).is_some_and(|v| v.starts_with("DeckBeatJump"))))
+    }) {
+        return Err(Error::Invalid("Beat jump assignments require preferences version 16".into()));
+    }
+    if version < 15 && profiles.iter().any(|p|p.get("now_playing").is_some()) {
+        return Err(Error::Invalid("Now-playing publication requires preferences version 15".into()));
+    }
     if version < 14 && profiles.iter().any(|p| p.get("waveforms").is_some()) {
         return Err(Error::Invalid("Waveform views require preferences version 14".into()));
     }
@@ -140,13 +192,16 @@ pub fn decode(bytes: &[u8]) -> Result<(Preferences, bool), Error> {
     if version < 6 && profiles.iter().any(|p|p.get("midi_routing").is_some()) {
         return Err(Error::Invalid("MIDI routing requires preferences version6; an older version cannot carry newer fields".into()));
     }
-    let (preferences, migrated) = match version {
-        14 => (
+    if version < 18 && profiles.iter().any(|profile| profile.get("midi_presets").is_some()) {
+        return Err(Error::Invalid("MIDI presets require preferences version 18".into()));
+    }
+    let (mut preferences, migrated) = match version {
+        26 => (
             serde_json::from_slice::<Preferences>(bytes)
                 .map_err(|error| Error::Invalid(format!("Invalid preferences: {error}")))?,
             false,
         ),
-        2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 => {
+        2..=25 => {
             let mut preferences: Preferences = serde_json::from_slice(bytes).map_err(|error| {
                 Error::Invalid(format!("Invalid version {version} preferences: {error}"))
             })?;
@@ -182,6 +237,7 @@ pub fn decode(bytes: &[u8]) -> Result<(Preferences, bool), Error> {
             )))
         }
     };
+    if version < 16 { for profile in preferences.profiles.values_mut() { crate::ui::migrate_beat_jump_shortcuts(profile); } }
     preferences.validate().map_err(Error::Invalid)?;
     Ok((preferences, migrated))
 }
@@ -762,6 +818,90 @@ mod midi_learn_migration_tests {
         for profile in old["profiles"].as_object_mut().unwrap().values_mut(){profile.as_object_mut().unwrap().remove("midi_learn");profile.as_object_mut().unwrap().remove("library_layout");profile.as_object_mut().unwrap().remove("waveforms");}
         let (migrated,changed)=decode(&serde_json::to_vec(&old).unwrap()).unwrap();assert!(changed);assert_eq!(migrated,current);
         old["profiles"]["Studio"]["midi_learn"]=serde_json::to_value(&current.current().unwrap().midi_learn).unwrap();assert!(decode(&serde_json::to_vec(&old).unwrap()).is_err());
-        old["version"]=15.into();assert!(decode(&serde_json::to_vec(&old).unwrap()).is_err());
+        old["version"]=(VERSION+1).into();assert!(decode(&serde_json::to_vec(&old).unwrap()).is_err());
+    }
+}
+
+#[cfg(test)]
+mod now_playing_migration_tests {
+    use super::*;
+    #[test]
+    fn version_fourteen_migrates_feed_disabled_and_cannot_carry_new_publication_intent() {
+        let current=Preferences::defaults(Path::new("/home/test"));let mut legacy=serde_json::to_value(&current).unwrap();legacy["version"]=14.into();
+        let (loaded,migrated)=decode(&serde_json::to_vec(&legacy).unwrap()).unwrap();assert!(migrated);assert_eq!(loaded,current);assert!(!loaded.current().unwrap().now_playing.enabled);
+        legacy["profiles"]["Studio"]["now_playing"]=serde_json::json!({"enabled":true,"title":false,"artist":false,"identity":true});
+        assert!(decode(&serde_json::to_vec(&legacy).unwrap()).is_err());legacy["version"]=15.into();
+        let (loaded,migrated)=decode(&serde_json::to_vec(&legacy).unwrap()).unwrap();assert!(migrated);assert!(loaded.current().unwrap().now_playing.enabled);
+        legacy["profiles"]["Studio"]["now_playing"]["endpoint"]="https://example.com".into();assert!(decode(&serde_json::to_vec(&legacy).unwrap()).is_err());
+    }
+}
+
+#[cfg(test)]
+mod beat_jump_migration_tests {
+    use super::*;
+    #[test]
+    fn version_fifteen_preserves_owned_keys_and_refuses_new_actions_under_old_headers() {
+        let current = Preferences::defaults(Path::new("/home/test"));
+        let mut legacy = serde_json::to_value(&current).unwrap(); legacy["version"] = 15.into();
+        legacy["profiles"]["Studio"]["shortcuts"]["play_a"] = serde_json::json!({"key":"[","ctrl":false,"shift":true,"alt":false});
+        let (migrated, changed) = decode(&serde_json::to_vec(&legacy).unwrap()).unwrap();
+        assert!(changed); assert_eq!(migrated.version, VERSION);
+        assert_eq!(migrated.profiles["Studio"].shortcuts["play_a"], Some(Shortcut { key: "[".into(), ctrl: false, shift: true, alt: false }));
+        assert_eq!(migrated.profiles["Studio"].shortcuts["beat_jump_back"], None);
+        assert!(!migrated.profiles["Studio"].shortcuts.contains_key("beat_jump_forward"));
+        assert_eq!(decode(&serde_json::to_vec(&migrated).unwrap()).unwrap(), (migrated, false));
+        for key in ["beat_jump_back", "beat_jump_forward", "beat_jump_smaller", "beat_jump_larger"] {
+            let mut invalid = legacy.clone(); invalid["profiles"]["Studio"]["shortcuts"][key] = serde_json::Value::Null;
+            assert!(decode(&serde_json::to_vec(&invalid).unwrap()).is_err());
+        }
+        for action in ["DeckBeatJumpBack", "DeckBeatJumpForward", "DeckBeatJumpSmaller", "DeckBeatJumpLarger"] {
+            let mut invalid = legacy.clone();
+            invalid["profiles"]["Studio"]["midi_learn"] = serde_json::json!({"mappings":[{"endpoint":{"name":"Test","id":"port"},"binding":{"kind":"Note","ch":0,"data":60,"action":action,"deck":0,"extra":0,"relative":null}}]});
+            assert!(decode(&serde_json::to_vec(&invalid).unwrap()).is_err());
+        }
+    }
+}
+
+#[cfg(test)]
+mod cue_audition_migration_tests {
+    use super::*;
+    #[test]
+    fn version_sixteen_preserves_custom_jump_keys_and_one_shot_cue_while_requiring_new_hold_headers() {
+        let mut old=Preferences::defaults(Path::new("/home/test")); old.version=16;
+        let profile=old.profiles.get_mut("Studio").unwrap();
+        profile.shortcuts.insert("play_a".into(),Some(Shortcut {key:"[".into(),ctrl:false,shift:true,alt:false}));
+        profile.shortcuts.insert("beat_jump_back".into(),Some(Shortcut {key:"J".into(),ctrl:false,shift:false,alt:false}));
+        profile.midi_learn.mappings.push(crate::engine::midi::learn::Mapping {endpoint:crate::engine::midi::learn::Endpoint {name:"Test".into(),id:"port".into()},binding:crate::engine::midi::Binding {kind:crate::engine::midi::MsgKind::Note,ch:0,data:60,action:crate::engine::midi::Action::DeckCue,deck:1,extra:0,relative:None, controls: None,
+         pair_order: None,
+        }});
+        let (loaded,migrated)=decode(&serde_json::to_vec(&old).unwrap()).unwrap(); assert!(migrated);
+        old.version=VERSION; assert_eq!(loaded,old);
+        let mut newer=loaded.clone(); newer.profiles.get_mut("Studio").unwrap().midi_learn.mappings[0].binding.action=crate::engine::midi::Action::DeckCueHold;
+        assert_eq!(decode(&serde_json::to_vec(&newer).unwrap()).unwrap(),(newer.clone(),false));
+        newer.version=16; assert!(decode(&serde_json::to_vec(&newer).unwrap()).is_err());
+        let mut too_new=loaded; too_new.version=VERSION+1; assert!(decode(&serde_json::to_vec(&too_new).unwrap()).is_err());
+    }
+}
+
+#[cfg(test)]
+mod retrospective_migration_tests {
+    use super::*;
+    #[test]
+    fn version_twenty_four_migrates_private_history_disabled_and_requires_new_opt_in_header() {
+        let mut old = Preferences::defaults(Path::new("/home/omatainer-test"));
+        old.version = 24;
+        let (loaded, migrated) = decode(&serde_json::to_vec(&old).unwrap()).unwrap();
+        assert!(migrated);
+        assert_eq!(loaded.version, VERSION);
+        assert!(loaded.profiles.values().all(|profile| profile.retrospective == crate::engine::retrospective::Config::default()));
+        for field in [serde_json::Value::Null, serde_json::json!({"enabled":true,"seconds":120,"events":8192})] {
+            let mut invalid = serde_json::to_value(&old).unwrap();
+            invalid["profiles"]["Studio"]["retrospective"] = field;
+            let error = decode(&serde_json::to_vec(&invalid).unwrap()).unwrap_err().to_string();
+            assert!(error.contains("version 25"), "{error}");
+        }
+        let mut current = loaded;
+        current.profiles.get_mut("Studio").unwrap().retrospective = crate::engine::retrospective::Config { enabled: true, seconds: 60, events: 1024 };
+        assert_eq!(decode(&serde_json::to_vec(&current).unwrap()).unwrap(), (current, false));
     }
 }

@@ -11,7 +11,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::path::PathBuf;
 
-pub const VERSION: u32 = 14;
+pub const VERSION: u32 = 26;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -170,6 +170,8 @@ pub struct Startup {
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Profile {
+    #[serde(default, skip_serializing_if = "crate::performance_history::now_playing::Config::is_default")]
+    pub(crate) now_playing: crate::performance_history::now_playing::Config,
     #[serde(default)]
     pub(crate) waveforms: waveforms::Config,
     #[serde(default)]
@@ -182,8 +184,14 @@ pub struct Profile {
     pub midi_inputs: MidiInputs,
     #[serde(default)]
     pub midi_routing: crate::engine::midi::routing::Routing,
+    #[serde(default, skip_serializing_if = "crate::engine::retrospective::Config::is_default")]
+    pub(crate) retrospective: crate::engine::retrospective::Config,
+    #[serde(default, skip_serializing_if = "crate::engine::midi::clock::Config::is_default")]
+    pub(crate) midi_clock: crate::engine::midi::clock::Config,
     #[serde(default)]
     pub(crate) midi_learn: crate::engine::midi::learn::Config,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub(crate) midi_presets: Vec<crate::engine::midi::presets::Preset>,
     pub library_roots: Vec<PathBuf>,
     pub appearance: Appearance,
     pub shortcuts_enabled: bool,
@@ -197,6 +205,7 @@ pub struct Profile {
 impl Profile {
     pub fn defaults(home: &std::path::Path) -> Self {
         Self {
+            now_playing: Default::default(),
             waveforms: waveforms::Config::default(),
             library_layout: library_layout::Config::default(),
             workspaces: workspaces::Config::default(),
@@ -204,7 +213,10 @@ impl Profile {
             audio: Audio::default(),
             midi_inputs: MidiInputs::All,
             midi_routing: crate::engine::midi::routing::Routing::default(),
+            retrospective: Default::default(),
+            midi_clock: crate::engine::midi::clock::Config::default(),
             midi_learn: crate::engine::midi::learn::Config::default(),
+            midi_presets: Vec::new(),
             library_roots: vec![home.join("Music"), home.join("music")],
             appearance: Appearance {
                 locale: crate::localization::Locale::default(),
@@ -351,7 +363,10 @@ impl Profile {
             .validate()
             .map_err(|error| error.to_string())?;
         self.midi_routing.validate()?;
+        self.retrospective.validate()?;
+        self.midi_clock.validate()?;
         self.midi_learn.validate()?;
+        crate::engine::midi::presets::validate_bank(&self.midi_presets)?;
         if let MidiInputs::Selected(names) = &self.midi_inputs {
             if names.is_empty() || names.len() > 64 {
                 return Err("Select 1–64 MIDI inputs, or choose Disabled".into());

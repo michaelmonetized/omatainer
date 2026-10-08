@@ -2,12 +2,14 @@ use super::{model::*, *};
 
 pub(super) struct Frame {
     pub state: State,
+    pub arrangement: Option<Arc<arrangement::Plan>>,
     pub media: Vec<Arc<Sample>>,
     pub revision: u64,
     pub checkpoint: undo::Checkpoint,
     pub playback_receipts: [Option<load_receipt::Receipt>; DECKS],
     pub complete: bool,
     pub error: Option<&'static str>,
+    plugins: Vec<(u64, Option<crate::plugin_host::realtime::Control>, [Option<audio::routing::plugins::Parameter>; audio::routing::plugins::MAX_PARAMETERS])>,
     shape: Shape,
 }
 
@@ -33,12 +35,14 @@ impl Frame {
     pub fn new() -> Self {
         Self {
             state: { let mut state = State::blank(); state.session = Some(session::Layout::legacy((0..TRACKS).map(|_| String::new()), SCENES)); state },
+            arrangement: None,
             media: Vec::with_capacity(MAX_MEDIA_REFS),
             checkpoint: undo::Checkpoint::default(),
             revision: 0,
             playback_receipts: [None, None],
             complete: false,
             error: None,
+            plugins: Vec::with_capacity(audio::routing::plugins::MAX_PLUGINS),
             shape: Shape::default(),
         }
     }
@@ -174,10 +178,22 @@ impl Frame {
             fx_wet,
             sampler_bank,
             sampler_inst,
-            sampler_oct
+            sampler_oct,
+            musical_context,
+            note_seed,
+            sampler_scale
         );
         target.conductor = rt.conductor.clone();
+        target.navigation = rt.navigation.saved.clone();
+        target.migration = rt.migration.clone();
+        target.scene_timing = rt.scenes.timing;
+        target.sync_leader = rt.deck_sync.leader;
         target.routing = rt.routing.as_ref().map(|routing| routing.model.clone());
+        self.plugins.clear();
+        if let Some(graph) = &rt.routing {
+            for (saved, plugin) in graph.model.plugins.iter().zip(&graph.plugins) { self.plugins.push((saved.id,plugin.endpoint.as_ref().map(|e| e.control.clone()),plugin.parameters)); }
+        }
+        target.mic_aux = rt.mic_aux.configuration();
         target.sampler_synth = synth(&rt.sampler_poly);
         for (i, track) in rt.tracks.iter().take(self.shape.track_count).enumerate() {
             let out = &mut target.tracks[i];
@@ -196,6 +212,7 @@ impl Frame {
             out.mute = track.mute;
             out.solo = track.solo;
             out.armed = track.armed;
+            out.input_monitor = track.input_monitor;
             out.kind = track.kind;
             out.synth = synth(&track.poly);
             out.eq = eq(&track.eq);
@@ -203,10 +220,12 @@ impl Frame {
                 let saved = &mut out.clips[j];
                 saved.kind = clip.kind;
                 saved.region = clip.region;
+                saved.audio_region = clip.audio_region.map(|p|p.region);
                 saved.lanes = clip.lanes.clone();
                 copy_string(&mut saved.name, &clip.name);
                 saved.bars = clip.bars;
                 saved.gain = clip.gain;
+                saved.properties = clip.properties;
                 saved.notes.clear();
                 saved.notes.extend_from_slice(&clip.notes);
                 saved.audio = clip.audio.as_ref().map(|s| media(&mut self.media, s));
@@ -225,10 +244,13 @@ impl Frame {
                 pitch,
                 vinyl,
                 keylock,
+                key_shift,
                 sync,
+                sync_phase,
                 gain,
                 filter_morph,
                 filter_amt,
+                channel_effect,
                 pfl,
                 loop_on,
                 loop_start,
@@ -245,6 +267,7 @@ impl Frame {
             out.eq = eq(&deck.eq[0]);
             out.audio = deck.audio.as_ref().map(|s| media(&mut self.media, s));
             out.cue_styles = deck.cue_styles;
+            out.saved_loops = deck.audio.as_ref().map_or_else(Default::default, |audio| deck.controls.saved_loops(audio.sr));
             out.grid = deck.grid;
             out.source_gain = deck.source_gain.policy();
             out.hotcues =
@@ -265,11 +288,32 @@ impl Frame {
         target.builtin =
             std::array::from_fn(|i| rt.builtin[i].as_ref().map(|s| media(&mut self.media, s)));
         rt.capture_held_durations(target);
+        self.arrangement = rt.arrangement.plan.clone();
         self.playback_receipts = std::array::from_fn(|i| rt.decks[i].load_receipt.clone());
         self.revision = rt.project.revision();
         self.checkpoint = rt.undo.checkpoint();
         self.complete = true;
     }
+    /// Capture live processor state after the native metadata boundary.
+    /// Takes worker cancellation; retains missing or failed processor checkpoints with an explicit diagnostic.
+    pub(super) fn finish_plugins(&mut self, cancel: &AtomicBool) -> Result<(), Error> {
+        if self.plugins.is_empty() { return Ok(()); }
+        let Some(model) = &mut self.state.routing else { return Err(Error::Invalid("Plugin state has no saved routing graph".into())); };
+        let model = Arc::make_mut(model);
+        for (id,control,parameters) in &self.plugins {
+            if cancel.load(Ordering::Acquire) { return Err(Error::Cancelled); }
+            let saved = model.plugins.iter_mut().find(|p| p.id == *id).ok_or_else(|| Error::Invalid("Captured plugin identity changed".into()))?;
+            saved.parameters = parameters.iter().flatten().copied().collect();
+            if let Some(control) = control {
+                match control.snapshot(cancel) {
+                    Ok(state) => { saved.saved = state; saved.latency = control.latency(); saved.unavailable = control.error(); }
+                    Err(error) => { if cancel.load(Ordering::Acquire) { return Err(Error::Cancelled); } saved.unavailable = Some(error); }
+                }
+            }
+        }
+        Ok(())
+    }
+    pub(super) fn controls(&self) -> Vec<(u64,crate::plugin_host::realtime::Control)> { self.plugins.iter().filter_map(|(id,control,_)| control.as_ref().map(|control| (*id,control.clone()))).collect() }
 }
 
 fn reserve_string(value: &mut String, needed: usize) {

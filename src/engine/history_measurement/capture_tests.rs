@@ -6,7 +6,7 @@ fn callback(channels: usize, anti_phase: bool, gain: f32, xfader: f32, pfl: bool
 {
     let (_, rx) = crossbeam_channel::bounded(64);
     let mut rt = RtEngine::new(48_000.0, rx, Arc::new(Mutex::new(Snapshot::default())));
-    let audio = Arc::new(Sample { name: "capture reference".into(), sr: 48_000, ch: 2,
+    let audio = Arc::new(Sample { spectrum: None, name: "capture reference".into(), sr: 48_000, ch: 2,
         data: (0..32_768).flat_map(|i| {
             let value = (std::f32::consts::TAU * 375.0 * i as f32 / 48_000.0).sin() * 0.2;
             [value, if anti_phase { -value } else { value * 0.75 }]
@@ -28,7 +28,7 @@ where T: cpal::SizedSample + cpal::FromSample<f32>, f64: cpal::FromSample<T>,
             (false, 1.0, 0.0, false, 0.0, true),
             (false, 0.0, 0.0, false, 0.0, false),
             (false, 1.0, 1.0, true, 0.0, false),
-            (false, 1.0, 1.0, true, 1.0, true),
+            (false, 1.0, 1.0, true, 1.0, false),
             (true, 1.0, 0.0, false, 0.0, channels != 1),
         ] {
             let (mut callback, receiver, key) = callback(channels, anti, gain, xfader, pfl, cue_mix);
@@ -129,7 +129,7 @@ fn output_sidecar_and_disconnected_consumer_fail_explicitly_without_breaking_aud
 fn prepare_monitor_confirms_playing_output_without_starting_a_history_session() {
     for (gain, xfader, pfl, cue_mix, active) in [
         (1.0,0.0,false,0.0,true), (0.0,0.0,false,0.0,false),
-        (1.0,1.0,true,0.0,false), (1.0,1.0,true,1.0,true),
+        (1.0,1.0,true,0.0,false), (1.0,1.0,true,1.0,false),
     ] {
         let (mut callback, receiver, key) = callback(2,false,gain,xfader,pfl,cue_mix);
         let handle = callback.renderer_for_test().history_measurement.as_ref().unwrap().handle();
@@ -244,4 +244,20 @@ fn custom_routes_cannot_credit_prepare_removal_and_measurement_recovers_on_defau
     assert!(!handle.can_measure());
     assert!(handle.digital_play(0).is_none(), "old stereo evidence cannot escape the route guard");
     assert!(receiver.is_empty());
+}
+
+#[test]
+fn independent_now_playing_monitor_preserves_prepare_intent_and_allocates_nothing() {
+    let (mut callback,receiver,key)=callback(2,false,1.0,0.0,false,0.0);
+    let handle=callback.renderer_for_test().history_measurement.as_ref().unwrap().handle();
+    handle.set_now_playing_monitor(true).unwrap();handle.set_prepare_monitor(false).unwrap();
+    for _ in 0..8 {callback.render(&mut [0.0_f32;256]);}
+    assert_eq!(handle.digital_play(0).unwrap().load,key);
+    let counts=test_alloc::measure(||{for _ in 0..8 {callback.render(&mut [0_i16;256]);}});
+    assert_eq!((counts.allocations,counts.frees),(0,0));assert!(receiver.is_empty());
+    handle.set_prepare_monitor(true).unwrap();handle.set_now_playing_monitor(false).unwrap();
+    let before=handle.digital_play(0).unwrap();for _ in 0..8 {callback.render(&mut [0.0_f32;256]);}
+    assert!(handle.digital_play(0).unwrap().first_frame>before.first_frame);
+    handle.set_prepare_monitor(false).unwrap();let before=handle.digital_play(0);
+    for _ in 0..8 {callback.render(&mut [0.0_f32;256]);}assert_eq!(handle.digital_play(0),before);
 }

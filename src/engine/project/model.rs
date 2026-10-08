@@ -2,22 +2,40 @@
 //! physical key ownership, worker handles and device connections.
 use super::super::*;
 
-pub const STATE_VERSION: u32 = 14;
+pub const STATE_VERSION: u32 = 36;
 pub const MAX_BANKS: usize = 16;
 pub const MAX_FX_PER_RACK: usize = 128;
 pub const MAX_NOTES_PER_CLIP: usize = 8192;
 pub const MAX_TOTAL_NOTES: usize = 65536;
 pub const MAX_TEXT_BYTES: usize = 4096;
-pub const MAX_MEDIA_REFS: usize = session::MAX_TRACKS * (session::MAX_SCENES + 6) + DECKS + 2 + MAX_BANKS * 16;
+pub const MAX_MEDIA_REFS: usize = session::MAX_TRACKS * (session::MAX_SCENES + 6) + DECKS + 2 + MAX_BANKS * 16 + arrangement::MAX_SOURCES;
 
 #[derive(Clone, Debug, Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct State {
     pub version: u32,
+    #[serde(default = "note_variation::default_seed", skip_serializing_if = "note_variation::seed_is_default")]
+    pub(crate) note_seed: u64,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub(crate) musical_context: Option<musical_context::Context>,
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub(crate) sampler_scale: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub(crate) sync_leader: Option<deck_sync::Leader>,
+    #[serde(default,skip_serializing_if="Option::is_none")]
+    pub(crate) navigation: Option<song_navigation::Saved>,
+    #[serde(default,skip_serializing_if="Option::is_none")]
+    pub(crate) arrangement: Option<Arc<arrangement::Model>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub routing: Option<Arc<audio::routing::model::Model>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub(crate) migration: Option<Arc<crate::ableton::Migration>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub mic_aux: Option<audio::routing::mic_aux::Configuration>,
     #[serde(default)]
     pub session: Option<session::Layout>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub(crate) scene_timing: Option<scene::Timing>,
     pub bpm: f32,
     #[serde(default)]
     pub(crate) conductor: Option<Arc<midi_data::Conductor>>,
@@ -52,10 +70,28 @@ pub struct State {
 #[serde(deny_unknown_fields)]
 struct StateWire {
     version: u32,
+    #[serde(default = "note_variation::default_seed")]
+    note_seed: u64,
+    #[serde(default)]
+    musical_context: Option<musical_context::Context>,
+    #[serde(default)]
+    sampler_scale: bool,
+    #[serde(default)]
+    sync_leader: Option<deck_sync::Leader>,
+    #[serde(default)]
+    navigation: Option<song_navigation::Saved>,
+    #[serde(default)]
+    arrangement: Option<Arc<arrangement::Model>>,
     #[serde(default)]
     routing: Option<Arc<audio::routing::model::Model>>,
     #[serde(default)]
+    migration: Option<Arc<crate::ableton::Migration>>,
+    #[serde(default)]
+    mic_aux: Option<audio::routing::mic_aux::Configuration>,
+    #[serde(default)]
     session: Option<session::Layout>,
+    #[serde(default)]
+    scene_timing: Option<scene::Timing>,
     bpm: f32,
     #[serde(default)]
     conductor: Option<Arc<midi_data::Conductor>>,
@@ -91,10 +127,61 @@ impl<'de> Deserialize<'de> for State {
         let raw = serde_json::Value::deserialize(deserializer)?;
         midi_edit::reject_legacy_fields(&raw).map_err(serde::de::Error::custom)?;
         let version = raw["version"].as_u64().unwrap_or(0);
+        if version < 36 && raw.get("arrangement").and_then(|song| song.get("sources")).and_then(serde_json::Value::as_array).is_some_and(|sources| sources.iter().any(|source| source.get("audio_clock").and_then(|clock| clock.get("exact_bpm")).is_some())) {
+            return Err(serde::de::Error::custom("Exact recording clocks require project state version 36"));
+        }
+        if version < 35 && raw.get("decks").and_then(serde_json::Value::as_array).is_some_and(|decks| decks.iter().any(|deck| deck.get("channel_effect").is_some())) {
+            return Err(serde::de::Error::custom("Selectable channel effects require project state version 35"));
+        }
+        if version < 31
+            && raw
+                .get("arrangement")
+                .and_then(|a| a.get("sources"))
+                .and_then(serde_json::Value::as_array)
+                .is_some_and(|sources| sources.iter().any(|s| s.get("audio_clock").is_some()))
+        {
+            return Err(serde::de::Error::custom(
+                "Aligned render clocks require project state version 31",
+            ));
+        }
+        if version < 30 && raw.get("migration").is_some() {
+            return Err(serde::de::Error::custom(
+                "Ableton migration requires project state version 30",
+            ));
+        }
+        note_variation::reject_legacy_fields(&raw).map_err(serde::de::Error::custom)?;
+        if version < 33 && (raw.get("musical_context").is_some() || raw.get("sampler_scale").is_some()
+            || raw.get("tracks").and_then(serde_json::Value::as_array).into_iter().flatten()
+                .flat_map(|track| track.get("clips").and_then(serde_json::Value::as_array).into_iter().flatten())
+                .chain(raw.get("arrangement").and_then(|arrangement| arrangement.get("sources")).and_then(serde_json::Value::as_array).into_iter().flatten().filter_map(|source| source.get("clip")))
+                .any(|clip| clip.get("properties").is_some_and(|properties| properties.get("context").is_some()))) {
+            return Err(serde::de::Error::custom("Song and clip scales require project state version 33"));
+        }
+        if version < 29 && raw.get("routing").is_some_and(|r| r.get("plugins").is_some()) { return Err(serde::de::Error::custom("Native plugins require project state version 29")); }
+        if version < 28 && raw.get("decks").and_then(serde_json::Value::as_array).is_some_and(|decks| decks.iter().any(|deck| deck.get("key_shift").is_some())) { return Err(serde::de::Error::custom("Independent key shift requires project state version 28")); }
+        if version < 26 && (raw.get("tracks").and_then(serde_json::Value::as_array).into_iter().flatten().flat_map(|t|t.get("clips").and_then(serde_json::Value::as_array).into_iter().flatten()).chain(raw.get("arrangement").and_then(|a|a.get("sources")).and_then(serde_json::Value::as_array).into_iter().flatten().filter_map(|s|s.get("clip"))).any(|c|c.get("audio_region").is_some_and(|r|r.get("fades").is_some())) || raw.get("arrangement").and_then(|a|a.get("instances")).and_then(serde_json::Value::as_array).into_iter().flatten().any(|i|["fades","fade_link","crossfade"].into_iter().any(|f|i.get(f).is_some()))) { return Err(serde::de::Error::custom("Audio fades and crossfade links require project state version 26")); }
+        if version < 25 && (raw.get("sync_leader").is_some() || raw.get("decks").and_then(serde_json::Value::as_array).is_some_and(|decks| decks.iter().any(|deck| deck.get("sync_phase").is_some()))) { return Err(serde::de::Error::custom("Sync leaders and phase modes require project state version 25")); }
+        if version < 23 && (raw.get("scene_timing").is_some() || raw.get("session").is_some_and(|layout| ["tracks", "scenes"].into_iter().flat_map(|axis| layout.get(axis).and_then(serde_json::Value::as_array).into_iter().flatten()).any(|item| item.get("scene").is_some()))) { return Err(serde::de::Error::custom("Scene properties require project state version 23")); }
+        if version < 22 && raw.get("navigation").is_some() { return Err(serde::de::Error::custom("Song sections require project state version 22")); }
+        if version<21 && raw.get("tracks").and_then(serde_json::Value::as_array).into_iter().flatten().flat_map(|track|track.get("clips").and_then(serde_json::Value::as_array).into_iter().flatten()).chain(raw.get("arrangement").and_then(|song|song.get("sources")).and_then(serde_json::Value::as_array).into_iter().flatten().filter_map(|source|source.get("clip"))).any(|clip|clip.get("properties").is_some_and(|p|p.get("launch").is_some())){return Err(serde::de::Error::custom("Clip launch policy requires project state version 21"));}
+        if version<20 && raw.get("tracks").and_then(serde_json::Value::as_array).into_iter().flatten().flat_map(|track|track.get("clips").and_then(serde_json::Value::as_array).into_iter().flatten()).chain(raw.get("arrangement").and_then(|song|song.get("sources")).and_then(serde_json::Value::as_array).into_iter().flatten().filter_map(|source|source.get("clip"))).any(|clip|clip.get("properties").is_some()){return Err(serde::de::Error::custom("Clip properties require project state version 20"));}
+        if version<19 && raw.get("arrangement").is_some(){return Err(serde::de::Error::custom("Arrangement sources require project state version 19"));}
+        if version < 18 && raw.get("tracks").and_then(serde_json::Value::as_array).into_iter().flatten().flat_map(|track|track.get("clips").and_then(serde_json::Value::as_array).into_iter().flatten()).any(|clip|clip.get("audio_region").is_some()) {return Err(serde::de::Error::custom("Audio clip source regions require project state version 18"));}
+        if version < 17 && raw.get("mic_aux").is_some() { return Err(serde::de::Error::custom("Mic/aux controls require project state version 17")); }
+        if version < 16 && raw.get("tracks").and_then(serde_json::Value::as_array).into_iter().flatten().any(|track| track.get("input_monitor").is_some()) {
+            return Err(serde::de::Error::custom("Input monitoring requires project state version 16"));
+        }
+        if version < 15 && raw.get("tracks").and_then(serde_json::Value::as_array).into_iter().flatten()
+            .flat_map(|track| track.get("clips").and_then(serde_json::Value::as_array).into_iter().flatten())
+            .any(|clip| clip.get("lanes").is_some_and(|lanes| lanes.get("labels").is_some())) {
+            return Err(serde::de::Error::custom("MIDI device labels require project state version 15"));
+        }
         if version < 14 && raw.get("decks").and_then(serde_json::Value::as_array).into_iter().flatten().any(|deck| deck.get("source_gain").is_some()) {
             return Err(serde::de::Error::custom("Source gain requires project state version 14"));
         }
         if version < 7 && raw.get("session").is_some() { return Err(serde::de::Error::custom("Legacy projects cannot contain session identity metadata")); }
+        if version < 27 && raw.get("decks").and_then(|v|v.as_array()).is_some_and(|decks|decks.iter().any(|deck|deck.get("saved_loops").is_some_and(|bank|bank.get("cue_loops").is_some()))) { return Err(serde::de::Error::custom("Cue-loop associations require state version 27")); }
+        if version < 24 && raw.get("decks").and_then(|v| v.as_array()).is_some_and(|decks| decks.iter().any(|deck| deck.get("saved_loops").is_some())) { return Err(serde::de::Error::custom("Saved loop banks require state version 24")); }
         if (7..=u64::from(STATE_VERSION)).contains(&version) && !raw.get("session").is_some_and(serde_json::Value::is_object) { return Err(serde::de::Error::custom("Supported versions 7 and newer require session identity metadata")); }
         if version < 8 && raw.get("conductor").and_then(serde_json::Value::as_object).is_some_and(|c| c.contains_key("native") || c.get("tempos").and_then(serde_json::Value::as_array).is_some_and(|points| points.iter().any(|p| p.get("ramp").is_some()))) {
             return Err(serde::de::Error::custom("Legacy projects cannot contain native tempo ramps or timing options"));
@@ -135,8 +222,15 @@ impl<'de> Deserialize<'de> for State {
         let wire: StateWire = serde_json::from_value(raw).map_err(serde::de::Error::custom)?;
         Ok(Self {
             version: wire.version,
+            musical_context: wire.musical_context, note_seed: wire.note_seed, sampler_scale: wire.sampler_scale,
+            sync_leader: wire.sync_leader,
+            navigation: wire.navigation,
+            arrangement: wire.arrangement,
             routing: wire.routing,
+            migration: wire.migration,
+            mic_aux: wire.mic_aux,
             session: wire.session,
+            scene_timing: wire.scene_timing,
             bpm: wire.bpm,
             beat: wire.beat,
             timeline_seconds: wire.timeline_seconds.unwrap_or_else(|| wire.conductor.as_ref().map_or(wire.beat * 60.0 / f64::from(wire.bpm), |map| map.seconds_at(wire.beat))),
@@ -182,6 +276,8 @@ pub struct Track {
     pub mute: bool,
     pub solo: bool,
     pub armed: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub input_monitor: Option<input_monitor::Mode>,
     pub kind: u8,
     pub synth: Synth,
     pub eq: [f32; 3],
@@ -192,6 +288,10 @@ pub struct Track {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct SavedClip {
+    #[serde(default,skip_serializing_if="clip_management::Properties::is_default")]
+    pub(crate) properties: clip_management::Properties,
+    #[serde(default,skip_serializing_if="Option::is_none")]
+    pub(crate) audio_region: Option<audio_clip::Region>,
     #[serde(default)]
     pub(crate) lanes: Option<Arc<midi_data::Lanes>>,
     #[serde(default)]
@@ -321,19 +421,27 @@ pub struct Deck {
     pub pitch: f32,
     pub vinyl: bool,
     pub keylock: bool,
+    #[serde(default, skip_serializing_if = "key_shift::is_zero")]
+    pub key_shift: i8,
     pub sync: bool,
+    #[serde(default, skip_serializing_if = "deck_sync::Phase::is_none")]
+    pub(crate) sync_phase: deck_sync::Phase,
     pub gain: f32,
     pub eq: [f32; 3],
     #[serde(default, skip_serializing_if = "crate::track_gain::Policy::is_off")]
     pub source_gain: crate::track_gain::Policy,
     pub filter_morph: f32,
     pub filter_amt: f32,
+    #[serde(default, skip_serializing_if = "channel_fx::Kind::is_filter")]
+    pub(crate) channel_effect: channel_fx::Kind,
     pub pfl: bool,
     pub hotcues: [Option<f64>; HOTCUES],
     #[serde(default)]
     pub cue_styles: [crate::engine::cue_metadata::Style; HOTCUES],
     #[serde(default)]
     pub grid: Option<crate::engine::beatgrid::Grid>,
+    #[serde(default, skip_serializing_if = "saved_loops::Bank::is_default")]
+    pub(crate) saved_loops: saved_loops::Bank,
     pub loop_on: bool,
     pub loop_start: f64,
     pub loop_len: f64,
@@ -347,6 +455,17 @@ pub struct Deck {
 }
 
 impl State {
+    /// Check whether a track needs its retained processing.
+    /// Takes a saved track slot; returns true for an unmuted track or a nonzero send before its mute.
+    pub(crate) fn track_processing_required(&self, slot: usize) -> bool {
+        if !self.tracks[slot].mute { return true; }
+        let Some(id) = self.session.as_ref().and_then(|layout| layout.tracks.get(slot)).map(|track| track.id) else { return false; };
+        self.routing.as_ref().is_some_and(|model| model.connections.iter().any(|route|
+            route.source.group == audio::routing::model::Group::Track(id)
+                && route.source.tap != audio::routing::model::Tap::PostMixer
+                && route.map.iter().any(|channel| channel.gain != 0.0)))
+    }
+
     /// Keep space for transport metadata that can grow without an edit revision.
     /// Takes this validated import destination; returns native limits with room for
     /// every launch, clock/deck scalar and up to 256 held-note duration changes.
@@ -368,10 +487,41 @@ impl State {
             }
         }
     }
-    pub(super) fn blank() -> Self {
+    /// Create a stopped empty native session with valid unused drum bindings.
+    /// Takes no source content; returns editable state and a silent attachment for unused legacy drum slots.
+    pub(crate) fn empty() -> Result<(Self, Vec<Arc<Sample>>), String> {
+        let mut state = Self::blank();
+        state.banks = vec![Bank {
+            name: "Empty bank".into(),
+            media: [None; 16],
+            instance: Some(crate::sampler_bank::BankId::new()?),
+            settings: Some(Arc::new(crate::sampler_bank::resident::Settings::empty(
+                "Empty bank".into(),
+            )?)),
+        }];
+        let media = vec![Arc::new(Sample {
+            name: "Unused drum silence".into(),
+            peaks: Arc::new(vec![]),
+            spectrum: None,
+            bpm: 120.,
+            data: vec![0.; 64],
+            sr: 48000,
+            ch: 1,
+            path: "native-unused-drum-silence".into(),
+        })];
+        Ok((state, media))
+    }
+    pub(crate) fn blank() -> Self {
         Self {
             version: STATE_VERSION,
+            musical_context: None, note_seed: note_variation::DEFAULT_SEED, sampler_scale: false,
+            sync_leader: None,
+            navigation: None,
+            scene_timing: None,
+            arrangement: None,
             routing: None,
+            migration: None,
+            mic_aux: None,
             session: Some(session::Layout::legacy((0..TRACKS).map(|_| String::new()), SCENES)),
             conductor: None,
             bpm: 124.0,
@@ -392,7 +542,8 @@ impl State {
             tracks: (0..TRACKS).map(|_| Track {
                 name: String::new(),
                 clips: (0..SCENES).map(|_| SavedClip {
-                    lanes: None,
+                    properties: Default::default(),
+                    audio_region: None, lanes: None,
                     region: None,
                     kind: ClipKind::Empty,
                     name: String::new(),
@@ -408,6 +559,7 @@ impl State {
                 mute: false,
                 solo: false,
                 armed: false,
+                input_monitor: None,
                 kind: 0,
                 synth: Synth {
                     kind: SynthInstrument::Analog,
@@ -427,16 +579,20 @@ impl State {
                 pitch: 0.5,
                 vinyl: true,
                 keylock: false,
+                key_shift: 0,
                 sync: false,
+                sync_phase: deck_sync::Phase::None,
                 gain: 0.85,
                 source_gain: crate::track_gain::Policy::Off,
                 eq: [1.0; 3],
                 filter_morph: 0.5,
                 filter_amt: 0.5,
+                channel_effect: channel_fx::Kind::Filter,
                 pfl: false,
                 hotcues: [None; HOTCUES],
                 cue_styles: [crate::engine::cue_metadata::Style::default(); HOTCUES],
                 grid: None,
+                saved_loops: Default::default(),
                 loop_on: false,
                 loop_start: 0.0,
                 loop_len: 0.0,
@@ -479,12 +635,26 @@ impl State {
     }
     pub fn validate(&self, media: &[Arc<Sample>]) -> Result<(), String> {
         let fail = |name: &str| Err(format!("invalid project {name}"));
+        if let Some(migration) = &self.migration {
+            if self.version < 30 {
+                return fail("migration in legacy state");
+            }
+            if self.version<32 && migration.schema>=2 {return fail("Pack metadata in legacy migration state");}
+            migration.validate(media.len())?;
+        }
+        if self.version < 17 && self.mic_aux.is_some() {return fail("mic/aux controls in a legacy state");}
+        if let Some(cfg)=self.mic_aux {cfg.validate(self.routing.as_deref()).map_err(str::to_owned)?;}
+        if self.version < 16 && self.tracks.iter().any(|track| track.input_monitor.is_some()) { return fail("input monitoring in a legacy state"); }
         if self.version < 9 && (self.sampler_synth.offline.is_some() || self.tracks.iter().any(|track| track.synth.offline.is_some())
             || self.tracks.iter().flat_map(|track| &track.fx).chain(self.scene_fx.iter().flatten()).any(|effect| effect.offline.is_some())) {
             return fail("unavailable device in a legacy state");
         }
         if self.tracks.is_empty() || self.tracks.len() > session::MAX_TRACKS || self.scene_fx.is_empty() || self.scene_fx.len() > session::MAX_SCENES || self.tracks.iter().any(|t| t.clips.len() != self.scene_fx.len()) { return fail("session dimensions (1–128 tracks, 1–512 scenes)"); }
         if self.version >= 7 && self.session.is_none() {return fail("missing session identity metadata");}
+        if let Some(timing) = self.scene_timing { timing.validate()?; if self.version < 23 || self.conductor.is_some() { return fail("scene timing version or conductor conflict"); } }
+        if self.version < 34 && self.note_seed != note_variation::DEFAULT_SEED { return fail("note random seed requires project state version 34"); }
+        if self.musical_context.is_some_and(|context| !context.valid()) || self.version < 33 && (self.musical_context.is_some() || self.sampler_scale) { return fail("song scale or scale-aware sampler version"); }
+        if self.version < 23 && self.session.as_ref().is_some_and(|layout| layout.scenes.iter().chain(&layout.tracks).any(|item| !item.scene.is_default())) { return fail("scene properties version"); }
         if self.version < 7 && (self.tracks.len() != TRACKS || self.scene_fx.len() != SCENES || self.session.is_some()) { return fail("legacy session dimensions or identity"); }
         if let Some(layout) = &self.session {
             layout.validate()?;
@@ -493,6 +663,7 @@ impl State {
         }
         if let Some(routing) = &self.routing {
             if self.version < 11 { return fail("routing metadata in a legacy state"); }
+            if self.version < 29 && !routing.plugins.is_empty() { return fail("plugins in a legacy state"); }
             routing.order(self.session.as_ref().ok_or("Routing requires retained session identities")?)?;
         }
         if !(1..=STATE_VERSION).contains(&self.version) {
@@ -536,7 +707,6 @@ impl State {
         let reference = |index: usize| index < media.len();
         let optional = |index: Option<usize>| index.is_none_or(reference);
         let mut note_count = 0usize;
-        let mut note_ids = std::collections::HashSet::new();
         for track in &self.tracks {
             if !text_ok(&track.name)
                 || track.scene_bus >= self.scene_fx.len()
@@ -557,38 +727,10 @@ impl State {
                     return fail("clip resume target");
                 }
             }
-            for clip in &track.clips {
-                if let Some(lanes) = &clip.lanes {
-                    if self.version < 6 || clip.kind != ClipKind::Midi { return fail("legacy or non-MIDI lanes"); }
-                    lanes.validate()?; midi_bytes += lanes.bytes();
-                }
-                note_ids.clear();
-                if !text_ok(&clip.name)
-                    || !finite_range(clip.bars as f64, if clip.region.is_some() { 1.0 / 4096.0 } else { 0.25 }, 65536.0)
-                    || !finite_range(clip.gain as f64, 0.0, 1.5)
-                    || !optional(clip.audio)
-                    || clip.notes.len() > MAX_NOTES_PER_CLIP
-                    || clip.region.is_some_and(|region| !region.allows(&clip.notes) || clip.kind != ClipKind::Midi || clip.bars != (region.end / 4.0) as f32)
-                    || self.version < 5 && clip.region.is_some()
-                {
-                    return fail("clip controls or media reference");
-                }
-                note_count += clip.notes.len();
-                for note in &clip.notes {
-                    if !note.interchange_valid()
-                        || self.version<6 && (note.channel!=0 || note.release_vel!=64 || note.source_timing.is_some())
-                        || note.pitch > 127
-                        || note.vel > 127
-                        || !finite_range(note.start as f64, 0.0, 262144.0)
-                        || !finite_range(note.len as f64, 0.0, 262144.0)
-                        || self.version >= 5 && (!note.id.valid() || !note_ids.insert(note.id))
-                        || self.version < 5 && note.muted
-                    {
-                        return fail("MIDI note");
-                    }
-                }
-            }
+            for clip in &track.clips {let (notes,bytes)=clip.validate(self.version,media)?;note_count+=notes;midi_bytes+=bytes;}
         }
+        if let Some(navigation)=&self.navigation{if self.version<22{return fail("song sections in legacy state");}navigation.validate()?;}
+        if let Some(arrangement)=&self.arrangement{if self.version<19{return fail("arrangement in legacy state");}if self.version<36 && arrangement.sources.iter().any(|source|source.audio_clock.as_ref().is_some_and(|clock|clock.exact_bpm.is_some())){return fail("exact recording clock in legacy state");}if self.version<26 && (arrangement.instances.iter().any(|i|i.fades.is_some()||i.fade_link!=0||i.crossfade.is_some())||arrangement.sources.iter().any(|s|s.clip.audio_region.is_some_and(|r|!r.fades.is_default()))){return fail("audio fades in a legacy arrangement");}arrangement.validate(media,self.session.as_ref().ok_or("Arrangement requires track identities")?)?;let (n,b)=arrangement.midi_storage();note_count+=n;midi_bytes+=b;}
         if midi_bytes > midi_data::MAX_LANE_BYTES { return fail("MIDI metadata exceeds 16 MiB"); }
         if note_count > MAX_TOTAL_NOTES {
             return fail("note count (maximum 65536)");
@@ -620,10 +762,14 @@ impl State {
         if self.builtin.iter().any(|i| !optional(*i)) {
             return fail("built-in sample reference");
         }
-        for deck in &self.decks {
+        for (index, deck) in self.decks.iter().enumerate() {
+            if self.sync_leader.and_then(deck_sync::Leader::deck) == Some(index) && !deck.sync_phase.is_none() { return Err("A sync leader cannot also follow phase".into()); }
+            if !deck.sync_phase.is_none() && (!deck.sync || self.sync_leader.is_none()) || self.version < 25 && (!deck.sync_phase.is_none() || self.sync_leader.is_some()) { return Err("Invalid sync intent or older project header".into()); }
             if !optional(deck.audio)
                 || !text_ok(&deck.title)
                 || !unit(deck.pitch)
+                || !(-key_shift::MAX_SEMITONES..=key_shift::MAX_SEMITONES).contains(&deck.key_shift)
+                || self.version < 28 && deck.key_shift != 0
                 || !finite_range(deck.gain as f64, 0.0, 1.5)
                 || !deck.source_gain.valid()
                 || self.version < 14 && !deck.source_gain.is_off()
@@ -643,6 +789,11 @@ impl State {
                 || !finite_range(deck.cue_pos, -1.0e12, 1.0e12)
                 || !finite_range(deck.loop_start, -1.0e12, 1.0e12)
                 || !finite_range(deck.loop_len, 0.0, 1.0e12)
+                || !deck.saved_loops.valid()
+                || self.version < 27 && !saved_loops::Bank::cue_loops_empty(&deck.saved_loops.cue_loops)
+                || deck.saved_loops.cue_loops.iter().enumerate().any(|(cue, id)| id.is_some_and(|id| deck.hotcues[cue].is_none_or(|position| deck.audio.and_then(|index|media.get(index)).is_none_or(|audio| deck.saved_loops.slots[usize::from(id - 1)].is_none_or(|slot| (position - slot.start * f64::from(audio.sr)).abs() > 1e-6)))))
+                || self.version < 24 && !deck.saved_loops.is_default()
+                || deck.saved_loops.slots.iter().flatten().any(|slot| deck.audio.and_then(|index|media.get(index)).is_none_or(|audio| slot.length * f64::from(audio.sr) + 1e-6 < 64.0 || (slot.start + slot.length) * f64::from(audio.sr) > audio.frames() as f64 + 1e-6))
                 || deck
                     .hotcues
                     .iter()
@@ -693,6 +844,7 @@ impl State {
             }
         }
         for index in self.builtin.iter_mut().flatten() { visit(index); }
+        if let Some(arrangement)=&mut self.arrangement{for source in &mut Arc::make_mut(arrangement).sources{if let Some(index)=&mut source.clip.audio{visit(index);}}}
     }
 
     /// Number media in the same attachment order as a native renderer capture.
@@ -752,6 +904,7 @@ impl State {
         self.validate(&media)?;
         configuration.validate(source_media)?;
         if configuration.tracks.len() != 1 || configuration.scene_fx.len() != 1
+            || configuration.arrangement.as_ref().is_some_and(|s|!s.sources.is_empty()||!s.instances.is_empty())
             || configuration.tracks[0].launch.is_some()
             || configuration.tracks[0].clips.iter().any(|clip| clip.kind != ClipKind::Empty || !clip.notes.is_empty() || clip.audio.is_some() || clip.lanes.is_some()) {
             return Err("Track template contains song content or multiple tracks".into());
@@ -831,4 +984,68 @@ fn routing_schema_requires_native_identity_and_rejects_legacy_injection() {
     assert!(model.order(state.session.as_ref().unwrap()).is_err());
 }
 
+}
+
+impl SavedClip{
+    /// Create an unused clip slot.
+    /// Takes no content; returns neutral editable metadata with no note, audio or launch attachments.
+    pub(crate) fn empty() -> Self {
+        Self {
+            properties: Default::default(),
+            audio_region: None,
+            lanes: None,
+            region: None,
+            kind: ClipKind::Empty,
+            name: String::new(),
+            bars: 1.,
+            notes: Vec::new(),
+            gain: 1.,
+            audio: None,
+        }
+    }
+
+    /// Validate one retained clip without constructing a project graph.
+    /// Takes the schema and shared media; returns its note and lane budgets or the same native source refusal used by project validation.
+    pub(crate) fn validate(&self,version:u32,media:&[Arc<Sample>])->Result<(usize,usize),String>{
+        if self.notes.iter().any(|note| note.variation.is_some()) && (version < 34 || self.kind != ClipKind::Midi || self.region.is_none()) { return Err("Note variation requires a MIDI region and project state version 34".into()); }
+        note_variation::validate(&self.notes)?;
+        if self.properties.context.is_some_and(|context| !context.valid()) || version < 33 && self.properties.context.is_some() { return Err("Clip scale requires a valid tonic and project state version 33".into()); }
+        if version<21 && !self.properties.launch.is_default(){return Err("Clip launch policy requires project state version 21".into());}
+        if version<20 && !self.properties.is_default(){return Err("Clip properties require project state version 20".into());}
+        let clip=self;let fail=|name:&str|Err(format!("invalid project {name}"));let reference=|index:usize|index<media.len();let optional=|index:Option<usize>|index.is_none_or(reference);let mut note_ids=std::collections::HashSet::new();let mut midi_bytes=0;let mut note_count=0;
+
+                if let Some(lanes) = &clip.lanes {
+                    if version < 6 || clip.kind != ClipKind::Midi { return fail("legacy or non-MIDI lanes"); }
+                    if version < 15 && !lanes.labels.is_empty() { return fail("MIDI labels in a legacy state"); }
+                    lanes.validate()?; midi_bytes += lanes.bytes();
+                }
+                if let Some(region)=clip.audio_region {if version<26 && !region.fades.is_default(){return fail("audio fades in a legacy clip");}if version<18||clip.kind!=ClipKind::Audio{return fail("audio source region in a legacy or non-audio clip");}let source=clip.audio.and_then(|i|media.get(i)).ok_or_else(||"Audio clip region has no embedded source".to_owned())?;let plan=region.prepare(source).map_err(str::to_owned)?;if clip.bars!=(plan.duration_beats/4.0)as f32{return fail("audio clip duration disagrees with its source region");}}
+                note_ids.clear();
+                if !text_ok(&clip.name)
+                    || !finite_range(clip.bars as f64, if clip.audio_region.is_some() || version >= 30 && clip.kind == ClipKind::Audio && clip.audio.is_none() && clip.properties.disabled {0.0000001}else if clip.region.is_some() { 1.0 / 4096.0 } else { 0.25 }, 65536.0)
+                    || !finite_range(clip.gain as f64, 0.0, 1.5)
+                    || !optional(clip.audio)
+                    || clip.notes.len() > MAX_NOTES_PER_CLIP
+                    || clip.region.is_some_and(|region| !region.allows(&clip.notes) || clip.kind != ClipKind::Midi || clip.bars != (region.end / 4.0) as f32)
+                    || version < 5 && clip.region.is_some()
+                {
+                    return fail("clip controls or media reference");
+                }
+                note_count += clip.notes.len();
+                for note in &clip.notes {
+                    if !note.interchange_valid()
+                        || version<6 && (note.channel!=0 || note.release_vel!=64 || note.source_timing.is_some())
+                        || note.pitch > 127
+                        || note.vel > 127
+                        || !finite_range(note.start as f64, 0.0, 262144.0)
+                        || !finite_range(note.len as f64, 0.0, 262144.0)
+                        || version >= 5 && (!note.id.valid() || !note_ids.insert(note.id))
+                        || version < 5 && note.muted
+                    {
+                        return fail("MIDI note");
+                    }
+                }
+
+        Ok((note_count,midi_bytes))
+    }
 }

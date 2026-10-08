@@ -30,6 +30,7 @@ pub(super) struct Settings {
     pub rescan: bool,
     pub(super) routing_pending: bool,
     pub theme_update: Option<Arc<crate::theme::reload::Update>>,
+    pub(super) midi_preset_import: Option<(u64, crate::engine::midi::presets::Preset)>,
 }
 impl Default for Settings {
     fn default() -> Self {
@@ -93,6 +94,7 @@ impl Settings {
             rescan: false,
             routing_pending: false,
             theme_update: None,
+            midi_preset_import: None,
         };
         state.editor_strings();
         state
@@ -195,6 +197,13 @@ impl Settings {
             Event::ShortcutsExported(saved) => {
                 self.message = saved.warning.unwrap_or_else(|| "Bindings exported. Current settings are unchanged.".into());
             }
+            Event::MidiPresetImported { token, preset } => {
+                self.midi_preset_import = Some((token, preset));
+                self.message = "MIDI preset read; review and save it in MIDI Learn before loading it.".into();
+            }
+            Event::MidiPresetExported(saved) => {
+                self.message = saved.warning.unwrap_or_else(|| "MIDI preset exported; active assignments unchanged.".into());
+            }
             Event::Failed(error) => self.message = format!("Preferences failed: {error}"),
             Event::Cancelled => self.message = "Cancelled; current settings are unchanged.".into(),
         }
@@ -213,6 +222,8 @@ impl App {
             self.settings.message = "Safe mode: saved preferences are available for inspection but not applied. Audio/MIDI, external theme and startup library scan remain disabled until an explicit normal restart.".into();
             return;
         }
+        self.plugins.set_performance(self.engine.cmd.performance().clone());
+        if let Some(path) = self.settings.path.as_ref().and_then(|p|p.parent()) { self.plugins.initialize(path.join("plugins-v1.json")); }
         if let Some(worker) = &mut self.settings.worker { worker.set_performance(self.engine.cmd.performance().clone()); }
         self.initialize_project_panels(
             self.settings.profile().startup.show_help,
@@ -326,7 +337,20 @@ impl App {
             if old.midi_routing != self.settings.profile().midi_routing {
                 self.settings.routing_pending=true;
             }
+            if old.retrospective != self.settings.profile().retrospective {
+                match self.engine.cmd.retrospective().configure(self.settings.profile().retrospective, Instant::now()) {
+                    Ok(_) => self.settings.message.push_str(" Recent MIDI privacy settings applied; prior history cleared."),
+                    Err(error) => self.settings.message.push_str(&format!(" Saved MIDI history is not applied: {error}")),
+                }
+            }
+            if old.midi_clock != self.settings.profile().midi_clock {
+                match self.engine.midi.configure_clock(self.settings.profile().midi_clock.clone()) {
+                    Ok(())=>self.settings.message.push_str(" MIDI clock output change queued."),
+                    Err(error)=>self.settings.message.push_str(&format!(" Saved MIDI clock is not applied: {error}")),
+                }
+            }
         }
+        self.poll_midi_preset_import();
         self.poll_library_layout_save();
         if self.settings.routing_pending && !self.engine.midi.connections_busy() && self.engine.midi.policy_status().is_none_or(|s|!s.pending()) {
             self.settings.routing_pending=false;
@@ -389,6 +413,7 @@ impl App {
             .open(&mut open).default_width(680.0).default_height(620.0).vscroll(true).hscroll(true).max_height(self.theme.window_height(ctx)).show(ctx, |ui| {
                 if self.project.committing() || !self.project.dialog_is_closed() { ui.disable(); }
                 ui.label(tr!("Apply saves preferences. MIDI, folders, appearance and shortcuts follow that save. Audio can be applied explicitly in Audio devices, or after restart."));
+                if ui.button("VST3 plugins").clicked() { self.plugins.open = true; }
                 if ui.button(tr!("Audio devices and latency")).help(ui, HelpControl::AudioDevices).clicked() { self.audio_settings.open = true; }
                 if let Some(path) = &state.path { ui.label({ let __omatainer_args = (&(path.display()),); crate::localization::format("Preferences file: {}", &[format!("{}", __omatainer_args.0)]) }); }
                 if let Some(info) = self.engine.output_info() {
@@ -486,7 +511,26 @@ impl App {
                             if mode == 1 { multiline(ui, "Selected MIDI input names (one per line)", &mut state.midi_names, HelpControl::PreferenceMidiNames); }
                             profile.midi_inputs = match mode { 0=>model::MidiInputs::All,1=>model::MidiInputs::Selected(state.midi_names.lines().filter(|s|!s.is_empty()).map(str::to_owned).collect()),_=>model::MidiInputs::Disabled };
                             midi_routing::edit(ui,&mut profile.midi_routing,self.engine.midi.routing_status().as_deref());
+                            midi_clock::edit(ui,&mut profile.midi_clock,self.engine.midi.clock_status().as_deref());
+                            ui.heading("Recent MIDI privacy");
+                            ui.checkbox(&mut profile.retrospective.enabled, "Keep recent monitored MIDI input in memory");
+                            ui.horizontal_wrapped(|ui| {
+                                ui.label("History seconds");
+                                let seconds = ui.add(egui::DragValue::new(&mut profile.retrospective.seconds).range(1..=600));
+                                if let Some(value) = accessibility::numeric(ui, &seconds, "Recent MIDI history seconds", f32::from(profile.retrospective.seconds), 1.0, 600.0, 1.0, "") { profile.retrospective.seconds = value.round() as u16; }
+                                ui.label("Maximum retained MIDI events");
+                                let events = ui.add(egui::DragValue::new(&mut profile.retrospective.events).range(256..=65536));
+                                if let Some(value) = accessibility::numeric(ui, &events, "Recent MIDI maximum events", profile.retrospective.events as f32, 256.0, 65536.0, 1.0, "") { profile.retrospective.events = value.round() as u32; }
+                            });
+                            ui.label("Only enabled input routes with Monitor selected enter this history. Clearing or disabling it discards the private buffer. The buffer is never saved; explicitly captured clips can be saved like other clips.");
                             ui.heading(tr!("Automation and remote control"));
+                            ui.checkbox(&mut profile.now_playing.enabled, tr!("Enable now-playing feed")).help(ui, HelpControl::HistoryPublish);
+                            ui.horizontal_wrapped(|ui| {
+                                ui.checkbox(&mut profile.now_playing.title, tr!("Publish track titles")).help(ui, HelpControl::HistoryPublish);
+                                ui.checkbox(&mut profile.now_playing.artist, tr!("Publish artists")).help(ui, HelpControl::HistoryPublish);
+                                ui.checkbox(&mut profile.now_playing.identity, tr!("Publish catalog identities")).help(ui, HelpControl::HistoryPublish);
+                            });
+                            ui.label(tr!("Apply publishes the selected fields through the local automation API. Disabled and stale feeds contain no tracks. Media locations are never included."));
                             ui.checkbox(&mut profile.automation.enabled,tr!("Enable loopback OSC")).help(ui,HelpControl::AutomationOscEnable);
                             ui.horizontal(|ui| {
                                 let label=ui.label(tr!("OSC port (0 = automatic)"));
@@ -596,6 +640,8 @@ impl App {
                                 let midi = &preview.current().unwrap().midi_inputs;
                                 ui.label(crate::localization::format("MIDI policy: {midi:?}", &[format!("{:?}", midi)]));
                                 let routes=&preview.current().unwrap().midi_routing;
+                                let clocks=&preview.current().unwrap().midi_clock;
+                                ui.label(format!("Clock output: enabled {} · compensation {} ms · selected outputs {:?}",clocks.enabled,clocks.compensation_ms,clocks.ports));
                                 ui.label({ let __omatainer_args = (&(routes.enabled),&(routes.routes.len()),); crate::localization::format("Explicit track routing: {} · {} configured tracks", &[format!("{}", __omatainer_args.0), format!("{}", __omatainer_args.1)]) });
                                 for route in &routes.routes {ui.label({ let __omatainer_args = (&(route.track+1),&(route.inputs),&(route.output),&(route.output_channel.map(|ch|ch+1)),&(route.thru),&(route.filter),); crate::localization::format("Track {}: inputs {:?} · output {:?} · channel {:?} · live thru {} · filters {:?}", &[format!("{}", __omatainer_args.0), format!("{:?}", __omatainer_args.1), format!("{:?}", __omatainer_args.2), format!("{:?}", __omatainer_args.3), format!("{}", __omatainer_args.4), format!("{:?}", __omatainer_args.5)]) });}
                                 if let Some(status)=self.engine.midi.policy_status() {
@@ -635,11 +681,12 @@ impl App {
         }
     }
 }
-fn text(ui: &mut Ui, name: &str, value: &mut String, control: HelpControl) -> bool {
-    let label = ui.label(crate::localization::text_dynamic(name));
-    ui.text_edit_singleline(value)
-        .labelled_by(label.id)
-        .help(ui, control).changed()
+pub(super) fn text(ui: &mut Ui, name: &str, value: &mut String, control: HelpControl) -> bool {
+    let name = crate::localization::text_dynamic(name);
+    let label = ui.label(name);
+    let response = ui.text_edit_singleline(value).labelled_by(label.id);
+    response.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::TextEdit, response.enabled(), name));
+    response.help(ui, control).changed()
 }
 fn multiline(ui: &mut Ui, name: &str, value: &mut String, control: HelpControl) {
     let label = ui.label(crate::localization::text_dynamic(name));

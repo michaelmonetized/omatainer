@@ -238,6 +238,10 @@ pub(super) fn reconcile(version: &mut Version) {
         version.metadata.bpm
     } else if tags.fallback.bpm.origin == Origin::User {
         tags.fallback.bpm
+    } else if version.metadata.bpm.origin == Origin::Imported {
+        version.metadata.bpm
+    } else if tags.fallback.bpm.origin == Origin::Imported {
+        tags.fallback.bpm
     } else if let Some(value) = tags
         .observed
         .bpm

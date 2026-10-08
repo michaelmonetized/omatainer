@@ -98,9 +98,14 @@ where
     f32: cpal::FromSample<T>,
 {
     let channels = plan.channels as usize;
-    device.build_input_stream(
+    let callback_fault = fault.clone();
+    #[cfg(target_os = "linux")]
+    let mut cpu_guard = super::super::cpu_budget::Guard::new();
+    super::super::scheduling::open(|| device.build_input_stream(
         plan.config(),
         move |data: &[T], _| {
+            #[cfg(target_os = "linux")]
+            if cpu_guard.exceeded() { callback_fault.store(true, Ordering::Release); return; }
             capture.push(
                 data,
                 channels,
@@ -118,7 +123,7 @@ where
             }
         },
         None,
-    )
+    ))
 }
 fn output<T>(
     device: &cpal::Device,
@@ -135,9 +140,18 @@ where
     T: cpal::SizedSample + cpal::FromSample<f32>,
 {
     let channels = plan.channels as usize;
-    device.build_output_stream(
+    let callback_fault = fault.clone();
+    #[cfg(target_os = "linux")]
+    let mut cpu_guard = super::super::cpu_budget::Guard::new();
+    super::super::scheduling::open(|| device.build_output_stream(
         plan.config(),
         move |data: &mut [T], _| {
+            #[cfg(target_os = "linux")]
+            if cpu_guard.exceeded() {
+                callback_fault.store(true, Ordering::Release);
+                data.fill(T::from_sample(0.0));
+                return;
+            }
             if !enabled.load(Ordering::Acquire) || stopped.load(Ordering::Acquire) {
                 for sample in data {
                     *sample = T::from_sample(0.0);
@@ -160,7 +174,7 @@ where
             }
         },
         None,
-    )
+    ))
 }
 macro_rules! formats {($format:expr,$call:ident,$($argument:expr),*)=>{match $format {
     cpal::SampleFormat::F32=>$call::<f32>($($argument),*),cpal::SampleFormat::F64=>$call::<f64>($($argument),*),
@@ -177,6 +191,8 @@ pub(crate) fn run(
     stopped: Arc<AtomicBool>,
 ) -> Result<Measurement, String> {
     request.validate()?;
+    #[cfg(target_os = "linux")]
+    super::super::cpu_budget::install()?;
     let input_device = config::select_input_exact(&request.input).map_err(|e| e.to_string())?;
     let output_device = config::select_exact(&request.output).map_err(|e| e.to_string())?;
     let probe = Arc::new(Probe::new(request.output.rate, request.level_db)?);
@@ -251,7 +267,14 @@ pub(crate) fn run(
     if output.invalid || cancel.load(Ordering::Acquire) || stopped.load(Ordering::Acquire) {
         return Err("Calibration cancelled or output stamps overflowed; no measurement".into());
     }
-    let result = analyze(&probe, &capture, &output.stamps)?;
+    let result = analyze(&probe, &capture, &output.stamps).map_err(|error| {
+        if capture.samples.is_empty() || capture.samples.iter().any(|sample| !sample.is_finite()) {
+            return error;
+        }
+        let peak = capture.samples.iter().map(|sample| sample.abs()).fold(0.0f32, f32::max);
+        let rms = (capture.samples.iter().map(|sample| f64::from(*sample).powi(2)).sum::<f64>() / capture.samples.len() as f64).sqrt();
+        format!("{error}. Captured return peak {:.1} dBFS, RMS {:.1} dBFS; check the selected return and its levels.", 20.0 * f64::from(peak).max(1e-12).log10(), 20.0 * rms.max(1e-12).log10())
+    })?;
     if cancel.load(Ordering::Acquire) || stopped.load(Ordering::Acquire) {
         return Err("Calibration cancelled; no measurement retained".into());
     }

@@ -153,7 +153,9 @@ impl Media {
         {
             return Err(invalid("immutable media shape differs from saved metadata"));
         }
-        Ok(Arc::new(Sample {
+        let spectrum = crate::engine::waveform::Waveform::analyze(&data, channels, rate, || false)
+            .ok_or_else(|| invalid("invalid source waveform"))?;
+        Ok(Arc::new(Sample { spectrum: Some(Arc::new(spectrum)),
             name: self.name,
             path: self.path,
             sr: rate,
@@ -401,28 +403,7 @@ fn save_with_hook<T: Serialize>(
         .unwrap_or(Path::new("."));
     let (temporary, mut file) = create_temporary(parent)?;
     hook(Phase::TempCreated).map_err(|e| io_error("temporary preparation", e))?;
-    let mut header = [0u8; HEADER_LEN];
-    header[..8].copy_from_slice(&MAGIC);
-    header[8..12].copy_from_slice(&FORMAT_VERSION.to_le_bytes());
-    header[12..20].copy_from_slice(&(metadata.len() as u64).to_le_bytes());
-    header[20..28].copy_from_slice(&pcm.to_le_bytes());
-    let mut crc = Crc::new();
-    write_checked(&mut file, &header, &mut crc, cancel)?;
-    for chunk in metadata.chunks(IO_CHUNK) {
-        write_checked(&mut file, chunk, &mut crc, cancel)?;
-    }
-    let mut bytes = [0u8; IO_CHUNK];
-    for sample in &bundle.media {
-        for values in sample.data.chunks(IO_CHUNK / 4) {
-            for (value, bytes) in values.iter().zip(bytes.chunks_exact_mut(4)) {
-                bytes.copy_from_slice(&value.to_le_bytes());
-            }
-            write_checked(&mut file, &bytes[..values.len() * 4], &mut crc, cancel)?;
-            hook(Phase::PayloadChunk).map_err(|e| io_error("write PCM", e))?;
-        }
-    }
-    file.write_all(&crc.finish().to_le_bytes())
-        .map_err(|e| io_error("write checksum", e))?;
+    write_payload(&mut file, &metadata, pcm, bundle, cancel, hook)?;
     file.sync_all().map_err(|e| io_error("sync temporary", e))?;
     hook(Phase::BeforeCommit).map_err(|e| io_error("prepare commit", e))?;
     check_cancel(cancel)?;
@@ -431,8 +412,6 @@ fn save_with_hook<T: Serialize>(
         Overwrite::Replace => fs::rename(&temporary.path, path),
     }
     .map_err(|e| io_error("publish project", e))?;
-    // No error or cancellation after this point may claim the save did not
-    // happen. Clean temporary links before syncing the committed directory.
     drop(file);
     drop(temporary);
     let sync = (|| {
@@ -444,6 +423,41 @@ fn save_with_hook<T: Serialize>(
         Ok(()) => SaveOutcome::Durable,
         Err(error) => SaveOutcome::CommittedButDirectorySyncFailed(error.to_string()),
     })
+}
+
+/// Write a private project transfer without publishing a filesystem path.
+/// Takes an empty caller-owned regular descriptor, bundle, limits and cancellation; returns the checked native container used by isolated migration workers.
+pub(crate) fn write_to_file<T: Serialize>(file: &mut File, bundle: &Bundle<T>, limits: &Limits, cancel: &AtomicBool) -> Result<(), Error> {
+    if !file.metadata().map_err(|e|io_error("inspect transfer",e))?.is_file() || file.metadata().map_err(|e|io_error("inspect transfer",e))?.len()!=0 {
+        return Err(invalid("private transfer requires an empty regular descriptor"));
+    }
+    let (metadata,pcm)=encode_metadata(bundle,limits,cancel)?;
+    write_payload(file,&metadata,pcm,bundle,cancel,&mut |_|Ok(()))
+}
+fn write_payload<T>(file: &mut File, metadata: &[u8], pcm: u64, bundle: &Bundle<T>, cancel: &AtomicBool, hook: &mut impl FnMut(Phase)->io::Result<()>) -> Result<(),Error> {
+    let mut header = [0u8; HEADER_LEN];
+    header[..8].copy_from_slice(&MAGIC);
+    header[8..12].copy_from_slice(&FORMAT_VERSION.to_le_bytes());
+    header[12..20].copy_from_slice(&(metadata.len() as u64).to_le_bytes());
+    header[20..28].copy_from_slice(&pcm.to_le_bytes());
+    let mut crc = Crc::new();
+    write_checked(file, &header, &mut crc, cancel)?;
+    for chunk in metadata.chunks(IO_CHUNK) {
+        write_checked(file, chunk, &mut crc, cancel)?;
+    }
+    let mut bytes = [0u8; IO_CHUNK];
+    for sample in &bundle.media {
+        for values in sample.data.chunks(IO_CHUNK / 4) {
+            for (value, bytes) in values.iter().zip(bytes.chunks_exact_mut(4)) {
+                bytes.copy_from_slice(&value.to_le_bytes());
+            }
+            write_checked(file, &bytes[..values.len() * 4], &mut crc, cancel)?;
+            hook(Phase::PayloadChunk).map_err(|e| io_error("write PCM", e))?;
+        }
+    }
+    file.write_all(&crc.finish().to_le_bytes())
+        .map_err(|e| io_error("write checksum", e))?;
+    Ok(())
 }
 fn write_checked(
     file: &mut File,

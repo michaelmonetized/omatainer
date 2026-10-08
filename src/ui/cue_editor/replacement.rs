@@ -183,9 +183,13 @@ pub(super) fn panel(app: &mut App, relocation: &mut Relocation, ui: &mut egui::U
             }
         }
     }
-    if !qualified || app.library_metadata.active() || !app.library_metadata.durable {
-        ui.label(tr!("Waiting for verified source identity and current library edits to be saved…"));
-    }
+    let waiting = !qualified || app.library_metadata.active() || !app.library_metadata.durable;
+    ui.add_sized(
+        [ui.available_width(), ui.text_style_height(&egui::TextStyle::Body) * 2.0],
+        egui::Label::new(if waiting {
+            tr!("Waiting for verified source identity and current library edits to be saved…")
+        } else { tr!("Source identity verified and saved.") }).wrap(),
+    );
     let selectable = !relocation.pending && !relocation.saved;
     ui.push_id((&receipt.target.id, handle.id), |ui| {
         egui::ScrollArea::vertical().id_salt("replacement-matches").max_height(180.0).show_rows(ui, ui.text_style_height(&egui::TextStyle::Body) + 6.0, receipt.matches.len(), |ui, rows| {

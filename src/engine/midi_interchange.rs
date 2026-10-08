@@ -6,6 +6,7 @@ use super::{
 };
 use crate::midi_file::{self as smf, MetaValue};
 use std::collections::{BTreeMap, BTreeSet};
+mod editor;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) struct Source {
@@ -73,8 +74,10 @@ impl Clone for Target {
 pub(crate) struct Request {
     pub(super) targets: Vec<Target>,
     pub(super) epoch: u64,
+    pub(super) metadata_baseline: Option<super::undo::Checkpoint>,
     pub(super) session_namespace: Option<[u64; 2]>,
     pub(super) baseline_bpm: f32,
+    pub(super) baseline_scene_timing: Option<super::scene::Timing>,
     pub(super) baseline_conductor: Option<Arc<Conductor>>,
     pub(super) conductor: Option<Arc<Conductor>>,
     pub(super) change_conductor: bool,
@@ -127,6 +130,7 @@ impl Request {
         checkpoint(&mut cancel)?;
         let baseline_conductor = captured.state.conductor.clone();
         let baseline_bpm = captured.state.bpm;
+        let baseline_scene_timing = captured.state.scene_timing;
         if !file.warnings.is_empty() && !reviewed_omissions {
             return Err(
                 "Review and accept the listed unsupported MIDI data before importing".into(),
@@ -146,8 +150,17 @@ impl Request {
             let Some(destination) = mapping.destination else {
                 continue;
             };
-            if destination.0 as usize >= captured.state.tracks.len() || destination.1 as usize >= captured.state.scene_fx.len()
-                || captured.state.session.as_ref().is_some_and(|layout| layout.reference(session::Axis::Track, destination.0 as usize).is_none() || layout.reference(session::Axis::Scene,destination.1 as usize).is_none()) {
+            if destination.0 as usize >= captured.state.tracks.len()
+                || destination.1 as usize >= captured.state.scene_fx.len()
+                || captured.state.session.as_ref().is_some_and(|layout| {
+                    layout
+                        .reference(session::Axis::Track, destination.0 as usize)
+                        .is_none()
+                        || layout
+                            .reference(session::Axis::Scene, destination.1 as usize)
+                            .is_none()
+                })
+            {
                 return Err("Unknown or inactive MIDI destination".into());
             }
             let source = &file.tracks[mapping.source.track];
@@ -322,8 +335,16 @@ impl Request {
                 .map(str::to_owned)
                 .unwrap_or_else(|| format!("MIDI import {}:{}", track + 1, scene + 1));
             let baseline = Arc::new(Document {
-                track_identity: captured.state.session.as_ref().and_then(|layout| layout.reference(session::Axis::Track, track as usize)),
-                scene_identity: captured.state.session.as_ref().and_then(|layout| layout.reference(session::Axis::Scene, scene as usize)),
+                track_identity: captured
+                    .state
+                    .session
+                    .as_ref()
+                    .and_then(|layout| layout.reference(session::Axis::Track, track as usize)),
+                scene_identity: captured
+                    .state
+                    .session
+                    .as_ref()
+                    .and_then(|layout| layout.reference(session::Axis::Scene, scene as usize)),
                 track,
                 scene,
                 epoch: captured.checkpoint.epoch,
@@ -333,11 +354,19 @@ impl Request {
                 region: old.region,
                 notes: old.notes.clone(),
                 lanes: old.lanes.clone(),
+                context: old.properties.context,
+                song_context: captured.state.musical_context,
             });
-            let reserved_lane_bytes = old.lanes.as_ref().map_or(0, |l| l.bytes()) + lanes.bytes();
+            checkpoint(&mut cancel)?;
+            let variation = super::note_variation::Plan::prepare(&notes, Some(lanes.as_ref()), &std::sync::atomic::AtomicBool::new(false))?;
+            let original_variation = super::note_variation::Plan::prepare(&old.notes, old.lanes.as_deref(), &std::sync::atomic::AtomicBool::new(false))?;
+            checkpoint(&mut cancel)?;
+            let reserved_lane_bytes = old.lanes.as_ref().map_or(0, |l| l.bytes()) + lanes.bytes() + variation.as_ref().map_or(0, |plan| plan.bytes()) + original_variation.as_ref().map_or(0, |plan| plan.bytes());
             targets.push(Target {
                 baseline,
-                replacement: Clip {
+                replacement: Clip { variation,
+                    properties: old.properties,
+                    audio_region: None,
                     lanes: Some(lanes),
                     region: Some(region),
                     kind: ClipKind::Midi,
@@ -373,6 +402,9 @@ impl Request {
             saved.lanes = target.replacement.lanes.clone();
         }
         captured.state.conductor = conductor.clone();
+        if tempo != TempoChoice::KeepSession {
+            captured.state.scene_timing = None;
+        }
         struct Size<'a, F> {
             bytes: usize,
             cancel: &'a mut F,
@@ -408,8 +440,10 @@ impl Request {
             Self {
                 targets,
                 epoch: captured.checkpoint.epoch,
+                metadata_baseline: None,
                 session_namespace: captured.state.session.as_ref().map(|s| s.namespace),
                 baseline_bpm,
+                baseline_scene_timing,
                 baseline_conductor,
                 conductor,
                 change_conductor: tempo != TempoChoice::KeepSession,
@@ -426,30 +460,68 @@ impl Request {
         mut cancel: impl FnMut() -> bool,
     ) -> Result<(Self, Ack), String> {
         checkpoint(&mut cancel)?;
-        let namespace = captured.state.session.as_ref().ok_or("Session identity is unavailable")?.namespace;
+        let namespace = captured
+            .state
+            .session
+            .as_ref()
+            .ok_or("Session identity is unavailable")?
+            .namespace;
         let baseline_conductor = captured.state.conductor.clone();
         let baseline_bpm = captured.state.bpm;
+        let baseline_scene_timing = captured.state.scene_timing;
         let conductor = value.map(|c| c.prepare()).transpose()?;
         captured.state.conductor = conductor.clone();
+        captured.state.scene_timing = None;
         captured.state.validate(&captured.media)?;
-        struct Size<'a, F> { bytes: usize, cancel: &'a mut F }
+        struct Size<'a, F> {
+            bytes: usize,
+            cancel: &'a mut F,
+        }
         impl<F: FnMut() -> bool> std::io::Write for Size<'_, F> {
             fn write(&mut self, bytes: &[u8]) -> std::io::Result<usize> {
-                if (self.cancel)() { return Err(std::io::Error::other("Timing edit cancelled")); }
-                self.bytes = self.bytes.checked_add(bytes.len()).ok_or_else(|| std::io::Error::other("Timing metadata overflow"))?;
-                if self.bytes > crate::project_file::DEFAULT_METADATA_LIMIT - 128 * 1024 { return Err(std::io::Error::other("Timing edit exceeds the native project's 64 MiB metadata limit")); }
+                if (self.cancel)() {
+                    return Err(std::io::Error::other("Timing edit cancelled"));
+                }
+                self.bytes = self
+                    .bytes
+                    .checked_add(bytes.len())
+                    .ok_or_else(|| std::io::Error::other("Timing metadata overflow"))?;
+                if self.bytes > crate::project_file::DEFAULT_METADATA_LIMIT - 128 * 1024 {
+                    return Err(std::io::Error::other(
+                        "Timing edit exceeds the native project's 64 MiB metadata limit",
+                    ));
+                }
                 Ok(bytes.len())
             }
-            fn flush(&mut self) -> std::io::Result<()> { Ok(()) }
+            fn flush(&mut self) -> std::io::Result<()> {
+                Ok(())
+            }
         }
-        serde_json::to_writer(Size { bytes: 0, cancel: &mut cancel }, &captured.state).map_err(|e| e.to_string())?;
+        serde_json::to_writer(
+            Size {
+                bytes: 0,
+                cancel: &mut cancel,
+            },
+            &captured.state,
+        )
+        .map_err(|e| e.to_string())?;
         checkpoint(&mut cancel)?;
         let ack = Ack::new();
-        Ok((Self {
-            targets: Vec::new(), epoch: captured.checkpoint.epoch,
-            session_namespace: Some(namespace), baseline_bpm, baseline_conductor,
-            conductor, change_conductor: true, ack: ack.clone(),
-        }, ack))
+        Ok((
+            Self {
+                targets: Vec::new(),
+                epoch: captured.checkpoint.epoch,
+                metadata_baseline: None,
+                session_namespace: Some(namespace),
+                baseline_bpm,
+                baseline_conductor,
+                baseline_scene_timing,
+                conductor,
+                change_conductor: true,
+                ack: ack.clone(),
+            },
+            ack,
+        ))
     }
     pub fn bytes(&self) -> usize {
         self.targets.capacity() * std::mem::size_of::<Target>()
@@ -470,13 +542,21 @@ impl Request {
 }
 impl RtEngine {
     pub(super) fn midi_import_current(&self, request: &Request) -> bool {
-        if request.session_namespace.is_some_and(|namespace| namespace != self.session.namespace)
+        if request.targets.iter().any(|target| target.baseline.song_context != self.musical_context || self.tracks.get(target.baseline.track as usize).and_then(|track| track.clips.get(target.baseline.scene as usize)).is_none_or(|clip| clip.properties.context != target.baseline.context))
+            || request
+            .metadata_baseline
+            .is_some_and(|baseline| baseline != self.undo.checkpoint())
+            || request
+                .session_namespace
+                .is_some_and(|namespace| namespace != self.session.namespace)
             || request.epoch != self.undo.checkpoint().epoch
             || request.change_conductor
-                && (self.recording || self.count_in.is_some()
+                && (self.recording
+                    || self.count_in.is_some()
                     || self.has_held_project_notes()
                     || (self.conductor.is_none() && self.bpm != request.baseline_bpm)
-                    || self.conductor != request.baseline_conductor)
+                    || self.conductor != request.baseline_conductor
+                    || self.scenes.timing != request.baseline_scene_timing)
         {
             return false;
         }
@@ -496,7 +576,15 @@ impl RtEngine {
             else {
                 return false;
             };
-            if self.recording_clip_held(base.track as usize, base.scene as usize)
+            if base.track_identity.is_some_and(|id| {
+                !self
+                    .session
+                    .resolves(session::Axis::Track, base.track as usize, id)
+            }) || base.scene_identity.is_some_and(|id| {
+                !self
+                    .session
+                    .resolves(session::Axis::Scene, base.scene as usize, id)
+            }) || self.recording_clip_held(base.track as usize, base.scene as usize)
                 || clip.kind != base.kind
                 || clip.kind == ClipKind::Audio
                 || clip.audio.is_some()
@@ -683,7 +771,16 @@ pub(crate) fn export_with_cancel(
             .get(track as usize)
             .and_then(|t| t.clips.get(scene as usize))
             .ok_or("Unknown export clip")?;
-        if state.session.as_ref().is_some_and(|layout| layout.reference(session::Axis::Track,track as usize).is_none() || layout.reference(session::Axis::Scene,scene as usize).is_none()) { return Err("Export target was deleted; select active clips".into()); }
+        if state.session.as_ref().is_some_and(|layout| {
+            layout
+                .reference(session::Axis::Track, track as usize)
+                .is_none()
+                || layout
+                    .reference(session::Axis::Scene, scene as usize)
+                    .is_none()
+        }) {
+            return Err("Export target was deleted; select active clips".into());
+        }
         if clip.kind != ClipKind::Midi {
             return Err("Choose a MIDI clip for every export row".into());
         }
@@ -706,8 +803,15 @@ pub(crate) fn export_with_cancel(
             export_conductor(conductor, options.ppqn, end_tick, &mut cancel)?
                 .into_iter()
                 .map(|mut m| {
-                    if !matches!(m.value, MetaValue::Tempo(_)) || !conductor.tempos.iter().any(|p| p.ramp) {
-                        m.tick = convert_tick(m.tick, conductor.ppqn, options.ppqn, options.allow_rounding)?;
+                    if !matches!(m.value, MetaValue::Tempo(_))
+                        || !conductor.tempos.iter().any(|p| p.ramp)
+                    {
+                        m.tick = convert_tick(
+                            m.tick,
+                            conductor.ppqn,
+                            options.ppqn,
+                            options.allow_rounding,
+                        )?;
                     }
                     Ok(m)
                 })
@@ -787,36 +891,77 @@ pub(crate) fn export_with_cancel(
 /// Encode exact constant tempos and tick-averaged ramp segments.
 /// `map`, `ppqn` and `end_tick` select the conductor and exported time range;
 /// `cancel` stops worker preparation. Returns bounded MIDI metadata or an error.
-fn export_conductor(map: &Conductor, ppqn: u16, end_tick: u64, cancel: &mut impl FnMut() -> bool) -> Result<Vec<smf::Meta>, String> {
-    if !map.tempos.iter().any(|point| point.ramp) { return Ok(map.meta()); }
+fn export_conductor(
+    map: &Conductor,
+    ppqn: u16,
+    end_tick: u64,
+    cancel: &mut impl FnMut() -> bool,
+) -> Result<Vec<smf::Meta>, String> {
+    if !map.tempos.iter().any(|point| point.ramp) {
+        return Ok(map.meta());
+    }
     let ratio = f64::from(ppqn) / f64::from(map.ppqn);
-    let samples: u64 = map.tempos.windows(2).filter(|pair| pair[0].ramp).map(|pair| {
-        let start = (pair[0].tick as f64 * ratio).ceil() as u64;
-        let end = (pair[1].tick as f64 * ratio).ceil() as u64;
-        end.min(end_tick.saturating_add(1)).saturating_sub(start)
-    }).sum();
-    if samples > (smf::MAX_EVENTS / 2) as u64 { return Err("MIDI tempo ramp exceeds 131072 sampled ticks; reduce export PPQN or shorten the exported clips".into()); }
-    let mut result: Vec<_> = map.meta().into_iter().filter(|m| matches!(m.value, MetaValue::Meter { .. })).collect();
+    let samples: u64 = map
+        .tempos
+        .windows(2)
+        .filter(|pair| pair[0].ramp)
+        .map(|pair| {
+            let start = (pair[0].tick as f64 * ratio).ceil() as u64;
+            let end = (pair[1].tick as f64 * ratio).ceil() as u64;
+            end.min(end_tick.saturating_add(1)).saturating_sub(start)
+        })
+        .sum();
+    if samples > (smf::MAX_EVENTS / 2) as u64 {
+        return Err("MIDI tempo ramp exceeds 131072 sampled ticks; reduce export PPQN or shorten the exported clips".into());
+    }
+    let mut result: Vec<_> = map
+        .meta()
+        .into_iter()
+        .filter(|m| matches!(m.value, MetaValue::Meter { .. }))
+        .collect();
     let mut previous = None;
     let mut tick = 0;
     while tick <= end_tick {
         checkpoint(cancel)?;
         let beat = tick as f64 / f64::from(ppqn);
-        let index = map.tempos.partition_point(|point| point.tick as f64 <= beat * f64::from(map.ppqn)).saturating_sub(1);
+        let index = map
+            .tempos
+            .partition_point(|point| point.tick as f64 <= beat * f64::from(map.ppqn))
+            .saturating_sub(1);
         let point = &map.tempos[index];
         let micros = if point.ramp {
-            ((map.seconds_at((tick + 1) as f64 / f64::from(ppqn)) - map.seconds_at(beat)) * f64::from(ppqn) * 1_000_000.0).round() as u32
-        } else { point.micros };
+            ((map.seconds_at((tick + 1) as f64 / f64::from(ppqn)) - map.seconds_at(beat))
+                * f64::from(ppqn)
+                * 1_000_000.0)
+                .round() as u32
+        } else {
+            point.micros
+        };
         if previous != Some(micros) {
-            if result.len() >= smf::MAX_EVENTS / 2 { return Err("MIDI tempo ramp exceeds 131072 events; reduce export PPQN or shorten the exported clips".into()); }
-            result.push(smf::Meta { tick, order: result.len() as u32, value: MetaValue::Tempo(micros) });
+            if result.len() >= smf::MAX_EVENTS / 2 {
+                return Err("MIDI tempo ramp exceeds 131072 events; reduce export PPQN or shorten the exported clips".into());
+            }
+            result.push(smf::Meta {
+                tick,
+                order: result.len() as u32,
+                value: MetaValue::Tempo(micros),
+            });
             previous = Some(micros);
         }
-        tick = if point.ramp { tick + 1 } else {
-            map.tempos.get(index + 1).map_or(end_tick.saturating_add(1), |next| ((next.tick as f64 * f64::from(ppqn) / f64::from(map.ppqn)).ceil() as u64).max(tick + 1))
+        tick = if point.ramp {
+            tick + 1
+        } else {
+            map.tempos
+                .get(index + 1)
+                .map_or(end_tick.saturating_add(1), |next| {
+                    ((next.tick as f64 * f64::from(ppqn) / f64::from(map.ppqn)).ceil() as u64)
+                        .max(tick + 1)
+                })
         };
     }
-    for (order, event) in result.iter_mut().enumerate() { event.order = order as u32; }
+    for (order, event) in result.iter_mut().enumerate() {
+        event.order = order as u32;
+    }
     Ok(result)
 }
 

@@ -1,0 +1,72 @@
+{
+  "schema": 1,
+  "qualifiedAt": "2026-10-06T06:48:56.589Z",
+  "kind": "Native UI, renderer, software MIDI output owner and filesystem qualification; no physical hardware gestures",
+  "baseRevision": "62825c849bd45978b2e309ca9f4e43fbed5333ce",
+  "sourceFiles": {
+    "docs/backlog/app-checklist.json": "2bd09ed751da21dffb7af539a991f92fcc63570379755985217e039b83aef2db",
+    "docs/backlog/app-checklist.md": "2825fb2636ae55c4810412af4eab94f092fb17637646e345ede6930ebfcce0bf",
+    "docs/backlog/capability-status.json": "e3493464545de9b8eb4393b46e3d59f0abe1a2a6dfede5b84ec153c265d73eaa",
+    "docs/manual.md": "263ab7c5e0618c09806f6b9dbed8b8dec2719df703cb40b09c998b10c90c5903",
+    "scripts/app-checklist.mjs": "019d8e20189a52f589c75d5adeccc0010bc66b20f108ce1d044c487523499eaa",
+    "scripts/test-capability-matrix.mjs": "a2f10be7edde9c6e474a8772cd5a2214790387979a3186c94607c1a77769f016",
+    "src/engine/midi/routing/output.rs": "6d430127b944837c73279a67ae4aed472fa7c94051926a5890e0ea0842e331ec",
+    "src/engine/midi/routing/output/tests.rs": "37c4874de4b9ab6939b4029237ae659dfaf2b1be2df0e3f939fe52a4510c74e1",
+    "src/engine/midi/routing/playback.rs": "a3e5a1db7478c576d89c124f7eb395b834b71c25a12b8e365807e45d4ccdfefb",
+    "src/engine/midi/routing/playback/tests.rs": "308a875ad3a5416179ccc2e87b32431f5ee071599dbc1a0af0b205f7f11de678",
+    "src/engine/midi_data.rs": "c4948ba8715a3a57e30acacb7f6e6e0e6e6f5c2e455d52e1d95735718c73a277",
+    "src/engine/midi_data/control.rs": "4468ffc31193dc97fe3dc370fdb987e2ac02893aa29c329ac5199a7406a2f94b",
+    "src/engine/midi_data/lanes.rs": "cf7cdf2e3b840bcef6d4306ae440d019acc6e58b39523f3b861cbee52aaa5b7f",
+    "src/engine/midi_edit.rs": "dcf7c9bdb632a09cf278fcbdd0531db705f15b131e41d58df9b1098d1b628c83",
+    "src/engine/project/model.rs": "dcd58cf10dc3ab2ff455e43b80232c27433ff57bdab4c04ee69ef0f5d3bba78a",
+    "src/engine/project/tests.rs": "0a846c61ac0af0a740f4728fc1b78a22937ce2ea9c15c263162ac3002d71a3ab",
+    "src/engine/undo/capture.rs": "dad03d08aacce319628e2eb6964707f78082e19ca97a7aeb03469101ce5d63d6",
+    "src/scene_index_tests.rs": "db0303e678e88ac2bf7fbf8a2b868d8512513434cf3c899e47eb400cf5464c32",
+    "src/ui/help/catalogue.rs": "9908cf585290c60f6a9c6d432eaaf4d933cc40fd2c17c0c48060ab9b432a1580",
+    "src/ui/piano_roll.rs": "083b27f44ee77cda2d559fd1880c8da87723da790d59f243845e22d51b8d4c94",
+    "src/ui/piano_roll/control.rs": "4280550f6cc0cd757cf011bfb2e677609dffdd84975266fee0ad678f7bd75b5c",
+    "src/ui/piano_roll/tests.rs": "53385ea4e15557c27ef9780061776ccf3452f67d267cfabe75e0b1d4d3be5180"
+  },
+  "testBinary": {
+    "path": "/home/michael/Projects/omatainer-work/remaining-backlog/target/debug/deps/omatainer-d1055b600b6cbb81",
+    "sha256": "0d0cf7e3ffbf915b7877722622ca4dd5ad43167e4af321c3f0f942811ca66b4e",
+    "buildLog": "target/app-backlog/controllers-complete-build.log"
+  },
+  "tests": {
+    "fullRust": {
+      "passed": 1723,
+      "failed": 0,
+      "ignored": 42,
+      "filtered": 0,
+      "seconds": 421.53,
+      "log": "target/app-backlog/controllers-full-tests.log"
+    },
+    "node": {
+      "passed": 12,
+      "failed": 0,
+      "log": "target/app-backlog/controllers-final-node-tests.log"
+    },
+    "focused": {
+      "pianoRoll": 18,
+      "midiRouting": 27,
+      "project": 53,
+      "logs": [
+        "target/app-backlog/controllers-qualified-piano-tests.log",
+        "target/app-backlog/controllers-qualified-routing-tests.log",
+        "target/app-backlog/controllers-qualified-project-tests.log"
+      ]
+    }
+  },
+  "checks": {
+    "compiledFixtureSelectors": true,
+    "dependencyChecklist": true,
+    "sourceInventoryFiles": 661,
+    "offlineManualSynchronized": true,
+    "allInvalidSceneInputs": true
+  },
+  "documentSchemas": {
+    "preferences": 14,
+    "project": 15
+  },
+  "physicalQualification": "Paused at Michael's request; no new physical input or listening claim"
+}

@@ -10,7 +10,7 @@ use std::time::Duration;
 
 pub(super) struct Fixture {
     pub app: App,
-    pub rt: RtEngine,
+    pub rt: Box<RtEngine>,
     pub decoder_jobs: mpsc::Receiver<(u8, PathBuf)>,
     pub decoder_results: mpsc::Sender<(u8, Result<DecodedAudio, DecodeFailure>)>,
 }
@@ -36,12 +36,13 @@ impl Fixture {
         let app = App::with_loader(engine, Theme::default(), Some(loader));
         Self {
             app,
-            rt,
+            rt: Box::new(rt),
             decoder_jobs,
             decoder_results,
         }
     }
 
+    #[track_caller]
     pub fn poll_loads(&mut self) {
         let loading: [bool; DECKS] = std::array::from_fn(|deck| self.app.loads[deck].as_ref()
             .is_some_and(|load| matches!(load.phase, load_status::Phase::Loading)));
@@ -90,7 +91,8 @@ pub(super) fn label_center(output: &egui::FullOutput, label: &str) -> Pos2 {
         .rev()
         .find_map(|shape| match &shape.shape {
             egui::epaint::Shape::Text(text) if text.galley.text() == label => {
-                Some(text.visual_bounding_rect().center())
+                let visible=text.visual_bounding_rect().intersect(shape.clip_rect);
+                visible.is_positive().then(||visible.center())
             }
             _ => None,
         })

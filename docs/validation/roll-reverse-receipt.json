@@ -1,0 +1,885 @@
+{
+  "schema": 1,
+  "platform": "Linux ARM64 software renderer/OutputCallback PCM and actual native egui/AccessKit",
+  "sourceFiles": {
+    "src/engine/deck_controls.rs": "559b3a832703c40e4adb0ac2b32162a773f069c10e20bdf20640d1ad5074e70a",
+    "src/engine/deck_controls/quantization.rs": "e0b30fecd4ab8d8fca01dc92ee7be16a97cd7b84346e78e0d9ebcfb96874f6c0",
+    "src/engine/deck_controls/roll_reverse_tests.rs": "cc3a7c995cc96036f83dac1221138fcd896adcc830f0eca1619c8980fd5497c6",
+    "src/engine/deck_controls/slicer.rs": "d881c690b52b8c54ce1bd79304d5ae82d1e03e5a52ca3b5ec6592516a64b1ce2",
+    "src/engine/deck_controls/slip.rs": "3db291e5b63d47c1400e36ffbbc0c139394025ddbb2e3a666040bba0ea838add",
+    "src/engine/midi/feedback.rs": "8ebbde628be9a9c92b9b3f40e471a7a8761efdf3c3e8563b72c773d492b66aca",
+    "src/engine/mod.rs": "af47eed7eb959932593362f4b80e48e665914ccd0ac88c610a6db53ad90fd5f2",
+    "src/ui.rs": "8352bd8230af479f83347aecaff1dd2e874706b27ef8db753df7a914eef915b4",
+    "src/ui/deck_direction.rs": "1e3be62add503b5f32a15c417c06e4e87dce3d4de0450048a135f2035b05d14f",
+    "src/ui/deck_direction/tests.rs": "2a4a375ae4762b69a14d808bb314a044244c547b4d4aac1ff7a8d9d7dd78b6df",
+    "src/ui/deck_pads.rs": "0128c92dd73f04d0050ed1602aab2c4ebad77bc18dfc656f52af43a7ea113d3e",
+    "src/ui/help/catalogue.rs": "09381669fd77758278b73cd9219e5d1ec1a5bf7dd3dcbc93a1cb737f21b4cec6",
+    "src/ui/project.rs": "b05c3cb9de232fc072471bffc20a363672da7d0e76564f4c0fb63bcb94df04b6",
+    "src/ui/touch.rs": "5283b23892b1b0717a2f2561076bdcaf7bd1e6267c999eb64c2928ad98bd5bd0",
+    "src/ui/waveform.rs": "9955b6f91522de62675e485339598abb2c05b32dac36bd00573f7bd09da4b14b",
+    "src/ui/workspace.rs": "2d73c5ca6c777f267bade427fbe77fa7b1422916e0b819a66209d24b28881e4b"
+  },
+  "testBinary": {
+    "path": "target/app-backlog/qualification-bin/roll-reverse-tests-sixth",
+    "sha256": "9d727eee7279bd63984d7b831791a8909758a752aeb544029cdd2dd1f155a94c"
+  },
+  "compiledInventory": {
+    "path": "target/app-backlog/roll-reverse-sixth-source.json",
+    "sha256": "8fdcc62848b415f3154cfb2396b1d537a531b27f2cc66fb07fee875c19f84c46",
+    "baseRevision": "41f2fc8f845a6a99a8fb31c5c2791696edf84adb",
+    "files": 744
+  },
+  "embeddedInputs": {
+    "README.md": "abab5cb8b9a15a180652402e983142ce2a3baf21f5272fe1c4e9079a5083143f",
+    "licenses/manifest.json": "d5abb7ed3fe66259ef4afad438120c45c32366667794d479b8ab02b92d78f911",
+    "licenses/notices.json": "b15a146c83e362b540c860ae618b80f9ee0150cd9d8d41683a5d3d3fcb85c244"
+  },
+  "compileLog": {
+    "path": "target/app-backlog/roll-reverse-sixth-build.log",
+    "sha256": "df3f9d233fb2148e56ae8bf3808bc09d6501685544a98c0d4fa9b1761f8a90a9"
+  },
+  "tests": {
+    "compose": {
+      "path": "target/app-backlog/roll-reverse-sixth-compose.log",
+      "sha256": "7b007453b6c3a9f956bd4a2d73782b9611c96cd2bf145a90344787aae31d4140",
+      "outcome": "ok",
+      "passed": 2,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2127,
+      "seconds": 0.28
+    },
+    "core": {
+      "path": "target/app-backlog/roll-reverse-sixth-core.log",
+      "sha256": "359d00215f12e9a448fcf417ac4888a481057dcc68b80b63c6d5ee478e0ea9e9",
+      "outcome": "ok",
+      "passed": 6,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2123,
+      "seconds": 2.71
+    },
+    "native": {
+      "path": "target/app-backlog/roll-reverse-sixth-native.log",
+      "sha256": "d0c648c522cabe7bafb79e20af35219f89646df5a952dcfcdbf3bbb0f4627903",
+      "outcome": "ok",
+      "passed": 3,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2126,
+      "seconds": 0.44
+    },
+    "feedback": {
+      "path": "target/app-backlog/roll-reverse-sixth-feedback.log",
+      "sha256": "f2b1f80e8ad8ac3b5a833e8b2baf42c8baef2653edd3b875f5636b6424bafe53",
+      "outcome": "ok",
+      "passed": 9,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2120,
+      "seconds": 0.11
+    },
+    "slip": {
+      "path": "target/app-backlog/roll-reverse-sixth-slip.log",
+      "sha256": "ac5e796ac1bd0e00bf3a2356219491604e13f3e3350e7b07f37f78a646b3e449",
+      "outcome": "ok",
+      "passed": 8,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2121,
+      "seconds": 9.57
+    },
+    "slicer": {
+      "path": "target/app-backlog/roll-reverse-sixth-slicer.log",
+      "sha256": "a6f544896bc501255e07bd79e577f2ed9297a9a14c1b3c4c9e028f19776dd6d9",
+      "outcome": "ok",
+      "passed": 10,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2119,
+      "seconds": 7.14
+    },
+    "pads": {
+      "path": "target/app-backlog/roll-reverse-sixth-pads.log",
+      "sha256": "09dfabed9f711a198ad9bfdabce2ab881ada8f0c66bec706c9d21dafa0fde4fb",
+      "outcome": "ok",
+      "passed": 7,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2122,
+      "seconds": 0.84
+    },
+    "native-pads": {
+      "path": "target/app-backlog/roll-reverse-sixth-native-pads.log",
+      "sha256": "7c7b1500c326ec776cd1d43bb6f3a975767d763e8ad6965feb3aeba7b045ecc4",
+      "outcome": "ok",
+      "passed": 3,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2126,
+      "seconds": 0.51
+    },
+    "touch": {
+      "path": "target/app-backlog/roll-reverse-sixth-touch.log",
+      "sha256": "3c6b8f67d11e3eef4b3fd0b08e9c41108535fca73afbbf237ff29e314d478f40",
+      "outcome": "ok",
+      "passed": 12,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2117,
+      "seconds": 1.38
+    },
+    "workspace": {
+      "path": "target/app-backlog/roll-reverse-sixth-workspace.log",
+      "sha256": "f60963213ac7c63169748a692123e97f929dace471ac3805fc50042e0e6adb54",
+      "outcome": "ok",
+      "passed": 8,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2121,
+      "seconds": 0.92
+    },
+    "keylock": {
+      "path": "target/app-backlog/roll-reverse-sixth-keylock.log",
+      "sha256": "706a5582e5258f30794febf07c557b83eb8a7fe01f58c06f3dc7f0235f9fbf65",
+      "outcome": "ok",
+      "passed": 17,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2112,
+      "seconds": 32.39
+    },
+    "sync": {
+      "path": "target/app-backlog/roll-reverse-sixth-sync.log",
+      "sha256": "6896983cdc9ea660deb931efca54ea2de6f6a0be9462464f9772ca68c94ba37c",
+      "outcome": "ok",
+      "passed": 10,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2119,
+      "seconds": 6.26
+    },
+    "ipc-limits": {
+      "path": "target/app-backlog/roll-reverse-sixth-ipc-limits.log",
+      "sha256": "752176fc70e3521c14073ad936eef17c4fdc29827cc59c85d16ff4314c56c250",
+      "outcome": "ok",
+      "passed": 11,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2118,
+      "seconds": 1
+    },
+    "ipc-follow": {
+      "path": "target/app-backlog/roll-reverse-sixth-ipc-follow.log",
+      "sha256": "fc420aa4b7a940504b76f84ac252e1af906ff6fcc395ae20e82e02cb5e42f906",
+      "outcome": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2128,
+      "seconds": 0.01
+    },
+    "waveform": {
+      "path": "target/app-backlog/roll-reverse-sixth-waveform.log",
+      "sha256": "1d9a6ec07ada2cf0e580e848d4358da25a2d6e2de7cb4809c85267c666784d30",
+      "outcome": "ok",
+      "passed": 5,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2124,
+      "seconds": 0.47
+    },
+    "song-navigation": {
+      "path": "target/app-backlog/roll-reverse-sixth-song-navigation.log",
+      "sha256": "9f9df241e7e93341fb73608f0771c77e1547389e30ff244f2cfdd9725783627b",
+      "outcome": "ok",
+      "passed": 11,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2118,
+      "seconds": 2.67
+    },
+    "project-timing": {
+      "path": "target/app-backlog/roll-reverse-sixth-project-timing.log",
+      "sha256": "ede77865fd83b05b2df5b214591e72b6c58e37f25cdb8c309a3454ffb84ac266",
+      "outcome": "ok",
+      "passed": 6,
+      "failed": 0,
+      "ignored": 1,
+      "filtered": 2122,
+      "seconds": 1.33
+    },
+    "metronome": {
+      "path": "target/app-backlog/roll-reverse-sixth-metronome.log",
+      "sha256": "48bb140e87528ebc6a638344f23f78959f812d3d3713e7ba6082cb8cb3e22663",
+      "outcome": "ok",
+      "passed": 6,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2123,
+      "seconds": 2.09
+    },
+    "recording": {
+      "path": "target/app-backlog/roll-reverse-sixth-recording.log",
+      "sha256": "7f140770b12eb023156227901f52e8fee1b0379a2c42a1f84e346198f5c484fd",
+      "outcome": "ok",
+      "passed": 12,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2117,
+      "seconds": 3.75
+    },
+    "audio": {
+      "path": "target/app-backlog/roll-reverse-sixth-audio.log",
+      "sha256": "9093608e136a622e6425984ca6c8e3388f3095473331e9a0419bfa3611b823aa",
+      "outcome": "ok",
+      "passed": 4,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2125,
+      "seconds": 0.42
+    },
+    "manual": {
+      "path": "target/app-backlog/roll-reverse-sixth-manual.log",
+      "sha256": "39043d6afc199493123013c90efc342436a7fe53ec65228027079ccde08c1fa0",
+      "outcome": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2128,
+      "seconds": 0
+    },
+    "help": {
+      "path": "target/app-backlog/roll-reverse-sixth-help.log",
+      "sha256": "37208e642e346edf2bd869f51684e6589ccb12faa4b4ae366679bb79f0645d9e",
+      "outcome": "ok",
+      "passed": 14,
+      "failed": 0,
+      "ignored": 1,
+      "filtered": 2114,
+      "seconds": 2.87
+    },
+    "full": {
+      "path": "target/app-backlog/roll-reverse-sixth-full.log",
+      "sha256": "bd7c311aee8000560ca4f782e34715dcbceb0f414fee5dd9d9332587e294c0d7",
+      "outcome": "ok",
+      "passed": 2085,
+      "failed": 0,
+      "ignored": 44,
+      "filtered": 0,
+      "seconds": 627.88
+    }
+  },
+  "onset": {
+    "cases": 9,
+    "maximum_start_error_seconds": 1.6562307081358085e-12,
+    "physical_devices_opened": false
+  },
+  "rollPCM": {
+    "numbered_words": 28,
+    "rendered_roll_frames": 168000,
+    "release_compared_frames": 12000,
+    "maximum_release_pcm_error": 1e-45,
+    "physical_devices_opened": false
+  },
+  "callback": {
+    "callback_allocations": 0,
+    "callback_frees": 0,
+    "other_deck_compared_frames": 16384,
+    "other_deck_max_error": 0,
+    "physical_devices_opened": false
+  },
+  "formats": {
+    "formats": [
+      "wav",
+      "flac",
+      "mp3"
+    ],
+    "maximum_sample_discontinuity": 0.002334116,
+    "physical_devices_opened": false
+  },
+  "clockLoadRegression": {
+    "path": "target/app-backlog/roll-reverse-sixth-full-output-timing.json",
+    "sha256": "75d8975a895b896eb74ca45feb52d1eee81504f51c8f24213a38714c65e74691",
+    "physical_devices_opened": false,
+    "real_decode_egui_iterations": 5097,
+    "schema": 1,
+    "tempos": [
+      {
+        "bpm": 40,
+        "clocks": 24,
+        "delay_ns": [
+          87927,
+          6995,
+          140565,
+          55633,
+          63327,
+          53646,
+          137966,
+          54992,
+          67395,
+          13088,
+          146908,
+          16935,
+          145088,
+          99948,
+          130226,
+          74294,
+          54405,
+          96349,
+          40459,
+          25694,
+          90597,
+          37166,
+          134319,
+          20678
+        ],
+        "max_delay_ns": 146908
+      },
+      {
+        "bpm": 73,
+        "clocks": 24,
+        "delay_ns": [
+          17218,
+          30503,
+          110330,
+          107240,
+          120400,
+          20851,
+          9385,
+          129463,
+          4664,
+          61241,
+          102651,
+          150728,
+          115180,
+          136548,
+          92207,
+          41700,
+          84152,
+          58853,
+          36888,
+          45673,
+          13624,
+          99326,
+          2444,
+          130396
+        ],
+        "max_delay_ns": 150728
+      },
+      {
+        "bpm": 120,
+        "clocks": 24,
+        "delay_ns": [
+          594806,
+          31158,
+          3515,
+          47412,
+          58227,
+          145751,
+          13981,
+          20921,
+          115862,
+          38717,
+          115991,
+          63097,
+          128078,
+          28142,
+          54291,
+          122605,
+          84086,
+          84401,
+          87424,
+          82155,
+          149262,
+          152743,
+          125058,
+          3788
+        ],
+        "max_delay_ns": 594806
+      },
+      {
+        "bpm": 137,
+        "clocks": 24,
+        "delay_ns": [
+          149219,
+          56681,
+          52019,
+          100024,
+          13903,
+          115825,
+          116955,
+          51542,
+          18922,
+          124177,
+          93932,
+          165978,
+          109941,
+          88613,
+          27117,
+          13121,
+          142543,
+          19464,
+          109011,
+          9848,
+          29228,
+          80149,
+          101862,
+          25908
+        ],
+        "max_delay_ns": 165978
+      },
+      {
+        "bpm": 180,
+        "clocks": 24,
+        "delay_ns": [
+          34760,
+          17525,
+          97167,
+          66265,
+          77613,
+          126087,
+          21060,
+          152285,
+          100383,
+          134773,
+          86580,
+          101888,
+          61069,
+          29625,
+          51100,
+          89282,
+          46839,
+          69479,
+          125244,
+          85676,
+          113192,
+          83290,
+          148847,
+          33570
+        ],
+        "max_delay_ns": 152285
+      },
+      {
+        "bpm": 240,
+        "clocks": 24,
+        "delay_ns": [
+          132760,
+          73876,
+          109158,
+          63148,
+          116307,
+          102922,
+          68162,
+          102945,
+          38102,
+          55092,
+          22250,
+          136324,
+          46939,
+          96472,
+          108546,
+          140703,
+          28277,
+          24101,
+          148425,
+          30874,
+          37864,
+          64147,
+          17471,
+          53545
+        ],
+        "max_delay_ns": 148425
+      }
+    ]
+  },
+  "node": {
+    "path": "target/app-backlog/roll-reverse-sixth-node.log",
+    "sha256": "efe48d64d74ce6730fa7a50c99e8ec9a33a91bf8ba8802a48643ca0a5c3582ac",
+    "passed": 15,
+    "failed": 0
+  },
+  "retainedPreliminaryResults": {
+    "first": {
+      "reason": "Compilation refused test references to unavailable APIs, a missing Command import, a typed allocation result and private renderer state. Fixtures were corrected to actual APIs and published snapshots.",
+      "binary": null,
+      "artifacts": [
+        {
+          "path": "target/app-backlog/roll-reverse-first-build.log",
+          "sha256": "2076628a9523dc4f5c564c5fb6465d15e95907aa0d65e6c770ed57ff0f6b1987"
+        },
+        {
+          "path": "target/app-backlog/roll-reverse-first-source.json",
+          "sha256": "23670df920ae323c20b5e9c66f9e311938ccb5bf86c3772a49326389baec970e"
+        }
+      ]
+    },
+    "second": {
+      "reason": "Six neighboring groups and the core renderer checks passed. Native direction status lacked a stable accessible name, and an assistive fixture used the Release action ID for Press. The feedback test wrongly applied SP1 note addresses to the NS7 surface; no new USB address was introduced.",
+      "binary": {
+        "path": "target/app-backlog/qualification-bin/roll-reverse-tests-second",
+        "sha256": "7efd0e224f1d030663db84b5c1011602b18518502aff846f63de3677c2dda649"
+      },
+      "artifacts": [
+        {
+          "path": "target/app-backlog/roll-reverse-second-build.log",
+          "sha256": "f22c21456d1a49530ea9715cbdba85d403350daac180d82e76787ca405a6dac5"
+        },
+        {
+          "path": "target/app-backlog/roll-reverse-second-core.log",
+          "sha256": "45c744de8956c0f5ff5a31db626963c494cb874f68ec4f460ed6bf451d846cc0"
+        },
+        {
+          "path": "target/app-backlog/roll-reverse-second-feedback.log",
+          "sha256": "c63c72be66beb198b0c68125821186d824a3e05bee19eceef3906ea50d622e7c"
+        },
+        {
+          "path": "target/app-backlog/roll-reverse-second-ipc-follow.log",
+          "sha256": "add8327cc410cb98546573a71be40c20f8ad17d799f2895331bab58cf8d7a960"
+        },
+        {
+          "path": "target/app-backlog/roll-reverse-second-ipc-limits.log",
+          "sha256": "79e69f564ef66bf180ca8669ab207227b2a41e8be7671082f84cc72545ecc734"
+        },
+        {
+          "path": "target/app-backlog/roll-reverse-second-keylock.log",
+          "sha256": "cdd0028612411f1404578b9bb136c464e4174f69e458883a002c2e0ffbf2efc6"
+        },
+        {
+          "path": "target/app-backlog/roll-reverse-second-native-pads.log",
+          "sha256": "69c9b66b7555b723d90047d1f70ef4af2e411988e7f8e7100da5fe868744c1a9"
+        },
+        {
+          "path": "target/app-backlog/roll-reverse-second-native.log",
+          "sha256": "e5f2ea3a74d864f6a6b673183a10d44adaec87560ee0ace63bdb6e959bb09262"
+        },
+        {
+          "path": "target/app-backlog/roll-reverse-second-pads.log",
+          "sha256": "06554521cf8bc0fbe37c9550472ca7a5787742e2b5c1f2c4b41bf4aee261bda9"
+        },
+        {
+          "path": "target/app-backlog/roll-reverse-second-slicer.log",
+          "sha256": "b3e2673f7c33960f03189cdfe3b3cc0e9ef931c62ce4e90e4a815ff70846a5d6"
+        },
+        {
+          "path": "target/app-backlog/roll-reverse-second-slip.log",
+          "sha256": "7cec194dfca3013bc9ee36ede09d24f465a52ddf2c79dfb4ea920595cd1dabb7"
+        },
+        {
+          "path": "target/app-backlog/roll-reverse-second-source.json",
+          "sha256": "b675eb80775065a2160f03cab9e49c1f2c65a1d3d4455cb34e6c3fd6eadfd887"
+        },
+        {
+          "path": "target/app-backlog/roll-reverse-second-sync.log",
+          "sha256": "898f69b51d5250be2c6559ac2ac701f0380bce813bc4d4d3f657dbf0d853263a"
+        },
+        {
+          "path": "target/app-backlog/roll-reverse-second-touch.log",
+          "sha256": "8502ad2c4bcd25587718ff9b2cf2c0e111cea7f1ab854834f317cee6d02bcaa4"
+        },
+        {
+          "path": "target/app-backlog/roll-reverse-second-workspace.log",
+          "sha256": "c1d7bdc74b11b7f3faa8ddc305456e2d56f724cba8125bd4cff8f51a7aec6540"
+        }
+      ]
+    },
+    "third": {
+      "reason": "Native pointer and independent keyboard/touch/assistive holds passed. Egui Label widget information stores its text as a value rather than an accessible label; final production code explicitly sets the deck-specific accessible label and value. The corrected SP1 test still had an unrelated NS7 motor-address guard; final test checks the existing Note namespace.",
+      "binary": {
+        "path": "target/app-backlog/qualification-bin/roll-reverse-tests-third",
+        "sha256": "e0eaff5bf9a20148d02a1ee7f2007bf4bef313c487d6f7b8e1aa37c3dd697a5e"
+      },
+      "artifacts": [
+        {
+          "path": "target/app-backlog/roll-reverse-third-build.log",
+          "sha256": "63c400573827539bc0ba3b3e9ac0ce1c97d6d6dcf3a05b5ad0b15e514f2d2bdc"
+        },
+        {
+          "path": "target/app-backlog/roll-reverse-third-core.log",
+          "sha256": "4d34e1fc348197ec26af787d3c0b5d00003e2371536b10d5680a8ff17ec32262"
+        },
+        {
+          "path": "target/app-backlog/roll-reverse-third-feedback.log",
+          "sha256": "0a831ad8bb435a9365b9396cd810ccaa4134f87a677047c3fb55dcb0408cbb38"
+        },
+        {
+          "path": "target/app-backlog/roll-reverse-third-ipc-follow.log",
+          "sha256": "add8327cc410cb98546573a71be40c20f8ad17d799f2895331bab58cf8d7a960"
+        },
+        {
+          "path": "target/app-backlog/roll-reverse-third-ipc-limits.log",
+          "sha256": "79e69f564ef66bf180ca8669ab207227b2a41e8be7671082f84cc72545ecc734"
+        },
+        {
+          "path": "target/app-backlog/roll-reverse-third-keylock.log",
+          "sha256": "a3111559ff9c942a0447a136686ae0c174e8036fe65ae464a9ba5761216968fd"
+        },
+        {
+          "path": "target/app-backlog/roll-reverse-third-native-pads.log",
+          "sha256": "177db884d988755781a3af75daa524a639a0f5b69fc7cb8a37f5094a025a330b"
+        },
+        {
+          "path": "target/app-backlog/roll-reverse-third-native.log",
+          "sha256": "d937a5d877915c84969d6760d0a0ea3dd76b373023f269d3078eee2a12385557"
+        },
+        {
+          "path": "target/app-backlog/roll-reverse-third-pads.log",
+          "sha256": "3f71dac6e6ab516295641c9906e83f383f1cb79f6c8e5ab6298c9b94d1070e4d"
+        },
+        {
+          "path": "target/app-backlog/roll-reverse-third-slicer.log",
+          "sha256": "02c869f49d419e070e36ff4c69709cb984d8345c00516bcb93c298a31f18f95c"
+        },
+        {
+          "path": "target/app-backlog/roll-reverse-third-slip.log",
+          "sha256": "cf9077ca813beefbd6687f9015ba179197592ca800097bde68ba8f137a30525d"
+        },
+        {
+          "path": "target/app-backlog/roll-reverse-third-source.json",
+          "sha256": "c7f97ca62268050dc5078c9fc0999dcb2d3443fee5957851e29169d7790758b5"
+        },
+        {
+          "path": "target/app-backlog/roll-reverse-third-sync.log",
+          "sha256": "ca0e7810b7769ec9194afbb1476cda0f3c6395f9074ae91f68aca5a26965de69"
+        },
+        {
+          "path": "target/app-backlog/roll-reverse-third-touch.log",
+          "sha256": "a31a0260afe70d0fdffee98bd2d68abd252197ef62949ed2754b92cdf7a11d0c"
+        },
+        {
+          "path": "target/app-backlog/roll-reverse-third-workspace.log",
+          "sha256": "3afbd456a6c590219ab491f99d0bafb81e60c86510d62672f13c373249709534"
+        }
+      ]
+    },
+    "fifth": {
+      "reason": "All focused feature and neighboring checks passed. The Compose pointer regression found that an extra direction row moved a real target outside the existing viewport. Production now places compact direction buttons beside the existing Sync settings without a new row; the final build repeats the actual pointer check.",
+      "binary": {
+        "path": "target/app-backlog/qualification-bin/roll-reverse-tests-fifth",
+        "sha256": "ebb96dda7a6bbf83f8bc5cfd85fee21ad186f4706f37c26a9abf3fc5df35cf3b"
+      },
+      "artifacts": [
+        {
+          "path": "target/app-backlog/roll-reverse-fifth-build.log",
+          "sha256": "703a25fd7a04343a307f64fe059d5380a4dc5526779c749656701b41f6a144e3"
+        },
+        {
+          "path": "target/app-backlog/roll-reverse-fifth-compose.log",
+          "sha256": "e0a6ffe83426b22ee21604d1f3dbc144e73d93fa17c4f9e74f1dd8d1df2993ab"
+        },
+        {
+          "path": "target/app-backlog/roll-reverse-fifth-core.log",
+          "sha256": "53c89983c60e5266981aff45adf5130bce540adac8cf50e374183ab41206b776"
+        },
+        {
+          "path": "target/app-backlog/roll-reverse-fifth-feedback.log",
+          "sha256": "0ea9b54630fcfb14f383c5a365d4d9dad6a3840a7bc7c349a24005dd92ea263e"
+        },
+        {
+          "path": "target/app-backlog/roll-reverse-fifth-ipc-follow.log",
+          "sha256": "fc420aa4b7a940504b76f84ac252e1af906ff6fcc395ae20e82e02cb5e42f906"
+        },
+        {
+          "path": "target/app-backlog/roll-reverse-fifth-ipc-limits.log",
+          "sha256": "e085106aef8667ff7c2b886633d2a8c7c5325b18fa8e1381543bcc5a6fbd3cbd"
+        },
+        {
+          "path": "target/app-backlog/roll-reverse-fifth-keylock.log",
+          "sha256": "79c561044324472ad598f71ccab4a7913cf1c84dacbeed4d74f59a574f7df5e9"
+        },
+        {
+          "path": "target/app-backlog/roll-reverse-fifth-native-pads.log",
+          "sha256": "578d28398fbdf53a388e46a9ac9c333cf1ac03c037e504ac3b4da4abdad2345d"
+        },
+        {
+          "path": "target/app-backlog/roll-reverse-fifth-native.log",
+          "sha256": "e6dd30eedc235df944c53f4deb28c7cc9d6397d0f3694c8b52cfd3018288e8f1"
+        },
+        {
+          "path": "target/app-backlog/roll-reverse-fifth-pads.log",
+          "sha256": "99256ad4d94f9699ff58c4de826e66c2db9ea47a7dc5dddcb2d7a47162dac024"
+        },
+        {
+          "path": "target/app-backlog/roll-reverse-fifth-slicer.log",
+          "sha256": "454cf1bab8db706ebe4600cf7eaa1bc8ff834b937ae4044ad87c5ea2a9071d9a"
+        },
+        {
+          "path": "target/app-backlog/roll-reverse-fifth-slip.log",
+          "sha256": "67bf6f03b55329a1b3f0d829bcc7438109f8e51b72e955c7c7e9cd35d7c9db7f"
+        },
+        {
+          "path": "target/app-backlog/roll-reverse-fifth-source.json",
+          "sha256": "e2ef9efb5b33e79d47ceb79dfc1b2785ce593a6da27ba314cdaa37628b6c20b0"
+        },
+        {
+          "path": "target/app-backlog/roll-reverse-fifth-sync.log",
+          "sha256": "c83f2c3679d5cbd7773ec4c666eb3b1b9bca949cf484032d0d99bf2a3c9fe390"
+        },
+        {
+          "path": "target/app-backlog/roll-reverse-fifth-touch.log",
+          "sha256": "b26064fb664594167e2ed6bba75d1958c61bda1146a74a72b24d6d640df968b1"
+        },
+        {
+          "path": "target/app-backlog/roll-reverse-fifth-workspace.log",
+          "sha256": "a70ef013e16b0e02037f2793aa26c6ee7b5135c34d932995bc0ccbc24dd48aab"
+        }
+      ]
+    },
+    "fourth": {
+      "reason": "All focused feature and neighboring regressions passed, including numbered impulse PCM. Final source changes correct one indentation and one primitive description; final-source build and complete qualification are fresh.",
+      "binary": {
+        "path": "target/app-backlog/qualification-bin/roll-reverse-tests-fourth",
+        "sha256": "308a19cd25e40c3b4c080a9a84877c22131bd8f9833520bd737cd225cc0afcad"
+      },
+      "artifacts": [
+        {
+          "path": "target/app-backlog/roll-reverse-fourth-build.log",
+          "sha256": "63c400573827539bc0ba3b3e9ac0ce1c97d6d6dcf3a05b5ad0b15e514f2d2bdc"
+        },
+        {
+          "path": "target/app-backlog/roll-reverse-fourth-core.log",
+          "sha256": "359d00215f12e9a448fcf417ac4888a481057dcc68b80b63c6d5ee478e0ea9e9"
+        },
+        {
+          "path": "target/app-backlog/roll-reverse-fourth-feedback.log",
+          "sha256": "8343eabc89cda97bfe6ab61063d1f6d09ef919bd6a49505191df1df1aede6161"
+        },
+        {
+          "path": "target/app-backlog/roll-reverse-fourth-ipc-follow.log",
+          "sha256": "fc420aa4b7a940504b76f84ac252e1af906ff6fcc395ae20e82e02cb5e42f906"
+        },
+        {
+          "path": "target/app-backlog/roll-reverse-fourth-ipc-limits.log",
+          "sha256": "e085106aef8667ff7c2b886633d2a8c7c5325b18fa8e1381543bcc5a6fbd3cbd"
+        },
+        {
+          "path": "target/app-backlog/roll-reverse-fourth-keylock.log",
+          "sha256": "874b15dd7d7fc5dee916ccabf05f4981dded1db699486650a63247109aa7c346"
+        },
+        {
+          "path": "target/app-backlog/roll-reverse-fourth-native-pads.log",
+          "sha256": "47c10965f090019e7401e3d70a3356063cf77f3b93af8319b14dcc816c42643a"
+        },
+        {
+          "path": "target/app-backlog/roll-reverse-fourth-native.log",
+          "sha256": "194533b0b8ee193f48ce484fcca93d3fc857e7f76591ca5b12df4719ce4f5ec2"
+        },
+        {
+          "path": "target/app-backlog/roll-reverse-fourth-pads.log",
+          "sha256": "7d7d9e357cf47fa5206fca5455d50e63403878bb92fc105bad9dcc0a1db55a16"
+        },
+        {
+          "path": "target/app-backlog/roll-reverse-fourth-slicer.log",
+          "sha256": "0a751ccaebdafd6f8c015b90b76f8671ae7acd5dc79c392c03bb13ec6bbc95b7"
+        },
+        {
+          "path": "target/app-backlog/roll-reverse-fourth-slip.log",
+          "sha256": "8f3276d5aece241ff42b704c27546102bbf0ee5aeadcfc55e548df15c0107fd1"
+        },
+        {
+          "path": "target/app-backlog/roll-reverse-fourth-source.json",
+          "sha256": "30b512208363eefcd85ef195cfd0fee9af8908e7a4f3924f0c377eb86857da1b"
+        },
+        {
+          "path": "target/app-backlog/roll-reverse-fourth-sync.log",
+          "sha256": "b42d340740d651ebf92604f59498d99ce6b6a45d919b47216acdfc4267fd99bb"
+        },
+        {
+          "path": "target/app-backlog/roll-reverse-fourth-touch.log",
+          "sha256": "3e46b96fd3f22d0bb6dc81024e5a6f660d0e106a42d594b328ba3ee4541f0b3c"
+        },
+        {
+          "path": "target/app-backlog/roll-reverse-fourth-workspace.log",
+          "sha256": "6c67e35882caa9197f4e53da68dceda07e98a20052e5805b28c933076ef4c317"
+        }
+      ]
+    }
+  },
+  "limits": "Linux ARM64 software qualification: held beat-division rolls with per-deck onset timing, original source/key cancellation, newest-owner priority after slot reuse, shared advancing Slip root and original-loop release; independent native reverse latch and source-owned censor with defined first-frame/backward-loop behavior. Actual renderer/OutputCallback PCM, numbered source impulses, decoded WAV/FLAC/MP3, native egui/AccessKit pointer/key/touch/assistive inputs and confirmed waveform direction. Existing SP1 direction feedback bytes generated from actual snapshots without output ports; no NS7 direction LED or new motor address introduced. No new dependency or saved project/profile format. No physical audio/MIDI device, live capture, new OS GUI, listening or stage continuity acceptance; existing independent stage processes/session preserved.",
+  "releasePreflight": {
+    "path": "target/app-backlog/roll-reverse-release-build.log",
+    "sha256": "36cc5b661a9717886532a0d787621dc6e1864e289d1f9b618f0776a4336471a7",
+    "reason": "The source inventory was generated before the combined checklist, whose refreshed hashes therefore differed at release preflight. The final workflow generates capability/checklist metadata before refreshing and checking the inventory. Qualified Rust source and dependency records are unchanged; the refused preflight is retained."
+  },
+  "releaseInstallation": {
+    "schema": 1,
+    "package": {
+      "path": "/home/michael/Projects/omatainer-work/hardware-resurrection/target/app-backlog/release-roll-reverse-qualified",
+      "manifestSha256": "0d681d7ffbf04f44ebc8a412fee2ba1dc0bbb8dcc1a6329a6decf88bce6d577d",
+      "revision": "70526b724672121b3e2cd1407f531bbb92902e20",
+      "version": "0.1.0+70526b724672",
+      "executableSha256": "3217e4bfce388cac60e0ad7bea4caf83ec0d323f6eb620d4bf3a04d2c09ed69d"
+    },
+    "installed": {
+      "schema": 1,
+      "before": "757ebe49d5a59597546bdf7aa73bebcd1e5cf9fd827d8986b07517678af417a2",
+      "after": "3217e4bfce388cac60e0ad7bea4caf83ec0d323f6eb620d4bf3a04d2c09ed69d",
+      "installedAt": "2026-10-07T15:41:43.689Z"
+    },
+    "buildInfo": {
+      "arch": "aarch64",
+      "debug_assertions": false,
+      "os": "linux",
+      "pkg_version": "0.1.0",
+      "schema": 1
+    },
+    "applicationProcessesPreserved": [
+      {
+        "pid": 1649895,
+        "executable": "/home/michael/Projects/omatainer-work/hardware-resurrection/target/hardware/pioneer-apc/bin/omatainer",
+        "arguments": [
+          "/home/michael/Projects/omatainer-work/hardware-resurrection/target/hardware/pioneer-apc/bin/omatainer",
+          "--empty-once"
+        ],
+        "sha256": "646aa453a269d7c49feec0f5e88fcac94a030034f051468a82d2828ef05c4915"
+      },
+      {
+        "pid": 3973522,
+        "executable": "/home/michael/.local/bin/omatainer (deleted)",
+        "arguments": [
+          "/home/michael/.local/bin/omatainer",
+          "ctl",
+          "follow"
+        ],
+        "sha256": "23f88a47125de6eb19a7921d64faef6dafed56d3c25debdb89ac04d060d9b2e4"
+      }
+    ],
+    "protectedSessionPreserved": {
+      "path": "/home/michael/Projects/omatainer-work/hardware-resurrection/target/hardware/apc-restart-20261006/session.omat",
+      "sha256": "96e0b2495cdbdc549c324ecf8337fdef5590bdcbfe8916e4f014eb05d1ee827d",
+      "bytes": 162882871
+    },
+    "additionalProcessesAfterInstall": [],
+    "preinstallState": {
+      "master": 0.8188976645469666,
+      "playing": false,
+      "recording": false,
+      "decks": [
+        {
+          "title": "What More Can I Say",
+          "playing": false
+        },
+        {
+          "title": "Public Service Announcement",
+          "playing": false
+        }
+      ]
+    },
+    "postinstallState": {
+      "master": 0.8188976645469666,
+      "playing": false,
+      "recording": false,
+      "decks": [
+        {
+          "title": "What More Can I Say",
+          "playing": false
+        },
+        {
+          "title": "Public Service Announcement",
+          "playing": false
+        }
+      ]
+    },
+    "scope": "Default executable installed for next launch. Previously active independent private GUI and follower processes retained; no hardware device opened or live playback restarted. An unavailable live state is recorded when no GUI was present."
+  }
+}

@@ -483,15 +483,19 @@ Omarchy desktop bindings: `SUPER+O` launches/focuses the app;
 | `7` | Launch scene 7 |
 | `8` | Launch scene 8 |
 | `Q` | Play / pause deck A |
-| `A` | Cue deck A |
+| `A` | Hold Cue audition deck A |
 | `W` | Toggle deck A tempo sync |
 | `P` | Play / pause deck B |
-| `L` | Cue deck B |
+| `L` | Hold Cue audition deck B |
 | `O` | Toggle deck B tempo sync |
 | `[` | Crossfader fully to A |
 | `]` | Crossfader fully to B |
 | `F` | Load selected crate item onto selected deck |
 | `? (Shift+/)` | Show / hide contextual help and lessons |
+| `Shift+[` | Beat jump backward on selected deck |
+| `Shift+]` | Beat jump forward on selected deck |
+| `Alt+[` | Smaller beat jump on selected deck |
+| `Alt+]` | Larger beat jump on selected deck |
 | `F1` | Show / hide contextual help and lessons |
 | `Ctrl+M` | Show / hide MIDI window |
 | `Escape` | Close effect chain |
@@ -508,6 +512,8 @@ Typing in search or another text field owns the keyboard, including the frame
 that editing ends. Blocking dialogs and popups also suppress global shortcuts.
 Outside those contexts, letter/space shortcuts require no modifiers; `?` uses
 Shift+Slash, and Ctrl+M opens the MIDI window.
+
+Hold the visible deck CUE button, focused Space/Enter or A/L to audition from pause. Release returns to the main cue; Play during the hold continues playback. Cue while playing stops and returns. MIDI Learn exposes Deck hold Cue audition separately from the existing one-shot Set/return Cue. Independent local and controller holds release separately. [Cue audition details](docs/validation/cue-audition.md).
 
 ## Keyboard and assistive controls
 
@@ -832,3 +838,5 @@ Use [Commands and shortcut bindings](docs/shortcuts.md) to search native actions
 Use [Workspaces and panel windows](docs/workspaces.md) to save panel visibility, order, heights and secondary-window sizes through Preferences.
 
 Deck waveforms offer linked 2/4/8/16-bar zoom, saved cue/loop markers and phase against the selected deck. Save waveform view retains it in preference schema 14. The output position estimate uses the backend’s reported time; unknown timing, changed media, key-lock and fades show renderer position explicitly. [Waveform qualification and limits](docs/validation/issue-135-waveform-timing.md).
+
+MIDI → **MIDI mapping presets** saves named factory overrides per device. Duplicate, rename, export or import portable definitions; explicitly review an exact port before loading or restoring factory defaults. **Save MIDI assignments** keeps the applied layer. [Preset details](docs/validation/midi-mapping-presets.md).

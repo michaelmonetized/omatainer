@@ -1,0 +1,769 @@
+{
+  "schema": 1,
+  "platform": "Linux ARM64; actual native egui/AccessKit, source decode, renderer/OutputCallback PCM and allocation/free checks",
+  "sourceFiles": {
+    "src/engine/audible.rs": "882900132ff480f2e56caf445816b13223a29e8002a768ef8e1c4de729566ad4",
+    "src/engine/control.rs": "d3f1a300ac6a96b06968b7eb09fdb624aa1231533b66cd2ecff34876b58f7e74",
+    "src/engine/key_shift.rs": "407fec4d3ce3f1ebef8789b91b8627079c162ca6df2e0b1e4d5797d15b90c4a1",
+    "src/engine/key_shift/tests.rs": "befb2898d52f2ed5690273258190f2bdc6b960a51eba5987b40a136225eb4895",
+    "src/engine/keylock.rs": "bfd2e3978e54304620b53e29ca944bd6aa023c95dc961f0f4fb4485309999bb4",
+    "src/engine/mod.rs": "30e35661a3cfe28488ff6654e98b401a4d8e0fc1f210c899187c9e1747d2cf16",
+    "src/engine/performance.rs": "ceb4c967d329b21319665ae99cec8ac20c2c0fdb9e8312a9a7867bfe604f5f8f",
+    "src/engine/project/capture.rs": "c96e7fe01b47654815815f7ef4011f344dcb641da8893aef839d391206a796af",
+    "src/engine/project/model.rs": "16598e47b805aff8a6207fa54e38d5358d1828bd6df01ac0d7f908b60d692bce",
+    "src/engine/project/prepare.rs": "6d55c682209744e5565c55e1ebfd56ba9895f502686d1613f1511fe850d2ca14",
+    "src/engine/project/tests.rs": "ad99a19e28fe438cdf67f8504c88296cfbc8e3b87bb28abe966ae067819629cc",
+    "src/engine/snapshot.rs": "ea7778577d4d26258b2a40cb8dedd3dff7872409bd72d4a31fbba90d7cd22712",
+    "src/engine/undo/capture.rs": "132ede19c89b5d33194935ea4fcce31d09c426dcf356940949346f3450578b98",
+    "src/engine/undo/mod.rs": "d7c11afa6c52f0962f2c425bed879f3611b38ab04898bbf4035e61bc51687783",
+    "src/engine/undo/patch.rs": "d08c7bbd6f35644b8fc7e9018ddf0cea7422fb64ed8bb8fb9b73df5196803e03",
+    "src/ui.rs": "eeebb37e980c3dee9238116e074dde453c3f8223d42bafb907154bfd074a16e4",
+    "src/ui/help/catalogue.rs": "b6939bd846fea8a6d3a0ca22e39d5794d64c844f16ece71c98b3a29fec3d1ae2",
+    "src/ui/key_shift.rs": "921f49033444ad9d967921ef02ad569365f8e9459d7469083dd87f51681a4dbd",
+    "src/ui/key_shift/tests.rs": "be149472c71009600358411f8c55b1bd75eac17bb50a5d80e1162cb486baa215"
+  },
+  "testBinary": {
+    "path": "target/app-backlog/qualification-bin/key-shift-tests-fourth",
+    "sha256": "eac1b05c3828b4f4b8a13f6387a800243f60520e48e4fdb5455fba3efb312f9d"
+  },
+  "compiledInventory": {
+    "path": "target/app-backlog/key-shift-fourth-compiled-source-inventory.json",
+    "sha256": "cdf4f3345e803c56ef59c5e8657e91b151a56ee073c3c909b3360b612352c793",
+    "baseRevision": "e8292f28ef86c441018be321fe580377b4b9cbb2",
+    "files": 778
+  },
+  "embeddedInputs": {
+    "schema": 1,
+    "baselineRevision": "e8292f28ef86c441018be321fe580377b4b9cbb2",
+    "embeddedInputs": {
+      "README.md": "abab5cb8b9a15a180652402e983142ce2a3baf21f5272fe1c4e9079a5083143f",
+      "licenses/manifest.json": "5529bcfbd3e8f4258e3145b59f00b2c6e68e9b36d39445466872adc78473c40e",
+      "licenses/notices.json": "b15a146c83e362b540c860ae618b80f9ee0150cd9d8d41683a5d3d3fcb85c244"
+    }
+  },
+  "tests": {
+    "core": {
+      "path": "target/app-backlog/key-shift-fourth-core.log",
+      "sha256": "f0b131584a75dc87f10bd3296866ebb8d2047875cb8ac21048f5a02a1cb698bb",
+      "outcome": "ok",
+      "passed": 8,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2067,
+      "seconds": 58.84
+    },
+    "native": {
+      "path": "target/app-backlog/key-shift-fourth-native.log",
+      "sha256": "84a724d75737bc88897420ea3d4dd564bd5e0f8e2d9460bb6faace46076ce14f",
+      "outcome": "ok",
+      "passed": 3,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2072,
+      "seconds": 0.87
+    },
+    "project": {
+      "path": "target/app-backlog/key-shift-fourth-project.log",
+      "sha256": "d8cb071ddb73aeded702b7d3c87759ddff886a9304cebb12d2b5b4e67b1b30d5",
+      "outcome": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2074,
+      "seconds": 0.35
+    },
+    "keylock": {
+      "path": "target/app-backlog/key-shift-fourth-keylock.log",
+      "sha256": "ba00ec0e126b9d73b56c7d8338e691bf08d4f77788afdee4c44aa68b7136a0a2",
+      "outcome": "ok",
+      "passed": 17,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2058,
+      "seconds": 33.43
+    },
+    "beat-jump": {
+      "path": "target/app-backlog/key-shift-fourth-beat-jump.log",
+      "sha256": "d86e8b25d09679fc86a7b7eb4540ed6a06f2539d489e3d6bb801d00671731a0d",
+      "outcome": "ok",
+      "passed": 2,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2073,
+      "seconds": 0.28
+    },
+    "manual": {
+      "path": "target/app-backlog/key-shift-fourth-manual.log",
+      "sha256": "f9da4aa7007a58350c806b2ea854b48dbf98ca9125c2e17f054606f5b1cf3fa9",
+      "outcome": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2074,
+      "seconds": 0
+    },
+    "help": {
+      "path": "target/app-backlog/key-shift-fourth-help.log",
+      "sha256": "206a2deebd7313c37bf04067cace310628e0d1a7a0664abb76be101466b6bc19",
+      "outcome": "ok",
+      "passed": 14,
+      "failed": 0,
+      "ignored": 1,
+      "filtered": 2060,
+      "seconds": 3.08
+    },
+    "ipc": {
+      "path": "target/app-backlog/key-shift-fourth-ipc.log",
+      "sha256": "207dce332a4cf466e3b54b8788e9d0c95fba6215a810a4e99dbbcff29a497084",
+      "outcome": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2074,
+      "seconds": 0.01
+    },
+    "full": {
+      "path": "target/app-backlog/key-shift-fourth-full.log",
+      "sha256": "c0c4306f83a0cfe119212ff25e725f8cca5120356053e4c594968f388c138b5e",
+      "outcome": "ok",
+      "passed": 2031,
+      "failed": 0,
+      "ignored": 44,
+      "filtered": 0,
+      "seconds": 607.4
+    }
+  },
+  "tuned": {
+    "active": 207,
+    "bypass": 9,
+    "frequencies_hz": [
+      20,
+      55,
+      997
+    ],
+    "groups": 216,
+    "max_source_frame_error": 1.3322278391569853e-8,
+    "minimum_fundamental_amplitude": 0.49468686888058166,
+    "output_rates": [
+      44100,
+      48000,
+      96000
+    ],
+    "physical_devices_opened": false,
+    "source_rates": [
+      44100,
+      48000,
+      96000
+    ]
+  },
+  "callback": {
+    "callback_allocations": 0,
+    "callback_frees": 0,
+    "compared_other_deck_frames": 57344,
+    "energy": 133.10441052348685,
+    "offsets": 14,
+    "other_deck_max_error": 0,
+    "peak_render_cpu_ns": 298541,
+    "physical_devices_opened": false
+  },
+  "fader": {
+    "actual_pitch_commands": true,
+    "checks": 60,
+    "output_rates": [
+      44100,
+      48000,
+      192000
+    ],
+    "physical_devices_opened": false,
+    "requested_shifts": [
+      -6,
+      6
+    ],
+    "source_rate": 48000
+  },
+  "mix": {
+    "complete_mix_groups": [
+      {
+        "energy": 5790.49656412509,
+        "frames": 341419,
+        "max_adjacent_step": 0.3639429807662964,
+        "natural_ends": 1,
+        "offset": -6,
+        "sample_rate": 44100
+      },
+      {
+        "energy": 5668.077236345488,
+        "frames": 341419,
+        "max_adjacent_step": 0.5271703600883484,
+        "natural_ends": 1,
+        "offset": 0,
+        "sample_rate": 44100
+      },
+      {
+        "energy": 4824.091724882945,
+        "frames": 341419,
+        "max_adjacent_step": 0.4852747619152069,
+        "natural_ends": 1,
+        "offset": 6,
+        "sample_rate": 44100
+      },
+      {
+        "energy": 6338.31899267751,
+        "frames": 371612,
+        "max_adjacent_step": 0.3503093719482422,
+        "natural_ends": 1,
+        "offset": -6,
+        "sample_rate": 48000
+      },
+      {
+        "energy": 6161.346908011021,
+        "frames": 371612,
+        "max_adjacent_step": 0.5290704965591431,
+        "natural_ends": 1,
+        "offset": 0,
+        "sample_rate": 48000
+      },
+      {
+        "energy": 5082.262154105551,
+        "frames": 371612,
+        "max_adjacent_step": 0.5293407440185547,
+        "natural_ends": 1,
+        "offset": 6,
+        "sample_rate": 48000
+      },
+      {
+        "energy": 12811.228907960784,
+        "frames": 743225,
+        "max_adjacent_step": 0.39943942427635193,
+        "natural_ends": 1,
+        "offset": -6,
+        "sample_rate": 96000
+      },
+      {
+        "energy": 12286.89851890023,
+        "frames": 743225,
+        "max_adjacent_step": 0.5648926496505737,
+        "natural_ends": 1,
+        "offset": 0,
+        "sample_rate": 96000
+      },
+      {
+        "energy": 10362.267167109156,
+        "frames": 743225,
+        "max_adjacent_step": 0.5307164192199707,
+        "natural_ends": 1,
+        "offset": 6,
+        "sample_rate": 96000
+      }
+    ],
+    "exported_wavs": 12,
+    "first_transition_sample_preserved": true,
+    "human_listening_claimed": false,
+    "physical_devices_opened": false,
+    "transition_groups": 3,
+    "transition_offsets": [
+      3,
+      -3,
+      0
+    ]
+  },
+  "native": {
+    "browser_retargeted": false,
+    "confirmed_offset": 2,
+    "explicit_target": "D",
+    "lock_and_offset_undo_redo": true,
+    "physical_devices_opened": false,
+    "single_undo_entry": true,
+    "source_key": "C",
+    "transport_unchanged": true
+  },
+  "project": {
+    "embedded_pcm_preserved": true,
+    "invalid_offsets_refused": true,
+    "legacy_field_injection_refused": true,
+    "legacy_zero_migrated": true,
+    "offsets": [
+      3,
+      -2
+    ],
+    "output_sample_rate": 44100,
+    "physical_devices_opened": false,
+    "project_state_version": 28,
+    "real_native_file_roundtrip": true,
+    "reopen_starts_stopped": true
+  },
+  "listeningSamples": [
+    {
+      "path": "target/app-backlog/key-shift-fourth-mix-wavs/complete-mix-44100-+0.wav",
+      "sha256": "4fc7704cfa8e75a9cc4bdd58d50e07ba358f97788721b3e0e83605d6b1e71d7f",
+      "bytes": 2731396,
+      "frames": 341419,
+      "sample_rate": 44100,
+      "format": "stereo Float32 WAV"
+    },
+    {
+      "path": "target/app-backlog/key-shift-fourth-mix-wavs/complete-mix-44100-+6.wav",
+      "sha256": "53e784d22086755a23e25b71a01fdb0d010be0c52f6848f3a1988ae84e5725c3",
+      "bytes": 2731396,
+      "frames": 341419,
+      "sample_rate": 44100,
+      "format": "stereo Float32 WAV"
+    },
+    {
+      "path": "target/app-backlog/key-shift-fourth-mix-wavs/complete-mix-44100--6.wav",
+      "sha256": "fe5f9e793069ddf3c08fc47632f26be3a598cb23b8f1dd5fadc433231a7c4581",
+      "bytes": 2731396,
+      "frames": 341419,
+      "sample_rate": 44100,
+      "format": "stereo Float32 WAV"
+    },
+    {
+      "path": "target/app-backlog/key-shift-fourth-mix-wavs/complete-mix-48000-+0.wav",
+      "sha256": "be9a5b5d23a417c7bda34bc442ab30033813d4a7f99e3388c4e6682970aea417",
+      "bytes": 2972940,
+      "frames": 371612,
+      "sample_rate": 48000,
+      "format": "stereo Float32 WAV"
+    },
+    {
+      "path": "target/app-backlog/key-shift-fourth-mix-wavs/complete-mix-48000-+6.wav",
+      "sha256": "9abcdf0890d4190b9a24c23603c1eac873b95f92a174ae8c29244d1fb6b763b6",
+      "bytes": 2972940,
+      "frames": 371612,
+      "sample_rate": 48000,
+      "format": "stereo Float32 WAV"
+    },
+    {
+      "path": "target/app-backlog/key-shift-fourth-mix-wavs/complete-mix-48000--6.wav",
+      "sha256": "cdea15ae264bbb9ddf1ddf02e5e04b1450ec9edae8da5f09f23e2f1d3928aa7d",
+      "bytes": 2972940,
+      "frames": 371612,
+      "sample_rate": 48000,
+      "format": "stereo Float32 WAV"
+    },
+    {
+      "path": "target/app-backlog/key-shift-fourth-mix-wavs/complete-mix-96000-+0.wav",
+      "sha256": "f3d4028c561e93b570c5c066077224ae24fd63c6c7558152c48ba2a71de352b7",
+      "bytes": 5945844,
+      "frames": 743225,
+      "sample_rate": 96000,
+      "format": "stereo Float32 WAV"
+    },
+    {
+      "path": "target/app-backlog/key-shift-fourth-mix-wavs/complete-mix-96000-+6.wav",
+      "sha256": "d006dd783a9e12c657ced0d78c987c922087af59c8a5888f10d6c5c0c68ee171",
+      "bytes": 5945844,
+      "frames": 743225,
+      "sample_rate": 96000,
+      "format": "stereo Float32 WAV"
+    },
+    {
+      "path": "target/app-backlog/key-shift-fourth-mix-wavs/complete-mix-96000--6.wav",
+      "sha256": "385b9a22bf8bfeecdc06ad98989116d8b54d52d1a06b464ec34b1996a8337e14",
+      "bytes": 5945844,
+      "frames": 743225,
+      "sample_rate": 96000,
+      "format": "stereo Float32 WAV"
+    },
+    {
+      "path": "target/app-backlog/key-shift-fourth-mix-wavs/complete-mix-transitions-44100.wav",
+      "sha256": "f4b8505057ea126ea0e6eaac78c9d9973d9630b65ce5570f4f3d14d53117748d",
+      "bytes": 2731396,
+      "frames": 341419,
+      "sample_rate": 44100,
+      "format": "stereo Float32 WAV"
+    },
+    {
+      "path": "target/app-backlog/key-shift-fourth-mix-wavs/complete-mix-transitions-48000.wav",
+      "sha256": "4b6cac2447347d981eb44e5725a297e919c72d5628cb45be57ba79bfaea86e6e",
+      "bytes": 2972940,
+      "frames": 371612,
+      "sample_rate": 48000,
+      "format": "stereo Float32 WAV"
+    },
+    {
+      "path": "target/app-backlog/key-shift-fourth-mix-wavs/complete-mix-transitions-96000.wav",
+      "sha256": "bcc35bdeb3cb818a98341e906afa89574c0876035b9ebf43960c4ed5165abce9",
+      "bytes": 5945844,
+      "frames": 743225,
+      "sample_rate": 96000,
+      "format": "stereo Float32 WAV"
+    }
+  ],
+  "clockLoadRegression": {
+    "path": "target/app-backlog/key-shift-fourth-full-output-timing.json",
+    "sha256": "38d8ca7195a3e52ce2e7174fb1404fbe836ffbf1eee9fad382923e2d820dc4ee",
+    "physical_devices_opened": false,
+    "real_decode_egui_iterations": 5015,
+    "schema": 1,
+    "tempos": [
+      {
+        "bpm": 40,
+        "clocks": 24,
+        "delay_ns": [
+          52174,
+          110403,
+          63922,
+          96276,
+          134796,
+          97232,
+          127752,
+          40105,
+          27708,
+          128062,
+          137416,
+          78519,
+          47413,
+          65975,
+          62995,
+          18473,
+          154619,
+          81930,
+          39825,
+          130095,
+          123282,
+          79302,
+          118822,
+          163259
+        ],
+        "max_delay_ns": 163259
+      },
+      {
+        "bpm": 73,
+        "clocks": 24,
+        "delay_ns": [
+          163508,
+          9928,
+          130975,
+          126937,
+          82483,
+          12737,
+          88616,
+          84287,
+          134750,
+          108129,
+          104592,
+          83387,
+          125892,
+          142146,
+          40191,
+          147071,
+          64366,
+          36245,
+          65833,
+          103212,
+          10090,
+          86262,
+          15182,
+          43853
+        ],
+        "max_delay_ns": 163508
+      },
+      {
+        "bpm": 120,
+        "clocks": 24,
+        "delay_ns": [
+          11299,
+          85737,
+          75508,
+          120487,
+          137966,
+          80778,
+          145215,
+          143278,
+          64215,
+          139527,
+          131590,
+          107277,
+          87172,
+          13526,
+          110881,
+          108651,
+          63463,
+          116026,
+          144629,
+          113942,
+          153380,
+          113274,
+          70920,
+          67524
+        ],
+        "max_delay_ns": 153380
+      },
+      {
+        "bpm": 137,
+        "clocks": 24,
+        "delay_ns": [
+          92217,
+          3891,
+          70357,
+          126990,
+          105748,
+          92297,
+          72846,
+          106646,
+          114654,
+          82953,
+          70961,
+          126177,
+          141227,
+          48151,
+          55784,
+          57417,
+          118675,
+          97807,
+          88065,
+          140323,
+          30372,
+          104130,
+          41721,
+          123270
+        ],
+        "max_delay_ns": 141227
+      },
+      {
+        "bpm": 180,
+        "clocks": 24,
+        "delay_ns": [
+          80299,
+          95619,
+          77105,
+          56841,
+          102035,
+          19563,
+          24132,
+          5577,
+          19854,
+          76465,
+          43409,
+          26562,
+          27423,
+          9158,
+          148437,
+          40964,
+          79867,
+          23144,
+          96172,
+          7116,
+          77811,
+          7172,
+          120074,
+          147103
+        ],
+        "max_delay_ns": 148437
+      },
+      {
+        "bpm": 240,
+        "clocks": 24,
+        "delay_ns": [
+          82383,
+          82811,
+          46737,
+          66372,
+          110092,
+          79643,
+          57362,
+          68914,
+          127300,
+          134685,
+          33654,
+          106831,
+          79090,
+          58351,
+          40986,
+          143997,
+          111216,
+          6642,
+          36069,
+          14121,
+          22507,
+          113225,
+          61236,
+          111205
+        ],
+        "max_delay_ns": 143997
+      }
+    ]
+  },
+  "node": {
+    "path": "target/app-backlog/key-shift-fourth-node.log",
+    "sha256": "9b7a40c51f83150b2d705b3350e72d863603111c967deff115f0374f6445ca6f",
+    "passed": 15,
+    "failed": 0
+  },
+  "retainedPreliminaryResults": {
+    "first": {
+      "compileLog": {
+        "path": "target/app-backlog/key-shift-first-compile.log",
+        "sha256": "47d8b3dfe47529009b946e93b2994f465fd20a993884ce740ae8237a4af14856"
+      },
+      "inventorySha256": "326a1074761e3cbc076ad57c1acbbf5ece2b3dc5cf99db853d5fa67f07ed2ffd",
+      "compiled": false,
+      "reason": "The native entry point needed parent-module visibility; corrected before the second fresh build. No executable qualification was claimed."
+    },
+    "second": {
+      "binary": {
+        "compiledBinary": "/home/michael/Projects/omatainer-work/remaining-backlog/target/debug/deps/omatainer-700b0f43c8079203",
+        "privateBinary": "target/app-backlog/qualification-bin/key-shift-tests-second",
+        "sha256": "26ea8ab4997d010b6187247bff18f646a4a98f17ccd90affa43e9b3d1d778f85",
+        "compileLogSha256": "6e68484a8c6e1119962919858df92a5cc2572a35b1c543473da47a76ad87b03d"
+      },
+      "inventorySha256": "a75ebb3e69d4d21da8151856cd2482bba2e3ed8f48bd9b856241a31aed320b1d",
+      "tests": {
+        "core": {
+          "path": "target/app-backlog/key-shift-second-core.log",
+          "sha256": "a32098aa0f6288023a231f410ea4a74c8b93edd6415e3de3f7f5ab6eee934729",
+          "outcome": "ok",
+          "passed": 7,
+          "failed": 0,
+          "ignored": 0,
+          "filtered": 2067,
+          "seconds": 41.09
+        },
+        "native": {
+          "path": "target/app-backlog/key-shift-second-native.log",
+          "sha256": "9137d813471266d9858bf7956b7f984afcde881e48f814274ac81b0899e80b6c",
+          "outcome": "ok",
+          "passed": 3,
+          "failed": 0,
+          "ignored": 0,
+          "filtered": 2071,
+          "seconds": 0.89
+        },
+        "project": {
+          "path": "target/app-backlog/key-shift-second-project.log",
+          "sha256": "d7983ef2a0c69e57114eb472ebafd2f593aa06b85952eb0db1e58d2391f1ff10",
+          "outcome": "ok",
+          "passed": 1,
+          "failed": 0,
+          "ignored": 0,
+          "filtered": 2073,
+          "seconds": 0.34
+        },
+        "keylock": {
+          "path": "target/app-backlog/key-shift-second-keylock.log",
+          "sha256": "4a7c930b28fb613d97ef77a5c118e2f5b1ec81aabe4a8c0d737a5b51aef9a4ef",
+          "outcome": "ok",
+          "passed": 17,
+          "failed": 0,
+          "ignored": 0,
+          "filtered": 2057,
+          "seconds": 33.92
+        },
+        "beat-jump": {
+          "path": "target/app-backlog/key-shift-second-beat-jump.log",
+          "sha256": "8b9ec1f3538b2819deec9fd20b58df0065c8beb939ca0a34beff14e7b5fb0804",
+          "outcome": "ok",
+          "passed": 2,
+          "failed": 0,
+          "ignored": 0,
+          "filtered": 2072,
+          "seconds": 0.3
+        }
+      },
+      "reason": "All initial tuned 55/997 Hz, native, project and existing-renderer checks passed. Review added actual tempo endpoints through 192 kHz and 20 Hz coverage before full qualification."
+    },
+    "third": {
+      "binary": {
+        "compiledBinary": "/home/michael/Projects/omatainer-work/remaining-backlog/target/debug/deps/omatainer-700b0f43c8079203",
+        "privateBinary": "target/app-backlog/qualification-bin/key-shift-tests-third",
+        "sha256": "a349b8532dd91770dab6f375d68b706e5aa6751344abe4b1b7ae9e5e6de0d333",
+        "compileLogSha256": "808286bd293b01d0580c6f24975ac285451f435475e4c1d56b6be63ffc4515cd"
+      },
+      "inventorySha256": "ee47a5256f40dc8d9e47840612b5aeaff56d74ef0e83d54aa023940ac042abcb",
+      "core": {
+        "path": "target/app-backlog/key-shift-third-core.log",
+        "sha256": "ebf36560bae27a43d224d1060cb768823b1ca782f7f355b994aa5fa1995889df",
+        "outcome": "FAILED",
+        "passed": 6,
+        "failed": 2,
+        "ignored": 0,
+        "filtered": 2067,
+        "seconds": 22.99
+      },
+      "reason": "Six core checks passed; actual tempo fader stalled at 0.49999985 instead of 0.5, and -6 semitones with lock off at 0.84 tempo reduced the 20 Hz source fundamental to 0.0530702037 amplitude. Production now snaps only exact active shifted/unshifted boundaries or unity targets within the existing convergence tolerance and preserves at least a ±25 ms source-time alignment search. The final build retains the expanded assertions and original zero-offset/other-deck PCM checks."
+    }
+  },
+  "limits": "Linux ARM64 software qualification through actual OutputCallback/renderer PCM, native egui/AccessKit, real source catalog files and native .omat round trip. Original MIT stereo-linked WSOLA plus bounded resampling, no new dependency. Independent ±6-semitone offsets; exact loaded-version same-mode key matching enables key lock in one undoable edit. Nonzero shifts support forward tempo 0.5–1.5 intersected with locked tempo/pitch factor 0.5–1.5; scratch, reverse and out-of-range playback disclose bypass. Saved state 28 rejects older offset headers; unknown reopened catalog provenance refuses matching. Source-time grain search and lookahead scale with requested grain step and output/source rates; no universal 67 ms bound or converter latency claim. Twelve complete Float32 mix/transition WAVs are retained for listening; no human transparency judgment, live capture, new GUI or physical audio/MIDI device is claimed. Independent stage processes/session stay preserved.",
+  "releaseInstallation": {
+    "schema": 1,
+    "package": {
+      "path": "/home/michael/Projects/omatainer-work/hardware-resurrection/target/app-backlog/release-key-shift-qualified",
+      "manifestSha256": "61f5b52c064aad1a861d16c621d2d1f7bd569592e1cc42e8df39e06d4cdeaa4f",
+      "revision": "36af79349e515e571afb20a4427a144dc7b05161",
+      "version": "0.1.0+36af79349e51",
+      "executableSha256": "fee264b345ccdb01fe5363941be8b11172be0ee9e45a0eb0ace126a07725dc00"
+    },
+    "installed": {
+      "schema": 1,
+      "before": "a909c65735044ee6dd7bcc0a4dd99a033011fab0aba854633873e68f388f2e14",
+      "after": "fee264b345ccdb01fe5363941be8b11172be0ee9e45a0eb0ace126a07725dc00",
+      "installedAt": "2026-10-07T10:57:22.732Z"
+    },
+    "buildInfo": {
+      "arch": "aarch64",
+      "debug_assertions": false,
+      "os": "linux",
+      "pkg_version": "0.1.0",
+      "schema": 1
+    },
+    "applicationProcessesPreserved": [
+      {
+        "pid": 1649895,
+        "executable": "/home/michael/Projects/omatainer-work/hardware-resurrection/target/hardware/pioneer-apc/bin/omatainer",
+        "arguments": [
+          "/home/michael/Projects/omatainer-work/hardware-resurrection/target/hardware/pioneer-apc/bin/omatainer",
+          "--empty-once"
+        ],
+        "sha256": "646aa453a269d7c49feec0f5e88fcac94a030034f051468a82d2828ef05c4915"
+      },
+      {
+        "pid": 3973522,
+        "executable": "/home/michael/.local/bin/omatainer (deleted)",
+        "arguments": [
+          "/home/michael/.local/bin/omatainer",
+          "ctl",
+          "follow"
+        ],
+        "sha256": "23f88a47125de6eb19a7921d64faef6dafed56d3c25debdb89ac04d060d9b2e4"
+      }
+    ],
+    "protectedSessionPreserved": {
+      "path": "/home/michael/Projects/omatainer-work/hardware-resurrection/target/hardware/apc-restart-20261006/session.omat",
+      "sha256": "96e0b2495cdbdc549c324ecf8337fdef5590bdcbfe8916e4f014eb05d1ee827d",
+      "bytes": 162882871
+    },
+    "additionalProcessesAfterInstall": [],
+    "preinstallState": {
+      "master": 0.8188976645469666,
+      "playing": false,
+      "recording": false,
+      "decks": [
+        {
+          "title": "What More Can I Say",
+          "playing": false
+        },
+        {
+          "title": "Public Service Announcement",
+          "playing": false
+        }
+      ]
+    },
+    "postinstallState": {
+      "master": 0.8188976645469666,
+      "playing": false,
+      "recording": false,
+      "decks": [
+        {
+          "title": "What More Can I Say",
+          "playing": false
+        },
+        {
+          "title": "Public Service Announcement",
+          "playing": false
+        }
+      ]
+    },
+    "scope": "Default executable installed for next launch. Previously active independent private GUI and follower processes retained; no hardware device opened or live playback restarted. An unavailable live state is recorded when no GUI was present."
+  }
+}

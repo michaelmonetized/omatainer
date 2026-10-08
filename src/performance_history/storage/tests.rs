@@ -98,3 +98,21 @@ fn optional_edits_cancel_before_publication_but_essential_saves_continue() {
     assert!(result.is_err()); assert!(store.sessions[&set.id].entries.is_empty());
     assert_eq!(store.save(&set).unwrap(), Commit::Durable);
 }
+
+#[test]
+fn all_setlist_formats_publish_private_new_files_and_refuse_existing_symlinks() {
+    let files=Files::new();let store=Store::open(files.store()).unwrap();let mut set=session();
+    set.external(0,"Track, \"quoted\"".into(),"Guest".into()).unwrap();
+    let show=performance::Handle::default();let permit=show.optional_work().unwrap();
+    for format in [super::super::export::Format::Text,super::super::export::Format::Csv] {
+        let path=files.0.join(format.name());
+        assert_eq!(store.export_as(&set,&path,format,false,None,&permit).unwrap(),Commit::Durable);
+        let bytes=fs::read(&path).unwrap();assert_eq!(fs::metadata(&path).unwrap().permissions().mode() & 0o777,0o600);
+        assert!(store.export_as(&set,&path,format,false,None,&permit).is_err());assert_eq!(fs::read(&path).unwrap(),bytes);
+        let link=path.with_extension("symlink");std::os::unix::fs::symlink(&path,&link).unwrap();
+        assert!(store.export_as(&set,&link,format,false,None,&permit).is_err());assert_eq!(fs::read(&path).unwrap(),bytes);
+        assert!(store.export_as(&set,&files.store().join(format.name()),format,false,None,&permit).is_err());
+    }
+    let path=files.0.join("refused.m3u8");
+    assert!(store.export_as(&set,&path,super::super::export::Format::M3u8,true,Some(&crate::library::Catalog::default()),&permit).is_err());assert!(!path.exists());
+}

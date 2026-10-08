@@ -296,7 +296,7 @@ mod tests {
             old["profiles"]["Studio"]["library_layout"] = field;
             assert!(storage::decode(&serde_json::to_vec(&old).unwrap()).is_err());
         }
-        old["version"] = 15.into();
+        old["version"] = (crate::preferences::VERSION + 1).into();
         assert!(storage::decode(&serde_json::to_vec(&old).unwrap()).is_err());
     }
     #[test]

@@ -2,7 +2,7 @@ use super::*;
 use crate::sampler_bank::{Controls, PlayMode, Playback, resident};
 
 fn install(rt: &mut RtEngine, playback: Playback, cue: f64) -> Arc<Sample> {
-    let sample = Arc::new(Sample {
+    let sample = Arc::new(Sample { spectrum: None,
         name: "Cue ramp".into(),
         sr: 16_000,
         ch: 1,
@@ -248,6 +248,8 @@ fn learned_controller_slot_stop_survives_saturated_admission_and_performance_pro
                     deck: 0,
                     extra: 0,
                     relative: None,
+                    controls: None,
+                    pair_order: None,
                 },
             }],
         })

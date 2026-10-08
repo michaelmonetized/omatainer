@@ -88,7 +88,7 @@ fn compare(
 
 #[test]
 fn cached_pitch_is_bit_exact_to_legacy_waveforms_for_notes_tuning_and_rate_changes() {
-    for sr in [44_100.0, 48_000.0, 96_000.0] {
+    for sr in [8_000.0, 44_100.0, 48_000.0, 96_000.0, 192_000.0] {
         for kind in SynthInstrument::ALL {
             for note in [0, 12, 36, 57, 69, 84, 108, 127] {
                 let mut voice = Voice::new(sr, kind);
@@ -153,6 +153,35 @@ fn steady_voice_rendering_never_recomputes_pitch_and_frequency_matches_reference
                 "note={note} sr={sr}: {measured} != {expected} Hz"
             );
             assert_eq!(voice.pitch_updates, updates, "samples recomputed pitch");
+        }
+    }
+}
+
+#[test]
+fn shared_poly_filter_coefficients_preserve_independent_voices_envelopes_and_exact_pcm_without_heap_work() {
+    for sr in [8000.0,44100.0,192000.0] {
+        for kind in SynthInstrument::ALL {
+            let mut poly = Poly::new(sr,kind,32);
+            for (index,voice) in poly.voices.iter_mut().enumerate() {
+                voice.trig(48+(index%24) as u8,0.3+(index%5) as f32*0.1);
+                voice.clip_gain=0.2+(index%7) as f32*0.05;
+            }
+            let mut reference = poly.clone();
+            let counts = crate::engine::test_alloc::measure(|| {
+                for frame in 0..12000 {
+                    if frame==400 { for index in (0..32).step_by(2) {poly.voices[index].env.off();reference.voices[index].env.off();} }
+                    if frame==500 { assert!(poly.set_tuning_hz(432.0));assert!(reference.set_tuning_hz(432.0)); }
+                    if frame==780 {for index in 0..3 {poly.voices[index].trig(72+index as u8,0.7);reference.voices[index].trig(72+index as u8,0.7);} }
+                    let cutoff=if frame<3000 {kind.cutoff()} else {80.0+(frame%1000) as f32*17.0};
+                    poly.cutoff=cutoff;
+                    let expected=reference.voices.iter_mut().zip(&mut reference.filters).fold(0.0,|sum,(voice,filter)|sum+voice.tick(sr,cutoff,filter));
+                    assert_eq!(poly.tick(sr).to_bits(),expected.to_bits(),"sr={sr} kind={kind:?} frame={frame}");
+                    for (actual,prior) in poly.filters.iter().zip(&reference.filters) {
+                        assert_eq!(actual.ic1eq.to_bits(),prior.ic1eq.to_bits());assert_eq!(actual.ic2eq.to_bits(),prior.ic2eq.to_bits());
+                    }
+                }
+            });
+            assert_eq!(counts,crate::engine::test_alloc::Counts::default());
         }
     }
 }

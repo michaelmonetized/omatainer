@@ -128,3 +128,15 @@ fn simultaneous_end_and_edit_keep_the_first_boundary_action() {
     assert!(gui.worker().view().active.is_none(), "a later edit in the same frame must not replace End");
     assert!(gui.worker().view().selected.as_ref().unwrap().entries.iter().all(|e|e.played_override.is_none()));
 }
+
+#[test]
+fn native_history_selects_text_csv_and_requires_playlist_location_consent() {
+    let files=Files::new();let mut gui=Gui::new(&files);gui.click("Start session");gui.finish();
+    gui.text("External track title","Guest track");gui.text("External track artist","Guest artist");gui.click("Add external track");gui.finish();gui.click("End session");gui.finish();
+    for format in ["Text","CSV"] {
+        gui.click(format);let path=files.0.join(format);gui.text("History export destination",path.to_str().unwrap());gui.click("Export session");gui.finish();
+        assert!(gui.worker().view().receipt.as_ref().unwrap().applied);assert!(std::fs::read_to_string(path).unwrap().contains("Guest track"));
+    }
+    gui.click("M3U8 playlist");let path=files.0.join("refused.m3u8");gui.text("History export destination",path.to_str().unwrap());gui.click("Export session");gui.finish();assert!(!path.exists());assert!(gui.worker().view().receipt.as_ref().unwrap().message.contains("explicitly allow"));
+    gui.click("Allow file locations in this playlist");gui.click("Export session");gui.finish();assert!(!path.exists());assert!(gui.worker().view().receipt.as_ref().unwrap().message.contains("external or unresolved"));
+}

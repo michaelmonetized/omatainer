@@ -29,6 +29,7 @@ pub(crate) struct Shared {
     pub(crate) explicit: AtomicBool,
     pub(crate) probe: AtomicU32,
     generation: AtomicU64,
+    channels: AtomicU32,
     rate: AtomicU32,
     enabled: AtomicBool,
     pub(crate) fault: AtomicBool,
@@ -62,6 +63,7 @@ impl Default for Pipe {
                 explicit: AtomicBool::new(false),
                 probe: AtomicU32::new(0),
                 generation: AtomicU64::new(0),
+                channels: AtomicU32::new(0),
                 rate: AtomicU32::new(0),
                 enabled: AtomicBool::new(false),
                 fault: AtomicBool::new(false),
@@ -79,6 +81,8 @@ impl Default for Pipe {
     }
 }
 impl Pipe {
+    #[cfg(test)]
+    pub(crate) fn controlled_for_test(rate:u32)->Self {let pipe=Self::default();pipe.shared.rate.store(rate,Ordering::Release);pipe.shared.enabled.store(true,Ordering::Release);pipe}
     /// Prime a bounded input cushion.
     /// Takes the active output rate and actual block width; waits for two callback quanta without consuming or discarding source frames.
     pub(crate) fn begin_block(&mut self, rate: u32, frames: usize) {
@@ -107,6 +111,9 @@ impl Pipe {
             self.reader.started = true;
         }
     }
+    /// Read the active capture width.
+    /// Takes this pipe; returns physical channels in the current input callback.
+    pub(crate) fn channels(&self)->usize {self.shared.channels.load(Ordering::Acquire) as usize}
     /// Read the last input delivery result.
     /// Takes this renderer's pipe; returns whether the current frame belongs to a continuous active source.
     pub(crate) fn valid(&self) -> bool {
@@ -189,6 +196,7 @@ impl Pipe {
             self.shared.fault.store(true, Ordering::Release);
             return;
         }
+        self.shared.channels.store(channels as u32,Ordering::Release);
         let frames = data.len() / channels;
         if frames > CAPACITY / 3 {
             self.shared.fault.store(true, Ordering::Release);
@@ -340,10 +348,21 @@ where
 {
     let channels = usize::from(plan.channels);
     let fault = pipe.shared.clone();
-    device
+    #[cfg(target_os = "linux")]
+    super::super::cpu_budget::install()?;
+    #[cfg(target_os = "linux")]
+    let mut cpu_guard = super::super::cpu_budget::Guard::new();
+    super::super::scheduling::open(|| device
         .build_input_stream(
             plan.config(),
-            move |data: &[T], _| pipe.capture(data, channels, generation),
+            move |data: &[T], _| {
+                #[cfg(target_os = "linux")]
+                if cpu_guard.exceeded() {
+                    pipe.shared.fault.store(true, Ordering::Release);
+                    return;
+                }
+                pipe.capture(data, channels, generation);
+            },
             move |error| {
                 if error.kind() != cpal::ErrorKind::RealtimeDenied {
                     fault.fault.store(true, Ordering::Release);
@@ -351,7 +370,7 @@ where
             },
             None,
         )
-        .map_err(|error| error.to_string())
+        .map_err(|error| error.to_string()))
 }
 enum NativeInput {
     Alsa(cpal::Stream),
@@ -486,6 +505,9 @@ pub(crate) fn start(
     })?;
     Ok((handle, worker))
 }
+
+#[cfg(test)]
+mod monitor_tests;
 
 #[cfg(test)]
 mod tests {

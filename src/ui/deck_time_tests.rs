@@ -108,7 +108,7 @@ fn only_a_valid_containing_repeat_loop_suppresses_runout() {
 }
 
 fn source(sr: u32, seconds: usize) -> Arc<Sample> {
-    Arc::new(Sample {
+    Arc::new(Sample { spectrum: None,
         name: "Runout reference".into(),
         sr,
         ch: 1,
@@ -224,7 +224,7 @@ fn real_renderer_snapshot_tracks_media_output_rates_sync_smoothing_pause_and_loo
 
 struct Gui {
     app: App,
-    rt: RtEngine,
+    rt: Box<RtEngine>,
     ctx: egui::Context,
     time: f64,
 }
@@ -233,7 +233,7 @@ impl Gui {
         let (engine, rt) = Engine::headless_for_test(48_000, 80);
         Self {
             app: App::with_loader(engine, Theme::default(), None),
-            rt,
+            rt: Box::new(rt),
             ctx: egui::Context::default(),
             time: 0.0,
         }

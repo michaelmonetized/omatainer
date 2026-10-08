@@ -11,6 +11,8 @@ impl RtEngine {
         if !seconds.is_finite() || !(0.0..=86400.0).contains(&seconds) {
             return;
         }
+        self.scenes.cancel();
+        self.navigation.cancel();
         self.finish_recording_all();
         self.recording = false;
         self.compose_target = None;
@@ -23,13 +25,17 @@ impl RtEngine {
             .map_or(seconds * f64::from(self.bpm) / 60.0, |map| {
                 map.beat_at_seconds(seconds)
             });
+        self.clock_input.rebase(beat-self.precise_midi_beat());
         self.beat = beat;
         self.midi_beat = beat;
         self.midi_beat_reference = beat;
         self.beat_roundoff = 0.0;
+        self.mapped_clock = None;
+        self.arrangement.reset(beat);
         self.timeline_anchor = seconds;
         self.timeline_frames = 0;
         for (slot, track) in self.tracks.iter_mut().enumerate() {
+            track.launch.seek();
             self.midi_routing.clear_clip(slot as u8);
             track.release_clip_notes();
             track.drum_pos.fill(None);

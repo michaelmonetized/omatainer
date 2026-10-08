@@ -491,7 +491,7 @@ fn retire_destination_and_create_replacement(gui: &mut Gui, track: usize) {
         &gui.rt.session, gui.app.engine.undo.checkpoint().epoch,
         Edit::Delete { axis: Axis::Track, id },
     ).unwrap();
-    gui.app.engine.send(Command::SessionEdit(request)).unwrap();
+    gui.app.engine.send(Command::session_edit(request)).unwrap();
     gui.frame(vec![]);
     assert_eq!(ack.state(), crate::engine::midi_edit::Outcome::Applied);
     gui.frame(vec![]);

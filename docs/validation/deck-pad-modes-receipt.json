@@ -1,0 +1,1354 @@
+{
+  "schema": 1,
+  "platform": "Linux ARM64; actual native renderer, command admission, egui/AccessKit/touch, synthetic production MIDI worker and real storage files",
+  "sourceFiles": {
+    "src/engine/control.rs": "bdbae071693438f491cf0dc2185cf6f9adf06c17043e4a231e6207b64c187fbb",
+    "src/engine/deck_controls.rs": "97e4267646094f508fe5fe90174169d356b67becad0fdd02a4321ab0c9f42187",
+    "src/engine/deck_controls/quantization.rs": "3a5485fbfd3dc8d04b862aad4532c8ddee3e98587e535b2186a6874e574a4af8",
+    "src/engine/deck_pads.rs": "cb79532d07b15d9237ecb022ba06fb026d4c3eb8390b182ef1fdef841c78e444",
+    "src/engine/deck_pads/runtime.rs": "8436e3b6e883558d1c236ee96bf01bfdc3d927f237b76196e54c69e3bee4d378",
+    "src/engine/deck_pads/tests.rs": "9c53e0e360c457b7cf5c25afd7bb8098aedefbc80000e1c462130c71055e3b5e",
+    "src/engine/midi.rs": "e0634ef98a50ae1f64dd26223af13ed2f144a0ca690db92cb5cb45f5d154ae89",
+    "src/engine/midi/handoff.rs": "cbcd8f208f4c2efe94d420938d50053aaa671f9308206ace17b9bcfd59ba6b45",
+    "src/engine/midi/handoff/tests.rs": "651d21fb96af60f556b06e4991463c0ba95a829391feeaa178d005d3fa68949e",
+    "src/engine/midi/learn.rs": "22cd54a31006276a6163277c66edf0bb3d21231dab55f4dbdc8657a1ca6a7971",
+    "src/engine/midi/presets.rs": "37879a6fc7297401e5eec3640682ada87c6811c726d58543e7b2cc2dbaf3ce55",
+    "src/engine/midi/profile.rs": "5ffae5d391824cff3903480ad20d4587693382f38ee63b9c56a64be6a734f504",
+    "src/engine/midi/profile_tests.rs": "8ec626a13f5e54f6b427500da0d8107716c64cb354978d7ce6e5b43c1e4a4a00",
+    "src/engine/midi/surface.rs": "5f9a2cd89d109819be9bbdae0b97f0a78a81a3a9fe686ac3e7b065bd360b1f97",
+    "src/engine/midi/surface/sp1.rs": "e73cd89ff283beb93355555c45546de5526b56a6335d06a93a9d6d4c5d906180",
+    "src/engine/midi/surface_tests.rs": "1cb15c025564d178ed752da530933e720a4672ab0af0da8dcfa64e60ba17890b",
+    "src/engine/mod.rs": "6bbb7aa84f65eeab794ece50872364282dfa400cef4d2e6331689705181e48f8",
+    "src/engine/performance.rs": "8ff45affc73921d77d6787343dc55a4f9a04c466b42ac4239cf63eada685c330",
+    "src/engine/saved_loops/tests.rs": "8b797c4cea07f45383b08b302291bbc590ddc431a5b2c18f6409b8b36f92ca04",
+    "src/engine/surface_controls.rs": "1027699553d01e03fbc2d87f161359ae5719e98db8acaf9e28996838ef160d11",
+    "src/preferences/mod.rs": "97f1e04a2bdeedde46561336f8b86221a4e3873eb7fc5376aa40a92f36c83e4c",
+    "src/preferences/storage.rs": "2e6f6594b5a0f9f30348e996670b16ac5ff2c4ef7dc8cfe5f1b7a466ea16d6c2",
+    "src/preferences/worker/midi_presets_tests.rs": "077cd78657221f5387570c478184edf45bb1653b23e0bb6832e0d78f6458a52a",
+    "src/ui.rs": "e19743f16620d12d17db49a2791f07662dce2a7d9d40523b2e0b2248b3022267",
+    "src/ui/deck_pads.rs": "5288ae462696138cf9020ec6e24c1ca5810216257344900dcb92f2394e3170d9",
+    "src/ui/deck_pads/tests.rs": "447aef5eeba257abcb44a7f8d878f3d74c03a0c0911e16fa46bb943602343dd0",
+    "src/ui/help/catalogue.rs": "f3843d029d6cafd9dc6e0647bff6eefb9c6625d1c54f39b068811ad461286a7c",
+    "src/ui/midi_learn.rs": "b181d667bf11a5af6ca2baf480ebba4319e1c8f76f5e0759b7884f25474d1ec9",
+    "src/ui/touch.rs": "153a5833ceb5b34b06f707a2f32dfec10e061afb500542739041fe4d84f81767",
+    "src/ui/touch/tests.rs": "c732f722000980fe296aa4afc0c39041ce801d653af57b1d075d5d0b3a94146c"
+  },
+  "testBinary": {
+    "path": "target/app-backlog/qualification-bin/deck-pads-tests-seventh",
+    "sha256": "92c63252b8aaecea244b41df3dee1fd5d1d2ed29021c5dd8d77b6f5780efad42"
+  },
+  "compiledInventory": {
+    "path": "target/app-backlog/deck-pads-seventh-compiled-source-inventory.json",
+    "sha256": "25060576fd4bb86e4644057d7fb1b6d16be5852ec8f8b857601e5ad2d6b5a940",
+    "baseRevision": "c4b982f8e85abb85e1cfb83d69f9fce5cf9dc495",
+    "files": 753
+  },
+  "embeddedInputs": {
+    "schema": 1,
+    "baselineRevision": "c4b982f8e85abb85e1cfb83d69f9fce5cf9dc495",
+    "embeddedInputs": {
+      "README.md": "abab5cb8b9a15a180652402e983142ce2a3baf21f5272fe1c4e9079a5083143f",
+      "licenses/manifest.json": "d3f5ac3fc7d0da10bcde6cdefa35cd653d2d7b6ffe707660d4b5abd02acc8151",
+      "licenses/notices.json": "b15a146c83e362b540c860ae618b80f9ee0150cd9d8d41683a5d3d3fcb85c244"
+    }
+  },
+  "tests": {
+    "saved-loops": {
+      "path": "target/app-backlog/deck-pads-seventh-saved-loops-tests.log",
+      "sha256": "3f3df68d3552acfb0c30c6b06845f9bb1405a966ad632aa64e5dc1520e50df97",
+      "outcome": "ok",
+      "passed": 5,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 1997,
+      "seconds": 3.85
+    },
+    "core": {
+      "path": "target/app-backlog/deck-pads-seventh-core-tests.log",
+      "sha256": "6ba84def369b70a5615c3b0f8db1af8bf0a816852b7a2180045d40d05f71685a",
+      "outcome": "ok",
+      "passed": 7,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 1995,
+      "seconds": 0.86
+    },
+    "native": {
+      "path": "target/app-backlog/deck-pads-seventh-native-tests.log",
+      "sha256": "e1dfeddfdc5b4970918aa8c9dc44f303c9e43bfa0404dd60a878a885cfb83c8d",
+      "outcome": "ok",
+      "passed": 3,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 1999,
+      "seconds": 0.51
+    },
+    "native-touch": {
+      "path": "target/app-backlog/deck-pads-seventh-native-touch-tests.log",
+      "sha256": "8ce58387b6629c82cc9d20fc1bd105c847e3fce5e0e2d2dd857a4c9cad972f1e",
+      "outcome": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2001,
+      "seconds": 0.14
+    },
+    "midi-pad": {
+      "path": "target/app-backlog/deck-pads-seventh-midi-pad-tests.log",
+      "sha256": "b501007650421849516a88ca08f72f87ad8248d5a1d11f1859b38ffaff929c8a",
+      "outcome": "ok",
+      "passed": 3,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 1999,
+      "seconds": 0.35
+    },
+    "preset": {
+      "path": "target/app-backlog/deck-pads-seventh-preset-tests.log",
+      "sha256": "70bf02f854312630d3f2540f8f2b67ce928f5aa78dace11152154e4cd9601fce",
+      "outcome": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2001,
+      "seconds": 0.01
+    },
+    "manual": {
+      "path": "target/app-backlog/deck-pads-seventh-manual-tests.log",
+      "sha256": "22de132c3a2b4a7b4a19bb41ddd20d8db120d15c55f9b2046ba6088e790eb5ca",
+      "outcome": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2001,
+      "seconds": 0
+    },
+    "touch": {
+      "path": "target/app-backlog/deck-pads-seventh-touch-tests.log",
+      "sha256": "217b0f5c4684fd3b03d61c29c8f8e5505370fe885baa8b91d7dbdb9e7547ce40",
+      "outcome": "ok",
+      "passed": 12,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 1990,
+      "seconds": 1.41
+    },
+    "cue-editor": {
+      "path": "target/app-backlog/deck-pads-seventh-cue-editor-tests.log",
+      "sha256": "5ed1ce61566df933de317341953f435a5c192605587f2bb0a4fd50d63c4da1f1",
+      "outcome": "ok",
+      "passed": 5,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 1997,
+      "seconds": 2.02
+    },
+    "help": {
+      "path": "target/app-backlog/deck-pads-seventh-help-tests.log",
+      "sha256": "eef1972bed28fe7d415de9fdb4473489076e9af1b35fbf807293f86f789a6ec3",
+      "outcome": "ok",
+      "passed": 14,
+      "failed": 0,
+      "ignored": 1,
+      "filtered": 1987,
+      "seconds": 2.86
+    },
+    "learn-ui": {
+      "path": "target/app-backlog/deck-pads-seventh-learn-ui-tests.log",
+      "sha256": "626479cd4429d18256c06782b35b6cf281abef27da6ab2024f3bc2b381610187",
+      "outcome": "ok",
+      "passed": 5,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 1997,
+      "seconds": 1.29
+    },
+    "keyboard": {
+      "path": "target/app-backlog/deck-pads-seventh-keyboard-tests.log",
+      "sha256": "f217c416ca2b19ec23baaacd51d5e6d33f8028adf4daa8c833fe8bf5a9cb28d3",
+      "outcome": "ok",
+      "passed": 11,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 1991,
+      "seconds": 2.6
+    },
+    "accessibility": {
+      "path": "target/app-backlog/deck-pads-seventh-accessibility-tests.log",
+      "sha256": "e6ee983a658d615bb4afa40185edf1e76e96e7030a658a60ee42f76204d8f717",
+      "outcome": "ok",
+      "passed": 17,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 1985,
+      "seconds": 4.49
+    },
+    "loop-controls": {
+      "path": "target/app-backlog/deck-pads-seventh-loop-controls-tests.log",
+      "sha256": "7410e6a4b5fb2e8cf6f4f5115be83e579d0a38954a7ae3fd966fe03d47f99221",
+      "outcome": "ok",
+      "passed": 26,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 1976,
+      "seconds": 22.42
+    },
+    "native-loop": {
+      "path": "target/app-backlog/deck-pads-seventh-native-loop-tests.log",
+      "sha256": "864225b9cef169d91bbbde43b4e3d596db0bc3a4e5d313f6e4ac1662124e3ffe",
+      "outcome": "ok",
+      "passed": 3,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 1999,
+      "seconds": 0.53
+    },
+    "project": {
+      "path": "target/app-backlog/deck-pads-seventh-project-tests.log",
+      "sha256": "78af28803018266f00b5fe683aa257c353bb48868ba0e24d884d4ad7e196bd8c",
+      "outcome": "ok",
+      "passed": 55,
+      "failed": 0,
+      "ignored": 1,
+      "filtered": 1946,
+      "seconds": 12.81
+    },
+    "scenes": {
+      "path": "target/app-backlog/deck-pads-seventh-scenes-tests.log",
+      "sha256": "ae1d1cb6c213ca2378b9066a72621af80b892aaa78b275a52105d987ff9bfc5d",
+      "outcome": "ok",
+      "passed": 10,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 1992,
+      "seconds": 1.5
+    },
+    "midi": {
+      "path": "target/app-backlog/deck-pads-seventh-midi-tests.log",
+      "sha256": "e759ab32f5463d79b639d9f29677c35803e8b9c85342ede7fde7ef710f860e94",
+      "outcome": "ok",
+      "passed": 201,
+      "failed": 0,
+      "ignored": 2,
+      "filtered": 1799,
+      "seconds": 48.77
+    },
+    "preferences": {
+      "path": "target/app-backlog/deck-pads-seventh-preferences-tests.log",
+      "sha256": "6996ebad5ab9bb55a4e9dd72d04dc34417689956919c821ffeb13ea0dc7d21b5",
+      "outcome": "ok",
+      "passed": 52,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 1950,
+      "seconds": 5.76
+    },
+    "full": {
+      "path": "target/app-backlog/deck-pads-seventh-full-tests.log",
+      "sha256": "0da321a9d7dabb268ae1735384d8a2665541b88a6566180101e54e8473c3ca3d",
+      "outcome": "ok",
+      "passed": 1958,
+      "failed": 0,
+      "ignored": 44,
+      "filtered": 0,
+      "seconds": 498.6
+    }
+  },
+  "node": {
+    "path": "target/app-backlog/deck-pads-seventh-node-tests.log",
+    "sha256": "4b30ebc00946def969bd5db18943caa8b40ad680f281837984254ac50bb3dcb1",
+    "passed": 15,
+    "failed": 0
+  },
+  "clockLoadRegression": {
+    "regression": {
+      "path": "target/app-backlog/deck-pads-seventh-regression-output-timing.json",
+      "sha256": "6fa799cfc013f74f23d8b29decae47cb1928535a7da9e273430ce504e4b5be98",
+      "physical_devices_opened": false,
+      "real_decode_egui_iterations": 5099,
+      "schema": 1,
+      "tempos": [
+        {
+          "bpm": 40,
+          "clocks": 24,
+          "delay_ns": [
+            90784,
+            40873,
+            38755,
+            53178,
+            71976,
+            70399,
+            110322,
+            47953,
+            28251,
+            78716,
+            27514,
+            128729,
+            37152,
+            42742,
+            84665,
+            135463,
+            22094,
+            14392,
+            135482,
+            82322,
+            65995,
+            87543,
+            5382,
+            52972
+          ],
+          "max_delay_ns": 135482
+        },
+        {
+          "bpm": 73,
+          "clocks": 24,
+          "delay_ns": [
+            44117,
+            154368,
+            93702,
+            44577,
+            101286,
+            101620,
+            90038,
+            49997,
+            111748,
+            101207,
+            9790,
+            35833,
+            113417,
+            56417,
+            108918,
+            29293,
+            103420,
+            67587,
+            122338,
+            120921,
+            135880,
+            116381,
+            9589,
+            22257
+          ],
+          "max_delay_ns": 154368
+        },
+        {
+          "bpm": 120,
+          "clocks": 24,
+          "delay_ns": [
+            109534,
+            43994,
+            36247,
+            121707,
+            122209,
+            91462,
+            17588,
+            48590,
+            60510,
+            135136,
+            82514,
+            108225,
+            151393,
+            112437,
+            33147,
+            61774,
+            75901,
+            76320,
+            112072,
+            52033,
+            71202,
+            140329,
+            63122,
+            118750
+          ],
+          "max_delay_ns": 151393
+        },
+        {
+          "bpm": 137,
+          "clocks": 24,
+          "delay_ns": [
+            149326,
+            78145,
+            64006,
+            148285,
+            36146,
+            81716,
+            56243,
+            34438,
+            95966,
+            132953,
+            120481,
+            138176,
+            56037,
+            169733,
+            107135,
+            81955,
+            134858,
+            51052,
+            145414,
+            7025,
+            35261,
+            101040,
+            40109,
+            12387
+          ],
+          "max_delay_ns": 169733
+        },
+        {
+          "bpm": 180,
+          "clocks": 24,
+          "delay_ns": [
+            149701,
+            107161,
+            8787,
+            129414,
+            58664,
+            31249,
+            61834,
+            25586,
+            68337,
+            13504,
+            129465,
+            139509,
+            81885,
+            100302,
+            58220,
+            82139,
+            9015,
+            71183,
+            137851,
+            122103,
+            56646,
+            133815,
+            105023,
+            92275
+          ],
+          "max_delay_ns": 149701
+        },
+        {
+          "bpm": 240,
+          "clocks": 24,
+          "delay_ns": [
+            15450,
+            120848,
+            26161,
+            63599,
+            39830,
+            154227,
+            87957,
+            11354,
+            17042,
+            9480,
+            65211,
+            63816,
+            50880,
+            103486,
+            40965,
+            28320,
+            50926,
+            30739,
+            25136,
+            104575,
+            97514,
+            41660,
+            89224,
+            26954
+          ],
+          "max_delay_ns": 154227
+        }
+      ]
+    },
+    "full": {
+      "path": "target/app-backlog/deck-pads-seventh-full-output-timing.json",
+      "sha256": "2a3d9dd813cdb0a23cd758f71cb5433a9755a8f9e9d2fc96d686cc1221ae7da3",
+      "physical_devices_opened": false,
+      "real_decode_egui_iterations": 5224,
+      "schema": 1,
+      "tempos": [
+        {
+          "bpm": 40,
+          "clocks": 24,
+          "delay_ns": [
+            77576,
+            86917,
+            95799,
+            50057,
+            148898,
+            30155,
+            154997,
+            99129,
+            73553,
+            101603,
+            64818,
+            26034,
+            60500,
+            123883,
+            20390,
+            30439,
+            9822,
+            38705,
+            63212,
+            3345,
+            114061,
+            149569,
+            40076,
+            126751
+          ],
+          "max_delay_ns": 154997
+        },
+        {
+          "bpm": 73,
+          "clocks": 24,
+          "delay_ns": [
+            40659,
+            62077,
+            25829,
+            92455,
+            10248,
+            106791,
+            126710,
+            11794,
+            97629,
+            86964,
+            55923,
+            36008,
+            40468,
+            40385,
+            116762,
+            72221,
+            118681,
+            158224,
+            45142,
+            152560,
+            57019,
+            56520,
+            140272,
+            75731
+          ],
+          "max_delay_ns": 158224
+        },
+        {
+          "bpm": 120,
+          "clocks": 24,
+          "delay_ns": [
+            138827,
+            31454,
+            132708,
+            46001,
+            95587,
+            40506,
+            73758,
+            133553,
+            63347,
+            69349,
+            13185,
+            66522,
+            40232,
+            59651,
+            104571,
+            89365,
+            163160,
+            121454,
+            90581,
+            147875,
+            81545,
+            29421,
+            40007,
+            13427
+          ],
+          "max_delay_ns": 163160
+        },
+        {
+          "bpm": 137,
+          "clocks": 24,
+          "delay_ns": [
+            73909,
+            109479,
+            136841,
+            121203,
+            41148,
+            150552,
+            30454,
+            29899,
+            47511,
+            130457,
+            11193,
+            144305,
+            118459,
+            31279,
+            108557,
+            87294,
+            112614,
+            70809,
+            55254,
+            76199,
+            153936,
+            35881,
+            112410,
+            108562
+          ],
+          "max_delay_ns": 153936
+        },
+        {
+          "bpm": 180,
+          "clocks": 24,
+          "delay_ns": [
+            32950,
+            48536,
+            60580,
+            141873,
+            26707,
+            90335,
+            70753,
+            23713,
+            66881,
+            77758,
+            117635,
+            150345,
+            79388,
+            137015,
+            135767,
+            42643,
+            55353,
+            44563,
+            82689,
+            91192,
+            67735,
+            95404,
+            134822,
+            143449
+          ],
+          "max_delay_ns": 150345
+        },
+        {
+          "bpm": 240,
+          "clocks": 24,
+          "delay_ns": [
+            141827,
+            88599,
+            152038,
+            32892,
+            92541,
+            30312,
+            89501,
+            69148,
+            67087,
+            148026,
+            84381,
+            119695,
+            4800,
+            22531,
+            124678,
+            4741,
+            154390,
+            61452,
+            97974,
+            136289,
+            123227,
+            42957,
+            90605,
+            147627
+          ],
+          "max_delay_ns": 154390
+        }
+      ]
+    }
+  },
+  "retainedPreliminaryResults": {
+    "reason": "Initial check found a snapshot field typo; the second found test-only private renderer access and incorrect preference-storage arguments. The final check compiled. First native release assertion used a stale published snapshot; the retained debugger proves all thirty renderer hold counts were zero. The cue regression caught omitted cue time/color descriptions, which now use the original cue description and help route. The manual was regenerated. Second focused qualification passed all fourteen then-existing feature checks. Subsequent review added fresh-key-only keyboard handling and normalized learned SP1 physical keys through manufacturer mode/deck-layer changes. The augmented keyboard block was initially placed in the wrong fixture; its retained third failure and final move remain recorded. Fourth qualification passed all fifteen feature checks plus native, accessibility, loop, scene and project regressions. Broad MIDI qualification found three legacy fixtures: one still expected the former direct HotCue command, and two repeated nonholding pad presses without physical releases. Final fixtures expect the shared captured command and send complete Note On/Off taps, preserving duplicate/held-key suppression in production. Fifth complete qualification passed 1957 checks and found one outdated saved-loop fixture asserting preset version 4 after the new version 5 schema. Final assertions use current preset 5/preferences 23 and verify version 4 saved-loop definitions retain their header and apply the same saved-loop bindings; older action injection refusal remains checked. A sixth compile was deliberately stopped before qualification when source review found the added compatibility assertion incorrectly expected decoding to rewrite an older portable header. The final fixture checks preserved version 4, identical bindings and the actual target application; the interrupted compile and frozen input hashes are retained. The seventh compile completed, but its first retention helper still named the fifth private executable and refused overwriting it. The corrected helper retained this newly compiled executable under its own seventh path before any qualification.",
+    "checks": [
+      {
+        "path": "target/app-backlog/deck-pad-first-check.log",
+        "sha256": "5b88c2615cb8df4bc9731d48b18adc7be8d6aaea81ac9e706e8d8f31f49e7754"
+      },
+      {
+        "path": "target/app-backlog/deck-pad-second-check.log",
+        "sha256": "1d498e23a72dbeb8108087b4170e0439cfe2ebce7e7605029b0478fa028b6cdf"
+      },
+      {
+        "path": "target/app-backlog/deck-pad-third-check.log",
+        "sha256": "74626b861c2971fc1425dbf91911244d96d36c7aefa2ad87b587016563d6c94c"
+      }
+    ],
+    "debugger": {
+      "path": "target/app-backlog/deck-pads-first-native-release-fields.log",
+      "sha256": "97189b8eaf162032ff30e41f452ad041d8161cc91fb58ea7a91ce5e2b25beedd"
+    },
+    "builds": [
+      {
+        "name": "first",
+        "compiledBinary": "/home/michael/Projects/omatainer-work/remaining-backlog/target/debug/deps/omatainer-700b0f43c8079203",
+        "privateBinary": "target/app-backlog/qualification-bin/deck-pads-tests-first",
+        "sha256": "05a4c5cc575e3fe21ac2fa13db3e9a0e310ed6f1d4c8cb30447779bd8392dd9e",
+        "compileLogSha256": "be1984a76902953346c2c8436620915a283d5fa902e05eb0de6eba9bf837c196",
+        "sourceInventorySha256": "0b59b8db1eb3325ee556190a71622d7d925b9774a711ac438313676ac6b3dfa6"
+      },
+      {
+        "name": "second",
+        "compiledBinary": "/home/michael/Projects/omatainer-work/remaining-backlog/target/debug/deps/omatainer-700b0f43c8079203",
+        "privateBinary": "target/app-backlog/qualification-bin/deck-pads-tests-second",
+        "sha256": "f4b2fb6c13849d96d48de3bd6051eb683e35100c62f6ac58996f4ef4f066e208",
+        "compileLogSha256": "ea0c3c87dcf4ea9c051bb9c8d10cac449b7d032bd6945fc3ff99d01a8245286a",
+        "sourceInventorySha256": "f9732b6dd11a94719d09b58b9e1b55d424e82ce9a564faa7afb9c0c9a8838c7a"
+      },
+      {
+        "name": "third",
+        "compiledBinary": "/home/michael/Projects/omatainer-work/remaining-backlog/target/debug/deps/omatainer-700b0f43c8079203",
+        "privateBinary": "target/app-backlog/qualification-bin/deck-pads-tests-third",
+        "sha256": "1392192a8f861a3cb71ab76dc0499c598474d262f9c7d2b5116b2798de34d88c",
+        "compileLogSha256": "8d4735b1118a809fc9c5dab095f08dd9600e58e5968f1bb9a3aee696c68e303e",
+        "sourceInventorySha256": "6aa6e62af804e7e9bd953f6e366c4c561f12d6842f4946848160dab54141dcb0"
+      },
+      {
+        "name": "fourth",
+        "compiledBinary": "/home/michael/Projects/omatainer-work/remaining-backlog/target/debug/deps/omatainer-700b0f43c8079203",
+        "privateBinary": "target/app-backlog/qualification-bin/deck-pads-tests-fourth",
+        "sha256": "d7f0c0d39101c5d5d13ffc39dc6227cf9ea92ea74e99e0726f0f2aaf75e4c3e6",
+        "compileLogSha256": "5e6451d00c0ac4c4b3c8565a66cb164d82ddd1443b40d97cb26c1eaf3a879c6d",
+        "sourceInventorySha256": "d5748685584e19ffe981a9f2bcf84e3467b57ffea79ea08803acdd8fb4946813"
+      },
+      {
+        "name": "fifth",
+        "compiledBinary": "/home/michael/Projects/omatainer-work/remaining-backlog/target/debug/deps/omatainer-700b0f43c8079203",
+        "privateBinary": "target/app-backlog/qualification-bin/deck-pads-tests-fifth",
+        "sha256": "316ce7e57e26408f636512ad8a99a306a75c72edf03f267fd07ce8e81692b693",
+        "compileLogSha256": "09e2613b9d08f9457758e7b0e74850368ac4a05c9deef54a84ac87f3188d2776",
+        "sourceInventorySha256": "fcdd9d08134095d2a73be006eac8c6fa6ec02f509a6c7ca12e40a8956ed84086"
+      }
+    ],
+    "tests": {
+      "first-core": {
+        "path": "target/app-backlog/deck-pads-first-core-tests.log",
+        "sha256": "337c79714ef0aee0b21ec79130d3cfbcc6dfed6503b455fee6a74a27afb2c123",
+        "outcome": "ok",
+        "passed": 7,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 1994,
+        "seconds": 0.86
+      },
+      "first-native": {
+        "path": "target/app-backlog/deck-pads-first-native-tests.log",
+        "sha256": "2c056fe58cbbb4b72a30fecee1f05e95a217e51c8555f1b3e4c768a57e9bc301",
+        "outcome": "FAILED",
+        "passed": 2,
+        "failed": 1,
+        "ignored": 0,
+        "filtered": 1998,
+        "seconds": 0.48
+      },
+      "first-midi-pad": {
+        "path": "target/app-backlog/deck-pads-first-midi-pad-tests.log",
+        "sha256": "ab53ed414e4d7b56dbc4ad78fe3803d1c0c9e67f2a56fd9dfcb2d8b7285acbc0",
+        "outcome": "ok",
+        "passed": 2,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 1999,
+        "seconds": 0.23
+      },
+      "first-preset": {
+        "path": "target/app-backlog/deck-pads-first-preset-tests.log",
+        "sha256": "153aaed25b063542ec8bd88919308fbc34afc6b6f423dba0fa33009a200a54d1",
+        "outcome": "ok",
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 2000,
+        "seconds": 0.01
+      },
+      "first-touch": {
+        "path": "target/app-backlog/deck-pads-first-touch-tests.log",
+        "sha256": "0f69d2e6e5de7fa143a2aadb4bb3d30f7d6ced46f90bb143406d41b1ebc013fd",
+        "outcome": "ok",
+        "passed": 12,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 1989,
+        "seconds": 1.42
+      },
+      "first-help": {
+        "path": "target/app-backlog/deck-pads-first-help-tests.log",
+        "sha256": "290cc96ad53d0bc2cb0c2f0ba7391046d6ca119947e93b7a56c98acc5187604b",
+        "outcome": "FAILED",
+        "passed": 13,
+        "failed": 1,
+        "ignored": 1,
+        "filtered": 1986,
+        "seconds": 2.97
+      },
+      "first-cue-editor": {
+        "path": "target/app-backlog/deck-pads-first-cue-editor-tests.log",
+        "sha256": "226a1fad1f58e1c517020d913bda0990b6bb4fda3e84051d72f03a4ba34ce511",
+        "outcome": "FAILED",
+        "passed": 4,
+        "failed": 1,
+        "ignored": 0,
+        "filtered": 1996,
+        "seconds": 1.94
+      },
+      "first-loop-controls": {
+        "path": "target/app-backlog/deck-pads-first-loop-controls-tests.log",
+        "sha256": "4f8c95075d90306b9b2df012a2d75947aba46de8342d4305190b9acd4c24e200",
+        "outcome": "ok",
+        "passed": 26,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 1975,
+        "seconds": 22.63
+      },
+      "second-core": {
+        "path": "target/app-backlog/deck-pads-second-core-tests.log",
+        "sha256": "3e258596894c067d574cd1cb778cc3e0c1f3d8041b52892716df0bf33ef6749d",
+        "outcome": "ok",
+        "passed": 7,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 1994,
+        "seconds": 0.79
+      },
+      "second-native": {
+        "path": "target/app-backlog/deck-pads-second-native-tests.log",
+        "sha256": "2ada28d45e305c0389a46699f31c97529cf1358860382d8567c4a7bfa529ff27",
+        "outcome": "ok",
+        "passed": 3,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 1998,
+        "seconds": 0.46
+      },
+      "second-native-touch": {
+        "path": "target/app-backlog/deck-pads-second-native-touch-tests.log",
+        "sha256": "0d1478f9d076505ca584ef21dbfed5031dbdb1bff4e8ccc0a0100b99a32b1e29",
+        "outcome": "ok",
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 2000,
+        "seconds": 0.14
+      },
+      "second-midi-pad": {
+        "path": "target/app-backlog/deck-pads-second-midi-pad-tests.log",
+        "sha256": "3bf1fdfd8c3cdd2ed7cad44fb74532bd9b152605bd3e169b71a8c8f236935a38",
+        "outcome": "ok",
+        "passed": 2,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 1999,
+        "seconds": 0.24
+      },
+      "second-preset": {
+        "path": "target/app-backlog/deck-pads-second-preset-tests.log",
+        "sha256": "153aaed25b063542ec8bd88919308fbc34afc6b6f423dba0fa33009a200a54d1",
+        "outcome": "ok",
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 2000,
+        "seconds": 0.01
+      },
+      "third-core": {
+        "path": "target/app-backlog/deck-pads-third-core-tests.log",
+        "sha256": "cf8ef31446c5fa0aacf7db267140556409ad74255619e34d4a0121ac0199c1e7",
+        "outcome": "ok",
+        "passed": 7,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 1995,
+        "seconds": 0.8
+      },
+      "third-native": {
+        "path": "target/app-backlog/deck-pads-third-native-tests.log",
+        "sha256": "78788541b0ed794d5d8fd83bb21019700e19d5be265a998d664802c1c6b26767",
+        "outcome": "FAILED",
+        "passed": 2,
+        "failed": 1,
+        "ignored": 0,
+        "filtered": 1999,
+        "seconds": 0.42
+      },
+      "third-midi-pad": {
+        "path": "target/app-backlog/deck-pads-third-midi-pad-tests.log",
+        "sha256": "b501007650421849516a88ca08f72f87ad8248d5a1d11f1859b38ffaff929c8a",
+        "outcome": "ok",
+        "passed": 3,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 1999,
+        "seconds": 0.35
+      },
+      "third-touch": {
+        "path": "target/app-backlog/deck-pads-third-touch-tests.log",
+        "sha256": "37f8934a7b3295ec0ace472bca220e4b0de9e751a4eade71e0863e045301a62c",
+        "outcome": "ok",
+        "passed": 12,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 1990,
+        "seconds": 1.48
+      },
+      "third-help": {
+        "path": "target/app-backlog/deck-pads-third-help-tests.log",
+        "sha256": "4a3c1ab715b81acef0bd38fabb67bb03f10cdcb3ade00116267ff3814b7988f9",
+        "outcome": "ok",
+        "passed": 14,
+        "failed": 0,
+        "ignored": 1,
+        "filtered": 1987,
+        "seconds": 2.85
+      },
+      "third-cue-editor": {
+        "path": "target/app-backlog/deck-pads-third-cue-editor-tests.log",
+        "sha256": "ac65580770fa99181ae43e0c2783d26acc6d12e99d39cf12d13368f92fb28b47",
+        "outcome": "ok",
+        "passed": 5,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 1997,
+        "seconds": 2.1
+      },
+      "fourth-core": {
+        "path": "target/app-backlog/deck-pads-fourth-core-tests.log",
+        "sha256": "7fb31f5f1a4c1b03a11d10b26b1566952c886a27756fce8df95ae9c58490fe93",
+        "outcome": "ok",
+        "passed": 7,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 1995,
+        "seconds": 0.78
+      },
+      "fourth-native": {
+        "path": "target/app-backlog/deck-pads-fourth-native-tests.log",
+        "sha256": "604f667e97f4741f9f27ca63e54a81a667ed02fc60c76a9c0db2b9fcd6389c2f",
+        "outcome": "ok",
+        "passed": 3,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 1999,
+        "seconds": 0.52
+      },
+      "fourth-native-touch": {
+        "path": "target/app-backlog/deck-pads-fourth-native-touch-tests.log",
+        "sha256": "8ce58387b6629c82cc9d20fc1bd105c847e3fce5e0e2d2dd857a4c9cad972f1e",
+        "outcome": "ok",
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 2001,
+        "seconds": 0.14
+      },
+      "fourth-midi-pad": {
+        "path": "target/app-backlog/deck-pads-fourth-midi-pad-tests.log",
+        "sha256": "5e8406f2b7737b18d44d079affaa45253f410fd848e5d4bbfa50801e3867de9e",
+        "outcome": "ok",
+        "passed": 3,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 1999,
+        "seconds": 0.36
+      },
+      "fourth-preset": {
+        "path": "target/app-backlog/deck-pads-fourth-preset-tests.log",
+        "sha256": "70bf02f854312630d3f2540f8f2b67ce928f5aa78dace11152154e4cd9601fce",
+        "outcome": "ok",
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 2001,
+        "seconds": 0.01
+      },
+      "fourth-manual": {
+        "path": "target/app-backlog/deck-pads-fourth-manual-tests.log",
+        "sha256": "22de132c3a2b4a7b4a19bb41ddd20d8db120d15c55f9b2046ba6088e790eb5ca",
+        "outcome": "ok",
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 2001,
+        "seconds": 0
+      },
+      "fourth-touch": {
+        "path": "target/app-backlog/deck-pads-fourth-touch-tests.log",
+        "sha256": "54f7e55265c25c2c5aa0d215da650cbbb049a27c51003d8aa678e52de3aed1e3",
+        "outcome": "ok",
+        "passed": 12,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 1990,
+        "seconds": 1.37
+      },
+      "fourth-cue-editor": {
+        "path": "target/app-backlog/deck-pads-fourth-cue-editor-tests.log",
+        "sha256": "10661996109e7a7b1a224748f0381e25ef8815ee8c720cee167fc50794331af3",
+        "outcome": "ok",
+        "passed": 5,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 1997,
+        "seconds": 1.95
+      },
+      "fourth-help": {
+        "path": "target/app-backlog/deck-pads-fourth-help-tests.log",
+        "sha256": "e7f39d7ad55e33fa52361f92e610d2e7c155b7f8b5d704151bca919cf6322f64",
+        "outcome": "ok",
+        "passed": 14,
+        "failed": 0,
+        "ignored": 1,
+        "filtered": 1987,
+        "seconds": 2.92
+      },
+      "fourth-learn-ui": {
+        "path": "target/app-backlog/deck-pads-fourth-learn-ui-tests.log",
+        "sha256": "0213120ccc97c8b9f596dd8f556f5d50823f26bd230430b9ea67c7936237d133",
+        "outcome": "ok",
+        "passed": 5,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 1997,
+        "seconds": 1.25
+      },
+      "fourth-keyboard": {
+        "path": "target/app-backlog/deck-pads-fourth-keyboard-tests.log",
+        "sha256": "357e1c649a222ce04c2f18b400d294ae7a4906b03e08d7228a0b65fde1b8f9b5",
+        "outcome": "ok",
+        "passed": 11,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 1991,
+        "seconds": 2.67
+      },
+      "fourth-accessibility": {
+        "path": "target/app-backlog/deck-pads-fourth-accessibility-tests.log",
+        "sha256": "cebe9780204bf0c67e77aaf42819b36f59347b24c51c0cad9ef9fd7fe5a72bdf",
+        "outcome": "ok",
+        "passed": 17,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 1985,
+        "seconds": 4.48
+      },
+      "fourth-loop-controls": {
+        "path": "target/app-backlog/deck-pads-fourth-loop-controls-tests.log",
+        "sha256": "71639b818bd143bbfe3bbebe009d857fd24c9bda92126f3e120d66a54b125ed5",
+        "outcome": "ok",
+        "passed": 26,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 1976,
+        "seconds": 22.69
+      },
+      "fourth-native-loop": {
+        "path": "target/app-backlog/deck-pads-fourth-native-loop-tests.log",
+        "sha256": "69b070cc92d8a7f5172699157f4be6433f72fb1e1114689255b277b84914b67e",
+        "outcome": "ok",
+        "passed": 3,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 1999,
+        "seconds": 0.58
+      },
+      "fourth-project": {
+        "path": "target/app-backlog/deck-pads-fourth-project-tests.log",
+        "sha256": "a8cbfdff577d9655e948101601f9f1732c407230a799cbdf80aa66308671f545",
+        "outcome": "ok",
+        "passed": 55,
+        "failed": 0,
+        "ignored": 1,
+        "filtered": 1946,
+        "seconds": 12.69
+      },
+      "fourth-scenes": {
+        "path": "target/app-backlog/deck-pads-fourth-scenes-tests.log",
+        "sha256": "2305c51cfb1e124f9926b6b19e916b34baa50b4d3a5b2fc52a7b5436966dada9",
+        "outcome": "ok",
+        "passed": 10,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 1992,
+        "seconds": 1.43
+      },
+      "fourth-midi": {
+        "path": "target/app-backlog/deck-pads-fourth-midi-tests.log",
+        "sha256": "d3b6215be4069deddf00df828876d9bd9e578181e5cdf7473ffb78aa981e5211",
+        "outcome": "FAILED",
+        "passed": 198,
+        "failed": 3,
+        "ignored": 2,
+        "filtered": 1799,
+        "seconds": 49.14
+      },
+      "fifth-core": {
+        "path": "target/app-backlog/deck-pads-fifth-core-tests.log",
+        "sha256": "0517d80a437a12a20181ac1406052de8d59a556969bc2a777498ecb496085f17",
+        "outcome": "ok",
+        "passed": 7,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 1995,
+        "seconds": 0.85
+      },
+      "fifth-native": {
+        "path": "target/app-backlog/deck-pads-fifth-native-tests.log",
+        "sha256": "604f667e97f4741f9f27ca63e54a81a667ed02fc60c76a9c0db2b9fcd6389c2f",
+        "outcome": "ok",
+        "passed": 3,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 1999,
+        "seconds": 0.52
+      },
+      "fifth-native-touch": {
+        "path": "target/app-backlog/deck-pads-fifth-native-touch-tests.log",
+        "sha256": "8ce58387b6629c82cc9d20fc1bd105c847e3fce5e0e2d2dd857a4c9cad972f1e",
+        "outcome": "ok",
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 2001,
+        "seconds": 0.14
+      },
+      "fifth-midi-pad": {
+        "path": "target/app-backlog/deck-pads-fifth-midi-pad-tests.log",
+        "sha256": "880d1e7829b89f15f6968d1950da5a8ae3358ae267deea528a5c6f7ae4f4ab71",
+        "outcome": "ok",
+        "passed": 3,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 1999,
+        "seconds": 0.37
+      },
+      "fifth-preset": {
+        "path": "target/app-backlog/deck-pads-fifth-preset-tests.log",
+        "sha256": "70bf02f854312630d3f2540f8f2b67ce928f5aa78dace11152154e4cd9601fce",
+        "outcome": "ok",
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 2001,
+        "seconds": 0.01
+      },
+      "fifth-manual": {
+        "path": "target/app-backlog/deck-pads-fifth-manual-tests.log",
+        "sha256": "22de132c3a2b4a7b4a19bb41ddd20d8db120d15c55f9b2046ba6088e790eb5ca",
+        "outcome": "ok",
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 2001,
+        "seconds": 0
+      },
+      "fifth-touch": {
+        "path": "target/app-backlog/deck-pads-fifth-touch-tests.log",
+        "sha256": "37f8934a7b3295ec0ace472bca220e4b0de9e751a4eade71e0863e045301a62c",
+        "outcome": "ok",
+        "passed": 12,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 1990,
+        "seconds": 1.48
+      },
+      "fifth-cue-editor": {
+        "path": "target/app-backlog/deck-pads-fifth-cue-editor-tests.log",
+        "sha256": "748f9bd1a8fd69e019afb82db974a094a8eb5970ebd62b04b6a3f34f300ad578",
+        "outcome": "ok",
+        "passed": 5,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 1997,
+        "seconds": 2.05
+      },
+      "fifth-help": {
+        "path": "target/app-backlog/deck-pads-fifth-help-tests.log",
+        "sha256": "05aae6e06fe72da0c9a8ef3cbf573f4415d025efd08084980b560086e588c72e",
+        "outcome": "ok",
+        "passed": 14,
+        "failed": 0,
+        "ignored": 1,
+        "filtered": 1987,
+        "seconds": 2.8
+      },
+      "fifth-learn-ui": {
+        "path": "target/app-backlog/deck-pads-fifth-learn-ui-tests.log",
+        "sha256": "758ec0d06aa253d33ca600570c6c186591351443010a5d5285679fd6a265629f",
+        "outcome": "ok",
+        "passed": 5,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 1997,
+        "seconds": 1.26
+      },
+      "fifth-keyboard": {
+        "path": "target/app-backlog/deck-pads-fifth-keyboard-tests.log",
+        "sha256": "c71f9967011bcaac24566e035569f2c9074daf933fc6a743e30d7e9a2030fdcb",
+        "outcome": "ok",
+        "passed": 11,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 1991,
+        "seconds": 2.66
+      },
+      "fifth-accessibility": {
+        "path": "target/app-backlog/deck-pads-fifth-accessibility-tests.log",
+        "sha256": "c38ed5e11c2b342325e76b8cf5835340f8622833f092724b9c3fb6f52a099ea1",
+        "outcome": "ok",
+        "passed": 17,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 1985,
+        "seconds": 4.38
+      },
+      "fifth-loop-controls": {
+        "path": "target/app-backlog/deck-pads-fifth-loop-controls-tests.log",
+        "sha256": "401042d7f144ed399d4d95d510542bda941cbfbb503848a3acd07fe3592c2675",
+        "outcome": "ok",
+        "passed": 26,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 1976,
+        "seconds": 22.79
+      },
+      "fifth-native-loop": {
+        "path": "target/app-backlog/deck-pads-fifth-native-loop-tests.log",
+        "sha256": "b41b065c462b9641e0b390308d55f1101364125281e0f030a505b240ed49a439",
+        "outcome": "ok",
+        "passed": 3,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 1999,
+        "seconds": 0.6
+      },
+      "fifth-project": {
+        "path": "target/app-backlog/deck-pads-fifth-project-tests.log",
+        "sha256": "0851e9576c76c9211142ff8f10bc6bd17eaf62b5ba64898630ac1738c90a0e83",
+        "outcome": "ok",
+        "passed": 55,
+        "failed": 0,
+        "ignored": 1,
+        "filtered": 1946,
+        "seconds": 12.48
+      },
+      "fifth-scenes": {
+        "path": "target/app-backlog/deck-pads-fifth-scenes-tests.log",
+        "sha256": "fe2eff8cc0b7fdec4adb906f3c154ce6ce09f00b897bb552458aa6afb14fc243",
+        "outcome": "ok",
+        "passed": 10,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 1992,
+        "seconds": 1.49
+      },
+      "fifth-midi": {
+        "path": "target/app-backlog/deck-pads-fifth-midi-tests.log",
+        "sha256": "c800b73ddcc3781c427888168326cda045737d0976e91581c1f8ec86ab481cd5",
+        "outcome": "ok",
+        "passed": 201,
+        "failed": 0,
+        "ignored": 2,
+        "filtered": 1799,
+        "seconds": 48.83
+      },
+      "fifth-preferences": {
+        "path": "target/app-backlog/deck-pads-fifth-preferences-tests.log",
+        "sha256": "ab441267bba5d9eeb4e8d322b5a1693755479facdf7eea2c29ef1be053de81ff",
+        "outcome": "ok",
+        "passed": 52,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 1950,
+        "seconds": 5.73
+      },
+      "fifth-full": {
+        "path": "target/app-backlog/deck-pads-fifth-full-tests.log",
+        "sha256": "9ba93017f2392ced12b2895b464061043debc566d01d2b22b5f14ca11fb3e689",
+        "outcome": "FAILED",
+        "passed": 1957,
+        "failed": 1,
+        "ignored": 44,
+        "filtered": 0,
+        "seconds": 496.64
+      }
+    },
+    "interruptedSixthCompile": {
+      "path": "target/app-backlog/deck-pads-sixth-compile.log",
+      "sha256": "4d651a6bdc3d647f967786712d4a941ae72211b17fe5cafabf0ff34b105edd90",
+      "sourceInventorySha256": "f4bfe37019e5b5d8ea843834bcfd973aee2323e48186f7c05d5df87fc79de7d9",
+      "exitCode": 143,
+      "qualified": false
+    }
+  },
+  "limits": "Linux ARM64 software qualification: eight per-deck modes and fixed slot IDs, current labels/colors and mode parameters; original source/key/deck action release through mode, learned profile and manufacturer pad-address/deck-layer changes; unrelated deck, ordinary control and source owner preservation; bounded reservations through a full command queue, safety and explicit recovery; mouse/keyboard/assistive/touch ownership and fresh-press-only keyboard behavior; actual native mode chooser, parameters, pad holds, cue descriptions and named saved slots; synthetic production MIDI workers including learned SP1 overrides; actual preset export/import and preference file reopening with strict legacy action/header refusal. The existing sampler preserves active voice bank ownership and its selected playback mode: Hold ends on release, while finite one-shots retain their normal tails. Pad mode selection starts at Hot Cue on a fresh app, and held input is never persisted. No physical audio/MIDI device opened, no live controller capture and no new physical acceptance claimed. The independent stage GUI and follower remain unchanged.",
+  "releaseInstallation": {
+    "schema": 1,
+    "package": {
+      "path": "/home/michael/Projects/omatainer-work/hardware-resurrection/target/app-backlog/release-deck-pads-qualified",
+      "manifestSha256": "1d8b08e605f2e3f8b05bab34a36c3ed7f4523588c18883b8c190637a214d1225",
+      "revision": "d98effa47ad520a229be3f204535364f22c323fb",
+      "version": "0.1.0+d98effa47ad5",
+      "executableSha256": "159c0d7e7c71ce67cf7c030bcc5c8921987ea01e3c6787f0dd4d7871ced70fd0"
+    },
+    "installed": {
+      "schema": 1,
+      "before": "dad7a0795626225ebdbb729c8e7b818e430adcaa3cd3bf34fb42d871f4d9eb37",
+      "after": "159c0d7e7c71ce67cf7c030bcc5c8921987ea01e3c6787f0dd4d7871ced70fd0",
+      "installedAt": "2026-10-07T04:18:28.772Z"
+    },
+    "buildInfo": {
+      "arch": "aarch64",
+      "debug_assertions": false,
+      "os": "linux",
+      "pkg_version": "0.1.0",
+      "schema": 1
+    },
+    "applicationProcessesPreserved": [
+      {
+        "pid": 1649895,
+        "executable": "/home/michael/Projects/omatainer-work/hardware-resurrection/target/hardware/pioneer-apc/bin/omatainer",
+        "arguments": [
+          "/home/michael/Projects/omatainer-work/hardware-resurrection/target/hardware/pioneer-apc/bin/omatainer",
+          "--empty-once"
+        ],
+        "sha256": "646aa453a269d7c49feec0f5e88fcac94a030034f051468a82d2828ef05c4915"
+      },
+      {
+        "pid": 3973522,
+        "executable": "/home/michael/.local/bin/omatainer (deleted)",
+        "arguments": [
+          "/home/michael/.local/bin/omatainer",
+          "ctl",
+          "follow"
+        ],
+        "sha256": "23f88a47125de6eb19a7921d64faef6dafed56d3c25debdb89ac04d060d9b2e4"
+      }
+    ],
+    "additionalProcessesAfterInstall": [],
+    "preinstallState": {
+      "master": 0.8188976645469666,
+      "playing": false,
+      "recording": false,
+      "decks": [
+        {
+          "title": "What More Can I Say",
+          "playing": false
+        },
+        {
+          "title": "Public Service Announcement",
+          "playing": false
+        }
+      ]
+    },
+    "postinstallState": {
+      "master": 0.8188976645469666,
+      "playing": false,
+      "recording": false,
+      "decks": [
+        {
+          "title": "What More Can I Say",
+          "playing": false
+        },
+        {
+          "title": "Public Service Announcement",
+          "playing": false
+        }
+      ]
+    },
+    "scope": "Default executable installed for next launch. Previously active independent private GUI and follower processes retained; no hardware device opened or live playback restarted. An unavailable live state is recorded when no GUI was present."
+  }
+}

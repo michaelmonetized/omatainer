@@ -31,9 +31,12 @@ fn prepared_native_timing_is_atomic_undoable_cancelled_and_namespace_qualified_w
     let notes = live.tracks[2].clips[0].notes.clone();
     let (request, ack) =
         Request::prepare_timing(captured(&live), Some(map.clone()), || false).unwrap();
+    live.configure_clock_input(crate::engine::midi::clock_input::Config{source:Some(71),..Default::default()});
+    assert!(live.clock_input.enabled());
     let counts = test_alloc::measure(|| live.apply(Command::MidiImport(request)));
     assert_eq!(counts, test_alloc::Counts::default());
     assert_eq!(ack.state(), Outcome::Applied);
+    assert!(!live.clock_input.enabled());
     assert_eq!(live.conductor.as_ref(), Some(&map));
     assert_eq!(live.tracks[2].clips[0].notes, notes);
     assert_eq!((&*live.tracks[2]) as *const _ as usize, node);
@@ -42,11 +45,13 @@ fn prepared_native_timing_is_atomic_undoable_cancelled_and_namespace_qualified_w
     live.apply(Command::Undo);
     assert_eq!(live.conductor.as_ref(), Some(&map));
     live.apply(Command::Stop);
+    live.configure_clock_input(crate::engine::midi::clock_input::Config{source:Some(71),..Default::default()});
     assert_eq!(
         test_alloc::measure(|| live.apply(Command::Undo)),
         test_alloc::Counts::default()
     );
     assert!(live.conductor.is_none());
+    assert!(!live.clock_input.enabled());
     assert_eq!(
         test_alloc::measure(|| live.apply(Command::Redo)),
         test_alloc::Counts::default()
@@ -203,7 +208,7 @@ pub(in crate::engine::project) fn large_state() -> (State, Vec<Arc<Sample>>) {
     let clip = &mut state.tracks[127].clips[511];
     clip.kind = ClipKind::Midi;
     clip.name = "Last MIDI cell".into();
-    clip.notes = vec![MidiNote {
+    clip.notes = vec![MidiNote { variation: None,
         id: midi_edit::NoteId::new(),
         pitch: 64,
         vel: 87,
@@ -316,8 +321,9 @@ fn maximum_set_renders_and_reorders_its_last_populated_track_and_scene_without_c
             session::Action::Move { axis, id, position },
         )
         .unwrap();
+        let command=Command::session_edit(request);
         let counts = test_alloc::measure(|| {
-            prepared.rt.apply(Command::SessionEdit(request));
+            prepared.rt.apply(command);
             prepared.rt.process(&mut [0.0; 256]);
         });
         assert_eq!(counts, test_alloc::Counts::default());
@@ -452,9 +458,10 @@ fn maximum_native_container_reopens_music_automation_and_playback_reorder() {
             session::Action::Move { axis, id, position },
         )
         .unwrap();
+        let command=Command::session_edit(request);
         assert_eq!(
             test_alloc::measure(|| {
-                rt.apply(Command::SessionEdit(request));
+                rt.apply(command);
                 rt.process(&mut [0.0; 256]);
             }),
             test_alloc::Counts::default()

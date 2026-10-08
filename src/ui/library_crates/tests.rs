@@ -18,7 +18,7 @@ impl Files {
 impl Drop for Files { fn drop(&mut self) { let _ = std::fs::remove_dir_all(&self.0); } }
 struct Gui {
     app: App,
-    rt: RtEngine,
+    rt: Box<RtEngine>,
     ctx: egui::Context,
     nodes: Vec<(NodeId, Node)>,
     time: f64,
@@ -33,7 +33,7 @@ impl Gui {
         app.library_metadata.set_performance(app.engine.cmd.performance().clone());
         app.library_initialized = false;
         let ctx = egui::Context::default(); ctx.enable_accesskit();
-        let mut gui = Self { app, rt, ctx, nodes: vec![], time: 0.0 };
+        let mut gui = Self { app, rt: Box::new(rt), ctx, nodes: vec![], time: 0.0 };
         gui.wait(|gui| !gui.app.library_metadata.active());
         gui.app.library_crates.open = true;
         gui.frame(vec![]); gui.frame(vec![]);
@@ -87,6 +87,25 @@ impl Gui {
         self.wait(|gui| !gui.app.library_scan.active() && !gui.app.library_metadata.active());
     }
     fn members(&self, id: &CrateId) -> Vec<TrackId> { self.app.library_metadata.catalog.crates.node(id).unwrap().members.clone() }
+}
+
+#[test]
+fn native_playlist_review_exclusion_consent_save_reopen_and_stale_action_guards() {
+    let files=Files::new();let playlist=files.0.join("Stage.m3u8");std::fs::write(&playlist,"Two.flac\nOne.flac\nTwo.flac\nmissing.mp3\n").unwrap();
+    let mut gui=Gui::new(&files);gui.click("Import playlists…");gui.text("Playlist file",playlist.to_str().unwrap());gui.click("Review playlist file");
+    gui.wait(|g|g.app.library_playlist.review.is_some() && g.app.library_crates.pending.is_none());
+    assert!(gui.app.library_metadata.catalog.crates.nodes().is_empty());
+    gui.click("Import reviewed playlists");gui.finish();assert!(gui.app.library_metadata.catalog.crates.nodes().is_empty());
+    gui.click("Import resolved entries and exclude 1 reported failures");let old_import=gui.node("Import reviewed playlists");
+    gui.click("Review playlist file");gui.wait(|g|g.app.library_playlist.review.is_some() && g.app.library_crates.pending.is_none());gui.action(old_import,Action::Click,None);gui.finish();assert!(gui.app.library_metadata.catalog.crates.nodes().is_empty());gui.click("Import resolved entries and exclude 1 reported failures");
+    gui.click("Import reviewed playlists");gui.finish();let id=gui.app.library_crates.selected.clone().unwrap();let members=gui.members(&id);assert_eq!(members.len(),2);
+    let saved=crate::library::read(&files.0.join("catalog.json")).unwrap();let first=saved.tracks.iter().find(|t|t.id==members[0]).unwrap();assert_eq!(first.source,LibSource::File(files.0.join("Two.flac")));assert_eq!(saved.crates.node(&id).unwrap().members,members);
+    assert!(gui.app.library_playlist.review.is_none());
+    let second=files.0.join("Second.m3u8");std::fs::write(&second,"Three.flac\n").unwrap();gui.text("Playlist file",second.to_str().unwrap());gui.click("Review playlist file");gui.wait(|g|g.app.library_playlist.review.is_some() && g.app.library_crates.pending.is_none());
+    gui.action(old_import,Action::Click,None);gui.finish();assert_eq!(gui.app.library_metadata.catalog.crates.nodes().len(),1);
+    gui.click("Import reviewed playlists");gui.finish();assert_eq!(gui.app.library_metadata.catalog.crates.nodes().len(),2);
+    assert_eq!(std::fs::read(playlist).unwrap(),b"Two.flac\nOne.flac\nTwo.flac\nmissing.mp3\n");
+    drop(gui);let deadline=Instant::now()+Duration::from_secs(5);let reopened=loop {if let Ok(store)=crate::library::Store::open(files.0.join("catalog.json")) {break store;}assert!(Instant::now()<deadline);std::thread::sleep(Duration::from_millis(2));};assert_eq!(reopened.catalog.crates.nodes().len(),2);assert_eq!(reopened.catalog.crates.node(&id).unwrap().members,members);
 }
 
 #[test]
@@ -182,8 +201,12 @@ fn nested_4096_crates_restore_track_query_scroll_and_browse_actual_controller_in
     let mut input = gui.app.engine.midi.open_for_test(&gui.app.engine.cmd,15400,MidiMap { name:"Crate fixture".into(),matchers:vec![],bindings:vec![],unmapped_notes:UnmappedNotes::Ignore },"Fixture crate controller","fixture:154");
     let endpoint = midi::learn::Endpoint { name:"Fixture crate controller".into(),id:"fixture:154".into() };
     gui.app.engine.cmd.midi_learn().configure(midi::learn::Config { mappings:vec![
-        midi::learn::Mapping { endpoint:endpoint.clone(),binding:Binding { kind:MsgKind::CcRel,ch:0,data:55,action:MidiAction::BrowseCrates,deck:0,extra:0,relative:Some(RelativeSpec { encoding:RelativeEncoding::OffsetBinary,scale:1.0 }) } },
-        midi::learn::Mapping { endpoint,binding:Binding { kind:MsgKind::Note,ch:0,data:56,action:MidiAction::CrateReturn,deck:0,extra:0,relative:None } }
+        midi::learn::Mapping { endpoint:endpoint.clone(),binding:Binding { kind:MsgKind::CcRel,ch:0,data:55,action:MidiAction::BrowseCrates,deck:0,extra:0,relative:Some(RelativeSpec { encoding:RelativeEncoding::OffsetBinary,scale:1.0 }) , controls: None,
+         pair_order: None,
+        } },
+        midi::learn::Mapping { endpoint,binding:Binding { kind:MsgKind::Note,ch:0,data:56,action:MidiAction::CrateReturn,deck:0,extra:0,relative:None , controls: None,
+         pair_order: None,
+        } }
     ] }).unwrap();
     for _ in 0..3 { input.push(&[0xb0,55,65]); }
     gui.frame(vec![]);
@@ -337,4 +360,30 @@ fn large_named_crate_and_tree_reuse_view_indices_and_render_only_visible_rows() 
     }
     gui.app.refresh_library_view();
     assert_eq!(gui.app.library_view.pending_offset, Some(2003.0), "catalog refresh jumped from the captured top member to the selection");
+}
+
+#[test]
+fn discovered_rekordbox_source_uses_native_review_hierarchy_and_repeated_snapshot_controls() {
+    let files=Files::new();let location=url::Url::from_file_path(files.0.join("One.flac")).unwrap();
+    let source=format!(r#"<DJ_PLAYLISTS Version="1.0.0"><COLLECTION Entries="1"><TRACK TrackID="1" Name="One" Location="{location}" AverageBpm="122" Album="Source-only album"/></COLLECTION><PLAYLISTS><NODE Type="0" Name="ROOT" Count="1"><NODE Type="0" Name="Tour" Count="1"><NODE Type="1" Name="Opening" KeyType="0" Entries="1"><TRACK Key="1"/></NODE></NODE></NODE></PLAYLISTS></DJ_PLAYLISTS>"#);
+    let path=files.0.join("source.export");std::fs::write(&path,&source).unwrap();
+    let scanned=crate::dj_library::scan(crate::dj_library::Request {purpose:crate::dj_library::Purpose::Dj,roots:vec![files.0.clone()],all_mounts:false,cursor:None},&||true).unwrap();
+    assert_eq!(scanned.candidates.len(),1);
+    let mut gui=Gui::new(&files);gui.click("Import playlists…");
+    gui.app.library_playlist.discovery.candidates=scanned.candidates;
+    gui.click("Discovered DJ libraries");gui.click("Review source");
+    gui.wait(|g|g.app.library_playlist.review.is_some() && g.app.library_crates.pending.is_none());
+    gui.click("Import reviewed playlists");gui.finish();
+    let imported=gui.app.library_metadata.catalog.imports.clone();
+    assert_eq!(gui.app.library_metadata.catalog.crates.nodes().len(),2);
+    assert!(imported.iter().any(|p|p.references.iter().any(|r|r.details.warnings.iter().any(|w|w.contains("Source-only album")))));
+    gui.click("Review source");gui.wait(|g|g.app.library_playlist.review.is_some() && g.app.library_crates.pending.is_none());
+    gui.click("Import reviewed playlists");gui.finish();
+    assert_eq!(gui.app.library_metadata.catalog.imports,imported);
+    std::fs::write(&path,source.replace("Name=\"Opening\"","Name=\"Closing\"")).unwrap();
+    gui.click("Review source");gui.wait(|g|g.app.library_playlist.review.is_some() && g.app.library_crates.pending.is_none());
+    gui.click("Import reviewed playlists");gui.finish();assert_eq!(gui.app.library_metadata.catalog.crates.nodes().len(),2);
+    gui.click("Import a changed source as a new snapshot, keeping its previous crates");
+    gui.click("Import reviewed playlists");gui.finish();assert_eq!(gui.app.library_metadata.catalog.crates.nodes().len(),4);
+    assert_eq!(std::fs::read_to_string(path).unwrap(),source.replace("Name=\"Opening\"","Name=\"Closing\""));
 }

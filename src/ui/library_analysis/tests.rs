@@ -51,7 +51,7 @@ impl Drop for Files {
 }
 struct Gui {
     app: App,
-    rt: RtEngine,
+    rt: Box<RtEngine>,
     ctx: egui::Context,
     nodes: Vec<(NodeId, Node)>,
     time: f64,
@@ -75,7 +75,7 @@ impl Gui {
         ctx.enable_accesskit();
         let mut gui = Self {
             app,
-            rt,
+            rt: Box::new(rt),
             ctx,
             nodes: Vec::new(),
             time: 0.0,
@@ -617,4 +617,41 @@ fn musical_key_native_review_compare_correct_force_and_reopen_keep_user_value() 
     let mut reopened=Gui::new(&files);reopened.scan(&files);
     assert_eq!(reopened.record(&path).unwrap().key.as_ref().unwrap().value,key);
     assert!(reopened.app.library_view.cells.values().any(|cells|cells.key=="F#m · 11A"));
+}
+
+#[test]
+fn indexed_large_catalog_analysis_and_real_file_replacement_preserve_selected_row_and_loaded_audio() {
+    let files=Files::new();let paths=files.sources();let store_path=files.0.join("catalog.json");
+    let mut store=crate::library::Store::open(store_path).unwrap();
+    for index in 0..10000 {store.catalog.upsert(LibSource::File(format!("/indexed-owner/{index}.wav").into()),None,crate::library::Metadata {title:format!("Library {index:05}"),artist:"Fixture".into(),bpm:Bpm::hint(120.0),key:"C".into(),duration:Some(180.0),last_play:None}).unwrap();}
+    for path in &paths {store.catalog.upsert(LibSource::File(path.clone()),FileFingerprint::read(path),crate::library::Metadata {title:path.file_name().unwrap().to_str().unwrap().into(),artist:"Fixture".into(),bpm:Bpm::UNKNOWN,key:"—".into(),duration:None,last_play:None}).unwrap();}
+    store.save().unwrap();drop(store);
+    let blocked=Arc::new(AtomicBool::new(false));let entered=Arc::new(AtomicBool::new(false));
+    struct Release(Arc<AtomicBool>);impl Drop for Release {fn drop(&mut self){self.0.store(false,Ordering::Release);}}
+    let _release=Release(blocked.clone());let block=blocked.clone();let waiting=entered.clone();
+    let mut gui=Gui::with_metadata_hook(&files,move||{if block.load(Ordering::Acquire){waiting.store(true,Ordering::Release);while block.load(Ordering::Acquire){std::thread::sleep(Duration::from_millis(1));}}});
+    let initial_tracks=gui.app.library.len();assert_eq!(initial_tracks,10005);
+    assert_eq!(gui.app.library.iter().filter(|item|matches!(&item.source,LibSource::File(path) if path.starts_with("/indexed-owner"))).count(),10000);
+    assert_eq!(gui.app.library.iter().filter(|item|matches!(item.source,LibSource::Builtin(_))).count(),2);
+    for path in &paths {assert!(gui.app.library.iter().any(|item|item.source==LibSource::File(path.clone())));}
+    assert!(gui.app.library_metadata.collection_rows().is_for(&gui.app.library,&gui.app.library_metadata.catalog));
+    gui.app.lib_filter="title:\"Analysis A.flac\"".into();gui.app.refresh_library_view();assert_eq!(gui.app.library_view.indices.len(),1);
+    let initial=gui.rt.decks[0].audio.clone().unwrap();gui.app.load_sel(0);
+    gui.wait(|gui|gui.app.loads[0].as_ref().is_some_and(|load|matches!(load.phase,crate::ui::load_status::Phase::Loaded))&&!Arc::ptr_eq(&gui.rt.decks[0].audio.as_ref().unwrap(),&initial));
+    let loaded=gui.rt.decks[0].audio.clone().unwrap();let key=gui.app.engine.snapshot().decks[0].media_key;let original=FileFingerprint::read(&paths[0]).unwrap();
+    gui.rt.apply(Command::DeckPlay {deck:0});gui.rt.apply(Command::DeckLoop {deck:0,beats:1.0});gui.rt.publish_for_test();
+    gui.app.lib_filter="title:\"Analysis B.ogg\"".into();gui.app.refresh_library_view();let selected=gui.app.selected_library_item().unwrap().source.clone();
+    gui.app.library_analysis.open=true;gui.frame(vec![]);gui.frame(vec![]);
+    blocked.store(true,Ordering::Release);let started=Instant::now();gui.click("Analyze selected row");gui.wait(|_|entered.load(Ordering::Acquire));
+    let replacement=files.0.join("replacement.flac");std::fs::write(&replacement,include_bytes!("../../../tests/fixtures/audio/tone.flac")).unwrap();std::fs::rename(&replacement,&paths[0]).unwrap();
+    let extra=files.0.join("Added.ogg");std::fs::write(&extra,include_bytes!("../../../tests/fixtures/audio/tone.ogg")).unwrap();
+    assert!(gui.app.library_scan.import(vec![paths[0].clone(),extra.clone()],gui.app.library.clone()));
+    let before=gui.rendered;blocked.store(false,Ordering::Release);
+    gui.wait(|gui|!gui.app.library_analysis.busy()&&!gui.app.library_scan.active()&&!gui.app.library_metadata.active());
+    let elapsed=started.elapsed();assert!(elapsed<Duration::from_secs(5),"production analysis/import publication {elapsed:?}");
+    assert!(gui.record(&paths[1]).unwrap().contains(Fields::ALL));assert_eq!(gui.app.selected_library_item().unwrap().source,selected);
+    assert_ne!(FileFingerprint::read(&paths[0]),Some(original));assert!(Arc::ptr_eq(&gui.rt.decks[0].audio.as_ref().unwrap(),&loaded));assert_eq!(gui.app.engine.snapshot().decks[0].media_key,key);assert!(gui.rt.decks[0].playing);assert!(gui.rendered>before);
+    assert!(gui.app.library.iter().any(|row|row.source==LibSource::File(extra.clone())));assert!(gui.app.library_metadata.collection_rows().is_for(&gui.app.library,&gui.app.library_metadata.catalog));
+    assert!(gui.app.library_metadata.storage_error.is_none(),"{:?}",gui.app.library_metadata.storage_error);
+    println!("LIBRARY_SCALE_OWNER_RECEIPT {}",serde_json::json!({"initial_tracks":initial_tracks,"synthetic_sources":10000,"real_audio_sources":paths.len(),"builtin_sources":2,"published_tracks":gui.app.library.len(),"analysis_and_replacement_import_ns":elapsed.as_nanos(),"actual_analysis_fields":"all","loaded_audio_preserved":true,"selection_preserved":true,"physical_devices_opened":false}));
 }

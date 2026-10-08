@@ -1,0 +1,904 @@
+{
+  "schema": 1,
+  "platform": "Linux ARM64, actual native audio renderer/clock scheduler, egui/AccessKit, socket server and real project file",
+  "build": {
+    "path": "target/app-backlog/scene-tenth-compile.log",
+    "sha256": "9f24cc55973433d54a27746ea60288135b1def8b9f461fbbd154fb0c912e603c"
+  },
+  "sourceFiles": {
+    "src/engine/clip_launch.rs": "ef0fb7a02ad650140f29a9e1cf3259fc423110f14d041552829bd4428c952ed5",
+    "src/engine/metronome.rs": "88c72431e39ec0aed466250187ae21f429fe45e08ff82a69c5d4ba7c054c2112",
+    "src/engine/midi/clock/tests.rs": "16a0fca07370276394fb67265db0d43cae5681491d3c8d17852bef0f0dc8e1ed",
+    "src/engine/midi_interchange.rs": "afecbef74e4c60b979dfb9d0c0c2590aaa41a76826d847860a2ea43059291e4f",
+    "src/engine/mod.rs": "83912bce1e1358bbdaf86e2e58a7451e4f5af13448cb4988d3890898345e9189",
+    "src/engine/performance.rs": "6b17eeab974d18aaebfaab43920fdbdf19186188303bc6d431a317778787786e",
+    "src/engine/project/capture.rs": "d2f1f8d53a7ea43dac2137e30a9cbe4a0aebfd0ad83512ac6abf688e0fcd9d11",
+    "src/engine/project/model.rs": "e03d3e7243dbc1faf0c2c2b5d3adc7288208d1c691033642575e98cc452221ab",
+    "src/engine/project/prepare.rs": "fdcb8bdc9bccd80a4408f1a29cde213affbcc8868405c5f986b2183a2e1d8591",
+    "src/engine/quantized_launch_tests.rs": "90cd3ee4cc55958f58ba175ab0332ee72eab02f12bd0aefb3888409ccbcf10f0",
+    "src/engine/scene.rs": "1272ebbed4b4606efa464b4e64d020a80cb9616b2c462955363cd919ed919c66",
+    "src/engine/scene/model.rs": "5b930866071ec7427b8c57636237b472a0ef989dfeea0f004dab057757755a14",
+    "src/engine/scene/runtime.rs": "357b2486ac6bc7bc037aed9e37408739180b751c329fbe90da935139c60f5e00",
+    "src/engine/scene/tests.rs": "62f481a04d651dad368a94a2c4f714b68ccff2cc7dfc373ec2393f888a0d5198",
+    "src/engine/session.rs": "cde94a951e9a97cc6c5c9592321df86a202fe6b3a5cb536849b154c6bc5e58fc",
+    "src/engine/session/transaction.rs": "d2a7b68752b13b13c75c1e2beb8ac6b4a17674c5990dd1c88acd996138f4cad4",
+    "src/engine/session/transaction/structural.rs": "91bedb2546859c45c2cd1df3d12eb75ced6429e0523bdb4137b13f4bd56b8981",
+    "src/engine/snapshot.rs": "0e3998944537311952df8e620ec9fb5cdc1e294f1e7f9218e1a7d9582333d969",
+    "src/engine/undo/midi_import.rs": "695ec1fd2ae279cb23e83295b3f1021ebc828acf503cf386c1fd509a5496ed46",
+    "src/engine/undo/patch.rs": "cde538701562988057c6b6a0c31319d9f8b97db639521fea04d90a043b36f96c",
+    "src/engine/video_transport.rs": "6e6371433d2bb650d03d66ace72b2eb8b7317db8176f00a5fea61d9e0115bbc1",
+    "src/ipc_follow.rs": "0534e3ee04d9346b55b96d2f5e7303e051f0265e558f9c8648cf0a18f418b071",
+    "src/ipc_follow_tests.rs": "9332074cbd8102520302d7cb030bb3dd4496e9e316381c3ddfaac54270367256",
+    "src/ipc_limits_tests.rs": "0b6dc1378a1054e96b62cb1368d2b3c6951c9369464f297dec8672001081f10d",
+    "src/main.rs": "a96328ed2952b2b415a456000af90698ec999a1f786a1a9364b773b517173c24",
+    "src/ui.rs": "fb505aada13b8c978291b7f8b8edfa183bfbd27c97925c147c2e5bd2a8219e43",
+    "src/ui/help/catalogue.rs": "cb5871f3de14e427fe1dbad4a41f6d279236dacb312f235b77faccf599189bad",
+    "src/ui/session_editor.rs": "bf4e6ea92a7c77f7a9bca314328b36ce4ed98598eca42afbd3c5107ee0937ef3",
+    "src/ui/session_editor/scene_properties.rs": "5fc214f0e5a8ecf56fd4b3692360ea3a698a82107a37c48b56bb1383cd7b5a41",
+    "src/ui/session_editor/tests.rs": "f09cebbdc03c33caa648df440b51c8ebd3fc5f7feaed11197b7d4b982de23093"
+  },
+  "testBinary": {
+    "path": "target/app-backlog/qualification-bin/scene-tests-tenth",
+    "sha256": "66acde30f5943aecb4e85c8b267fac7d16e8057aa3064f21b525c30ec5fbb446"
+  },
+  "compiledInventory": {
+    "path": "target/app-backlog/scene-tenth-compiled-source-inventory.json",
+    "sha256": "d907d63ac06bc19f49af286fc1f3e45147e272fde7780b53edde70d5b1ed73f8",
+    "baseRevision": "d7b824f88c21259e520235ca368ee014607c4d4f",
+    "files": 744
+  },
+  "embeddedInputs": {
+    "schema": 1,
+    "baselineRevision": "d7b824f88c21259e520235ca368ee014607c4d4f",
+    "embeddedInputs": {
+      "README.md": "abab5cb8b9a15a180652402e983142ce2a3baf21f5272fe1c4e9079a5083143f",
+      "licenses/manifest.json": "db12fe98105162876305c5e05e0c9136b608782378067668591fb275d7d83c3c",
+      "licenses/notices.json": "b15a146c83e362b540c860ae618b80f9ee0150cd9d8d41683a5d3d3fcb85c244"
+    }
+  },
+  "tests": {
+    "manual": {
+      "path": "target/app-backlog/scene-tenth-manual-tests.log",
+      "sha256": "fca597793813b15ef6fb6422ba13c839433b62f3a4c3686e533a113228cc2e9e",
+      "outcome": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 1979,
+      "seconds": 0
+    },
+    "core": {
+      "path": "target/app-backlog/scene-tenth-core-tests.log",
+      "sha256": "58df6ff3fcaf0e8fa1135a8b3db3bdf2827b31c817c338da0b966a74ec97a7af",
+      "outcome": "ok",
+      "passed": 10,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 1970,
+      "seconds": 1.39
+    },
+    "native": {
+      "path": "target/app-backlog/scene-tenth-native-tests.log",
+      "sha256": "e05791131c0956cb13f0592fe9d2729bfdf3a39bfa4f295932b61d732aa2cdd0",
+      "outcome": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 1979,
+      "seconds": 0.32
+    },
+    "clock": {
+      "path": "target/app-backlog/scene-tenth-clock-tests.log",
+      "sha256": "cb5f03fdfdb7118aa9810d97d9dbc2f59f564c40be81f3b5d3ab44f34e0f7e99",
+      "outcome": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 1979,
+      "seconds": 2.09
+    },
+    "follow": {
+      "path": "target/app-backlog/scene-tenth-follow-tests.log",
+      "sha256": "531c6e054fc1510c004e5a1a315f8521e88f0e433683ae4bd222b04993a81bbb",
+      "outcome": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 1979,
+      "seconds": 0
+    },
+    "status": {
+      "path": "target/app-backlog/scene-tenth-status-tests.log",
+      "sha256": "de21dd4af4d48e975574bedc49cc2a7870484ebe89c808518b01cec7adf6b75c",
+      "outcome": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 1979,
+      "seconds": 0
+    },
+    "bounds": {
+      "path": "target/app-backlog/scene-tenth-bounds-tests.log",
+      "sha256": "9bc8050e8171be2e0f6c75e02936251d75c609318a89c5aad6533f5251986d98",
+      "outcome": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 1979,
+      "seconds": 0
+    },
+    "legacy-scene": {
+      "path": "target/app-backlog/scene-tenth-legacy-scene-tests.log",
+      "sha256": "0bc4a8497a694bb556854750a767e777b36b4353a6f25bae07efa1da6a5becc0",
+      "outcome": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 1979,
+      "seconds": 0.21
+    },
+    "session": {
+      "path": "target/app-backlog/scene-tenth-session-tests.log",
+      "sha256": "6d7ad4d2640dd21c7be93c967ee6e3e743199cc02d877e741221499c18826e7f",
+      "outcome": "ok",
+      "passed": 19,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 1961,
+      "seconds": 3.42
+    },
+    "launch": {
+      "path": "target/app-backlog/scene-tenth-launch-tests.log",
+      "sha256": "099d967a31157a0fc8479067b93e2eab8f767a166b75bfc60bda52a9c5061f71",
+      "outcome": "ok",
+      "passed": 12,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 1968,
+      "seconds": 0.83
+    },
+    "project": {
+      "path": "target/app-backlog/scene-tenth-project-tests.log",
+      "sha256": "929f619e758942c192f2f13a7464b1f897ff464e8942d55ff6d0df62b3574df9",
+      "outcome": "ok",
+      "passed": 55,
+      "failed": 0,
+      "ignored": 1,
+      "filtered": 1924,
+      "seconds": 12.47
+    },
+    "navigation": {
+      "path": "target/app-backlog/scene-tenth-navigation-tests.log",
+      "sha256": "f9b0e6851c632b72cd747c89c464daec1d13766805eeba70fbbc1e7a06fddc27",
+      "outcome": "ok",
+      "passed": 11,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 1969,
+      "seconds": 2.66
+    },
+    "midi": {
+      "path": "target/app-backlog/scene-tenth-midi-tests.log",
+      "sha256": "ec683522d4e15223dbacd5a215dd33c6b7bae13b66d73b396c630a3046cbf1e3",
+      "outcome": "ok",
+      "passed": 198,
+      "failed": 0,
+      "ignored": 2,
+      "filtered": 1780,
+      "seconds": 48.29
+    },
+    "preferences": {
+      "path": "target/app-backlog/scene-tenth-preferences-tests.log",
+      "sha256": "f7a717dd4c19f7cc49ecd87457d842fcda4a4d367d0a46296f7bd4791e8e9cb5",
+      "outcome": "ok",
+      "passed": 51,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 1929,
+      "seconds": 5.89
+    },
+    "native-session": {
+      "path": "target/app-backlog/scene-tenth-native-session-tests.log",
+      "sha256": "e5f274893ff8b5a855c02c13b194813362c446c7c5af2012e0ce812277afb55d",
+      "outcome": "ok",
+      "passed": 4,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 1976,
+      "seconds": 1.53
+    },
+    "full": {
+      "path": "target/app-backlog/scene-tenth-full-tests.log",
+      "sha256": "22e16c439320a9c0c05d67636e9c9f897d4f86ce23ef1cf88a175d7894fed3da",
+      "outcome": "ok",
+      "passed": 1936,
+      "failed": 0,
+      "ignored": 44,
+      "filtered": 0,
+      "seconds": 490.43
+    }
+  },
+  "node": {
+    "path": "target/app-backlog/scene-tenth-node-tests.log",
+    "sha256": "a15680b16418ac895a35fbb55d77467eb726fff47045beeec9c4a95caf82c277",
+    "passed": 15,
+    "failed": 0
+  },
+  "clockLoadRegression": {
+    "regression": {
+      "path": "target/app-backlog/scene-tenth-regression-output-timing.json",
+      "sha256": "209c46805fd450c8d2f19ee697b4fd9bb54c59698dacaa2a2db4d775e0fd1253",
+      "physical_devices_opened": false,
+      "real_decode_egui_iterations": 4846,
+      "schema": 1,
+      "tempos": [
+        {
+          "bpm": 40,
+          "clocks": 24,
+          "delay_ns": [
+            13747,
+            139094,
+            145314,
+            66993,
+            46755,
+            10475,
+            82447,
+            112417,
+            94346,
+            69358,
+            148705,
+            70258,
+            87771,
+            31324,
+            83670,
+            153016,
+            83528,
+            146791,
+            101387,
+            58315,
+            108620,
+            135382,
+            70603,
+            131490
+          ],
+          "max_delay_ns": 153016
+        },
+        {
+          "bpm": 73,
+          "clocks": 24,
+          "delay_ns": [
+            45747,
+            87085,
+            10046,
+            60967,
+            53721,
+            51808,
+            11187,
+            121526,
+            57363,
+            13950,
+            31329,
+            147583,
+            74087,
+            64924,
+            31886,
+            79515,
+            136519,
+            149107,
+            123944,
+            14155,
+            132660,
+            34330,
+            65751,
+            127672
+          ],
+          "max_delay_ns": 149107
+        },
+        {
+          "bpm": 120,
+          "clocks": 24,
+          "delay_ns": [
+            121414,
+            27626,
+            80173,
+            65760,
+            147973,
+            109519,
+            63272,
+            8943,
+            40948,
+            142952,
+            51539,
+            156169,
+            33922,
+            34926,
+            132806,
+            93310,
+            98106,
+            54777,
+            32988,
+            101618,
+            33206,
+            147751,
+            90089,
+            104635
+          ],
+          "max_delay_ns": 156169
+        },
+        {
+          "bpm": 137,
+          "clocks": 24,
+          "delay_ns": [
+            106373,
+            51319,
+            126349,
+            89337,
+            125742,
+            79980,
+            85468,
+            141957,
+            62569,
+            96683,
+            59295,
+            111867,
+            102439,
+            7343,
+            76290,
+            25278,
+            100017,
+            152339,
+            28826,
+            109690,
+            34177,
+            141666,
+            35653,
+            48183
+          ],
+          "max_delay_ns": 152339
+        },
+        {
+          "bpm": 180,
+          "clocks": 24,
+          "delay_ns": [
+            104665,
+            137168,
+            115546,
+            140632,
+            8467,
+            116346,
+            2424613,
+            128727,
+            21270,
+            24439,
+            67817,
+            157905,
+            159907,
+            121659,
+            136829,
+            71415,
+            49043,
+            104087,
+            5964,
+            87759,
+            105179,
+            63057,
+            140059,
+            61604
+          ],
+          "max_delay_ns": 2424613
+        },
+        {
+          "bpm": 240,
+          "clocks": 24,
+          "delay_ns": [
+            158623,
+            46938,
+            69835,
+            139650,
+            49965,
+            76863,
+            46843,
+            88534,
+            126557,
+            78829,
+            149145,
+            8666,
+            65523,
+            60921,
+            149736,
+            45716,
+            118782,
+            140388,
+            42410,
+            37850,
+            46664,
+            67062,
+            58836,
+            29316
+          ],
+          "max_delay_ns": 158623
+        }
+      ]
+    },
+    "full": {
+      "path": "target/app-backlog/scene-tenth-full-output-timing.json",
+      "sha256": "762760486ea1ec58e0efa76e016eca24b1338e6e17cb6bd1cd92eafd25bb8f05",
+      "physical_devices_opened": false,
+      "real_decode_egui_iterations": 5117,
+      "schema": 1,
+      "tempos": [
+        {
+          "bpm": 40,
+          "clocks": 24,
+          "delay_ns": [
+            147421,
+            124898,
+            40167,
+            25061,
+            85581,
+            49184,
+            142162,
+            111931,
+            41533,
+            66136,
+            16364,
+            17175,
+            10569,
+            135672,
+            116275,
+            26044,
+            115022,
+            136667,
+            136269,
+            7621,
+            85683,
+            142286,
+            149305,
+            3365
+          ],
+          "max_delay_ns": 149305
+        },
+        {
+          "bpm": 73,
+          "clocks": 24,
+          "delay_ns": [
+            66587,
+            46928,
+            136687,
+            11235,
+            52035,
+            54168,
+            5425,
+            85434,
+            11900,
+            18116,
+            118916,
+            149882,
+            226349,
+            24688,
+            52363,
+            110913,
+            93629,
+            111053,
+            57603,
+            125735,
+            140910,
+            8167,
+            7675,
+            60975
+          ],
+          "max_delay_ns": 226349
+        },
+        {
+          "bpm": 120,
+          "clocks": 24,
+          "delay_ns": [
+            33504,
+            60469,
+            121435,
+            84066,
+            153406,
+            54287,
+            15251,
+            131342,
+            86140,
+            68188,
+            141403,
+            135410,
+            166833,
+            90589,
+            126971,
+            31685,
+            41191,
+            59198,
+            142038,
+            59169,
+            66968,
+            85557,
+            30230,
+            20320
+          ],
+          "max_delay_ns": 166833
+        },
+        {
+          "bpm": 137,
+          "clocks": 24,
+          "delay_ns": [
+            151296,
+            78244,
+            25442,
+            43224,
+            106923,
+            76496,
+            49570,
+            79685,
+            82634,
+            165458,
+            39572,
+            66354,
+            97053,
+            135710,
+            140701,
+            38690,
+            56139,
+            151963,
+            130703,
+            93193,
+            143892,
+            4714,
+            76330,
+            105612
+          ],
+          "max_delay_ns": 165458
+        },
+        {
+          "bpm": 180,
+          "clocks": 24,
+          "delay_ns": [
+            31004,
+            107342,
+            89472,
+            133185,
+            68438,
+            37109,
+            41613,
+            132702,
+            131456,
+            27918,
+            125215,
+            34010,
+            95390,
+            42727,
+            39273,
+            74986,
+            84782,
+            89036,
+            121290,
+            59420,
+            5299,
+            67554,
+            12807,
+            43437
+          ],
+          "max_delay_ns": 133185
+        },
+        {
+          "bpm": 240,
+          "clocks": 24,
+          "delay_ns": [
+            133921,
+            66403,
+            125136,
+            59493,
+            26350,
+            85833,
+            109940,
+            83715,
+            122447,
+            76220,
+            134204,
+            117478,
+            30251,
+            32734,
+            19674,
+            65240,
+            139890,
+            88414,
+            50729,
+            115879,
+            82777,
+            22592,
+            6742,
+            117975
+          ],
+          "max_delay_ns": 139890
+        }
+      ]
+    }
+  },
+  "retainedPreliminaryResults": [
+    {
+      "attempt": "first",
+      "kind": "compile failure",
+      "compile": {
+        "path": "target/app-backlog/scene-first-compile.log",
+        "sha256": "3799ccfbcaeefb7f5cfc8b489d6f307a04cfc29fc98639bb13bb4c866a3be11e"
+      },
+      "inventory": {
+        "path": "target/app-backlog/scene-first-compiled-source-inventory.json",
+        "sha256": "ab416f7771150a4da8107af27893f87e2653f9626f76e099f9b41220baa2856c"
+      }
+    },
+    {
+      "attempt": "second",
+      "kind": "compile failure",
+      "compile": {
+        "path": "target/app-backlog/scene-second-compile.log",
+        "sha256": "914ff5cda92749e7ff08248a352ffb190af3cbe3010b1e63e6a3c90c37339af0"
+      },
+      "inventory": {
+        "path": "target/app-backlog/scene-second-compiled-source-inventory.json",
+        "sha256": "596308638409276ff8a746d87a60497ee57b30722d4eed3c2b58c941cb3d2ae3"
+      }
+    },
+    {
+      "attempt": "third",
+      "kind": "compile failure",
+      "compile": {
+        "path": "target/app-backlog/scene-third-compile.log",
+        "sha256": "acc9360517eeb31b05598a26752923bca1e3558a38e4487a6393a7a5cde5ace3"
+      },
+      "inventory": {
+        "path": "target/app-backlog/scene-third-compiled-source-inventory.json",
+        "sha256": "28a9e3759088f4791065e1267f8d10ba03519d1a31db290eb3dc5bef08c3797e"
+      }
+    },
+    {
+      "attempt": "fourth",
+      "reason": "Core 8/9 passed. The recording fixture found a real scene-launch focus change that redirected a live recording input; final runtime preserves the selected track. Native chooser did not dismiss its popup on accessible selection; final handlers close each completed selection.",
+      "tests": {
+        "core": {
+          "path": "target/app-backlog/scene-fourth-core-tests.log",
+          "sha256": "9ac2c60985edfbe0877e343de7b5377807bd8cf17cd5ee9ed06ad9eb0f61d71a",
+          "outcome": "FAILED",
+          "passed": 8,
+          "failed": 1,
+          "ignored": 0,
+          "filtered": 1967,
+          "seconds": 1.33
+        },
+        "native": {
+          "path": "target/app-backlog/scene-fourth-native-tests.log",
+          "sha256": "d585d7580eeb82e1e15b5e209fecb04be26b18eea16cd0877120f5d8ddbeace7",
+          "outcome": "FAILED",
+          "passed": 0,
+          "failed": 1,
+          "ignored": 0,
+          "filtered": 1975,
+          "seconds": 0.19
+        }
+      },
+      "testBinary": {
+        "path": "target/app-backlog/qualification-bin/scene-tests-fourth",
+        "sha256": "559c7e4650d4ad91f78e185b24c3aeb500f392d451bbd87b269121582c688f92"
+      }
+    },
+    {
+      "attempt": "fifth",
+      "reason": "All core/native/clock/status checks passed. Subsequent review found that inherited native meters can exceed the initial scene-only range; final code matches the song meter range and adds an actual native-inheritance fixture.",
+      "tests": {
+        "core": {
+          "path": "target/app-backlog/scene-fifth-core-tests.log",
+          "sha256": "20114a46065ef4851cf6b66313383a4ee6fb739831b26b8f82cd0b24ffed241f",
+          "outcome": "ok",
+          "passed": 9,
+          "failed": 0,
+          "ignored": 0,
+          "filtered": 1970,
+          "seconds": 1.29
+        },
+        "native": {
+          "path": "target/app-backlog/scene-fifth-native-tests.log",
+          "sha256": "0491a0bea6beba8ba5effdf8710ee2333e391c80fe00c57a12110d7cbb15921b",
+          "outcome": "ok",
+          "passed": 1,
+          "failed": 0,
+          "ignored": 0,
+          "filtered": 1978,
+          "seconds": 0.35
+        },
+        "clock": {
+          "path": "target/app-backlog/scene-fifth-clock-tests.log",
+          "sha256": "0b0ab2e9580fb95f4fd5b49e6804a1b2cef2bb27220d5a93154b11fdabeeacd6",
+          "outcome": "ok",
+          "passed": 1,
+          "failed": 0,
+          "ignored": 0,
+          "filtered": 1978,
+          "seconds": 2.09
+        },
+        "follow": {
+          "path": "target/app-backlog/scene-fifth-follow-tests.log",
+          "sha256": "258f77f2f69183487da810396de246fa5dc9b4e6448a6c671ac4033e1f644c1b",
+          "outcome": "ok",
+          "passed": 1,
+          "failed": 0,
+          "ignored": 0,
+          "filtered": 1978,
+          "seconds": 0
+        },
+        "status": {
+          "path": "target/app-backlog/scene-fifth-status-tests.log",
+          "sha256": "88ed8655d630a32f5d92ab7dda9bc55473e18f9b8777c50770ecc7679f96f2ed",
+          "outcome": "ok",
+          "passed": 1,
+          "failed": 0,
+          "ignored": 0,
+          "filtered": 1978,
+          "seconds": 0
+        }
+      },
+      "testBinary": {
+        "path": "target/app-backlog/qualification-bin/scene-tests-fifth",
+        "sha256": "60b7c0b3c5bb619a02f55820d1d43224783b9fbdd619cd2c299dc392fbf700ce"
+      }
+    },
+    {
+      "attempt": "sixth",
+      "reason": "Full run passed 1935 checks and found one legacy test expecting future PlayingClip replacement at command admission. The new scene contract keeps current clips until the shared boundary. Updated that fixture to verify pending identity, no premature track changes and actual rendered launch at the exact boundary.",
+      "tests": {
+        "full": {
+          "path": "target/app-backlog/scene-sixth-full-tests.log",
+          "sha256": "8f965c6ebcd9f6db0d5a0af7be7160e875257e93bb2f78d87cd6e795a563822a",
+          "outcome": "FAILED",
+          "passed": 1935,
+          "failed": 1,
+          "ignored": 44,
+          "filtered": 0,
+          "seconds": 496.61
+        }
+      },
+      "testBinary": {
+        "path": "target/app-backlog/qualification-bin/scene-tests-sixth",
+        "sha256": "d65491d2247766c10f1973e2e1adc3e68c64f7811ddbe6bb831be9e3bdf39ec7"
+      }
+    },
+    {
+      "attempt": "seventh",
+      "reason": "Legacy fixture still failed. Initial compensation hypothesis did not resolve it; retained as an unsuccessful fixture iteration.",
+      "tests": {
+        "legacy": {
+          "path": "target/app-backlog/scene-seventh-legacy-first-tests.log",
+          "sha256": "f8ab7303a1c880b81957c192a40adc9e545fea8b122a971c7a7c6354b2bd651e",
+          "outcome": "FAILED",
+          "passed": 0,
+          "failed": 1,
+          "ignored": 0,
+          "filtered": 1979,
+          "seconds": 0.11
+        }
+      },
+      "testBinary": {
+        "path": "target/app-backlog/qualification-bin/scene-tests-seventh",
+        "sha256": "e438aa2cbb777855cafcb7c35a0da78d8ba1044bc4907d99df233504e181d69d"
+      }
+    },
+    {
+      "attempt": "eighth",
+      "reason": "Legacy fixture still failed. Rendering one further boundary frame was insufficient because its helper only calls one track renderer and bypasses the whole-scene scheduler.",
+      "tests": {
+        "legacy": {
+          "path": "target/app-backlog/scene-eighth-legacy-first-tests.log",
+          "sha256": "f55bed04734a0b09899493abcc0c24cf898c5cca7c31beab1b5d4712e462fe8b",
+          "outcome": "FAILED",
+          "passed": 0,
+          "failed": 1,
+          "ignored": 0,
+          "filtered": 1979,
+          "seconds": 0.1
+        }
+      },
+      "testBinary": {
+        "path": "target/app-backlog/qualification-bin/scene-tests-eighth",
+        "sha256": "4590b231bdcd128c6b905239df462279b869babf21f8ccc9c23d86488cdc86ea"
+      }
+    },
+    {
+      "attempt": "ninth",
+      "reason": "An independent two-sample deadline guard exposed the legacy helper bypass: it manually advances beat and renders only one track, never scene_launch_tick. Final fixture uses the actual process callback, verifies no track is changed before the shared boundary and requires exact musical onset plus bounded public compensation.",
+      "tests": {
+        "legacy": {
+          "path": "target/app-backlog/scene-ninth-legacy-first-tests.log",
+          "sha256": "f79ce2dcb7e875b5dfb2e00eb1ee9d4d56d2ab475ff00c3b011d7fab97ca4f43",
+          "outcome": "FAILED",
+          "passed": 0,
+          "failed": 1,
+          "ignored": 0,
+          "filtered": 1979,
+          "seconds": 0.1
+        }
+      },
+      "testBinary": {
+        "path": "target/app-backlog/qualification-bin/scene-tests-ninth",
+        "sha256": "46a1ee25e789c18284fe27ed3e6f05c3d0bdbe8de24dfc6cc4b9617d6345ae16"
+      }
+    }
+  ],
+  "limits": "Software qualification: atomic whole-scene tempo/meter and clip switches at exact sample boundaries; independent timestamp/downbeat oracles at 8/44.1/48 kHz and clock oracles additionally at 96 kHz, callbacks 31/257, continuing tracks under Keep, exact Stop releases, disabled/additive/legato semantics, selected-track and held-input ownership, actual recording completion, native odd-meter count-in/rate change, full native meter inheritance including 255/128 and pickup, guarded metadata Undo/Redo/cancellation/stale identity, deletion/reuse/reorder, safety/seek/project replacement, native state 23 real-container reopen and old-header injection refusal, native egui/AccessKit editing/duplication/launch/cancel, bounded consistent socket/follow status and zero unchanged cache heap work. A selected scene tempo/meter replaces future conductor automation with the current flat clock; historical conductor mapping is not retained. Pending launches/active identities never resume on reopen. No physical controller display or new live hardware/audio qualification; independent stage application unchanged. No ticket acceptance or issue closure claimed.",
+  "installation": {
+    "schema": 1,
+    "package": {
+      "path": "/home/michael/Projects/omatainer-work/hardware-resurrection/target/app-backlog/release-scene-properties-qualified",
+      "manifestSha256": "5ac38422a2ad345c1833aa9cd7a66d50ef33727c01b19eecb786a50a60154ac7",
+      "revision": "76d05a2bee05ecdf29815a87293a890f2bd5da8b",
+      "version": "0.1.0+76d05a2bee05",
+      "executableSha256": "370ab94d05db6cc1a7e21d689280489118cdd9631bac1dce50ca9a470f190849"
+    },
+    "installed": {
+      "schema": 1,
+      "before": "5148378b6031756294ea2a97c7efe879af8ab9db7e7000df93558b1bba029c12",
+      "after": "370ab94d05db6cc1a7e21d689280489118cdd9631bac1dce50ca9a470f190849",
+      "installedAt": "2026-10-07T02:36:36.433Z"
+    },
+    "buildInfo": {
+      "arch": "aarch64",
+      "debug_assertions": false,
+      "os": "linux",
+      "pkg_version": "0.1.0",
+      "schema": 1
+    },
+    "applicationProcessesPreserved": [
+      {
+        "pid": 1649895,
+        "executable": "/home/michael/Projects/omatainer-work/hardware-resurrection/target/hardware/pioneer-apc/bin/omatainer",
+        "arguments": [
+          "/home/michael/Projects/omatainer-work/hardware-resurrection/target/hardware/pioneer-apc/bin/omatainer",
+          "--empty-once"
+        ],
+        "sha256": "646aa453a269d7c49feec0f5e88fcac94a030034f051468a82d2828ef05c4915"
+      },
+      {
+        "pid": 3973522,
+        "executable": "/home/michael/.local/bin/omatainer (deleted)",
+        "arguments": [
+          "/home/michael/.local/bin/omatainer",
+          "ctl",
+          "follow"
+        ],
+        "sha256": "23f88a47125de6eb19a7921d64faef6dafed56d3c25debdb89ac04d060d9b2e4"
+      }
+    ],
+    "additionalProcessesAfterInstall": [],
+    "preinstallState": {
+      "master": 0.8188976645469666,
+      "playing": false,
+      "recording": false,
+      "decks": [
+        {
+          "title": "What More Can I Say",
+          "playing": false
+        },
+        {
+          "title": "Public Service Announcement",
+          "playing": false
+        }
+      ]
+    },
+    "postinstallState": {
+      "master": 0.8188976645469666,
+      "playing": false,
+      "recording": false,
+      "decks": [
+        {
+          "title": "What More Can I Say",
+          "playing": false
+        },
+        {
+          "title": "Public Service Announcement",
+          "playing": false
+        }
+      ]
+    },
+    "scope": "Default executable installed for next launch. Previously active independent private GUI and follower processes retained; no hardware device opened or live playback restarted. An unavailable live state is recorded when no GUI was present."
+  }
+}

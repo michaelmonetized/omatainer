@@ -171,7 +171,7 @@ fn recording_note_list_replacement_cancels_only_that_clip_capture() {
     rt.apply(Command::SetNotes {
         track: 1,
         scene: 2,
-        notes: vec![MidiNote {
+        notes: vec![MidiNote { variation: None,
             channel:0,release_vel:64,source_timing:None, id: crate::engine::midi_edit::NoteId::new(), muted: false,
             pitch: 74,
             start: 1.0,

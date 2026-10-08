@@ -71,6 +71,7 @@ fn sampler_verified_content_only_qualifies_its_exact_existing_version() {
 }
 fn preparation() -> Preparation {
     Preparation {
+        saved_loops: Default::default(),
         source_gain: crate::track_gain::Policy::Off,
         grid: None,
         cue: 4.5,
@@ -1033,4 +1034,89 @@ fn musical_key_schema_and_persistence_preserve_corrections_and_unknown_results()
     let upgraded=catalog_from_bytes(&serde_json::to_vec(&legacy).unwrap(),None).unwrap();
     assert_eq!(upgraded.schema,Catalog::default().schema);
     assert!(upgraded.version(&source,Some(fingerprint)).unwrap().analysis.is_none());
+}
+#[test]
+fn saved_loop_bank_survives_real_catalog_save_backup_restore_merge_and_exact_track_reload() {
+    use std::sync::atomic::AtomicBool;
+    use crate::engine::{saved_loops::{Bank,Slot},cue_metadata::{Name,Style},load_receipt::{Receipt,Media},Engine,Command};
+    let dir=Dir::new();
+    let source=LibSource::Builtin(BuiltinStem::Drums);
+    let bank=Bank {cue_loops:[None;8],slots:std::array::from_fn(|i|Some(Slot {start:i as f64*0.05,length:0.05,style:Style {name:Name::new(&format!("Part {} / 東京",i+1)).unwrap(),color:Some([i as u8*30,40,220])}})),order:[8,7,6,5,4,3,2,1],selected:3};
+    let preparation=Preparation {saved_loops:bank,loop_region:Some(Loop {start:0.1,length:0.05,enabled:true}),..Default::default()};
+    let mut store=Store::open(dir.store()).unwrap();
+    store.catalog.upsert(source.clone(),None,metadata()).unwrap();
+    let id=store.catalog.track(&source).unwrap().id.clone();
+    store.catalog.update_preparation(&source,None,Some(preparation),None);
+    store.save().unwrap();drop(store);
+    let reopened=read(&dir.store()).unwrap();
+    assert_eq!(reopened.schema,SCHEMA);
+    assert_eq!(reopened.track(&source).unwrap().id,id);
+    assert_eq!(reopened.version(&source,None).unwrap().preparation,preparation);
+    let export=dir.0.join("export");let restore=dir.0.join("restore");
+    backup::export(&reopened,&export,None,&AtomicBool::new(false),None,|_|{}).unwrap();
+    backup::inspect(&export,&AtomicBool::new(false),|_|{}).unwrap();
+    let restored=backup::restore(&export,&restore,&AtomicBool::new(false),None,|_|{}).unwrap();
+    let restored=read(&restored.catalog).unwrap();
+    let mut merged=Catalog::default();merged.merge_import(restored).unwrap();
+    assert_eq!(merged.version(&source,None).unwrap().preparation,preparation);
+    assert_eq!(merged.track(&source).unwrap().id,id);
+    let (engine,rt)=Engine::headless_for_test(44_100,256);let mut rt=Box::new(rt);
+    let receipt=Receipt::with_preparation(Some(merged.version(&source,None).unwrap().preparation));
+    rt.apply(Command::DeckLoadRequested {deck:1,media:Media::Builtin(0),receipt:receipt.clone()});
+    assert!(!rt.decks[1].playing && rt.decks[1].loop_on);
+    rt.publish_for_test();
+    assert_eq!(engine.snapshot().decks[1].saved_loops,bank);
+    assert_eq!(engine.snapshot().decks[1].controls.loop_slot,2);
+    assert_eq!(receipt.preparation().unwrap().1.saved_loops,bank);
+    assert!(engine.initial_playback[0].is_some());
+    let mut legacy=serde_json::to_value(&reopened).unwrap();legacy["schema"]=15.into();
+    for version in legacy["tracks"][0]["versions"].as_array_mut().unwrap(){version["preparation"].as_object_mut().unwrap().remove("saved_loops");}
+    assert_eq!(catalog_from_bytes(&serde_json::to_vec(&legacy).unwrap(),None).unwrap().schema,SCHEMA);
+    for injection in [serde_json::Value::Null,serde_json::to_value(Bank::default()).unwrap(),serde_json::to_value(bank).unwrap()] {
+        let mut old=legacy.clone();old["tracks"][0]["versions"][0]["preparation"]["saved_loops"]=injection;
+        assert!(catalog_from_bytes(&serde_json::to_vec(&old).unwrap(),None).unwrap_err().contains("schema 16"));
+    }
+    let before=std::fs::read(dir.store()).unwrap();
+    let mut store=Store::open(dir.store()).unwrap();store.catalog.tracks[0].versions[0].preparation.saved_loops.order=[1;8];
+    assert!(store.save().is_err());assert_eq!(std::fs::read(dir.store()).unwrap(),before);
+}
+
+#[test]
+fn cue_loop_associations_survive_real_catalog_backup_merge_reload_and_refuse_legacy_field_injection() {
+    use std::sync::atomic::AtomicBool;
+    use crate::engine::{saved_loops::{Bank, Slot}, load_receipt::{Receipt, Media}, Engine, Command};
+    let dir = Dir::new();
+    let source = LibSource::Builtin(BuiltinStem::Drums);
+    let mut bank = Bank::default();
+    bank.slots[2] = Some(Slot { start: 0.1, length: 0.05, style: Default::default() });
+    bank.cue_loops[4] = Some(3);
+    let mut preparation = Preparation { saved_loops: bank, ..Default::default() };
+    preparation.hotcues[4] = Some(0.1);
+    let mut store = Store::open(dir.store()).unwrap();
+    store.catalog.upsert(source.clone(), None, metadata()).unwrap();
+    store.catalog.update_preparation(&source, None, Some(preparation), None);
+    store.save().unwrap();drop(store);
+    let reopened = read(&dir.store()).unwrap();
+    assert_eq!(reopened.schema, SCHEMA);
+    assert_eq!(reopened.version(&source, None).unwrap().preparation, preparation);
+    let export = dir.0.join("cue-export");let restore = dir.0.join("cue-restore");
+    backup::export(&reopened, &export, None, &AtomicBool::new(false), None, |_| {}).unwrap();
+    let restored = backup::restore(&export, &restore, &AtomicBool::new(false), None, |_| {}).unwrap();
+    let mut merged = Catalog::default();merged.merge_import(read(&restored.catalog).unwrap()).unwrap();
+    assert_eq!(merged.version(&source, None).unwrap().preparation, preparation);
+    let (engine, rt) = Engine::headless_for_test(44100, 256);let mut rt = Box::new(rt);
+    rt.apply(Command::DeckLoadRequested { deck: 1, media: Media::Builtin(0), receipt: Receipt::with_preparation(Some(merged.version(&source, None).unwrap().preparation)) });
+    rt.publish_for_test();
+    assert_eq!(engine.snapshot().decks[1].saved_loops.cue_loops[4], Some(3));
+    assert!(!rt.decks[1].playing);
+    rt.apply(Command::DeckHotCue { deck: 1, pad: 4, del: false });
+    assert!(rt.decks[1].playing && rt.decks[1].loop_on);
+    let mut legacy = serde_json::to_value(&reopened).unwrap();legacy["schema"] = 16.into();
+    assert!(catalog_from_bytes(&serde_json::to_vec(&legacy).unwrap(), None).unwrap_err().contains("schema 17"));
+    for version in legacy["tracks"][0]["versions"].as_array_mut().unwrap() { version["preparation"]["saved_loops"].as_object_mut().unwrap().remove("cue_loops"); }
+    assert_eq!(catalog_from_bytes(&serde_json::to_vec(&legacy).unwrap(), None).unwrap().schema, SCHEMA);
+    for injection in [serde_json::Value::Null, serde_json::json!([null,null,null,null,null,null,null,null]), serde_json::json!([null,null,null,null,3,null,null,null])] {
+        let mut old = legacy.clone();old["tracks"][0]["versions"][0]["preparation"]["saved_loops"]["cue_loops"] = injection;
+        assert!(catalog_from_bytes(&serde_json::to_vec(&old).unwrap(), None).unwrap_err().contains("schema 17"));
+    }
 }

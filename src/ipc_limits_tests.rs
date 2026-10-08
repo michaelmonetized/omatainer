@@ -341,6 +341,11 @@ fn large_snapshot_metadata_has_bounded_response_and_avoids_full_snapshot_clone()
     {
         let mut snapshot = snap.lock();
         snapshot.midi = vec!["\u{1}".repeat(8192); 64];
+        snapshot.monitor.output_alias = Some(u64::MAX);
+        snapshot.monitor.channels = Some([usize::MAX; 2]);
+        snapshot.monitor.meters = [f32::MAX; 2];
+        snapshot.monitor.tone = Some(1);
+        snapshot.midi_clock_input = crate::engine::midi::clock_input::Status::maximum_for_test();
         snapshot.commands.received = u64::MAX;
         snapshot.commands.applied = u64::MAX;
         snapshot.commands.coalesced = u64::MAX;
@@ -363,6 +368,7 @@ fn large_snapshot_metadata_has_bounded_response_and_avoids_full_snapshot_clone()
         .unwrap();
     let (commands, _rx) = CommandPort::channel(256);
     commands.midi_routing().maximum_activity_for_test();
+    commands.clock_output().maximum_activity_for_test();
     let worker = std::thread::spawn(move || {
         let mut result = Ok(());
         let counts = crate::engine::test_alloc::measure(|| {
@@ -383,8 +389,12 @@ fn large_snapshot_metadata_has_bounded_response_and_avoids_full_snapshot_clone()
     assert_eq!(reply["state_truncated"], true);
     assert_eq!(reply["midi_routing"]["sent"],u64::MAX);
     assert_eq!(reply["midi_routing"]["refused_tracks"],255);
-    assert_eq!(reply["midi"][0].as_str().unwrap().len(),ipc_transport::STATUS_MIDI_NAME_BYTES);
-    assert_eq!(reply["deckA"].as_str().unwrap().len(),ipc_transport::STATUS_DECK_TITLE_BYTES);
+    assert_eq!(reply["midi_clock_output"]["sent"],u64::MAX);
+    assert_eq!(reply["midi_clock_input"]["accepted_ticks"],u64::MAX);
+    assert_eq!(reply["midi_clock_output"]["max_late_ns"],u64::MAX);
+    assert!(reply["midi_clock_output"]["error"].as_str().is_some());
+    assert_eq!(reply["midi"][0].as_str().unwrap().len(),ipc_transport::STATUS_MIDI_NAME_BYTES / 6);
+    assert_eq!(reply["deckA"].as_str().unwrap().len(),ipc_transport::STATUS_DECK_TITLE_BYTES / 6);
     assert_eq!(reply["midi"].as_array().unwrap().len(), 8);
     drop(client);
     let counts = worker.join().unwrap();
@@ -407,4 +417,13 @@ fn cli_rejects_oversized_unterminated_peer_response() {
     let error = crate::exchange_request(client, crate::STATUS_REQUEST).unwrap_err();
     assert!(error.to_string().contains("byte limit"));
     server.join().unwrap();
+}
+#[test]
+fn scene_status_socket_returns_reviewed_properties_names_and_queued_identity() {
+    use crate::engine::{scene::{Properties,Signature,Empty,Pending},clip_launch::Grid,session::{Layout,Axis}};
+    let snap=snapshot();{
+        let mut s=snap.lock();let mut layout=Layout::fresh(["Software track".into()],2);layout.scenes[0].name="Intro".into();layout.scenes[1].name="Verse".into();
+        s.scenes.active=layout.reference(Axis::Scene,0);s.scenes.active_properties=Some(Properties::default());s.scenes.pending=Some(Pending{scene:layout.reference(Axis::Scene,1).unwrap(),properties:Properties{tempo_micros:Some(500000),meter:Some(Signature{numerator:7,denominator_power:3}),grid:Grid::Bar,empty:Empty::Keep},when:3.5,additive:false});s.session=Some(layout);s.meter_numerator=7;s.meter_denominator=8;
+    }
+    let (mut client,peer)=UnixStream::pair().unwrap();client.set_read_timeout(Some(Duration::from_secs(2))).unwrap();let(commands,_rx)=CommandPort::channel(256);let worker=std::thread::spawn(move||crate::handle_client_with_limits(peer,commands,snap,limits()));writeln!(client,"{}",json!({"op":"status","id":"scenes"})).unwrap();let mut client=BufReader::new(client);let reply=response(&mut client);assert_eq!(reply["ok"],true);assert_eq!(reply["active_scene_name"],"Intro");assert_eq!(reply["queued_scene_name"],"Verse");assert_eq!(reply["meter"],json!([7,8]));assert_eq!(reply["scenes"]["pending"]["when"],3.5);assert_eq!(reply["scenes"]["pending"]["properties"]["tempo_micros"],500000);drop(client);worker.join().unwrap().unwrap();
 }

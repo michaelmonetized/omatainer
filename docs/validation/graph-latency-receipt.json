@@ -1,0 +1,958 @@
+{
+  "schema": 1,
+  "issue": 178,
+  "status": "partial",
+  "platform": "Linux ARM64 software renderer PCM and actual native egui/AccessKit",
+  "sourceFiles": {
+    "src/audio_delivery/render.rs": "1f39f9ca5e6238783bf99293450d60a29a10f16ec66ef133e8082a7934952585",
+    "src/audio_delivery/tests.rs": "6b28df31e6105c477dfcf1daa0120236a5920d8e3c91ec50a6778298b55198cf",
+    "src/automation.rs": "0a1e2dcc669f3ad6cedde631b6fca96243f78202e9d2db430843db23f8c0700c",
+    "src/engine/audio/routing.rs": "f50177851c413007fc15686f1e9f5e4790736a588b259d80edb5afded484c6a5",
+    "src/engine/audio/routing/latency.rs": "2c11d180929fd598220bcfe10a13ecba38d47a654555292f5725680248b38e60",
+    "src/engine/audio/routing/latency/tests.rs": "b4e03911a5060cc86a144385321bb3aefe11b89d9bb14a2fae975aaab7fee68b",
+    "src/engine/audio/routing/mic_aux.rs": "6219f59b3f287505ad3211683778610c43922361d7bf556a81d86907e43a64f5",
+    "src/engine/audio/routing/model.rs": "4a8bcc987045d71147695a576e3a147fb116a8cd12e53436ca5977c1c9b1e617",
+    "src/engine/audio/routing/prepared.rs": "74915d2b70e29b5ab7bffd44172f03a0e1c93f1b02c10597f51058fb1e483e86",
+    "src/engine/audio/routing/record.rs": "29257ef6e4a375d5824a4f6e7958fe7da10190af623829b160141e6cf327053b",
+    "src/engine/audio/routing/record/delivery.rs": "abb737040c93845a8a676b5d66e9a79f270ee190fe31bfd1d889b41ae03b3154",
+    "src/engine/audio/routing/render.rs": "1930025ffb62d273bd25596598bbba7cb609add1662f1e96859dc24cc259718b",
+    "src/engine/mod.rs": "37bbbf8c1e8b2f9d9c3413f74270874f5129315eed3beb7bd833bd35fb025b4e",
+    "src/engine/monitor.rs": "2577c757f89773f3ca0ff09488ecd36bb70a916247633b6907f4a7c715698f71",
+    "src/engine/performance.rs": "08dac4326bd488bdcc5fb6b1f2b61d2d65c848b083336967cd2a178df225b038",
+    "src/engine/project/prepare.rs": "3d01ed850bda367f983f14f0d9d15c65ef962a09d7c38f5515382867d35e3465",
+    "src/engine/session/transaction.rs": "fa51ed03bcf9881d612145b8458471acc664ff190e8629adb61f3d51c4f63c8e",
+    "src/engine/session/transaction/import.rs": "fb7b10b8a8c8e6b6cea1c845b0d539eecd9a81182affd151dc359a89fa724aa1",
+    "src/engine/session/transaction/import/tests.rs": "1f9755c9d2fcd0e97f309300ac29b6d733d7bf7532faee7c380f6eb75e77c645",
+    "src/engine/session/transaction/structural.rs": "fbc5203f1316cb09b26f3f647839f9dad42979d75d04d52ea52e340e61907ce5",
+    "src/engine/snapshot.rs": "e19eef956ffc982ede1ad6c0247fdf39220170d65e34e36eeaa8dbf25f70fc10",
+    "src/ipc_follow.rs": "b343a7cbfa7bc324da4874bf8ccfeddb0dbe74652022fa6ec84224e6ce19876e",
+    "src/main.rs": "e42e5a6ab283ddf70d0b15cf520b30e971e1ca04b10fdb978ca5b45381d2edda",
+    "src/ui/audio_routing.rs": "6dc15f1792bb5f8fe814a2b15c8d41bed4d8756a60814ef121b762b07c138bad",
+    "src/ui/audio_routing/latency.rs": "ef97a9b23a498366f4d84b258b8dced481cd689ada62f1e057ce60c86f62df9a",
+    "src/ui/audio_routing/tests.rs": "88fec33042fd97f0ebe1ad9568cacbd8e729857d69da995df11b1db1f975d07c",
+    "src/ui/audio_routing/worker.rs": "1382a3d25a4b40f3567f6a33b9c658e2f5223e5e098f5404d2e4628f9ceb0fc0"
+  },
+  "testBinary": {
+    "path": "target/app-backlog/qualification-bin/latency-tests-seventh",
+    "sha256": "951bfa8c4a5d04f69866c9e48bd7221f2ca932a66435cc313696ef1381a4c1e5"
+  },
+  "compiledInventory": {
+    "path": "target/app-backlog/latency-seventh-source.json",
+    "sha256": "ee476f8aaa7f21b3797eea5d71b8a98b374877c424ba984b40e709b30af2fe33",
+    "baseRevision": "46968c59323eb43ee86486549fff788252cf38f4",
+    "files": 800
+  },
+  "embeddedInputs": {
+    "README.md": "abab5cb8b9a15a180652402e983142ce2a3baf21f5272fe1c4e9079a5083143f",
+    "licenses/manifest.json": "b6762f3aacd4a79d899a347833b3130adc61c9260386c9576f425ff91de0f485",
+    "licenses/notices.json": "b15a146c83e362b540c860ae618b80f9ee0150cd9d8d41683a5d3d3fcb85c244"
+  },
+  "compileLog": {
+    "path": "target/app-backlog/latency-seventh-build.log",
+    "sha256": "a4c5723cc87ac8f18b45191ba1b67b149830e7824d02814e224e30b6f1f23d9b"
+  },
+  "tests": {
+    "core": {
+      "path": "target/app-backlog/latency-seventh-core.log",
+      "sha256": "67904b720262a53842cb483b2da11a4c0d4777b53d74c1084c4dd0fc166c89b2",
+      "outcome": "ok",
+      "passed": 11,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2132,
+      "seconds": 0.98
+    },
+    "native": {
+      "path": "target/app-backlog/latency-seventh-native.log",
+      "sha256": "1bf05b9ec86d09b6a83cd3839d0b3ee16a1db9c14759127f032ce13a9a02e0d8",
+      "outcome": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2142,
+      "seconds": 0.29
+    },
+    "native-recording-workflow": {
+      "path": "target/app-backlog/latency-seventh-native-recording-workflow.log",
+      "sha256": "70fb02dfe0430a304ab9a29b76c98815f848b1934fc975c67029c2eea23bc1ce",
+      "outcome": "ok",
+      "passed": 7,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2136,
+      "seconds": 2.4
+    },
+    "routing": {
+      "path": "target/app-backlog/latency-seventh-routing.log",
+      "sha256": "197ff73e13e54c69954f3e1720cd5d71d46318b75e852e42c7dad38acf2dd241",
+      "outcome": "ok",
+      "passed": 10,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2133,
+      "seconds": 0.71
+    },
+    "mic-aux": {
+      "path": "target/app-backlog/latency-seventh-mic-aux.log",
+      "sha256": "923d0755cb735247ea74d2739042ac28245cc233cfdfc651aa4e8b3852926001",
+      "outcome": "ok",
+      "passed": 7,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2136,
+      "seconds": 1.14
+    },
+    "record": {
+      "path": "target/app-backlog/latency-seventh-record.log",
+      "sha256": "b0526f984597cf604c169bffca37ba973eb80ba92baf97c47031e10982f58078",
+      "outcome": "ok",
+      "passed": 8,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2135,
+      "seconds": 11.21
+    },
+    "delivery": {
+      "path": "target/app-backlog/latency-seventh-delivery.log",
+      "sha256": "505d9700a81ab362c77b069ca745dfb7b4200aaeb5cef7114ccf3340010f609f",
+      "outcome": "ok",
+      "passed": 9,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2134,
+      "seconds": 23.81
+    },
+    "input-monitor": {
+      "path": "target/app-backlog/latency-seventh-input-monitor.log",
+      "sha256": "2579c710e2f6905a64d732df4ebcb7e923725a5aa43ba5458f1d02261d191976",
+      "outcome": "ok",
+      "passed": 5,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2138,
+      "seconds": 1.54
+    },
+    "ipc-limits": {
+      "path": "target/app-backlog/latency-seventh-ipc-limits.log",
+      "sha256": "e5ef5ed0e95fe496061bb56f34b30255bbea85e17f970fcc641429bec4c56bc7",
+      "outcome": "ok",
+      "passed": 11,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2132,
+      "seconds": 0.99
+    },
+    "ipc-follow": {
+      "path": "target/app-backlog/latency-seventh-ipc-follow.log",
+      "sha256": "9a8b24bfbb101573199f42fcace362bbdd7ed83ecdfde7f94c4c3018b644cd82",
+      "outcome": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2142,
+      "seconds": 0.01
+    },
+    "compose": {
+      "path": "target/app-backlog/latency-seventh-compose.log",
+      "sha256": "0fa96672e7bd383a5da896f71794e6cbdd9a95de3d389529b7b1f0e62d9659be",
+      "outcome": "ok",
+      "passed": 2,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2141,
+      "seconds": 0.29
+    },
+    "waveform": {
+      "path": "target/app-backlog/latency-seventh-waveform.log",
+      "sha256": "4618544f2b86a1599fe13caec7091c94f03ca7b9f40081ad836efd54073f7a88",
+      "outcome": "ok",
+      "passed": 5,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2138,
+      "seconds": 0.51
+    },
+    "song-navigation": {
+      "path": "target/app-backlog/latency-seventh-song-navigation.log",
+      "sha256": "d41a383f6a26b0154b3d3dd4ced0596c423c4ad2af1de9c5056d0072819d3fac",
+      "outcome": "ok",
+      "passed": 11,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2132,
+      "seconds": 2.68
+    },
+    "project-timing": {
+      "path": "target/app-backlog/latency-seventh-project-timing.log",
+      "sha256": "a4f1a491586cbfd38c23ab2b709de4d03663818c8f24521cfe491beb6326fcfa",
+      "outcome": "ok",
+      "passed": 6,
+      "failed": 0,
+      "ignored": 1,
+      "filtered": 2136,
+      "seconds": 1.4
+    },
+    "metronome": {
+      "path": "target/app-backlog/latency-seventh-metronome.log",
+      "sha256": "3ca971af5463b3b70fb1ec87b5c5407bfa70069cb7ae405becd46c5345a8f46d",
+      "outcome": "ok",
+      "passed": 6,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2137,
+      "seconds": 2.15
+    },
+    "recording": {
+      "path": "target/app-backlog/latency-seventh-recording.log",
+      "sha256": "bc6fa160b2ce9facfd8ffb2e913cb7be0aacdd27e4289a9d2d435e0f3c2029b4",
+      "outcome": "ok",
+      "passed": 12,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2131,
+      "seconds": 3.87
+    },
+    "audio": {
+      "path": "target/app-backlog/latency-seventh-audio.log",
+      "sha256": "d7f188e26187a59519663d180fa733ebf557371f52e09e9ddff18f0e996f7ef2",
+      "outcome": "ok",
+      "passed": 4,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2139,
+      "seconds": 0.47
+    },
+    "manual": {
+      "path": "target/app-backlog/latency-seventh-manual.log",
+      "sha256": "bffec14dee45d6c1d5273294ac761c7c700ae692bc67991bc73f246e7930d97f",
+      "outcome": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2142,
+      "seconds": 0
+    },
+    "help": {
+      "path": "target/app-backlog/latency-seventh-help.log",
+      "sha256": "5ba88bfe07d30683eec11795fb35a02588798d14856b5f1cb7e14a09a95af4d1",
+      "outcome": "ok",
+      "passed": 14,
+      "failed": 0,
+      "ignored": 1,
+      "filtered": 2128,
+      "seconds": 2.97
+    },
+    "session-edits": {
+      "path": "target/app-backlog/latency-seventh-session-edits.log",
+      "sha256": "77074dc8c0e139e6d7fe069f56fce0d636b3c13511635dcffe70b5b6cf723a40",
+      "outcome": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2142,
+      "seconds": 0.47
+    },
+    "full": {
+      "path": "target/app-backlog/latency-seventh-full.log",
+      "sha256": "3e792c8a591a70a953a24125eabf753cfc113cb5baefaf14fa9836bd7153fa3c",
+      "outcome": "ok",
+      "passed": 2099,
+      "failed": 0,
+      "ignored": 44,
+      "filtered": 0,
+      "seconds": 651.62
+    }
+  },
+  "parallel": {
+    "sample_rates": 4,
+    "compared_frames": 40000,
+    "maximum_null_error": 0,
+    "physical_devices_opened": false
+  },
+  "renderer": {
+    "sample_rates": 4,
+    "compared_frames": 16384,
+    "maximum_null_error": 0,
+    "callback_allocations": 0,
+    "physical_devices_opened": false
+  },
+  "monitor": {
+    "compared_frames": 3760,
+    "independent_headphone_delay_frames": 336,
+    "maximum_null_error": 0,
+    "callback_allocations": 0
+  },
+  "cueTransition": {
+    "maximum_sample_jump": 0.0034010266,
+    "program_delay_frames": 336,
+    "transition_ms": 10
+  },
+  "renderExport": {
+    "sample_rates": 3,
+    "source_frames_trimmed_exactly": true,
+    "maximum_sample_error": 0,
+    "physical_devices_opened": false
+  },
+  "clockLoadRegression": {
+    "path": "target/app-backlog/latency-seventh-full-output-timing.json",
+    "sha256": "08918219f32e6d5cd8d3549886d3eec4355afeb4561bc288332bc3efeb395e45",
+    "physical_devices_opened": false,
+    "real_decode_egui_iterations": 5162,
+    "schema": 1,
+    "tempos": [
+      {
+        "bpm": 40,
+        "clocks": 24,
+        "delay_ns": [
+          144266,
+          128145,
+          150983,
+          127445,
+          71448,
+          39118,
+          145667,
+          18251,
+          151551,
+          52719,
+          142977,
+          23476,
+          21770,
+          35314,
+          138194,
+          79944,
+          14485,
+          35488,
+          47740,
+          49367,
+          28118,
+          72122,
+          116500,
+          45958
+        ],
+        "max_delay_ns": 151551
+      },
+      {
+        "bpm": 73,
+        "clocks": 24,
+        "delay_ns": [
+          151387,
+          5516,
+          127486,
+          18741,
+          114877,
+          145803,
+          119602,
+          132903,
+          31866,
+          20083,
+          34425,
+          160145,
+          106944,
+          114243,
+          76833,
+          111801,
+          39724,
+          102943,
+          39199,
+          88333,
+          74757,
+          61015,
+          106942,
+          91325
+        ],
+        "max_delay_ns": 160145
+      },
+      {
+        "bpm": 120,
+        "clocks": 24,
+        "delay_ns": [
+          17924,
+          57605,
+          49535,
+          80339,
+          80769,
+          11780,
+          104629,
+          141976,
+          67321,
+          538431,
+          94680,
+          26775,
+          98164,
+          29258,
+          62523,
+          60701,
+          68381,
+          40519,
+          124742,
+          105046,
+          60350,
+          114322,
+          48750,
+          129515
+        ],
+        "max_delay_ns": 538431
+      },
+      {
+        "bpm": 137,
+        "clocks": 24,
+        "delay_ns": [
+          35963,
+          73815,
+          26164,
+          6889,
+          143993,
+          141552,
+          71567,
+          86834,
+          47809,
+          127911,
+          28300,
+          83861,
+          60961,
+          53353,
+          138247,
+          103222,
+          115239,
+          42629,
+          112106,
+          136041,
+          155517,
+          148241,
+          45171,
+          83604
+        ],
+        "max_delay_ns": 155517
+      },
+      {
+        "bpm": 180,
+        "clocks": 24,
+        "delay_ns": [
+          128506,
+          146431,
+          146482,
+          46111,
+          43160,
+          12751,
+          140346,
+          93436,
+          56860,
+          115494,
+          79668,
+          31884,
+          112644,
+          53108,
+          71450,
+          52582,
+          83342,
+          108475,
+          152025,
+          62906,
+          142459,
+          145508,
+          5803,
+          100731
+        ],
+        "max_delay_ns": 152025
+      },
+      {
+        "bpm": 240,
+        "clocks": 24,
+        "delay_ns": [
+          79378,
+          44030,
+          85141,
+          147877,
+          73653,
+          8427,
+          132083,
+          128110,
+          122970,
+          33660,
+          63438,
+          15588,
+          87826,
+          127104,
+          10711,
+          135783,
+          76142,
+          92460,
+          156780,
+          75055,
+          61123,
+          34232,
+          71177,
+          40161
+        ],
+        "max_delay_ns": 156780
+      }
+    ]
+  },
+  "node": {
+    "path": "target/app-backlog/latency-seventh-node.log",
+    "sha256": "4456fb4ea607f3bb2b2ca0cac42a95e0af4eaa85324ab68fc6ff123edc25db7e",
+    "passed": 15,
+    "failed": 0
+  },
+  "retainedPreliminaryResults": {
+    "first": {
+      "reason": "Initial prepared graph foundation passed six core checks, including exact parallel nulling at four rates. Later revisions extend actual renderer, headphones, native editing, recording and delivery coverage.",
+      "binary": {
+        "path": "target/app-backlog/qualification-bin/latency-tests-first",
+        "sha256": "4badac8ce70fe23d9567336e266a1a20300c39c47f1a971e519c9b4880caf3c2"
+      },
+      "artifacts": [
+        {
+          "path": "target/app-backlog/latency-first-build.log",
+          "sha256": "48a16650f798aefc1d01c0d87f13f1371a8c99b91a7bc8e76d7e70a7e8f11aa1"
+        },
+        {
+          "path": "target/app-backlog/latency-first-core.log",
+          "sha256": "7ead3ca993a18ee8deac0897daf7a72db3e3433b9ccc9ff62a050737127ebd72"
+        },
+        {
+          "path": "target/app-backlog/latency-first-source.json",
+          "sha256": "a155103f77ba397ed1d9972cfba362b637b133176ca12e1c723a109fffbbea50"
+        }
+      ]
+    },
+    "second": {
+      "reason": "Compilation refused a JSON macro recursion limit after adding the scalar latency status. Production now inserts latency into the already constructed state object without changing crate recursion limits.",
+      "binary": null,
+      "artifacts": [
+        {
+          "path": "target/app-backlog/latency-second-build.log",
+          "sha256": "1e6befd08b32fb63545721c5a824ae3ccaa0a93b1818eb7d24ffbf3f3644a50c"
+        },
+        {
+          "path": "target/app-backlog/latency-second-source.json",
+          "sha256": "9aa31d65f1bb7a8e58f92a6f806a7d665a7456d01b8f707bdd0b14ae86cdf2fd"
+        }
+      ]
+    },
+    "third": {
+      "reason": "Compilation refused an inferred iterator sum type while computing retained history storage. The final source specifies the actual usize storage type.",
+      "binary": null,
+      "artifacts": [
+        {
+          "path": "target/app-backlog/latency-third-build.log",
+          "sha256": "d65a4ae04a95945b73d0723dcb4c1ceda6c12c81a189ee838bb5119bce4f8e0f"
+        },
+        {
+          "path": "target/app-backlog/latency-third-source.json",
+          "sha256": "6fe45e151dbe25e70c20e10f0654446fc860e93c2d3579ae421db4d8481139ff"
+        }
+      ]
+    },
+    "fourth": {
+      "reason": "All focused checks passed. Final production corrections align independently delayed headphone program mixes, retain conservative Undo rate budgets, validate report identity, and add exact monitor/export/raw-recording placement checks.",
+      "binary": {
+        "path": "target/app-backlog/qualification-bin/latency-tests-fourth",
+        "sha256": "5bd4cf0966e02789c3f5c9e2baf67c50f9cc0898f5809344f4a44206cbf4980d"
+      },
+      "artifacts": [
+        {
+          "path": "target/app-backlog/latency-fourth-build.log",
+          "sha256": "1aedcb447f58931924e535af1f41d775f70b06e84257110c7054232b421ec1cf"
+        },
+        {
+          "path": "target/app-backlog/latency-fourth-core.log",
+          "sha256": "65a1ff9c03b7eb4f66eef9c7ae566595d4137320ea0b011e47f69202fb3b02cb"
+        },
+        {
+          "path": "target/app-backlog/latency-fourth-delivery.log",
+          "sha256": "5900eecc761de895667de8f7d11b1ae52e7b0bfcec2c2c6b491d3c033599fe7a"
+        },
+        {
+          "path": "target/app-backlog/latency-fourth-input-monitor.log",
+          "sha256": "a596a3fb5980b728b5c3f204dffd6c798b10363da2cece5cbdfb6c8b6f142f35"
+        },
+        {
+          "path": "target/app-backlog/latency-fourth-ipc-follow.log",
+          "sha256": "a980383cb628102a534187a6a6b807589d07fb24f782a00b865dd0f77e06349b"
+        },
+        {
+          "path": "target/app-backlog/latency-fourth-ipc-limits.log",
+          "sha256": "91d9f1b7e55d3a68fd9595d54294b417ba272e3da82a7fe3383541e94dad4326"
+        },
+        {
+          "path": "target/app-backlog/latency-fourth-mic-aux.log",
+          "sha256": "aa46e46117204090881219590b5ce0d6ff225a5fde5ceaf723ecd88eff7faef6"
+        },
+        {
+          "path": "target/app-backlog/latency-fourth-native.log",
+          "sha256": "9b81597902c74857d2f606558f6cf2f51a60ff5069e1f18b0cab8a8f52c35d0c"
+        },
+        {
+          "path": "target/app-backlog/latency-fourth-record.log",
+          "sha256": "1b6f9ff025120369f91dc3fb7ca1a75bee0ac4f6f8c6fc574c725eaa63a9f6fd"
+        },
+        {
+          "path": "target/app-backlog/latency-fourth-routing.log",
+          "sha256": "c27eccf25f35345343240c4e8ec47ffaeee7e3a7e7087f3b0f9d435a5a6e453c"
+        },
+        {
+          "path": "target/app-backlog/latency-fourth-source.json",
+          "sha256": "e2d57c2a93d06b0936f0b93c0ad25174a81b498b1facbd602375308275ace088"
+        }
+      ]
+    },
+    "fifth": {
+      "reason": "All focused checks passed. The complete suite found that the existing native record-source fixture removed only the WAV before testing Cancel at the same destination. It now verifies the new placement sidecar and removes both owned fixture files; Cancel also verifies that neither file is published. Final compilation and the complete suite are fresh.",
+      "binary": {
+        "path": "target/app-backlog/qualification-bin/latency-tests-fifth",
+        "sha256": "f2cc84043bb495087b61ac54a4e21e87c88c273a0c3d425d23163f722c8dfc60"
+      },
+      "artifacts": [
+        {
+          "path": "target/app-backlog/latency-fifth-audio.log",
+          "sha256": "c3bc737221e0e9a85a2789874ad4ba57f07b084dd1b3fc7ed431738d77a69c7d"
+        },
+        {
+          "path": "target/app-backlog/latency-fifth-build.log",
+          "sha256": "e83d639d3595f43048420efd5a9db5be124f1536b88b6c5205a39431a9e2d36d"
+        },
+        {
+          "path": "target/app-backlog/latency-fifth-compose.log",
+          "sha256": "704e175a72776af834bda71c4bdbb8b660a86075d514567587ab6038522d2850"
+        },
+        {
+          "path": "target/app-backlog/latency-fifth-core.log",
+          "sha256": "28071acd356d03b01ffc85220c3bcc3c2d81ec75a45651dfc6bf39ab990dffeb"
+        },
+        {
+          "path": "target/app-backlog/latency-fifth-delivery.log",
+          "sha256": "0c40cff6e2d98b57f46abf0328afed4f21109201c612a3702b7e5e4f3e71c72c"
+        },
+        {
+          "path": "target/app-backlog/latency-fifth-full.log",
+          "sha256": "562b2fba4760c12dfc2ea77ebf62f9dc0ec027b1168eaf3230cb89ca4a70d33a"
+        },
+        {
+          "path": "target/app-backlog/latency-fifth-help.log",
+          "sha256": "75b810b776e5a6545f6541bcbca7dabcbcc4088c7c4456c6a2251a567029a72a"
+        },
+        {
+          "path": "target/app-backlog/latency-fifth-input-monitor.log",
+          "sha256": "bf557cae1e83d208290432b4e2aa471258f2331d1a5eae220decb45ba22c04ff"
+        },
+        {
+          "path": "target/app-backlog/latency-fifth-ipc-follow.log",
+          "sha256": "6eff5c0e7e04bda0aec910c9426cb4f2115cbcdddcd2f7460fc6c37e969425a3"
+        },
+        {
+          "path": "target/app-backlog/latency-fifth-ipc-limits.log",
+          "sha256": "a13ce354bb930f60535ce81e0e2687b54580502c43b4d6ae2b21fe466909d308"
+        },
+        {
+          "path": "target/app-backlog/latency-fifth-manual.log",
+          "sha256": "776680b58e41f32b4887b88281e7c7de30c9b646bfdcff55b08c406cb5645f8f"
+        },
+        {
+          "path": "target/app-backlog/latency-fifth-metronome.log",
+          "sha256": "0c73ecb17bfb3c680c50a83c920609a91cee85e2ce7806b2eab4ae1c26dafa1c"
+        },
+        {
+          "path": "target/app-backlog/latency-fifth-mic-aux.log",
+          "sha256": "da1f4285e4129d6803d7a7d29ee1e3ba07509bad858f14aade8a36b2a073f129"
+        },
+        {
+          "path": "target/app-backlog/latency-fifth-native.log",
+          "sha256": "c551ab36ae4d369b2783cad36f454fb753a4ade49b49bd69b4e8a1d1431f986d"
+        },
+        {
+          "path": "target/app-backlog/latency-fifth-project-timing.log",
+          "sha256": "37d727b5769bc8c1e1b2fc277deb8100bc1c5f65ead865cdb78cd3a7a3fbf4c1"
+        },
+        {
+          "path": "target/app-backlog/latency-fifth-record.log",
+          "sha256": "54b89d9b204891d68e65fefab1a53837d6ebf280161f1d48766e24997935e1f1"
+        },
+        {
+          "path": "target/app-backlog/latency-fifth-recording.log",
+          "sha256": "66e25b0d25504e8d07ab74f0c64b789d31b3e64c6fb9a526663890fded469c48"
+        },
+        {
+          "path": "target/app-backlog/latency-fifth-routing.log",
+          "sha256": "25678f066ce07b5ae712ac3451d46966e8caa0401c204583e86475dd71def440"
+        },
+        {
+          "path": "target/app-backlog/latency-fifth-song-navigation.log",
+          "sha256": "f37141e2be58c94225afba91a046caa36d0a0c964d8976aa9cc753ca733320f2"
+        },
+        {
+          "path": "target/app-backlog/latency-fifth-source.json",
+          "sha256": "22a78c19a712b1f33352f280aab5ff04f3ef163e21494914cee45dc8b74e81c4"
+        },
+        {
+          "path": "target/app-backlog/latency-fifth-waveform.log",
+          "sha256": "6cbded39d4cd26c986bd44031b78967e0b0c14e76fe703e06a750a8c698a07f8"
+        }
+      ]
+    },
+    "sixth": {
+      "reason": "The full ordinary Rust rerun passed 2098 with no failures, as did all fifteen package checks. The forced fresh release compilation exposed two production session-edit calls to the removed routing constructor. Both now prepare at the actual output rate, with a new two-rate structural/import/Undo regression. The final source and executable are fresh; the old qualification and failed release log remain retained.",
+      "binary": {
+        "path": "target/app-backlog/qualification-bin/latency-tests-sixth",
+        "sha256": "f05691d010105d41181db0d467e102d16d45b369a4717faeb1cfb246d49924cd"
+      },
+      "artifacts": [
+        {
+          "path": "target/app-backlog/latency-sixth-audio.log",
+          "sha256": "cc6b9b0f6fd17e6127d9263e261cc76b0e9b7d8f42420b40c552670cfa37db5f"
+        },
+        {
+          "path": "target/app-backlog/latency-sixth-build.log",
+          "sha256": "fe47297df91b4114bb572c0de37507351f31243953f8fbde246281bef6a021ae"
+        },
+        {
+          "path": "target/app-backlog/latency-sixth-compose.log",
+          "sha256": "bac1656c8f16ba2f9cc4c30a7321f449a7a8037003ad9c49753c333c2043e395"
+        },
+        {
+          "path": "target/app-backlog/latency-sixth-core.log",
+          "sha256": "a0bc6bc394050dfe096ccec2c229dd69e9fba62a0222e9bdd48b48c1e5e039d7"
+        },
+        {
+          "path": "target/app-backlog/latency-sixth-delivery.log",
+          "sha256": "c05f3090473794964abce0e5481b312ffea129c7767146224bdf93d902cf471c"
+        },
+        {
+          "path": "target/app-backlog/latency-sixth-full.log",
+          "sha256": "3e777dec9ae9211357c510ac5e3b87464c097134da203d32a460798dc536682f"
+        },
+        {
+          "path": "target/app-backlog/latency-sixth-help.log",
+          "sha256": "86f2a1e69f1d7c0b645bf8863b504630e46c12bb29a90a748a68339df5cb1de7"
+        },
+        {
+          "path": "target/app-backlog/latency-sixth-input-monitor.log",
+          "sha256": "fa0bc83d68013388ada77c9028a7c0c12328c8e6fadbeb09e9d8b8c598f30996"
+        },
+        {
+          "path": "target/app-backlog/latency-sixth-ipc-follow.log",
+          "sha256": "6eff5c0e7e04bda0aec910c9426cb4f2115cbcdddcd2f7460fc6c37e969425a3"
+        },
+        {
+          "path": "target/app-backlog/latency-sixth-ipc-limits.log",
+          "sha256": "a13ce354bb930f60535ce81e0e2687b54580502c43b4d6ae2b21fe466909d308"
+        },
+        {
+          "path": "target/app-backlog/latency-sixth-manual.log",
+          "sha256": "776680b58e41f32b4887b88281e7c7de30c9b646bfdcff55b08c406cb5645f8f"
+        },
+        {
+          "path": "target/app-backlog/latency-sixth-metronome.log",
+          "sha256": "2978e2fa600c90062a4d89601d37fad1c682b1df618a538435aa914f73f4f178"
+        },
+        {
+          "path": "target/app-backlog/latency-sixth-mic-aux.log",
+          "sha256": "da1f4285e4129d6803d7a7d29ee1e3ba07509bad858f14aade8a36b2a073f129"
+        },
+        {
+          "path": "target/app-backlog/latency-sixth-native-recording-workflow.log",
+          "sha256": "3aae7a743215ba80fce64b8f9920f0ecbef40035d6ee4115ebe36f4dfa1f1e93"
+        },
+        {
+          "path": "target/app-backlog/latency-sixth-native.log",
+          "sha256": "c551ab36ae4d369b2783cad36f454fb753a4ade49b49bd69b4e8a1d1431f986d"
+        },
+        {
+          "path": "target/app-backlog/latency-sixth-project-timing.log",
+          "sha256": "f86ca4ea3a9efb1158dc05cfe881cb9ebe4b1857276f048beb1cc19328ffc7d7"
+        },
+        {
+          "path": "target/app-backlog/latency-sixth-record.log",
+          "sha256": "079ba3346d09d9f1fbb9e5fbd46b533a2fc95bfeb81062eebcebc809b0eb1534"
+        },
+        {
+          "path": "target/app-backlog/latency-sixth-recording.log",
+          "sha256": "0171358fa38a504338bc4a6578a0cd734f94674f7d1d70bef9d7dcc78b3450e5"
+        },
+        {
+          "path": "target/app-backlog/latency-sixth-retry-full.log",
+          "sha256": "ebbbcca223abb5b1a11fde807671cef6f24ad61d4b79b2511ffe6b48336ecf5f"
+        },
+        {
+          "path": "target/app-backlog/latency-sixth-retry-node.log",
+          "sha256": "af764b441d309dd3ad71c797105b56031a190c91130952dce2461bdbf8834e4a"
+        },
+        {
+          "path": "target/app-backlog/latency-sixth-routing.log",
+          "sha256": "334fd6389268a39e3bc972ecfaabbb23519292b0895d8fd1ad73c948bb6589c1"
+        },
+        {
+          "path": "target/app-backlog/latency-sixth-song-navigation.log",
+          "sha256": "a6f5f06e0a0beabd1a2ccb8ed61e679364d443e2459dc9d13955090de901717b"
+        },
+        {
+          "path": "target/app-backlog/latency-sixth-source.json",
+          "sha256": "4512023fcf533ac1fdb3eb2b61056bc25f9d1ef9d530a04c8fb96c0dabcfb366"
+        },
+        {
+          "path": "target/app-backlog/latency-sixth-tags-group-reproduction.log",
+          "sha256": "4e79625b6609dddcb70accefac783ddfb9c19a7c98857b52321bbf9040db4d42"
+        },
+        {
+          "path": "target/app-backlog/latency-sixth-tags-reproduction-1.log",
+          "sha256": "ef495f9439f6caaa8a91e1d129f7ac83fdb5012c92a6d7ade6fc6133b8187d34"
+        },
+        {
+          "path": "target/app-backlog/latency-sixth-tags-reproduction-2.log",
+          "sha256": "a02e5eb93ded20091946709d34992acaf9af0f14eecada08b2e12385b895b677"
+        },
+        {
+          "path": "target/app-backlog/latency-sixth-tags-reproduction-3.log",
+          "sha256": "e185b1bba5f2b5e210e00b78a5265eb5b5f0e8115c0df7c9a300bd019416ddef"
+        },
+        {
+          "path": "target/app-backlog/latency-sixth-ui-context-reproduction.log",
+          "sha256": "d5ebd94a749825cd9f8e5ab7590abcd49d46756497c3dcbf2eb47689d0d4b93a"
+        },
+        {
+          "path": "target/app-backlog/latency-sixth-waveform.log",
+          "sha256": "81465f8b9065e8856cdc94325a86d6b4e854f1d03e24b6486bbd8d5803ca6196"
+        }
+      ]
+    }
+  },
+  "priorTimeout": {
+    "failedCompleteSuite": {
+      "path": "target/app-backlog/latency-sixth-full.log",
+      "sha256": "3e777dec9ae9211357c510ac5e3b87464c097134da203d32a460798dc536682f",
+      "outcome": "FAILED",
+      "passed": 2097,
+      "failed": 1,
+      "ignored": 44,
+      "filtered": 0,
+      "seconds": 674.68
+    },
+    "isolatedReproductions": [
+      {
+        "path": "target/app-backlog/latency-sixth-tags-reproduction-1.log",
+        "sha256": "ef495f9439f6caaa8a91e1d129f7ac83fdb5012c92a6d7ade6fc6133b8187d34",
+        "outcome": "ok",
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 2141,
+        "seconds": 0.76
+      },
+      {
+        "path": "target/app-backlog/latency-sixth-tags-reproduction-2.log",
+        "sha256": "a02e5eb93ded20091946709d34992acaf9af0f14eecada08b2e12385b895b677",
+        "outcome": "ok",
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 2141,
+        "seconds": 0.68
+      },
+      {
+        "path": "target/app-backlog/latency-sixth-tags-reproduction-3.log",
+        "sha256": "e185b1bba5f2b5e210e00b78a5265eb5b5f0e8115c0df7c9a300bd019416ddef",
+        "outcome": "ok",
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 2141,
+        "seconds": 0.75
+      }
+    ],
+    "tagGroup": {
+      "path": "target/app-backlog/latency-sixth-tags-group-reproduction.log",
+      "sha256": "4e79625b6609dddcb70accefac783ddfb9c19a7c98857b52321bbf9040db4d42",
+      "outcome": "ok",
+      "passed": 9,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2133,
+      "seconds": 6.88
+    },
+    "uiContext": {
+      "path": "target/app-backlog/latency-sixth-ui-context-reproduction.log",
+      "sha256": "d5ebd94a749825cd9f8e5ab7590abcd49d46756497c3dcbf2eb47689d0d4b93a",
+      "outcome": "ok",
+      "passed": 640,
+      "failed": 0,
+      "ignored": 13,
+      "filtered": 1489,
+      "seconds": 222.59
+    },
+    "unchangedCompleteRerun": {
+      "path": "target/app-backlog/latency-sixth-retry-full.log",
+      "sha256": "ebbbcca223abb5b1a11fde807671cef6f24ad61d4b79b2511ffe6b48336ecf5f",
+      "outcome": "ok",
+      "passed": 2098,
+      "failed": 0,
+      "ignored": 44,
+      "filtered": 0,
+      "seconds": 649.57
+    },
+    "cause": "The existing tag-workflow wait for a deck load timed out once during the sixth complete suite. Three exact isolated repetitions, the complete tag group, complete UI context and unchanged complete-suite rerun pass. The cause is unresolved; no production fix is claimed."
+  },
+  "productionCheck": {
+    "path": "target/app-backlog/latency-seventh-production-check.log",
+    "sha256": "40d0a4290e120cdf9a1f57163c1a7041c22db6125328bd4880202798112bc5b7",
+    "passed": true
+  },
+  "correctedReleaseFailure": {
+    "path": "target/app-backlog/latency-release-build.log",
+    "sha256": "84c696153cfe7ebb5dd8cc14e3385346a4eb9dba5185ec1eefe40b0dc2f571a5",
+    "cause": "Production compilation refused two old routing constructor calls in structural/import preparation. Both now use the requested logical output rate; the final source includes a two-rate structural/import/Undo/Redo regression."
+  },
+  "remaining": [
+    "Automatic latency reports from native external plugin providers and their lookahead/tails; external plugin hosting is still planned.",
+    "Broader parameter/event alignment, scheduled external MIDI deadlines and compensation of audible/display history.",
+    "Sidechain and send/return device workflows beyond existing explicit and implicit audio graph paths.",
+    "Editable recording placement from retained alignment metadata; this checkpoint writes exact source-origin metadata but does not create an audio clip."
+  ],
+  "limits": "Partial #178 foundation on Linux ARM64: retained measured offsets and declared processor delays, exact causal compensation through existing graph paths at 8–192 kHz, separately aligned program/headphone mixes, explicit immediate cue override, bounded prepared histories, click-limited report transitions, sample-rate/Undo reconstruction, exact render/export parity and raw/delivery recording source-origin metadata. Actual native egui/AccessKit edit/apply/cancel/reopen/Undo path qualified. Plugin reports are entered explicitly; existing causal native DSP has no invented lookahead. Automatic external-plugin reports, broad parameter/MIDI event alignment, sidechain workflows, compensated audible history and recording clip placement remain open. No physical device, capture, new OS GUI or listening acceptance.",
+  "releaseDeployment": {
+    "schema": 1,
+    "status": "ready_installation_deferred_active_app",
+    "package": {
+      "path": "/home/michael/Projects/omatainer-work/hardware-resurrection/target/app-backlog/release-graph-latency-qualified",
+      "manifestSha256": "d35559a2bbe2a743ac582cd84e32c1dc24df6ec805b7cc7fa7744ee849407b33",
+      "revision": "f7f5c99116fdba96a126fe083aa5fdccdcc8741e",
+      "version": "0.1.0+f7f5c99116fd",
+      "executableSha256": "596451d03099335aa9b1b7f2e1839fe2d1ce21e8f5ee02383df0d8049959ae9a"
+    },
+    "installed": false,
+    "installedExecutableSha256": "3217e4bfce388cac60e0ad7bea4caf83ec0d323f6eb620d4bf3a04d2c09ed69d",
+    "buildInfo": {
+      "arch": "aarch64",
+      "debug_assertions": false,
+      "os": "linux",
+      "pkg_version": "0.1.0",
+      "schema": 1
+    },
+    "applicationProcessesPreserved": [
+      {
+        "pid": 2045140,
+        "executable": "/home/michael/.local/bin/omatainer",
+        "arguments": [
+          "/home/michael/.local/bin/omatainer",
+          "--empty-once"
+        ],
+        "sha256": "3217e4bfce388cac60e0ad7bea4caf83ec0d323f6eb620d4bf3a04d2c09ed69d"
+      },
+      {
+        "pid": 2273135,
+        "executable": "/home/michael/.local/bin/omatainer",
+        "arguments": [
+          "/home/michael/.local/bin/omatainer",
+          "ctl",
+          "follow"
+        ],
+        "sha256": "3217e4bfce388cac60e0ad7bea4caf83ec0d323f6eb620d4bf3a04d2c09ed69d"
+      }
+    ],
+    "protectedSessionPreserved": {
+      "path": "/home/michael/Projects/omatainer-work/hardware-resurrection/target/hardware/apc-restart-20261006/session.omat",
+      "bytes": 162882871,
+      "sha256": "96e0b2495cdbdc549c324ecf8337fdef5590bdcbfe8916e4f014eb05d1ee827d"
+    },
+    "reason": "The default GUI is active. The supported updater refused replacement before changing any file. The verified package is ready; installation awaits closure of the active app. No GUI, follower, capture, audio or MIDI connection was restarted or opened."
+  }
+}

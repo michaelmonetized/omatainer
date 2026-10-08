@@ -153,6 +153,8 @@ fn midi_lock_binding_and_typed_ipc_share_renderer_state_and_target_validation() 
             deck: 0,
             extra: 0,
             relative: None,
+            controls: None,
+            pair_order: None,
         }],
     };
     engine

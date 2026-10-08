@@ -3,6 +3,88 @@ use crate::engine::midi::{cbind, nbind, rbind, RelativeSpec, UnmappedNotes};
 use crate::engine::{dsp::InputKey, Engine, RtEngine};
 use std::time::Instant;
 
+#[test]
+fn sync_modes_and_leaders_reach_the_renderer_through_the_real_learned_input_worker() {
+    use crate::engine::deck_sync::{Leader, Mode};
+    use crate::engine::midi::learn::{Config, Endpoint, Mapping};
+    let (engine, mut rt) = Engine::headless_for_test(48_000, 256);
+    let (mut sink, mut worker) = input(64, 1931, &engine.cmd);
+    let endpoint = Endpoint { name: "test device".into(), id: "test device".into() };
+    let mut bindings = Vec::new();
+    for mode in 0..4 { bindings.push(nbind(2, 60 + mode as u8, Action::DeckSyncMode, 1, mode)); }
+    for leader in 0..3 { bindings.push(nbind(2, 70 + leader as u8, Action::DeckSyncLeader, 0, leader)); }
+    engine.cmd.midi_learn().configure(Config { mappings: bindings.into_iter().map(|binding| Mapping { endpoint: endpoint.clone(), binding }).collect() }).unwrap();
+    drain(&mut worker); render(&mut rt);
+    sink.push(&[0x92, 71, 127]); drain(&mut worker); render(&mut rt);
+    assert_eq!(rt.deck_sync.leader, Some(Leader::DeckA));
+    for (id, mode) in Mode::ALL.into_iter().enumerate() {
+        sink.push(&[0x92, 60 + id as u8, 127]); drain(&mut worker);
+        assert_eq!(crate::engine::test_alloc::measure(|| render(&mut rt)), Default::default());
+        assert_eq!(rt.decks[1].sync_mode(), mode);
+        sink.push(&[0x92, 60, 0, 0x82, 60, 0]); drain(&mut worker); render(&mut rt);
+        assert_eq!(rt.decks[1].sync_mode(), mode);
+    }
+    sink.push(&[0x92, 72, 127]); drain(&mut worker); render(&mut rt);
+    assert_eq!(rt.decks[1].sync_mode(), Mode::Off);
+    assert_eq!(rt.deck_sync.leader, Some(Leader::DeckB));
+    assert!(!rt.decks[0].playing && !rt.decks[1].playing);
+    drop(worker); render(&mut rt);
+}
+
+#[test]
+fn deck_pad_learned_sp1_override_releases_the_original_deck_after_a_manufacturer_mode_and_layer_change() {
+    use crate::engine::midi::learn::{Config,Endpoint,Mapping};
+    let (engine,mut rt)=Engine::headless_for_test(48_000,256);
+    let mut input=engine.midi.open_for_test(&engine.cmd,1930,crate::engine::midi::surface::pioneer_sp1(),"Pioneer DDJ-SP1","learned-SP1");
+    engine.cmd.midi_learn().configure(Config {mappings:vec![Mapping {endpoint:Endpoint {name:"Pioneer DDJ-SP1".into(),id:"learned-SP1".into()},binding:nbind(7,0x14,Action::DeckPad,1,5)}]}).unwrap();
+    rt.apply(Command::DeckControl {source:1931,deck:1,control:crate::engine::deck_controls::Control::PadMode {mode:1}});
+    input.push(&[0x97,0x14,90]);render(&mut rt);assert_eq!(rt.decks[1].controls.status().roll,Some(5));assert!(rt.decks[0].controls.status().roll.is_none());
+    input.push(&[0x90,0x6d,127]);render(&mut rt);assert_eq!(rt.decks[0].controls.status().pad_mode,6);assert_eq!(rt.decks[1].controls.status().roll,Some(5));
+    input.push(&[0x89,0x64,0]);render(&mut rt);assert!(rt.decks[1].controls.status().roll.is_none());
+    assert_eq!(engine.cmd.queue_pressure().reserved_releases,0);
+}
+
+#[test]
+fn deck_pad_learned_worker_modes_parameters_profile_changes_and_disconnect_preserve_exact_owners() {
+    use crate::engine::{deck_controls::{Control,Button},deck_pads::Mode};
+    use crate::engine::midi::learn::{Config,Endpoint,Mapping};
+    let (engine,mut rt)=Engine::headless_for_test(48_000,256);
+    let (mut sink,mut worker)=input(64,1921,&engine.cmd);
+    let endpoint=Endpoint{name:"test device".into(),id:"test device".into()};
+    let mut config=Config{mappings:vec![
+        Mapping{endpoint:endpoint.clone(),binding:nbind(0,60,Action::DeckPad,0,2)},
+        Mapping{endpoint:endpoint.clone(),binding:nbind(0,61,Action::DeckPadMode,0,1)},
+        Mapping{endpoint:endpoint.clone(),binding:nbind(0,62,Action::DeckPadParameterRight,0,0)},
+        Mapping{endpoint:endpoint.clone(),binding:nbind(0,63,Action::DeckPadMode,0,2)},
+    ]};
+    engine.cmd.midi_learn().configure(config.clone()).unwrap();drain(&mut worker);render(&mut rt);
+    assert_eq!(engine.cmd.midi_learn().view().devices[0].pad_modes&6,6);
+    sink.push(&[0x90,61,127,0x80,61,0,0x90,62,127,0x80,62,0,0x90,60,95]);drain(&mut worker);
+    assert_eq!(crate::engine::test_alloc::measure(||render(&mut rt)),crate::engine::test_alloc::Counts::default());
+    assert_eq!(rt.decks[0].controls.status().roll_scale,1);assert_eq!(rt.decks[0].controls.status().roll,Some(2));
+    rt.apply(Command::DeckControl {source:1922,deck:1,control:Control::Hold {button:Button::Roll(6),on:true}});
+    sink.push(&[0x90,63,127,0x80,63,0]);drain(&mut worker);render(&mut rt);
+    assert_eq!(rt.decks[0].controls.status().pad_mode,Mode::Slice.index());assert!(rt.decks[0].controls.status().roll.is_none());
+    sink.push(&[0x80,60,0,0x90,60,95]);drain(&mut worker);render(&mut rt);assert_eq!(rt.decks[0].controls.status().slice,Some(2));
+    config.mappings[0].binding.deck=1;engine.cmd.midi_learn().configure(config).unwrap();drain(&mut worker);render(&mut rt);
+    assert!(rt.decks[0].controls.status().slice.is_none());assert_eq!(rt.decks[1].controls.status().roll,Some(6));
+    sink.push(&[0x80,60,0]);drain(&mut worker);render(&mut rt);assert_eq!(rt.decks[1].controls.status().roll,Some(6));
+    drop(worker);render(&mut rt);assert_eq!(rt.decks[1].controls.status().roll,Some(6));
+    assert_eq!(engine.cmd.queue_pressure().reserved_releases,0);
+}
+
+#[test]
+fn deck_pad_factory_worker_normalizes_mode_and_deck_layer_release_keys() {
+    let (engine,mut rt)=Engine::headless_for_test(48_000,256);
+    let mut input=engine.midi.open_for_test(&engine.cmd,1925,crate::engine::midi::surface::pioneer_sp1(),"Pioneer DDJ-SP1","recorded-SP1");
+    input.push(&[0x97,0x13,110]);render(&mut rt);assert_eq!(rt.decks[0].controls.status().roll,Some(3));
+    input.push(&[0x89,0x03,0]);render(&mut rt);assert!(rt.decks[0].controls.status().roll.is_none());
+    input.push(&[0x98,0x25,110]);render(&mut rt);assert_eq!(rt.decks[1].controls.status().slice,Some(5));
+    input.push(&[0x8a,0x75,0]);render(&mut rt);assert!(rt.decks[1].controls.status().slice.is_none());
+    assert_eq!(engine.cmd.midi_learn().view().devices.iter().find(|d|d.source==1925).unwrap().pad_modes,255);
+    assert_eq!(engine.cmd.queue_pressure().reserved_releases,0);
+}
+
 fn map() -> MidiMap {
     MidiMap {
         name: "handoff test".into(),
@@ -39,6 +121,104 @@ fn render(rt: &mut RtEngine) {
         rt.process(&mut []);
     }
 }
+
+#[test]
+fn learned_beat_jump_pads_keep_note_edges_ordered_and_target_both_decks_without_heap_work() {
+    use crate::engine::deck_controls::{Control, BEAT_JUMP_SIZES};
+    use crate::engine::midi::{Binding, learn::{Config, Endpoint, Mapping}};
+    let (engine, mut rt) = Engine::headless_for_test(48_000, 256);
+    let (mut sink, mut worker) = input(64, 1401, &engine.cmd);
+    let actions = [Action::DeckBeatJumpBack, Action::DeckBeatJumpForward, Action::DeckBeatJumpSmaller, Action::DeckBeatJumpLarger];
+    let mappings: Vec<_> = (0..2).flat_map(|deck| actions.into_iter().enumerate().map(move |(i, action)| Mapping {
+        endpoint: Endpoint { name: "test device".into(), id: "test device".into() },
+        binding: nbind(0, 60 + deck * 4 + i as u8, action, deck, 0),
+    })).collect();
+    engine.cmd.midi_learn().configure(Config { mappings: mappings.clone() }).unwrap();
+    for deck in 0..2 {
+        let audio = rt.decks[deck].audio.as_ref().unwrap().clone();
+        for (i, action) in actions.into_iter().enumerate() {
+            rt.decks[deck].pos = audio.frames() as f64 * 0.5;
+            let old = rt.decks[deck].pos; let other = rt.decks[1 - deck].pos;
+            let size = rt.decks[deck].controls.status().beat_jump_size;
+            let note = 60 + deck as u8 * 4 + i as u8;
+            let counts = crate::engine::test_alloc::measure(|| { sink.push(&[0x90, note, 100]); sink.push(&[0x80, note, 0]); sink.push(&[0x90, note, 0]); });
+            assert_eq!(counts, crate::engine::test_alloc::Counts::default()); drain(&mut worker);
+            let actual = rt.cmd_rx.try_recv().unwrap();
+            assert!(matches!(actual, Command::DeckControl { source: 1401, deck: d, .. } if usize::from(d) == deck));
+            assert!(rt.cmd_rx.is_empty(), "note releases cannot duplicate a jump");
+            assert_eq!(crate::engine::test_alloc::measure(|| rt.apply(actual)), crate::engine::test_alloc::Counts::default());
+            assert_eq!(rt.decks[1 - deck].pos, other); assert!(!rt.decks[deck].playing);
+            match action {
+                Action::DeckBeatJumpBack => assert!(rt.decks[deck].pos < old),
+                Action::DeckBeatJumpForward => assert!(rt.decks[deck].pos > old),
+                Action::DeckBeatJumpSmaller => assert_eq!(rt.decks[deck].controls.status().beat_jump_size, size - 1),
+                Action::DeckBeatJumpLarger => assert_eq!(rt.decks[deck].controls.status().beat_jump_size, size + 1),
+                _ => unreachable!(),
+            }
+            assert!((rt.decks[deck].controls.status().beat_jump_size as usize) < BEAT_JUMP_SIZES.len());
+        }
+    }
+    for mapping in mappings {
+        for invalid in [Binding { deck: 2, ..mapping.binding }, Binding { extra: 1, ..mapping.binding }, Binding { kind: MsgKind::Cc, ..mapping.binding }] {
+            assert!(crate::engine::midi::learn::validate_binding(&invalid).is_err());
+        }
+    }
+    assert!(!Control::BeatJumpSize { index: 10 }.valid());
+}
+
+#[test]
+fn learned_cue_holds_follow_note_edges_play_latches_and_worker_retirement_without_heap_work() {
+    use crate::engine::midi::{Binding, learn::{Config, Endpoint, Mapping}};
+    let (engine, mut rt) = Engine::headless_for_test(48_000, 64);
+    let (mut sink, mut worker) = input(16, 1501, &engine.cmd);
+    let mappings: Vec<_> = (0..2).flat_map(|deck| [Action::DeckCueHold, Action::DeckPlay].into_iter().enumerate().map(move |(i,action)| Mapping {
+        endpoint: Endpoint { name:"test device".into(), id:"test device".into() }, binding: nbind(0,70+deck*2+i as u8,action,deck,0),
+    })).collect();
+    engine.cmd.midi_learn().configure(Config { mappings:mappings.clone() }).unwrap();
+    for deck in 0..2usize {
+        rt.apply(Command::DeckSeek {deck:deck as u8,frac:0.25}); let cue=rt.decks[deck].pos; let other=rt.decks[1-deck].pos;
+        let note=70+deck as u8*2;
+        assert_eq!(crate::engine::test_alloc::measure(|| sink.push(&[0x90,note,100])),crate::engine::test_alloc::Counts::default());
+        drain(&mut worker); assert_eq!(crate::engine::test_alloc::measure(|| render(&mut rt)),crate::engine::test_alloc::Counts::default());
+        assert!(rt.decks[deck].controls.status().cue_held); assert!(!rt.decks[deck].playing); assert!(rt.decks[deck].preview_position.is_some());
+        let mut energy=0.0; for _ in 0..1024 {let (l,r)=rt.render_deck(deck);energy+=l*l+r*r;} assert!(energy>0.01);
+        sink.push(&[0x90,note+1,100,0x80,note+1,0,0x90,note,0]); drain(&mut worker); render(&mut rt);
+        assert!(rt.decks[deck].playing); assert!(!rt.decks[deck].controls.status().cue_held); assert!(rt.decks[deck].preview_position.is_none()); assert!(rt.decks[deck].pos>cue); assert_eq!(rt.decks[1-deck].pos,other);
+        sink.push(&[0x90,note,100,0x80,note,0]); drain(&mut worker); render(&mut rt);
+        assert!(!rt.decks[deck].playing); assert_eq!(rt.decks[deck].pos,cue);
+        sink.push(&[0x90,note,100]); drain(&mut worker); render(&mut rt);
+        sink.push(&[0x80,note,0]); drain(&mut worker); render(&mut rt); assert!(rt.decks[deck].preview_position.is_none());
+    }
+    for mapping in mappings.iter().filter(|m|m.binding.action==Action::DeckCueHold) {
+        for invalid in [Binding {deck:2,..mapping.binding},Binding {extra:1,..mapping.binding},Binding {kind:MsgKind::Cc,..mapping.binding}] {assert!(crate::engine::midi::learn::validate_binding(&invalid).is_err());}
+    }
+    sink.push(&[0x90,70,100,0x90,72,100]); drain(&mut worker); render(&mut rt);
+    assert!(rt.decks.iter().all(|d|d.preview_position.is_some()));
+    drop(worker); render(&mut rt); assert!(rt.decks.iter().all(|d|d.preview_position.is_none()&&!d.controls.status().cue_held));
+}
+#[test]
+fn portable_presets_retarget_real_workers_keep_factory_input_and_retire_holds_without_callback_heap_work() {
+    use crate::engine::midi::{presets::Preset,learn::{Config,Endpoint,Mapping}};
+    let (engine,mut rt)=Engine::headless_for_test(48_000,256);
+    let origin=Endpoint{name:"test device".into(),id:"another machine".into()};
+    let target=Endpoint{name:"test device".into(),id:"test device".into()};
+    let config=Config{mappings:vec![Mapping{endpoint:origin.clone(),binding:nbind(0,20,Action::DeckCueHold,0,0)},Mapping{endpoint:origin.clone(),binding:rbind(0,8,Action::DeckJog,1,0,RelativeSpec{encoding:super::super::RelativeEncoding::OffsetBinary,scale:0.5})}]};
+    let preset=Preset::capture("Imported".into(),String::new(),&origin,&config).unwrap();
+    let preset=Preset::decode(&serde_json::to_vec(&preset).unwrap()).unwrap();
+    let (mut sink,mut worker)=input(64,1651,&engine.cmd);
+    let view=engine.cmd.midi_learn().view();let applied=preset.target(&target,&view.config).unwrap();
+    engine.cmd.midi_learn().configure_reviewed(view.revision,1651,&target,applied).unwrap();drain(&mut worker);render(&mut rt);
+    assert_eq!(crate::engine::test_alloc::measure(||sink.push(&[0x90,20,100])),crate::engine::test_alloc::Counts::default());drain(&mut worker);
+    assert_eq!(crate::engine::test_alloc::measure(||render(&mut rt)),crate::engine::test_alloc::Counts::default());assert!(rt.decks[0].controls.status().cue_held);
+    sink.push(&[0x90,20,0]);drain(&mut worker);render(&mut rt);assert!(!rt.decks[0].controls.status().cue_held);
+    sink.push(&[0xb0,8,65]);drain(&mut worker);let command=rt.cmd_rx.try_recv().unwrap();assert!(matches!(command,Command::DeckJog{deck:1,delta} if delta==0.5));rt.apply(command);
+    sink.push(&[0xb0,7,80]);drain(&mut worker);let commands:Vec<_>=rt.cmd_rx.try_iter().collect();assert!(!commands.is_empty());for command in commands {rt.apply(command);}assert_eq!(rt.tracks[0].gain,80.0/127.0,"factory input must retain its identity-qualified renderer effect");
+    sink.push(&[0x90,20,100]);drain(&mut worker);render(&mut rt);assert!(rt.decks[0].controls.status().cue_held);
+    let view=engine.cmd.midi_learn().view();engine.cmd.midi_learn().configure_reviewed(view.revision,1651,&target,crate::engine::midi::presets::defaults(&target,&view.config)).unwrap();drain(&mut worker);
+    assert_eq!(crate::engine::test_alloc::measure(||render(&mut rt)),crate::engine::test_alloc::Counts::default());assert!(!rt.decks[0].controls.status().cue_held);
+    sink.push(&[0x90,20,100]);drain(&mut worker);render(&mut rt);assert!(rt.decks[0].touching,"restoring defaults returns the original factory action");
+}
+
 fn held(rt: &RtEngine, source: u64, note: u8) -> bool {
     rt.tracks
         .iter()
@@ -471,4 +651,82 @@ fn surfaces_apc_and_mpd_stop_survive_callback_overflow() {
         drain(&mut worker); render(&mut rt);
         assert!(!rt.playing && sink.shared.counters.snapshot().resets > 0);
     }
+}
+
+#[test]
+fn learned_hotcue_enters_its_saved_region_through_the_real_input_worker_without_a_new_profile_action() {
+    use crate::engine::{deck_controls::{Control, SavedLoopAction}, midi::learn::{Config, Endpoint, Mapping}};
+    let (engine, rt) = Engine::headless_for_test(48000, 256);
+    let mut rt = Box::new(rt);
+    let rate = f64::from(rt.decks[0].audio.as_ref().unwrap().sr);
+    rt.decks[0].loop_start = rate * 0.5;rt.decks[0].loop_len = rate * 0.25;
+    let media_key = rt.decks[0].history_key;
+    for action in [SavedLoopAction::Save, SavedLoopAction::Cue { pad: 7 }] {
+        rt.apply(Command::DeckControl { source: 0, deck: 0, control: Control::SavedLoop { media_key, id: 3, action } });
+    }
+    let (mut sink, mut worker) = input(64, 2631, &engine.cmd);
+    engine.cmd.midi_learn().configure(Config { mappings: vec![Mapping { endpoint: Endpoint { name: "test device".into(), id: "test device".into() }, binding: nbind(2, 60, Action::DeckHotCue, 0, 7) }] }).unwrap();
+    drain(&mut worker);render(&mut rt);
+    sink.push(&[0x92, 60, 100]);drain(&mut worker);
+    assert_eq!(crate::engine::test_alloc::measure(|| render(&mut rt)), Default::default());
+    assert!(rt.decks[0].playing && rt.decks[0].loop_on);
+    assert_eq!(rt.decks[0].controls.status().loop_slot, 2);
+    assert!((rt.decks[0].pos / rate - 0.5).abs() < 1e-9);
+    sink.push(&[0x82, 60, 0]);drain(&mut worker);render(&mut rt);
+    assert!(rt.decks[0].playing && rt.decks[0].loop_on);
+    assert!(rt.decks[1].preparation().unwrap().saved_loops.cue_loops.iter().all(Option::is_none));
+    drop(worker);render(&mut rt);
+}
+
+#[test]
+fn absolute_pitch_factory_and_learned_crossings_keep_ordered_worker_samples_and_rearm_on_mapping_and_overflow() {
+    use super::super::learn::{Config,Endpoint,Mapping};
+    for learned in [false,true] {
+        let (engine,mut rt)=Engine::headless_for_test(8000,256);
+        let mut factory=map();if !learned {factory.bindings.push(cbind(0,7,Action::DeckPitch,0,0));}
+        let counters=Arc::new(InputCounters::default());
+        let (mut sink,mut worker)=channel(64,2197,factory,engine.cmd.clone(),Arc::new(Mutex::new(Vec::new())),"test device".into(),"test device".into(),counters.clone()).unwrap();
+        let mut config=Config {mappings:vec![Mapping {endpoint:Endpoint {name:"test device".into(),id:"test device".into()},binding:cbind(0,7,Action::DeckPitch,0,0)}]};
+        if learned {engine.cmd.midi_learn().configure(config.clone()).unwrap();drain(&mut worker);}
+        assert_eq!(crate::engine::test_alloc::measure(||{for v in [20,100,20] {sink.push(&[0xb0,7,v]);}}),Default::default());
+        drain(&mut worker);assert_eq!(crate::engine::test_alloc::measure(||render(&mut rt)),Default::default());
+        assert!((rt.decks[0].pitch-20.0/127.0).abs()<1e-6);assert!(rt.pitch_pickup_status(0).acquired);assert_eq!(counters.snapshot().coalesced,0);
+        if learned {
+            config.mappings[0].binding.deck=1;engine.cmd.midi_learn().configure(config.clone()).unwrap();drain(&mut worker);
+            sink.push(&[0xb0,7,100]);drain(&mut worker);render(&mut rt);assert_eq!(rt.decks[1].pitch,0.5);
+            config.mappings[0].binding.deck=0;engine.cmd.midi_learn().configure(config).unwrap();drain(&mut worker);
+            sink.push(&[0xb0,7,100]);drain(&mut worker);render(&mut rt);assert!((rt.decks[0].pitch-20.0/127.0).abs()<1e-6);assert!(!rt.pitch_pickup_status(0).acquired);
+        }
+        let before=rt.decks[0].pitch;
+        for _ in 0..100 {sink.push(&[0xb0,7,100]);}drain(&mut worker);render(&mut rt);
+        sink.push(&[0xb0,7,100]);drain(&mut worker);render(&mut rt);assert_eq!(rt.decks[0].pitch,before);assert!(!rt.pitch_pickup_status(0).acquired);assert!(counters.snapshot().resets>0);
+        drop(worker);render(&mut rt);assert!(!rt.decks[0].playing && !rt.decks[1].playing);
+    }
+}
+
+#[test]
+fn actual_raw_worker_overflow_preserves_selected_stop_and_command_pressure_cannot_block_clocks() {
+    use crate::engine::midi::clock_input::{Config,Message,Loss};
+    use crate::engine::test_alloc;
+    let (engine,mut rt)=Engine::headless_for_test(48000,128);
+    let map=MidiMap{name:"Clock pressure fixture".into(),matchers:vec![],bindings:vec![],unmapped_notes:UnmappedNotes::Live};
+    let (mut input,mut worker)=channel(1,71,map,engine.cmd.clone(),Arc::new(parking_lot::Mutex::new(Vec::new())),"Fixture clock".into(),"clock:1".into(),Arc::new(InputCounters::default())).unwrap();
+    rt.configure_clock_input(Config{source:Some(71),..Default::default()});
+    let shared=engine.cmd.clock_input().clone();let base=Instant::now()+std::time::Duration::from_secs(1);
+    rt.playing=true;
+    assert_eq!(test_alloc::measure(||{input.push_at(&[0xfa,0xf8],base);input.push_at(&[0xfc],base);}),Default::default());
+    while worker.step() {}
+    rt.clock_input.begin(48000,0,Some(base));
+    assert_eq!(test_alloc::measure(||rt.process(&mut [])),Default::default());
+    assert!(!rt.playing);assert!(rt.clock_input.enabled());assert_eq!(rt.clock_input.status().lost,Some(Loss::Overflow));
+    let mut admitted=0;
+    while engine.cmd.send(Command::Metronome).is_ok() {admitted+=1;assert!(admitted<10000);}
+    assert!(admitted>=64);
+    let next=base+std::time::Duration::from_nanos(20_833_333);
+    shared.input(71,shared.generation(),rt.performance.input_epoch(),next,Message::Start,false);
+    shared.input(71,shared.generation(),rt.performance.input_epoch(),next,Message::Tick{packet_ticks:1},false);
+    rt.clock_input.begin(48000,0,Some(next));
+    assert_eq!(test_alloc::measure(||rt.process(&mut [])),Default::default());
+    assert!(rt.playing);assert_eq!(rt.clock_input.status().accepted_ticks,1);
+    println!("CLOCK_INPUT_PRESSURE {{\"ordinary_commands_admitted\":{admitted},\"raw_worker_stop_preserved\":true,\"callback_allocations\":0,\"physical_devices_opened\":false}}");
 }

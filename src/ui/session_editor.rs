@@ -6,12 +6,14 @@ use crate::engine::{
 };
 use std::sync::atomic::{AtomicBool, Ordering};
 mod worker;
+pub(super) mod scene_properties;
 use worker::{Job, Worker};
 
 pub(super) struct Editor {
     pub open: bool,
     axis: Axis,
     draft: Option<([u64; 2], session::Id, String, usize, Option<[u8; 3]>)>,
+    scene_draft: Option<([u64; 2], session::Id, crate::engine::scene::Properties)>,
     worker: Option<Worker>,
     active: Option<Arc<AtomicBool>>,
     pending: Option<Ack>,
@@ -25,6 +27,7 @@ impl Default for Editor {
             open: false,
             axis: Axis::Track,
             draft: None,
+            scene_draft: None,
             worker: None,
             active: None,
             pending: None,
@@ -90,6 +93,7 @@ impl Editor {
                     self.pending = None;
                     self.error = None;
                     self.draft = None;
+                    self.scene_draft = None;
                     self.message =
                         "Session edit applied. Undo and Redo are available in History.".into();
                 }
@@ -325,6 +329,16 @@ impl App {
                     if ui.button(crate::localization::format("Delete {label}", &[format!("{}", label)])).help(ui,HelpControl::SessionLayout).clicked() {self.session_editor.metadata(&self.engine,&layout,Action::Delete {axis,id});}
                 });
             });
+            if axis == Axis::Track { self.input_monitoring_controls(ui, slot); }
+            else {
+                let busy = self.session_editor.busy();
+                if self.session_editor.scene_draft.as_ref().is_none_or(|(namespace, identity, _)| *namespace != layout.namespace || *identity != id) { self.session_editor.scene_draft = Some((layout.namespace, id, item.scene)); }
+                let properties = &mut self.session_editor.scene_draft.as_mut().unwrap().2;
+                let meter = crate::engine::scene::Signature { numerator: self.snap.meter_numerator, denominator_power: self.snap.meter_denominator.trailing_zeros() as u8 };
+                if scene_properties::edit(ui, properties, self.snap.bpm, meter, busy) { let properties = *properties; self.session_editor.metadata(&self.engine, &layout, Action::SceneProperties { id, properties }); }
+            }
+            if let Some(pending) = self.snap.scenes.pending { ui.label(format!("Scene change queued for beat {:.3}", pending.when)); if ui.button("Cancel queued scene").clicked() { self.send(Command::CancelScene); } }
+            if let Some(error) = self.snap.scenes.error { ui.colored_label(self.theme.red, error.text()); }
             if self.session_editor.busy() {if ui.button(tr!("Cancel session edit")).clicked() {self.session_editor.cancel();} ctx.request_repaint_after(std::time::Duration::from_millis(16));}
             if let Some(error)=&self.session_editor.error {ui.colored_label(self.theme.red,error);} else {ui.label(&self.session_editor.message);}
             ui.label(tr!("Choose any offscreen track or scene using Go to track and Go to scene above the grid. Those numbers follow display order; MIDI routing uses stable track slots."));

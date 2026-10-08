@@ -1,0 +1,69 @@
+{
+  "schema": 1,
+  "installedAt": "2026-10-06T11:17:22.881Z",
+  "sourceRevision": "7db2dc58faa4962f2eff824cde2a7374d2fbafea",
+  "version": "0.1.0+7db2dc58faa4",
+  "package": {
+    "path": "target/app-backlog/release-midi-presets",
+    "manifestSha256": "bbb7e8172b4ceecbcdcd76a9e7e1c2d65a23f1b5a78909524d4c5bd083028683",
+    "files": 29
+  },
+  "binary": {
+    "sha256": "617c8161972f638d5f83b25c52e975f8a119ffdb461f23c7c77067d52674add1",
+    "installed": "/home/michael/.local/bin/omatainer",
+    "pid": 1771583,
+    "procExecutableSha256": "617c8161972f638d5f83b25c52e975f8a119ffdb461f23c7c77067d52674add1"
+  },
+  "schemas": {
+    "preferences": 18,
+    "project": 15,
+    "midiPreset": 1
+  },
+  "state": {
+    "playing": false,
+    "recording": false,
+    "master": 0,
+    "decks": [
+      {
+        "title": "What More Can I Say",
+        "playing": false,
+        "positionSeconds": 0.12760565708236016,
+        "cueHeld": false
+      },
+      {
+        "title": "Public Service Announcement",
+        "playing": false,
+        "positionSeconds": 3.9060474438022594,
+        "cueHeld": false
+      }
+    ]
+  },
+  "captureServices": {
+    "mpd232": "inactive; MainPID=0",
+    "ns7": "inactive; MainPID=0"
+  },
+  "preservedFollowerPid": 3973522,
+  "verification": {
+    "fullSerialRust": {
+      "passed": 1771,
+      "failed": 0,
+      "ignored": 43
+    },
+    "focusedPresetTests": 9,
+    "libraryTagsModule": 9,
+    "node": 15,
+    "sourceInventoryFiles": 683,
+    "dependencyLicenseRecords": 341
+  },
+  "logs": {
+    "target/app-backlog/midi-presets-release-build.log": "0b179b46ee25a6a40d5de1b759afbbcf9be3e3618b96bc2bf165dd005ead16bd",
+    "target/app-backlog/midi-presets-install.json": "3c60ba519706e66ba1941dc414a50f89d28b39768533a2fc5babffa9b0f47323",
+    "target/app-backlog/midi-presets-install-check.log": "b8db6748ea2e0d85befc393287c94f2bbb825d5d3c644942a2aa82649c5cfbba",
+    "target/app-backlog/visible-midi-presets-app/verified-state.json": "a4caa162f5c90aa0a9556f210d653d51a48ed6dc8c45280751be6c5a1dc55efd"
+  },
+  "limits": [
+    "No new physical captures, playback onset or listening acceptance were requested",
+    "The qualification receipt retains the intermittent tag UI timeout",
+    "Observed positions are recorded; exact restoration is not claimed"
+  ]
+}

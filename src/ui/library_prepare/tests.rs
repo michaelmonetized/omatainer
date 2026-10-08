@@ -188,6 +188,8 @@ fn captured_hardware_order_and_changed_file_load_fail_without_consuming_queue() 
                 deck: 0,
                 extra: 0,
                 relative: None,
+                controls: None,
+                pair_order: None,
             }],
         },
         "Synthetic prepare controller",
@@ -225,7 +227,7 @@ fn captured_hardware_order_and_changed_file_load_fail_without_consuming_queue() 
 
 fn converted_output(gui: &mut Gui) -> f64 {
     let (_, placeholder) = Engine::headless_for_test(48000, 256);
-    let rt = std::mem::replace(&mut gui.rt, placeholder);
+    let rt = std::mem::replace(&mut *gui.rt, placeholder);
     let mut callback = crate::engine::audio::OutputCallback::new(rt, 2);
     let mut energy = 0.0;
     for _ in 0..16 {
@@ -237,7 +239,7 @@ fn converted_output(gui: &mut Gui) -> f64 {
             .sum::<f64>();
     }
     callback.renderer_mut_for_test().publish_for_test();
-    std::mem::swap(&mut gui.rt, callback.renderer_mut_for_test());
+    std::mem::swap(&mut *gui.rt, callback.renderer_mut_for_test());
     gui.frame(vec![]);
     energy
 }

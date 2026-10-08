@@ -8,11 +8,19 @@ mod recovery;
 mod support;
 mod startup;
 mod licenses;
+mod ableton;
+mod filesystem_worker;
 mod engine;
 mod background;
 mod library;
+mod playlist_import;
+mod interchange_xml;
+mod dj_library;
+mod producer_library;
+mod plugin_host;
 mod music_provider;
 mod video;
+mod audio_delivery;
 mod project_versions;
 mod media_location;
 mod media_tags;
@@ -62,6 +70,27 @@ const APPLICATION_ID: &str = "org.omarchy.omatainer";
 fn main() -> anyhow::Result<()> {
     let _audio_shutdown = engine::audio::owner::Shutdown;
     let mut args = std::env::args().skip(1).collect::<Vec<_>>();
+    if args.first().map(String::as_str)==Some("controller-profiles-inspect"){anyhow::ensure!(args.len()==1,"usage: omatainer controller-profiles-inspect");println!("{}",engine::midi::catalog::inspect().map_err(anyhow::Error::msg)?);return Ok(());}
+    if args.first().map(String::as_str)==Some("controller-profiles-export") {
+        anyhow::ensure!(args.len()==2,"usage: omatainer controller-profiles-export NEW_DIRECTORY");
+        return engine::midi::catalog::export(std::path::Path::new(&args[1])).map_err(anyhow::Error::msg);
+    }
+    if args.first().map(String::as_str) == Some("producer-library-worker") {
+        anyhow::ensure!(args.len()==1,"usage: omatainer producer-library-worker (JSON request on stdin)");
+        return producer_library::worker().map_err(anyhow::Error::msg);
+    }
+    if args.first().map(String::as_str) == Some("ableton-worker") {
+        anyhow::ensure!(args.len() == 1,"usage: omatainer ableton-worker (private inherited descriptors)");
+        return ableton::process::worker().map_err(anyhow::Error::msg);
+    }
+    if args.first().map(String::as_str)==Some("vst3-worker") {
+        anyhow::ensure!(args.len()==1,"usage: omatainer vst3-worker (private inherited socket)");
+        return plugin_host::worker::run().map_err(anyhow::Error::msg);
+    }
+    if args.first().map(String::as_str)==Some("dj-discover-worker") {
+        anyhow::ensure!(args.len()==1,"usage: omatainer dj-discover-worker (JSON request on stdin)");
+        return dj_library::worker().map_err(anyhow::Error::msg);
+    }
     if args.first().map(|s| s.as_str()) == Some("benchmark-build-info") {
         anyhow::ensure!(args.len() == 1, "usage: omatainer benchmark-build-info");
         println!("{}", serde_json::json!({
@@ -486,7 +515,8 @@ fn handle_client_with_stop(
             }
             continue;
         };
-        let out = serde_json::json!({
+        let scene_names_truncated = [false, true].into_iter().any(|queued| ipc_transport::short_json_text(s.scene_name(queued), 256).len() < s.scene_name(queued).len());
+        let mut out = serde_json::json!({
             "ok": true,
             "id": request_id,
             // A queued command may not be reflected in this snapshot yet.
@@ -500,11 +530,22 @@ fn handle_client_with_stop(
             "bar": s.bar,
             "beat": s.beat_in_bar,
             "xfader": s.xfader,
+            "sync_leader": s.sync_leader,
+            "sync_leader_ready": s.sync_leader_ready,
+            "sync_modes": std::array::from_fn::<_, 2, _>(|i| s.decks.get(i).map_or(crate::engine::deck_sync::Mode::Off, |deck| deck.sync_mode)),
+            "sync_aligned": std::array::from_fn::<_, 2, _>(|i| s.decks.get(i).is_some_and(|deck| deck.sync_aligned)),
+            "sync_target_bpm": std::array::from_fn::<_, 2, _>(|i| s.decks.get(i).map_or(0.0, |deck| deck.sync_target_bpm)),
+            "pitch_pickup": std::array::from_fn::<_,2,_>(|i|s.decks.get(i).map_or(Default::default(),|deck|deck.pitch_pickup)),
             "monitor": s.monitor,
-            "midi": s.midi.iter().take(8).map(|name| ipc_transport::short_text(name, ipc_transport::STATUS_MIDI_NAME_BYTES)).collect::<Vec<_>>(),
-            "state_truncated": s.midi.len() > 8 || s.midi.iter().take(8).any(|name| name.len() > ipc_transport::STATUS_MIDI_NAME_BYTES)
-                || s.decks.iter().take(2).any(|deck| deck.title.len() > ipc_transport::STATUS_DECK_TITLE_BYTES),
+            "midi": s.midi.iter().take(8).map(|name| ipc_transport::short_json_text(name, ipc_transport::STATUS_MIDI_NAME_BYTES)).collect::<Vec<_>>(),
+            "state_truncated": scene_names_truncated || s.midi.len() > 8 || s.midi.iter().take(8).any(|name| ipc_transport::short_json_text(name, ipc_transport::STATUS_MIDI_NAME_BYTES).len() < name.len())
+                || s.decks.iter().take(2).any(|deck| ipc_transport::short_json_text(&deck.title, ipc_transport::STATUS_DECK_TITLE_BYTES).len() < deck.title.len()),
             "midi_clock": s.midi_clock,
+            "midi_clock_output": commands.clock_output().counters(),
+            "scenes": s.scenes,
+            "active_scene_name": ipc_transport::short_json_text(s.scene_name(false), 256),
+            "queued_scene_name": ipc_transport::short_json_text(s.scene_name(true), 256),
+            "meter": [u16::from(s.meter_numerator), s.meter_denominator],
             "midi_routing": commands.midi_routing().summary(),
             "midi_feedback": s.midi_feedback,
             "midi_input": s.midi_input,
@@ -513,13 +554,16 @@ fn handle_client_with_stop(
             "commands": s.commands,
             "submissions": commands.stats(),
             "performance": commands.performance().status(),
-            "deckA": s.decks.first().map(|d| ipc_transport::short_text(&d.title,ipc_transport::STATUS_DECK_TITLE_BYTES)).unwrap_or_default(),
-            "deckB": s.decks.get(1).map(|d| ipc_transport::short_text(&d.title,ipc_transport::STATUS_DECK_TITLE_BYTES)).unwrap_or_default(),
+            "deckA": s.decks.first().map(|d| ipc_transport::short_json_text(&d.title, ipc_transport::STATUS_DECK_TITLE_BYTES)).unwrap_or_default(),
+            "deckB": s.decks.get(1).map(|d| ipc_transport::short_json_text(&d.title, ipc_transport::STATUS_DECK_TITLE_BYTES)).unwrap_or_default(),
             "deckAPlaying": s.decks.first().map(|d| d.playing).unwrap_or(false),
             "deckBPlaying": s.decks.get(1).map(|d| d.playing).unwrap_or(false),
             "deckALoadLocked": s.decks.first().map(|d| d.load_locked).unwrap_or(false),
             "deckBLoadLocked": s.decks.get(1).map(|d| d.load_locked).unwrap_or(false),
         });
+        out["midi_profiles"] = s.midi_profiles.clone();
+        out["latency"] = serde_json::json!(s.latency);
+        out["midi_clock_input"] = serde_json::json!(s.midi_clock_input);
         drop(s);
         ipc_transport::reply(&mut writer, &out, limits.write)?;
     }

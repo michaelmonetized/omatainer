@@ -2,6 +2,174 @@ use super::*;
 use crate::engine::{midi_data::Lanes, test_alloc, MidiNote};
 
 #[test]
+fn arrangement_seek_emits_original_program_pending_banks_and_owned_notes_without_devices() {
+    use crate::engine::{
+        arrangement::{Instance, Model, Source},
+        Command, Engine,
+    };
+    use std::sync::atomic::{AtomicBool, Ordering::Release};
+    let (engine, rt) = Engine::headless_for_test(48000, 256);
+    let mut rt = Box::new(rt);
+    rt.bpm = 120.0;
+    let handle = engine.project.clone();
+    let capture = std::thread::spawn(move || handle.capture(&AtomicBool::new(false)).unwrap());
+    while !capture.is_finished() {
+        rt.process(&mut []);
+        std::thread::sleep(std::time::Duration::from_millis(1));
+    }
+    let captured = capture.join().unwrap();
+    let clip = controller_clip(&[
+        (0, &[0xb3, 0, 2]),
+        (0, &[0xb3, 32, 3]),
+        (0, &[0xc3, 5]),
+        (960, &[0xb3, 0, 9]),
+        (960, &[0xb3, 32, 10]),
+        (1920, &[0xb3, 74, 88]),
+        (2880, &[0xe3, 9, 70]),
+        (3840, &[0xd3, 12]),
+        (5760, &[0xb3, 74, 99]),
+    ]);
+    let mut saved = captured.state.tracks[2].clips[7].clone();
+    saved.kind = clip.kind;
+    saved.name = "owned song MIDI".into();
+    saved.bars = clip.bars;
+    saved.region = clip.region;
+    saved.notes = clip.notes;
+    saved.lanes = clip.lanes;
+    let track = captured
+        .state
+        .session
+        .as_ref()
+        .unwrap()
+        .reference(crate::engine::session::Axis::Track, 2)
+        .unwrap();
+    let model = Model {
+        enabled: true,
+        next_id: 3,
+        sources: vec![Source {
+            id: 1,
+            clip: saved,
+            audio_clock: None,
+        }],
+        instances: vec![Instance {
+            id: 2,
+            source: 1,
+            track,
+            start: 0.0,
+            offset: 0.0,
+            duration: 16.0,
+            repeating: false,
+            gain: 1.0,
+            fades: None,
+            fade_link: 0,
+            crossfade: None,
+        }],
+    };
+    let (request, ack) = crate::engine::arrangement::edit::Request::prepare(
+        captured,
+        model,
+        &AtomicBool::new(false),
+    )
+    .unwrap();
+    assert_eq!(
+        test_alloc::measure(|| rt.apply(Command::ArrangementEdit(request))),
+        Default::default()
+    );
+    assert_eq!(ack.state(), crate::engine::midi_edit::Outcome::Applied);
+    let shared = engine.cmd.midi_routing();
+    let events = shared.receiver.lock().take().unwrap();
+    shared.bind_identity(&super::super::Routing {
+        enabled: true,
+        routes: vec![super::super::Route {
+            track: 2,
+            inputs: vec![],
+            output: None,
+            output_channel: None,
+            monitor: false,
+            thru: false,
+            filter: Default::default(),
+        }],
+    });
+    shared.mask.store(1 << 2, Release);
+    shared.alive.store(true, Release);
+    let mut packets = Vec::with_capacity(16);
+    assert_eq!(
+        test_alloc::measure(|| {
+            rt.apply(Command::Play);
+            rt.apply(Command::TimelineSeek(2.5));
+            rt.process(&mut [0.0; 4]);
+            while let Ok(event) = events.try_recv() {
+                if event.clear.is_none() {
+                    packets.push(event);
+                }
+            }
+        }),
+        Default::default()
+    );
+    assert_eq!(
+        packets.iter().map(|p| p.packet.bytes()).collect::<Vec<_>>(),
+        vec![
+            &[0xb3, 0, 2][..],
+            &[0xb3, 32, 3],
+            &[0xc3, 5],
+            &[0xb3, 0, 9],
+            &[0xb3, 32, 10],
+            &[0xb3, 74, 88],
+            &[0xe3, 9, 70],
+            &[0xd3, 12],
+            &[0x93, 60, 100]
+        ]
+    );
+    assert!(matches!(
+        packets.last().unwrap().owner,
+        Owner::Clip { track: 2, .. }
+    ));
+    shared.alive.store(false, Release);
+}
+
+fn controller_clip(messages: &[(u64, &[u8])]) -> Clip {
+    let mut clip = Clip::empty(); clip.kind = crate::engine::ClipKind::Midi; clip.bars = 4.0;
+    clip.region = Some(Region { loop_enabled: false, ..Region::full(4.0) });
+    clip.notes = vec![MidiNote { variation: None, id: crate::engine::midi_edit::NoteId::new(), channel: 3, release_vel: 64, pitch: 60, start: 0.0, len: 10.0, vel: 100, muted: false, source_timing: None }];
+    clip.lanes = Some(Lanes::new(960, 15360, messages.iter().enumerate().map(|(i, (tick, bytes))| { let mut saved = [0; 3]; saved[..bytes.len()].copy_from_slice(bytes); crate::midi_file::Message { tick: *tick, order: i as u32, bytes: saved, length: bytes.len() as u8 } }).collect(), vec![]).unwrap());
+    clip
+}
+#[test]
+fn controller_chase_selects_the_original_patch_then_restores_pending_banks_before_notes() {
+    let clip = controller_clip(&[(0, &[0xb3, 0, 2]), (0, &[0xb3, 32, 3]), (0, &[0xc3, 5]), (960, &[0xb3, 0, 9]), (960, &[0xb3, 32, 10]), (1920, &[0xb3, 74, 88]), (2880, &[0xe3, 9, 70]), (3840, &[0xd3, 12]), (5760, &[0xb3, 74, 99])]);
+    let mut playback = Playback::default();
+    assert_eq!(test_alloc::measure(|| playback.rebuild(&clip, 5.0, false, &[])), test_alloc::Counts::default());
+    let mut trace = Vec::with_capacity(16);
+    assert_eq!(test_alloc::measure(|| while let Some((packet, _, _)) = playback.next(2, &clip, 5.0001) { trace.push(packet); }), test_alloc::Counts::default());
+    assert_eq!(trace.iter().map(|p| p.bytes()).collect::<Vec<_>>(), vec![&[0xb3,0,2][..], &[0xb3,32,3][..], &[0xc3,5][..], &[0xb3,0,9][..], &[0xb3,32,10][..], &[0xb3,74,88][..], &[0xe3,9,70][..], &[0xd3,12][..], &[0x93,60,100][..]]);
+    assert_eq!(playback.next(2, &clip, 6.0001).unwrap().0.bytes(), &[0xb3,74,99]);
+}
+#[test]
+fn controller_chase_honors_reset_boundaries_and_does_not_guess_parameter_transactions() {
+    let clip = controller_clip(&[(0,&[0xb3,7,90]), (0,&[0xb3,1,70]), (0,&[0xe3,0,70]), (960,&[0xb3,101,0]), (960,&[0xb3,100,1]), (960,&[0xb3,6,5]), (1920,&[0xb3,121,0]), (2880,&[0xd3,33])]);
+    let mut playback = Playback::default(); playback.rebuild(&clip, 4.0, false, &[]);
+    let mut trace = vec![]; while let Some((packet,_,_)) = playback.next(2,&clip,4.0001) { trace.push(packet.bytes().to_vec()); }
+    assert_eq!(trace, vec![vec![0xb3,121,0],vec![0xb3,7,90],vec![0xd3,33],vec![0x93,60,100]]);
+}
+#[test]
+fn controller_chase_after_a_loop_uses_the_previous_pass_until_a_new_point_arrives() {
+    let mut clip = controller_clip(&[(0,&[0xb3,74,10]), (2880,&[0xb3,74,99])]);
+    clip.region = Some(Region { loop_enabled: true, start: 0.0, end: 4.0, loop_start: 1.0, loop_end: 4.0 });
+    let mut playback = Playback::default(); playback.rebuild(&clip, 4.5, true, &[]);
+    assert_eq!(playback.next(2,&clip,4.5001).unwrap().0.bytes(), &[0xb3,74,99]);
+}
+#[test]
+fn controller_points_at_launch_and_seek_arrive_before_new_or_chased_native_notes() {
+    let clip = controller_clip(&[(0,&[0xb3,0,2]), (0,&[0xb3,32,3]), (0,&[0xc3,5]), (1920,&[0xb3,74,99])]);
+    let mut playback = Playback::default(); playback.rebuild(&clip,0.0,false,&[]);
+    let mut start = vec![]; while let Some((p,_,_)) = playback.next(2,&clip,0.0001) { start.push(p.bytes().to_vec()); }
+    assert_eq!(start, vec![vec![0xb3,0,2],vec![0xb3,32,3],vec![0xc3,5],vec![0x93,60,100]]);
+    playback.rebuild(&clip,2.0,false,&[]);
+    let mut seek = vec![]; while let Some((p,_,_)) = playback.next(2,&clip,2.0001) { seek.push(p.bytes().to_vec()); }
+    assert_eq!(&seek[seek.len()-2..], &[vec![0xb3,74,99],vec![0x93,60,100]]);
+}
+
+#[test]
 fn actual_ramp_controller_lane_emission_matches_an_independent_sample_timestamp_oracle() {
     use crate::engine::midi_data::{Conductor, Meter, Tempo, TimingSettings};
     use std::sync::atomic::Ordering::Release;
@@ -171,7 +339,7 @@ fn seek_capacity_and_loop_boundary_order_are_prepared_without_callback_growth() 
     let mut clip = Clip::empty();
     clip.kind = crate::engine::ClipKind::Midi;
     clip.bars = 1.0;
-    clip.notes = vec![MidiNote {
+    clip.notes = vec![MidiNote { variation: None,
         id: crate::engine::midi_edit::NoteId::new(),
         channel: 3,
         release_vel: 27,
@@ -448,4 +616,217 @@ fn publication_and_reset_refuse_old_renderer_packets_until_relaunch() {
     assert_eq!(rt.tracks[2].midi_output.generation, 2);
     assert!(!rt.tracks[2].midi_output.refused);
     shared.alive.store(false, Release);
+}
+
+#[test]
+fn named_song_jump_clears_old_clip_owners_and_chases_destination_controllers_before_sustained_notes(
+) {
+    use crate::engine::{
+        arrangement::{Instance, Model, Source},
+        clip_launch::Grid,
+        song_navigation, Command, Engine,
+    };
+    use std::sync::{
+        atomic::{AtomicBool, Ordering::Release},
+        Arc,
+    };
+    let (engine, rt) = Engine::headless_for_test(48000, 256);
+    let mut rt = Box::new(rt);
+    rt.bpm = 120.0;
+    let handle = engine.project.clone();
+    let task = std::thread::spawn(move || handle.capture(&AtomicBool::new(false)).unwrap());
+    while !task.is_finished() {
+        rt.process(&mut []);
+        std::thread::sleep(std::time::Duration::from_millis(1));
+    }
+    let captured = task.join().unwrap();
+    let clip = controller_clip(&[
+        (0, &[0xc3, 5]),
+        (0, &[0xb3, 74, 20]),
+        (1920, &[0xb3, 74, 88]),
+    ]);
+    let mut saved = captured.state.tracks[2].clips[7].clone();
+    saved.kind = clip.kind;
+    saved.name = "navigation state chase".into();
+    saved.bars = clip.bars;
+    saved.region = clip.region;
+    saved.notes = clip.notes;
+    saved.lanes = clip.lanes;
+    let track = captured
+        .state
+        .session
+        .as_ref()
+        .unwrap()
+        .reference(crate::engine::session::Axis::Track, 2)
+        .unwrap();
+    let song = Model {
+        enabled: true,
+        next_id: 3,
+        sources: vec![Source {
+            id: 1,
+            clip: saved,
+            audio_clock: None,
+        }],
+        instances: vec![Instance {
+            id: 2,
+            source: 1,
+            track,
+            start: 0.0,
+            offset: 0.0,
+            duration: 16.0,
+            repeating: false,
+            gain: 1.0,
+            fades: None,
+            fade_link: 0,
+            crossfade: None,
+        }],
+    };
+    let (request, _) =
+        crate::engine::arrangement::edit::Request::prepare(captured, song, &AtomicBool::new(false))
+            .unwrap();
+    rt.apply(Command::ArrangementEdit(request));
+    let mut sections = song_navigation::Model::default();
+    let id = sections.add("Destination".into(), 5.0).unwrap();
+    rt.navigation.saved = Some(song_navigation::Saved {
+        next_id: sections.next_id,
+        model: Arc::new(sections),
+        looping: false,
+    });
+    let shared = engine.cmd.midi_routing();
+    let events = shared.receiver.lock().take().unwrap();
+    shared.bind_identity(&super::super::Routing {
+        enabled: true,
+        routes: vec![super::super::Route {
+            track: 2,
+            inputs: vec![],
+            output: None,
+            output_channel: None,
+            monitor: false,
+            thru: false,
+            filter: Default::default(),
+        }],
+    });
+    shared.mask.store(1 << 2, Release);
+    shared.alive.store(true, Release);
+    rt.apply(Command::Play);
+    rt.process(&mut [0.0; 2]);
+    let first = events.try_iter().collect::<Vec<_>>();
+    assert!(first
+        .iter()
+        .any(|e| e.clear.is_none() && e.packet.bytes() == [0x93, 60, 100]));
+    let mut packets = Vec::with_capacity(32);
+    assert_eq!(
+        test_alloc::measure(|| {
+            rt.apply(Command::SongNavigation(song_navigation::Action::Locator {
+                id,
+                grid: Grid::Immediate,
+            }));
+            rt.process(&mut [0.0; 2]);
+            while let Ok(event) = events.try_recv() {
+                packets.push(event);
+            }
+        }),
+        Default::default()
+    );
+    assert!(packets
+        .iter()
+        .any(|e| matches!(e.clear, Some(super::super::control::Clear::Clip)) && e.track == 2));
+    assert!(!packets.iter().any(|e| matches!(
+        e.clear,
+        Some(super::super::control::Clear::Track | super::super::control::Clear::Source(_))
+    )));
+    assert_eq!(
+        packets
+            .iter()
+            .filter(|e| e.clear.is_none())
+            .map(|e| e.packet.bytes())
+            .collect::<Vec<_>>(),
+        vec![&[0xc3, 5][..], &[0xb3, 74, 88], &[0x93, 60, 100]]
+    );
+    assert!(matches!(
+        packets.last().unwrap().owner,
+        Owner::Clip { track: 2, .. }
+    ));
+    shared.alive.store(false, Release);
+}
+
+#[test]
+fn actual_rendered_two_thousand_loops_share_seed_choices_with_routed_expression_and_independent_blocks() {
+    use crate::engine::{note_variation::{self, Group, GroupKind, Properties, Velocity}, midi_edit::NoteId, midi_schedule::Gate, Command, Engine};
+    use std::sync::atomic::{AtomicBool, Ordering::Release};
+    const CYCLES: usize = 2000;
+    let linked = Group { identity: NoteId::new(), kind: GroupKind::Linked };
+    let exclusive = Group { identity: NoteId::new(), kind: GroupKind::Exclusive };
+    let settings = [
+        (60, Properties { chance: 3700, velocity: Some(Velocity { minimum: 41, maximum: 79 }), ..Default::default() }),
+        (64, Properties { chance: 5000, velocity: Some(Velocity { minimum: 51, maximum: 91 }), group: Some(linked), ..Default::default() }),
+        (67, Properties { chance: 5000, group: Some(linked), ..Default::default() }),
+        (72, Properties { chance: 2500, group: Some(exclusive), ..Default::default() }),
+        (76, Properties { chance: 7500, group: Some(exclusive), ..Default::default() }),
+    ];
+    let mut clip = Clip::empty();
+    clip.kind = crate::engine::ClipKind::Midi;
+    clip.name = "Repeatable note choices".into();
+    clip.bars = 1.0 / 64.0;
+    clip.region = Some(Region::full(clip.bars));
+    clip.notes = settings.into_iter().map(|(pitch, properties)| MidiNote { id: NoteId::new(), channel: 0, release_vel: 64, source_timing: None, muted: false, pitch, start: 0.0, len: 1.0 / 64.0, vel: 96, variation: Some(properties) }).collect();
+    clip.lanes = Some(Lanes::new(256, 16, vec![crate::midi_file::Message { tick: 2, order: 1, bytes: [0xa0, 60, 77], length: 3 }, crate::midi_file::Message { tick: 12, order: 2, bytes: [0xb0, 1, 93], length: 3 }], vec![]).unwrap());
+    clip.variation = note_variation::Plan::prepare(&clip.notes, clip.lanes.as_deref(), &AtomicBool::new(false)).unwrap();
+    let plan = clip.variation.as_ref().unwrap();
+    let expected: Vec<_> = (0..CYCLES).map(|cycle| (0..clip.notes.len()).map(|index| plan.velocity(index, 72, cycle as i64, clip.notes[index].vel)).collect::<Vec<_>>()).collect();
+    let independent = expected.iter().filter(|cycle|cycle[0].is_some()).count();
+    assert!((600..=900).contains(&independent));
+    for cycle in &expected { assert_eq!(cycle[1].is_some(), cycle[2].is_some()); assert_ne!(cycle[3].is_some(), cycle[4].is_some()); }
+    let mut baseline = None;
+    for block in [1, 37, 257] {
+        let (engine, rt) = Engine::headless_for_test(8000, 256);
+        let mut rt = Box::new(rt);
+        rt.bpm = 240.0;
+        rt.quant = 0.0;
+        rt.note_seed = 72;
+        for track in &mut rt.tracks { track.stop_clip(); track.note_seed = 72; }
+        rt.tracks[2].clips[0] = clip.clone();
+        rt.tracks[2].midi_schedule.sample_trace = Some(Vec::with_capacity(CYCLES * 12));
+        rt.tracks[2].midi_output.trace = Some(Vec::with_capacity(CYCLES * 16));
+        let shared = engine.cmd.midi_routing();
+        let receiver = shared.receiver.lock().take().unwrap();
+        shared.bind_identity(&super::super::Routing { enabled: true, routes: vec![super::super::Route { track: 2, inputs: vec![], output: None, output_channel: None, monitor: false, thru: false, filter: Default::default() }] });
+        shared.mask.store(1 << 2, Release);
+        shared.alive.store(true, Release);
+        engine.send(Command::LaunchClip { track: 2, scene: 0 }).unwrap();
+        rt.process(&mut []);
+        let frames = CYCLES * 125;
+        let mut output = [0.0_f32; 514];
+        let mut packets = Vec::with_capacity(CYCLES * 16);
+        let mut audio_hash = 0xcbf29ce484222325_u64;
+        let mut energy = 0.0;
+        let counts = test_alloc::measure(|| {
+            for begin in (0..frames).step_by(block) {
+                let output = &mut output[..(frames - begin).min(block) * 2];
+                rt.process(output);
+                for &sample in output.iter() { assert!(sample.is_finite()); energy += f64::from(sample).powi(2); audio_hash = (audio_hash ^ u64::from(sample.to_bits())).wrapping_mul(0x100000001b3); }
+                while let Ok(event) = receiver.try_recv() { if event.clear.is_none() { packets.push(event.packet); } }
+            }
+        });
+        assert_eq!(counts, test_alloc::Counts::default());
+        assert!(energy > 0.01);
+        assert!(!rt.tracks[2].midi_output.refused);
+        let gates = rt.tracks[2].midi_schedule.sample_trace.take().unwrap();
+        let routed = rt.tracks[2].midi_output.trace.take().unwrap();
+        assert_eq!(packets, routed.iter().map(|(_, packet)|*packet).collect::<Vec<_>>());
+        for (index, note) in clip.notes.iter().enumerate() {
+            let onsets: Vec<_> = gates.iter().filter_map(|&(frame, gate)| match gate { Gate::On(pitch, velocity) if pitch == note.pitch => Some((frame, velocity)), _ => None }).collect();
+            let releases: Vec<_> = gates.iter().filter_map(|&(frame, gate)| matches!(gate, Gate::Off(pitch) if pitch == note.pitch).then_some(frame)).collect();
+            let choices: Vec<_> = expected.iter().enumerate().filter_map(|(cycle, choices)| choices[index].map(|velocity|(cycle as u64 * 125, velocity))).collect();
+            assert_eq!(onsets.len(), choices.len()); assert_eq!(releases.len(), choices.len());
+            for ((&(frame, velocity), &release), &(onset, expected_velocity)) in onsets.iter().zip(&releases).zip(&choices) { assert!(frame.abs_diff(onset) <= 1); assert!(release.abs_diff(onset + 31) <= 1); assert_eq!(velocity, expected_velocity); }
+            assert_eq!(packets.iter().filter(|packet|packet.bytes()[0] == 0x90 && packet.bytes()[1] == note.pitch).map(|packet|packet.bytes()[2]).collect::<Vec<_>>(), choices.iter().map(|(_,velocity)|*velocity).collect::<Vec<_>>());
+            assert_eq!(packets.iter().filter(|packet|packet.bytes()[0] == 0x80 && packet.bytes()[1] == note.pitch).count(), choices.len());
+        }
+        assert_eq!(packets.iter().filter(|packet|packet.bytes() == [0xa0, 60, 77]).count(), independent);
+        assert_eq!(packets.iter().filter(|packet|packet.bytes() == [0xb0, 1, 93]).count(), CYCLES);
+        let result = (gates, packets, audio_hash);
+        if let Some(original) = &baseline { assert_eq!(&result, original); } else { baseline = Some(result); }
+    }
+    eprintln!("MIDI_NOTE_VARIATION_RENDERED {{\"loops\":2000,\"blocks\":[1,37,257],\"actual_renderer\":true,\"routed_note_expression_pairing\":true,\"callback_allocations\":0,\"callback_frees\":0,\"physical_devices_opened\":false}}");
 }

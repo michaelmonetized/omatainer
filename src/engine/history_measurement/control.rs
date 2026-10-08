@@ -42,6 +42,7 @@ struct Shared {
     progress_sequence: AtomicU64,
     progress: [AtomicU64; 6],
     prepare_state: AtomicU64,
+    now_playing_state: AtomicU64,
     play_sequence: [AtomicU64; 2],
     play: [[AtomicU64; 5]; 2],
     active: AtomicU64,
@@ -64,14 +65,14 @@ impl Endpoint {
             connected: AtomicBool::new(true), measurement_available: AtomicBool::new(true), ack_sequence: AtomicU64::new(0),
             ack: std::array::from_fn(|_| AtomicU64::new(0)), progress_sequence: AtomicU64::new(0),
             progress: std::array::from_fn(|_| AtomicU64::new(0)),
-            prepare_state: AtomicU64::new(0), play_sequence: std::array::from_fn(|_| AtomicU64::new(0)),
+            prepare_state: AtomicU64::new(0), now_playing_state: AtomicU64::new(0), play_sequence: std::array::from_fn(|_| AtomicU64::new(0)),
             play: std::array::from_fn(|_| std::array::from_fn(|_| AtomicU64::new(0))), active: AtomicU64::new(0),
             incomplete: AtomicBool::new(false), dropped: AtomicU64::new(0), wall_origin, clock_origin }));
         Self { handle, receiver }
     }
     pub fn request(&self) -> Option<Request> { self.receiver.try_recv().ok() }
     pub fn clock(&self) -> Option<u64> { self.handle.clock() }
-    pub fn prepare_state(&self) -> u64 { self.handle.0.prepare_state.load(Ordering::Acquire) }
+    pub fn monitor_state(&self) -> [u64; 2] { [self.handle.0.prepare_state.load(Ordering::Acquire), self.handle.0.now_playing_state.load(Ordering::Acquire)] }
     pub fn record_play(&self, value: DigitalPlay) {
         let deck = usize::from(value.deck);
         let shared = &self.handle.0;
@@ -128,6 +129,14 @@ impl Handle {
             if state & 1 == u64::from(enabled) { Some(state) }
             else { (state >> 1).checked_add(1).filter(|next| *next <= u64::MAX >> 1).map(|next| next << 1 | u64::from(enabled)) }
         }).map(|_| ()).map_err(|_| "Prepare measurement revision exhausted")
+    }
+    /// Enable the independent optional now-playing measurement owner.
+    /// Takes enabled intent; returns a refusal if its revision is exhausted, without changing prepare-queue intent.
+    pub fn set_now_playing_monitor(&self, enabled: bool) -> Result<(), &'static str> {
+        self.0.now_playing_state.fetch_update(Ordering::AcqRel, Ordering::Acquire, |state| {
+            if state & 1 == u64::from(enabled) { Some(state) }
+            else { (state >> 1).checked_add(1).filter(|next|*next <= u64::MAX >> 1).map(|next|next << 1 | u64::from(enabled)) }
+        }).map(|_|()).map_err(|_|"Now-playing measurement revision exhausted")
     }
     /// Capture the monotonic civil-time boundary used by output observations.
     /// Takes no arguments; returns None when the renderer clock is unavailable.

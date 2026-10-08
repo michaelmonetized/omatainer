@@ -13,14 +13,40 @@ fn fixture(map: MidiMap, source: u64) -> (Engine, RtEngine, TestInput) {
     );
     (engine, rt, input)
 }
+#[test]
+fn clip_launch_apc_release_keeps_its_original_target_after_bank_and_selection_changes(){
+    let(_engine,mut rt,mut input)=fixture(akai_apc40_mk2(),83);
+    rt.quant=0.0;
+    rt.tracks[0].clips[0].properties.launch=crate::engine::clip_launch::Policy{mode:crate::engine::clip_launch::Mode::Gate,grid:crate::engine::clip_launch::Grid::Immediate,legato:false};
+    send(&mut input,&mut rt,&[0x90,0x20,127]);assert_eq!(rt.tracks[0].playing.unwrap().scene,0);
+    rt.surface.status.scene_offset=1;rt.apply(Command::Select{track:1,scene:1});rt.apply(Command::LaunchClip{track:1,scene:0});
+    send(&mut input,&mut rt,&[0x80,0x20,64]);rt.process(&mut[0.0;2]);
+    assert!(rt.tracks[0].playing.is_none());assert_eq!(rt.tracks[1].playing.unwrap().scene,0);
+}
+#[test]
+fn clip_launch_controller_disconnect_reserves_release_at_full_queue_and_preserves_other_owners(){
+    let(engine,mut rt,mut input)=fixture(akai_apc40_mk2(),83);
+    let hub=MidiHub::without_devices();let mut other=hub.open_for_test(&engine.cmd,84,akai_apc40_mk2(),"other held clip","fixture:clip");
+    rt.quant=0.0;
+    for scene in 0..2{rt.tracks[0].clips[scene].properties.launch=crate::engine::clip_launch::Policy{mode:crate::engine::clip_launch::Mode::Gate,grid:crate::engine::clip_launch::Grid::Immediate,legato:false};}
+    send(&mut input,&mut rt,&[0x90,0x20,127]);send(&mut other,&mut rt,&[0x90,0x18,127]);
+    drop(input);rt.process(&mut[0.0;2]);assert_eq!(rt.tracks[0].playing.unwrap().scene,1);
+    while engine.cmd.send(Command::NudgeBpm(0.0)).is_ok(){}
+    drop(other);for _ in 0..16{rt.process(&mut[0.0;2]);}
+    assert!(rt.tracks[0].playing.is_none());
+}
 fn send(input: &mut TestInput, rt: &mut RtEngine, bytes: &[u8]) {
     input.push(bytes);
     rt.process(&mut []);
 }
+fn tap(input: &mut TestInput, rt: &mut RtEngine, bytes: [u8;3]) {
+    send(input,rt,&bytes);
+    send(input,rt,&[bytes[0]&15|0x80,bytes[1],0]);
+}
 fn deck(rt: &mut RtEngine, index: u8) {
     rt.apply(Command::DeckAudio {
         deck: index,
-        audio: Arc::new(Sample {
+        audio: Arc::new(Sample { spectrum: None,
             name: "Surface stereo qualification".into(),
             sr: 48000,
             ch: 2,
@@ -127,7 +153,7 @@ fn surfaces_apc_window_shift_selection_bank_lock_and_device_lock_follow_session_
     assert_eq!(rt.surface_status().track_offset, 8);
     send(&mut input, &mut rt, &[0x90, 0x5f, 127]);
     assert_eq!(rt.surface_status().scene_offset, 3);
-    send(&mut input, &mut rt, &[0x90, 0, 127]);
+    send(&mut input, &mut rt, &[0x90, 32, 127]);
     assert_eq!((rt.selected_track, rt.selected_scene), (8, 3));
     send(&mut input, &mut rt, &[0x80, 0x62, 0]);
     send(&mut input, &mut rt, &[0xb0, 7, 21]);
@@ -141,6 +167,76 @@ fn surfaces_apc_window_shift_selection_bank_lock_and_device_lock_follow_session_
     send(&mut input, &mut rt, &[0x91, 0x33, 127]);
     assert_eq!(rt.selected_track, 9);
     assert_eq!(rt.surface_status().device_lock, Some(8));
+}
+
+#[test]
+fn surfaces_apc_grid_rows_launch_and_select_the_matching_visible_scenes() {
+    let (_engine, mut rt, mut input) = fixture(akai_apc40_mk2(), 86);
+    for index in 8..16 {
+        let mut track = rt.tracks[0].as_ref().clone();
+        track.name = format!("Grid {index}");
+        rt.tracks.push(Box::new(track));
+    }
+    rt.session = crate::engine::session::Layout::fresh(
+        rt.tracks.iter().map(|track| track.name.clone()),
+        rt.scene_fx.len(),
+    );
+    for track in &mut rt.tracks {
+        for clip in &mut track.clips {
+            clip.kind = crate::engine::ClipKind::Midi;
+        }
+    }
+    let rows = [
+        [32, 33, 34, 35, 36, 37, 38, 39],
+        [24, 25, 26, 27, 28, 29, 30, 31],
+        [16, 17, 18, 19, 20, 21, 22, 23],
+        [8, 9, 10, 11, 12, 13, 14, 15],
+        [0, 1, 2, 3, 4, 5, 6, 7],
+    ];
+    let map = akai_apc40_mk2();
+    for (row, notes) in rows.iter().enumerate() {
+        for (column, note) in notes.iter().enumerate() {
+            let binding = map.bindings.iter().find(|binding| {
+                binding.kind == MsgKind::Note && binding.ch == 0xff && binding.data == *note
+            }).unwrap();
+            assert_eq!((binding.action, binding.deck, binding.extra), (Action::Clip, column as u8, row as u16));
+        }
+    }
+    for track_offset in [0, 8] {
+        for scene_offset in [0, 3] {
+            rt.surface.status.track_offset = track_offset;
+            rt.surface.status.scene_offset = scene_offset;
+            for shift in [false, true] {
+                send(&mut input, &mut rt, &[0x90, 0x62, if shift { 127 } else { 0 }]);
+                for (row, notes) in rows.iter().enumerate() {
+                    for (column, note) in notes.iter().enumerate() {
+                        let track = track_offset + column;
+                        let scene = scene_offset + row;
+                        rt.apply(Command::Stop);
+                        send(&mut input, &mut rt, &[0x90, *note, 127]);
+                        send(&mut input, &mut rt, &[0x80, *note, 0]);
+                        assert_eq!((rt.selected_track, rt.selected_scene), (track, scene));
+                        if shift {
+                            assert!(rt.tracks.iter().all(|track| track.playing.is_none()));
+                            assert!(!rt.playing);
+                        } else {
+                            assert_eq!(rt.tracks[track].playing.as_ref().unwrap().scene as usize, scene);
+                            assert!(rt.playing);
+                        }
+                    }
+                }
+            }
+        }
+    }
+    rt.surface.status.track_offset = 15;
+    rt.surface.status.scene_offset = 7;
+    send(&mut input, &mut rt, &[0x90, 0x62, 127]);
+    send(&mut input, &mut rt, &[0x90, 32, 127]);
+    assert_eq!((rt.selected_track, rt.selected_scene), (15, 7));
+    for note in [33, 24, 40] {
+        send(&mut input, &mut rt, &[0x90, note, 127]);
+        assert_eq!((rt.selected_track, rt.selected_scene), (15, 7));
+    }
 }
 
 #[test]
@@ -194,6 +290,35 @@ fn surfaces_sp1_effect_precision_bank_isolation_buttons_and_assignments_are_inde
 }
 
 #[test]
+fn surfaces_sp1_fx_buttons_and_encoder_operate_the_shared_native_units_and_retained_stereo_tails() {
+    use surface_controls::fx::{Control, Timing};
+    let (_engine, mut rt, mut input) = fixture(surface::pioneer_sp1(), 187);
+    rt.apply(Command::Surface(surface_controls::Input::DjFx { bank: 0, control: Control::Timing(Timing::Manual) }));
+    send(&mut input, &mut rt, &[0xb4, 0, 1]);
+    assert_eq!(rt.surface_status().fx[0].timing, Timing::Beat);
+    assert_eq!(rt.surface_status().fx[0].beats, 1);
+    rt.apply(Command::Surface(surface_controls::Input::DjFx { bank: 0, control: Control::Timing(Timing::Manual) }));
+    rt.apply(Command::Surface(surface_controls::Input::DjFx { bank: 0, control: Control::ManualMs(5.0) }));
+    for (parameter, value) in [(false, 1.0), (true, 0.0)] {
+        rt.apply(Command::Surface(surface_controls::Input::FxValue { bank: 0, slot: 0, parameter, value }));
+    }
+    let other = serde_json::to_value(rt.surface_status().fx[1]).unwrap();
+    send(&mut input, &mut rt, &[0x94, 0x47, 127]);
+    send(&mut input, &mut rt, &[0x84, 0x47, 0]);
+    assert!(rt.surface_status().fx[0].on[0]);
+    for _ in 0..480 { rt.surface.deck(0, [0.0; 2], 24000.0); }
+    assert_eq!(rt.surface.deck(0, [0.2, -0.1], 24000.0), [0.0; 2]);
+    send(&mut input, &mut rt, &[0x94, 0x47, 127]);
+    assert!(!rt.surface_status().fx[0].on[0]);
+    assert_eq!(crate::engine::test_alloc::measure(|| {
+        for frame in 1..=480 {
+            assert_eq!(rt.surface.deck(0, [0.0; 2], 24000.0), if frame == 240 { [0.2, -0.1] } else { [0.0; 2] });
+        }
+    }), Default::default());
+    assert_eq!(serde_json::to_value(rt.surface_status().fx[1]).unwrap(), other);
+}
+
+#[test]
 fn surfaces_sp1_hotloops_all_pad_modes_and_sampler_volume_have_real_engine_targets() {
     let (_engine, mut rt, mut input) = fixture(surface::pioneer_sp1(), 86);
     deck(&mut rt, 0);
@@ -210,9 +335,9 @@ fn surfaces_sp1_hotloops_all_pad_modes_and_sampler_volume_have_real_engine_targe
         send(&mut input, &mut rt, &[0x90, note, 127]);
         assert_eq!(rt.decks[0].controls.status().pad_mode, mode);
     }
-    send(&mut input, &mut rt, &[0x97, 0x40, 127]);
+    tap(&mut input, &mut rt, [0x97, 0x40, 127]);
     assert!(rt.decks[0].controls.status().hotloops[0]);
-    send(&mut input, &mut rt, &[0x97, 0x48, 127]);
+    tap(&mut input, &mut rt, [0x97, 0x48, 127]);
     assert!(!rt.decks[0].controls.status().hotloops[0]);
     send(&mut input, &mut rt, &[0xb6, 3, 64]);
     send(&mut input, &mut rt, &[0xb6, 0x23, 0]);
@@ -483,14 +608,14 @@ fn surfaces_mpd_physical_bank_a_capture_replays_through_the_production_worker() 
 fn surfaces_sp1_auto_loop_pads_replace_lengths_and_parameter_buttons_change_the_range() {
     let (_engine, mut rt, mut input) = fixture(surface::pioneer_sp1(), 100);
     deck(&mut rt, 0);
-    send(&mut input, &mut rt, &[0x97, 0x55, 127]);
+    tap(&mut input, &mut rt, [0x97, 0x55, 127]);
     let first = rt.decks[0].loop_len;
-    send(&mut input, &mut rt, &[0x97, 0x56, 127]);
+    tap(&mut input, &mut rt, [0x97, 0x56, 127]);
     assert!(rt.decks[0].loop_on && (rt.decks[0].loop_len - first * 2.0).abs() < 0.01);
     send(&mut input, &mut rt, &[0x90, 0x31, 127]);
-    send(&mut input, &mut rt, &[0x97, 0x56, 127]);
+    tap(&mut input, &mut rt, [0x97, 0x56, 127]);
     assert!(rt.decks[0].loop_on && (rt.decks[0].loop_len - first * 4.0).abs() < 0.01);
-    send(&mut input, &mut rt, &[0x97, 0x56, 127]);
+    tap(&mut input, &mut rt, [0x97, 0x56, 127]);
     assert!(!rt.decks[0].loop_on);
 }
 

@@ -1,4 +1,5 @@
 use super::{Command, RtEngine, View};
+pub(crate) mod fx;
 
 #[derive(Clone, Copy, Debug)]
 pub enum Input {
@@ -23,6 +24,9 @@ pub enum Input {
         control: u8,
         delta: i16,
     },
+    DjFx { bank: u8, control: fx::Control },
+    DjFxName { bank: u8, name: super::dj_fx_preset::Name },
+    DjFxRecall(super::dj_fx_recall::Request),
     SamplerVolume(f32),
     SamplerPressure {
         source: u64,
@@ -55,6 +59,9 @@ impl Input {
                 control,
                 delta,
             } => bank < 2 && control < 128 && (-64..=63).contains(&delta),
+            Self::DjFx { bank, control } => bank < 2 && control.valid(),
+            Self::DjFxName { bank, .. } => bank < 2,
+            Self::DjFxRecall(request) => request.valid(),
             Self::SamplerVolume(value) => value.is_finite() && (0.0..=1.0).contains(&value),
             Self::SamplerPressure { pad, value, .. } => {
                 pad < 16 && value.is_finite() && (0.0..=1.0).contains(&value)
@@ -88,22 +95,31 @@ pub struct Status {
     pub device_master: bool,
     pub master_parameter: [f32; 3],
     pub fx: [EffectBank; 2],
+    pub fx_recall: super::dj_fx_recall::Receipt,
     pub sampler_volume: f32,
     pub sampler_playing: [bool; 16],
 }
 
 #[derive(Clone, Copy, Debug, serde::Serialize)]
 pub struct EffectBank {
+    pub name: super::dj_fx_preset::Name,
     pub kinds: [super::FxKind; 3],
     pub wet: [f32; 3],
     pub on: [bool; 3],
     pub parameter: [f32; 3],
     pub beats: i8,
     pub assigned: [bool; 2],
+    pub sampler: Option<super::session::Reference>,
+    pub master: bool,
+    pub placement: fx::Placement,
+    pub timing: fx::Timing,
+    pub manual_ms: f32,
+    pub tails: [bool; 4],
 }
 impl Default for EffectBank {
     fn default() -> Self {
         Self {
+            name: super::dj_fx_preset::Name::new("Unit").expect("Visible default label"),
             kinds: [
                 super::FxKind::Echo,
                 super::FxKind::Reverb,
@@ -114,6 +130,12 @@ impl Default for EffectBank {
             parameter: [0.5; 3],
             beats: 0,
             assigned: [false; 2],
+            sampler: None,
+            master: false,
+            placement: fx::Placement::PreFader,
+            timing: fx::Timing::Beat,
+            manual_ms: 500.0,
+            tails: [false; 4],
         }
     }
 }
@@ -124,8 +146,13 @@ pub(super) struct State {
     pub sends: [[f32; 2]; super::session::MAX_TRACKS],
     processors: [super::master_fx::MasterSlot; 2],
     send_input: [[f32; 2]; 2],
-    deck_fx: [[[super::master_fx::MasterSlot; 3]; 2]; 2],
-    pad_owners: [Option<(u64, u8)>; super::control::MAX_COMMANDS],
+    deck_fx: [[[fx::Processor; 3]; 4]; 2],
+    pub(in crate::engine) channel_fx: [super::channel_fx::Channel; 2],
+    fx_rate: f32,
+    pub(in crate::engine) fx_recall: super::dj_fx_recall::Transition,
+    sampler_slots: [Option<usize>; 2],
+    sampler_history_target: [Option<super::session::Reference>; 2],
+    pad_owners: [Option<(u64, Option<u32>, u8)>; super::control::MAX_COMMANDS],
     pad_gain: [f32; 16],
     master_saved: [f32; 3],
     shift_owners: [Option<u64>; super::control::MAX_COMMANDS],
@@ -139,6 +166,8 @@ impl State {
             sampler_volume: 1.0,
             ..Status::default()
         };
+        status.fx[0].name = super::dj_fx_preset::Name::new("Unit A").expect("Visible unit label");
+        status.fx[1].name = super::dj_fx_preset::Name::new("Unit B").expect("Visible unit label");
         status.fx[0].assigned[0] = true;
         status.fx[1].assigned[1] = true;
         Ok(Self {
@@ -154,7 +183,12 @@ impl State {
             pad_gain: [1.0; 16],
             master_saved: [0.5; 3],
             shift_owners: [None; super::control::MAX_COMMANDS],
-            deck_fx: [prepare_bank(sr)?, prepare_bank(sr)?],
+            deck_fx: [fx::prepare_bank(sr)?, fx::prepare_bank(sr)?],
+            channel_fx: [super::channel_fx::Channel::new(sr)?, super::channel_fx::Channel::new(sr)?],
+            fx_rate: sr,
+            fx_recall: super::dj_fx_recall::Transition::default(),
+            sampler_slots: [None; 2],
+            sampler_history_target: [None; 2],
             track_gain: std::array::from_fn(|_| {
                 let mut ramp = super::mixer_gain::GainPair::default();
                 ramp.prepare([1.0; 2], sr, |left, right| [left, right]);
@@ -201,21 +235,12 @@ impl State {
         }
         output
     }
-    /// Render independent Pioneer effect banks for one assigned deck.
-    /// Takes deck, stereo input and beat duration; returns the serial effect output.
-    pub fn deck(&mut self, deck: usize, mut input: [f32; 2], spb: f64) -> [f32; 2] {
-        for (bank, processors) in self.status.fx.iter().zip(&mut self.deck_fx) {
-            if !bank.assigned[deck] || !bank.on.iter().any(|on| *on) {
-                continue;
-            }
-            for (index, processor) in processors[deck].iter_mut().enumerate() {
-                let wet = if bank.on[index] { bank.wet[index] } else { 0.0 };
-                processor.configure(wet, spb * 2_f64.powi(i32::from(bank.beats)));
-                input = processor.process(input, bank.kinds[index], wet);
-            }
-        }
-        input
+    /// Render independently assigned units before the deck crossfader.
+    /// Takes deck, original stereo frame and musical clock; returns dry plus its own retained wet tails.
+    pub fn deck(&mut self, deck: usize, input: [f32; 2], spb: f64) -> [f32; 2] {
+        self.deck_fx_at(deck, fx::Placement::PreFader, input, spb, self.fx_rate)
     }
+
 }
 
 impl RtEngine {
@@ -245,6 +270,12 @@ impl RtEngine {
                 value,
                 note,
             } => self.apc_input(channel, control, value, note),
+            Input::DjFx { bank, control } => { let _ = self.dj_fx_control(bank, control); },
+            Input::DjFxName { bank, name } => self.surface.status.fx[usize::from(bank)].name = name,
+            Input::DjFxRecall(request) => {
+                self.surface.fx_recall.begin(request, self.surface.status.fx.map(Into::into), &self.session, self.sr);
+                self.surface.status.fx_recall = self.surface.fx_recall.receipt;
+            },
             Input::SamplerVolume(value) => self.surface.status.sampler_volume = value,
             Input::TrackSend { track, send, value } => {
                 self.surface.sends[usize::from(track)][usize::from(send)] = value
@@ -255,11 +286,14 @@ impl RtEngine {
                 }
             }
             Input::SamplerPressure { source, pad, value } => {
-                if !self.surface.pad_owners.contains(&Some((source, pad))) {
+                if !self.surface.pad_owners.iter().flatten().any(|(owner, _, slot)| *owner == source && *slot == pad) {
                     return;
                 }
                 if value == 0.0 {
-                    self.surface_sampler(source, pad, false, 0.0);
+                    let owners = self.surface.pad_owners;
+                    for (owner, key, slot) in owners.into_iter().flatten().filter(|(owner, _, slot)| *owner == source && *slot == pad) {
+                        self.surface_sampler_owned(owner, key, slot, false, 0.0);
+                    }
                 } else if let Some(voice) = &mut self.pad_voices[usize::from(pad)] {
                     voice.gain = self.surface.pad_gain[usize::from(pad)] * value;
                 }
@@ -304,13 +338,13 @@ impl RtEngine {
                             deck[slot].reset(state.kinds[slot]);
                         }
                     }
-                    0 => state.beats = (i16::from(state.beats) + delta).clamp(-4, 3) as i8,
+                    0 => { state.beats = (i16::from(state.beats) + delta).clamp(-4, 3) as i8; state.timing = fx::Timing::Beat; },
                     0x10 => {
                         for parameter in &mut state.parameter {
                             *parameter = (*parameter + f32::from(delta) / 127.0).clamp(0.0, 1.0);
                         }
                     }
-                    0x40 | 0x43 => state.beats = 0,
+                    0x40 | 0x43 => { state.beats = 0; state.timing = fx::Timing::Beat; },
                     0x4c | 0x50 | 0x4e | 0x52 => state.assigned[0] = !state.assigned[0],
                     0x4d | 0x51 | 0x4f | 0x53 => state.assigned[1] = !state.assigned[1],
                     _ => {}
@@ -328,10 +362,15 @@ impl RtEngine {
     /// Keep sampler gates owned by their physical source.
     /// Takes source, pad, gate and attack level; releases a pad only when its last source releases it.
     pub(super) fn surface_sampler(&mut self, source: u64, pad: u8, on: bool, pressure: f32) {
+        self.surface_sampler_owned(source, None, pad, on, pressure);
+    }
+    /// Retain an exact sampler input owner through bank and mode changes.
+    /// Takes source, optional raw key, slot, pressed state and velocity; releases the voice only after its last owner.
+    pub(super) fn surface_sampler_owned(&mut self, source: u64, key: Option<u32>, pad: u8, on: bool, pressure: f32) {
         if pad >= 16 || !pressure.is_finite() || !(0.0..=1.0).contains(&pressure) {
             return;
         }
-        let key = (source, pad);
+        let key = (source, key, pad);
         let owner = self
             .surface
             .pad_owners
@@ -365,7 +404,7 @@ impl RtEngine {
                 .pad_owners
                 .iter()
                 .flatten()
-                .any(|(_, owned)| *owned == pad)
+                .any(|(_, _, owned)| *owned == pad)
             {
                 self.apply_sampler_pad(pad, false, pressure);
             }
@@ -374,6 +413,8 @@ impl RtEngine {
     /// Clear held controller inputs after a safety stop.
     /// Takes the renderer; clears source ownership without restoring any transport.
     pub(super) fn release_surface_inputs(&mut self) {
+        for deck in 0..2 { self.cancel_deck_pads(deck); }
+        self.deck_pad_inputs.clear();
         self.surface.pad_owners.fill(None);
         self.surface.shift_owners.fill(None);
         self.surface.status.shift = false;
@@ -398,7 +439,7 @@ impl RtEngine {
             let command = match control {
                 0..=0x27 => {
                     let track = status.track_offset + usize::from(control % 8);
-                    let scene = status.scene_offset + usize::from(control / 8);
+                    let scene = status.scene_offset + usize::from(4 - control / 8);
                     if track >= self.tracks.len() || scene >= self.scene_fx.len() {
                         return;
                     }
@@ -687,29 +728,4 @@ impl RtEngine {
         }
         status
     }
-}
-
-/// Prepare stereo histories for one effect bank.
-/// Takes the output rate; returns both decks' processors with the published initial parameters.
-fn prepare_bank(
-    sr: f32,
-) -> Result<[[super::master_fx::MasterSlot; 3]; 2], std::collections::TryReserveError> {
-    let mut bank = [
-        [
-            super::master_fx::MasterSlot::try_new(sr)?,
-            super::master_fx::MasterSlot::try_new(sr)?,
-            super::master_fx::MasterSlot::try_new(sr)?,
-        ],
-        [
-            super::master_fx::MasterSlot::try_new(sr)?,
-            super::master_fx::MasterSlot::try_new(sr)?,
-            super::master_fx::MasterSlot::try_new(sr)?,
-        ],
-    ];
-    for deck in &mut bank {
-        for processor in deck {
-            processor.parameter(sr, 0.5);
-        }
-    }
-    Ok(bank)
 }

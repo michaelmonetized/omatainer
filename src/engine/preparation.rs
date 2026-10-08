@@ -4,7 +4,8 @@ use serde::{Deserialize, Serialize};
 use super::cue_metadata::{Style, STYLE_WORDS};
 const GRID_OFFSET: usize = 12 + super::HOTCUES * STYLE_WORDS;
 const GAIN_OFFSET: usize = GRID_OFFSET + super::beatgrid::WORDS;
-pub(super) const WORDS: usize = GAIN_OFFSET + crate::track_gain::WORDS;
+const LOOPS_OFFSET: usize = GAIN_OFFSET + crate::track_gain::WORDS;
+pub(super) const WORDS: usize = LOOPS_OFFSET + super::saved_loops::WORDS;
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -18,6 +19,8 @@ pub(crate) struct Preparation {
     #[serde(default)]
     pub hotcue_styles: [Style; super::HOTCUES],
     pub loop_region: Option<Loop>,
+    #[serde(default, skip_serializing_if = "super::saved_loops::Bank::is_default")]
+    pub saved_loops: super::saved_loops::Bank,
 }
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -29,7 +32,7 @@ pub(crate) struct Loop {
 impl Preparation {
     pub fn valid(self) -> bool {
         let position = |v: f64| v.is_finite() && (0.0..=1.0e10).contains(&v);
-        self.source_gain.valid() && position(self.cue)
+        self.saved_loops.valid() && self.saved_loops.cue_loops.iter().enumerate().all(|(cue, id)| id.is_none_or(|id| self.hotcues[cue].is_some_and(|position| self.saved_loops.slots[usize::from(id - 1)].is_some_and(|slot| (position - slot.start).abs() <= 1e-6)))) && self.source_gain.valid() && position(self.cue)
             && self.hotcues.into_iter().flatten().all(position)
             && self
                 .loop_region
@@ -48,7 +51,8 @@ impl Preparation {
             dest.copy_from_slice(&style.words());
         }
         words[GRID_OFFSET..GAIN_OFFSET].copy_from_slice(&super::beatgrid::Grid::encode(self.grid));
-        words[GAIN_OFFSET..].copy_from_slice(&self.source_gain.words());
+        words[GAIN_OFFSET..LOOPS_OFFSET].copy_from_slice(&self.source_gain.words());
+        words[LOOPS_OFFSET..].copy_from_slice(&self.saved_loops.words());
         words
     }
     pub(super) fn from_words(words: [u64; WORDS]) -> Self {
@@ -56,7 +60,8 @@ impl Preparation {
         Self {
             cue: value(0),
             grid: super::beatgrid::Grid::decode(words[GRID_OFFSET..GAIN_OFFSET].try_into().unwrap()).flatten(),
-            source_gain: crate::track_gain::Policy::from_words(words[GAIN_OFFSET..].try_into().unwrap()).unwrap_or_default(),
+            source_gain: crate::track_gain::Policy::from_words(words[GAIN_OFFSET..LOOPS_OFFSET].try_into().unwrap()).unwrap_or_default(),
+            saved_loops: super::saved_loops::Bank::from_words(words[LOOPS_OFFSET..].try_into().unwrap()).unwrap_or_default(),
             hotcues: std::array::from_fn(|i| (value(i + 1) >= 0.0).then(|| value(i + 1))),
             hotcue_styles: std::array::from_fn(|i| Style::from_words(words[12+i*STYLE_WORDS..12+(i+1)*STYLE_WORDS].try_into().unwrap()).unwrap_or_default()),
             loop_region: (value(9) >= 0.0).then(|| Loop {
@@ -78,6 +83,7 @@ impl super::DeckRt {
         let end = audio.frames() as f64;
         let pos = |p: f64| p.clamp(0.0, end) / sr;
         Some(Preparation {
+            saved_loops: self.controls.saved_loops(audio.sr),
             cue: pos(self.cue_pos),
             grid: self.grid,
             source_gain: self.source_gain.policy(),
@@ -102,6 +108,8 @@ impl super::DeckRt {
         let Some(audio) = &self.audio else { return };
         let frames = audio.frames() as f64;
         let sr = audio.sr as f64;
+        self.controls.cancel_pending();
+        self.controls.restore_saved_loops(preparation.saved_loops, audio.sr, audio.frames());
         self.cue_styles = preparation.hotcue_styles;
         self.grid = preparation.grid;
         self.cue_pos = (preparation.cue * sr).clamp(0.0, frames);
@@ -109,6 +117,7 @@ impl super::DeckRt {
             cue.set = saved.is_some_and(|p| p * sr <= frames);
             cue.pos = saved.unwrap_or(0.0) * sr;
         }
+        self.sync_cue_loop_positions();
         if let Some(region) = preparation
             .loop_region
             .filter(|r| (r.start + r.length) * sr <= frames)
@@ -156,6 +165,16 @@ mod tests {
         let worker = std::thread::spawn(move || {
             for i in 1..50_000 {
                 writing.record_preparation(Preparation {
+                    saved_loops: super::super::saved_loops::Bank {
+                        cue_loops: [None; 8],
+                        slots: std::array::from_fn(|slot| Some(super::super::saved_loops::Slot {
+                            start: i as f64 + slot as f64,
+                            length: i as f64,
+                            style: Style {name: super::super::cue_metadata::Name::new(&format!("{i}:{slot}")).unwrap(), color: Some([(i % 256) as u8, slot as u8, 42])},
+                        })),
+                        order: if i % 2 == 0 { [1,2,3,4,5,6,7,8] } else { [8,7,6,5,4,3,2,1] },
+                        selected: (i % 8 + 1) as u8,
+                    },
                     source_gain: crate::track_gain::Policy::Off,
                     cue: i as f64,
                     grid: Some(super::super::beatgrid::Grid::new(i as f64, 120.0).unwrap()),
@@ -176,6 +195,16 @@ mod tests {
                 assert!(value.hotcues.into_iter().all(|cue| cue == Some(value.cue)));
                 assert_eq!(value.loop_region.unwrap().length, value.cue);
                 assert_eq!(value.grid.unwrap().downbeat(), value.cue);
+                let i = value.cue as u64;
+                assert_eq!(value.saved_loops.selected, (i % 8 + 1) as u8);
+                assert_eq!(value.saved_loops.order, if i % 2 == 0 {[1,2,3,4,5,6,7,8]} else {[8,7,6,5,4,3,2,1]});
+                for (index, slot) in value.saved_loops.slots.into_iter().enumerate() {
+                    let slot = slot.unwrap();
+                    assert_eq!(slot.start, value.cue + index as f64);
+                    assert_eq!(slot.length, value.cue);
+                    assert_eq!(slot.style.name.as_str(), format!("{i}:{index}"));
+                    assert_eq!(slot.style.color, Some([(i % 256) as u8, index as u8, 42]));
+                }
                 for style in value.hotcue_styles {
                     assert_eq!(style.name.as_str(), format!("{}", value.cue as u64));
                     assert_eq!(style.color, Some([(value.cue as u64 % 256) as u8, 23, 42]));

@@ -380,7 +380,15 @@ fn original_hash_is_durably_qualified_before_first_search_choice_can_commit() {
         .content_hash
         .is_some());
     assert!(saved.track(&LibSource::File(copy.clone())).is_none());
-    gui.action(gui.node(copy.to_str().unwrap()), Action::Click);
+    gui.app.library_metadata.durable = false;
+    gui.frame(vec![]);
+    let waiting_choice = gui.node(copy.to_str().unwrap());
+    let waiting_bounds = gui.nodes.iter().find(|(id, _)| *id == waiting_choice).unwrap().1.bounds();
+    gui.app.library_metadata.durable = true;
+    gui.frame(vec![]);
+    assert_eq!(waiting_choice, gui.node(copy.to_str().unwrap()), "save status cannot replace a visible candidate's identity");
+    assert_eq!(waiting_bounds, gui.nodes.iter().find(|(id, _)| *id == waiting_choice).unwrap().1.bounds(), "save status cannot move the candidate under a held pointer");
+    gui.action(waiting_choice, Action::Click);
     gui.action(
         gui.node("Verify and use selected replacement"),
         Action::Click,

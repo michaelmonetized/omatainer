@@ -7,6 +7,7 @@ use crate::engine::{
 };
 use std::sync::atomic::{AtomicBool, Ordering};
 mod worker;
+mod latency;
 use worker::{Event, Job, Worker};
 
 #[derive(Clone)]
@@ -18,6 +19,40 @@ struct Draft {
     layout: Layout,
     enabled: bool,
     model: Model,
+    original: Option<Arc<Model>>,
+    controls: Vec<(u64,crate::plugin_host::realtime::Control)>,
+}
+impl Draft {
+    fn latency_only(&self) -> bool {
+        self.enabled && self.original.as_ref().is_some_and(|prior| self.model.latency_edit_of(prior))
+    }
+    /// Add a reviewed native processor to one retained track.
+    /// Takes its bounded catalog identity and target; returns an editable instrument route or an ordered post-mixer effect send without publishing audio.
+    fn attach(&mut self, mut plugin: crate::engine::audio::routing::plugins::Instance, track: crate::engine::session::Id) -> Result<(),String> {
+        if !self.layout.tracks.iter().any(|t| t.id == track && t.active) { return Err("Selected track changed before plugin inspection".into()); }
+        if self.model.plugins.len() >= crate::engine::audio::routing::plugins::MAX_PLUGINS || self.model.next_id == u64::MAX { return Err("This graph has no remaining processor capacity".into()); }
+        plugin.id = self.model.next_id; self.model.next_id += 1;
+        plugin.name = format!("{} {}",plugin.name,plugin.id);
+        plugin.midi_track = Some(track);
+        let maps = |source: usize, destination: usize| {
+            if destination == 1 && source >= 2 { vec![ChannelMap {source:0,destination:0,gain:0.5},ChannelMap {source:1,destination:0,gain:0.5}] }
+            else { (0..destination.min(2)).map(|i| ChannelMap {source:if source == 1 {0}else{i as u8},destination:i as u8,gain:1.}).collect() }
+        };
+        if plugin.instrument {
+            if self.model.plugins.iter().any(|p| p.instrument && p.midi_track == Some(track)) { return Err("This track already has a native plugin instrument; review its replacement explicitly".into()); }
+            self.model.connections.push(Connection { source:Source {group:Group::Plugin(plugin.id),tap:Tap::PostMixer},destination:Group::Track(track),map:maps(plugin.output_width(),2) });
+        } else {
+            if plugin.input_width() == 0 { return Err("This class has no audio input; choose an instrument or route its outputs manually".into()); }
+            let previous = self.model.plugins.iter_mut().find(|p| p.scene_track == Some(track));
+            let (source,width) = if let Some(previous) = previous { previous.scene_track = None; (Group::Plugin(previous.id),previous.output_width()) } else { (Group::Track(track),2) };
+            plugin.scene_track = Some(track);
+            self.model.connections.push(Connection {source:Source {group:source,tap:Tap::PostMixer},destination:Group::Plugin(plugin.id),map:maps(width,plugin.input_width())});
+            if !self.model.tracks_without_default_send.contains(&track) { self.model.tracks_without_default_send.push(track); }
+        }
+        self.model.plugins.push(plugin); self.model.version = 3;
+        self.model.order(&self.layout)?;
+        Ok(())
+    }
 }
 #[derive(Clone)]
 struct InputPreview {
@@ -39,6 +74,10 @@ pub(super) struct Panel {
     record_alias: u64,
     record_seconds: u32,
     record_path: String,
+    recorded_path: Option<PathBuf>,
+    record_track: Option<crate::engine::session::Reference>,
+    recording_review: Option<Arc<crate::engine::audio::routing::record::placement::Review>>,
+    recording_pending: bool,
 }
 impl Drop for Panel {
     fn drop(&mut self) {
@@ -46,6 +85,10 @@ impl Drop for Panel {
     }
 }
 impl Panel {
+    pub(super) fn attach_plugin(&mut self, engine: &Engine, plugin: crate::engine::audio::routing::plugins::Instance, track: crate::engine::session::Id) {
+        self.open = true;
+        self.request(engine,|cancel| Job::Attach(plugin,track,cancel));
+    }
     /// Read pending routing work.
     /// Takes this panel; returns whether a worker or commit is active.
     fn busy(&self) -> bool {
@@ -120,7 +163,22 @@ impl Panel {
                 Event::Recorded(result) => match result {
                     Ok(path) => {
                         self.message = format!("Record-source audio saved to {}", path.display());
+                        self.recorded_path = Some(path);
+                        self.recording_review = None;
                         self.error = None;
+                    }
+                    Err(error) => self.error = Some(error),
+                },
+                Event::RecordingReviewed(result) => match result {
+                    Ok(review) if !cancelled => { self.recording_review = Some(review); self.error = None; }
+                    Ok(_) => self.message = "Recording review cancelled".into(),
+                    Err(error) => self.error = Some(error),
+                },
+                Event::RecordingPlaced(result) => match result {
+                    Ok(ack) => {
+                        if cancelled { ack.cancel(); }
+                        self.pending = Some(ack);
+                        self.recording_pending = true;
                     }
                     Err(error) => self.error = Some(error),
                 },
@@ -132,16 +190,22 @@ impl Panel {
                 Outcome::Applied => {
                     self.pending = None;
                     self.draft = None;
-                    self.message = "Routing applied. Save stores aliases, taps and input choices; History can undo this edit.".into();
+                    self.message = if self.recording_pending {
+                        self.recording_review = None;
+                        "Recording placed on the song. Arrangement timeline edits its start, trim and fades; enable song playback there. History can undo this placement, and Save retains its audio."
+                    } else { "Routing applied. Save stores aliases, taps and input choices; History can undo this edit." }.into();
+                    self.recording_pending = false;
                     self.error = None;
                 }
                 Outcome::Cancelled => {
+                    self.message = if self.recording_pending { "Recording placement cancelled before application" } else { "Routing cancelled before application" }.into();
+                    self.recording_pending = false;
                     self.pending = None;
-                    self.message = "Routing cancelled before application".into();
                 }
                 Outcome::Rejected => {
                     self.pending = None;
-                    self.error = Some("Routing was not applied because the project, recording, protection or undo state changed. Refresh and retry.".into());
+                    self.error = Some(if self.recording_pending { "Recording placement was not applied because the project, playback, protection or undo state changed. Review again." } else { "Routing was not applied because the project, recording, protection or undo state changed. Refresh and retry." }.into());
+                    self.recording_pending = false;
                 }
             }
         }
@@ -219,6 +283,18 @@ impl Panel {
             Err(error) => self.error = Some(error.to_string()),
         }
     }
+    /// Submit reviewed recording work under the performance guard.
+    /// Takes the engine and a worker job; returns immediately with bounded preparation or a visible refusal.
+    fn recording_work(&mut self, engine: &Engine, job: impl FnOnce(crate::engine::performance::WorkPermit) -> Job) {
+        match engine.cmd.performance().optional_work() {
+            Ok(work) => {
+                let cancel = work.cancel();
+                self.request(engine, |_| job(work));
+                if self.cancel.is_some() { self.cancel = Some(cancel); }
+            }
+            Err(error) => self.error = Some(error.to_string()),
+        }
+    }
 }
 
 /// Name one retained endpoint.
@@ -235,6 +311,7 @@ fn endpoint(group: Group, model: &Model, layout: &Layout) -> String {
             .iter()
             .find(|bus| bus.id == id)
             .map_or_else(|| format!("Missing bus {id}"), |bus| bus.alias.clone()),
+        Group::Plugin(id) => model.plugins.iter().find(|p| p.id == id).map_or_else(|| format!("Missing plugin {id}"), |p| p.name.clone()),
         Group::Track(id) => layout.tracks.iter().find(|item| item.id == id).map_or_else(
             || format!("Retired track {}", id.0),
             |item| format!("Track: {}", item.name),
@@ -270,6 +347,7 @@ fn endpoints(model: &Model, layout: &Layout, source: bool) -> Vec<Group> {
         groups.extend([Group::Deck(0), Group::Deck(1)]);
     }
     groups.extend(model.buses.iter().map(|bus| Group::Bus(bus.id)));
+    groups.extend(model.plugins.iter().filter(|p| source || p.input_width() > 0).map(|p| Group::Plugin(p.id)));
     groups.extend(
         model
             .ports
@@ -317,6 +395,7 @@ fn remove_alias(model: &mut Model, id: u64) {
     model.buses.retain(|bus| bus.id != id);
     model.connections.retain(|connection| !matches!(connection.source.group, Group::Input(value) | Group::Bus(value) if value == id)
         && !matches!(connection.destination, Group::Output(value) | Group::Record(value) | Group::Bus(value) if value == id));
+    if let Some(latency) = &mut model.latency { latency.reports.retain(|report| !matches!(report.group, Group::Input(value) | Group::Output(value) | Group::Record(value) | Group::Bus(value) if value == id)); }
 }
 
 /// Edit one routing value through pointer, keyboard or native accessibility.
@@ -507,8 +586,8 @@ fn connections(ui: &mut Ui, model: &mut Model, layout: &Layout) {
                     remove = Some(index);
                 }
             });
-            let source_width = labels.width(connection.source.group, layout).unwrap_or(1);
-            let destination_width = labels.width(connection.destination, layout).unwrap_or(1);
+            let source_width = labels.source_width(connection.source, layout).unwrap_or(1);
+            let destination_width = labels.input_width(connection.destination, layout).unwrap_or(1);
             let mut remove_map = None;
             for (map_index, map) in connection.map.iter_mut().enumerate() {
                 ui.push_id(map_index, |ui| {
@@ -602,18 +681,47 @@ impl App {
         let mut open = true;
         egui::Window::new(tr!("Audio routing")).id(egui::Id::new("audio-routing-window")).open(&mut open).default_width(850.0).default_height(650.0).vscroll(true).show(ctx, |ui| {
             ui.label(tr!("Aliases retain exact physical channels. Missing channels stay silent. Drafts require confirmation; routes save with the project."));
+            ui.collapsing(tr!("Headphone controls"), |ui| headphones::controls(ui, &self.snap, &self.engine.cmd, &self.undo_history));
             ui.label(&panel.message);
             if let Some(error) = &panel.error { ui.colored_label(ui.visuals().warn_fg_color, error); }
             if panel.busy() { if ui.button(tr!("Cancel routing operation")).clicked() { panel.cancel(); } }
             let ready = !panel.busy() && !self.project.committing();
             let mut preview_input = None;
             let mut record = false;
+            let mut review_recording = None;
             ui.add_enabled_ui(ready, |ui| {
                 if ui.button(tr!("Refresh routes")).help(ui, HelpControl::AudioRouting).clicked() { panel.request(&self.engine, Job::Inspect); }
                 if let Some(draft) = &mut panel.draft {
                     ui.checkbox(&mut draft.enabled, tr!("Use explicit routing"));
                     if draft.enabled {
                         ui.collapsing(tr!("Channel aliases and buses"), |ui| aliases(ui, &mut draft.model));
+                        ui.collapsing("Native plugin processors",|ui| {
+                            ui.label("Instrument audio feeds the track's native effects and mixer. Appended plugin effects follow its mixer and retain the active scene send. All extra outputs and sidechains remain explicit channel routes.");
+                            for plugin in &mut draft.model.plugins { ui.push_id(plugin.id,|ui| {
+                                ui.separator(); ui.label(format!("{} · class {} · version {}",plugin.name,plugin.saved.class_id,plugin.saved.plugin_version));
+                                if let Some(error)=&plugin.unavailable { ui.colored_label(ui.visuals().warn_fg_color,format!("Unavailable: {error}. Exact state is retained; relink the matching native binary or explicitly bypass this processor.")); }
+                                ui.checkbox(&mut plugin.bypass,"Bypass processor");
+                                ui.label(format!("Input buses {:?} · output buses {:?} · {} samples including the isolated bridge",plugin.inputs,plugin.outputs,plugin.latency));
+                                if let Some((_,control)) = draft.controls.iter().find(|(id,_)| *id == plugin.id) {
+                                    ui.label(format!("Late blocks: {}",control.missed_blocks()));
+                                    if let Some(error)=control.error() { ui.colored_label(ui.visuals().warn_fg_color,error); }
+                                    if let Some(error)=control.editor_error() { ui.colored_label(ui.visuals().warn_fg_color,format!("Editor: {error}")); }
+                                    ui.horizontal(|ui| {
+                                        for (label,open) in [("Open plugin editor",true),("Close plugin editor",false)] { if ui.add_enabled(!self.engine.cmd.performance().protected() && !self.engine.safe_mode() && (!open || control.class.info.has_gui),egui::Button::new(label)).clicked() { let _=self.engine.cmd.send(Command::PluginEditor {namespace:draft.namespace,id:plugin.id,open}); } }
+                                    });
+                                    ui.collapsing("Normalized parameters",|ui| { ui.label("Values use the plugin's 0–1 range. Up to 128 visible writable controls are shown; the native editor supplies all its controls and engineering units. Refresh routes to capture editor changes before another graph edit.");
+                                        for parameter in control.class.writable_parameters() {
+                                            let mut value=control.value(parameter.id).unwrap_or_else(||plugin.parameters.iter().find(|p|p.id==parameter.id).map_or(parameter.value,|p|p.value));
+                                            if ui.add_enabled(!control.editing(),egui::Slider::new(&mut value,0.0..=1.0).text(&parameter.name)).changed() {
+                                                if let Some(saved)=plugin.parameters.iter_mut().find(|p|p.id==parameter.id) { saved.value=value; } else if plugin.parameters.len() < crate::engine::audio::routing::plugins::MAX_PARAMETERS { plugin.parameters.push(crate::engine::audio::routing::plugins::Parameter {id:parameter.id,value}); }
+                                                if let Err(error)=self.engine.cmd.send(self.undo_history.wrap(Command::PluginParameter {namespace:draft.namespace,id:plugin.id,parameter:parameter.id,value})) { panel.error=Some(error.to_string()); }
+                                            }
+                                        }
+                                    });
+                                }
+                            }); }
+                        });
+                        headphones::output(ui, &mut draft.model);
                         ui.collapsing(tr!("Default sends"), |ui| {
                             for track in draft.layout.tracks.iter().filter(|item| item.active) {
                                 let mut send = !draft.model.tracks_without_default_send.contains(&track.id);
@@ -628,6 +736,7 @@ impl App {
                             }
                         });
                         ui.collapsing(tr!("Routes and tap positions"), |ui| connections(ui, &mut draft.model, &draft.layout));
+                        ui.collapsing(tr!("Latency compensation"), |ui| latency::controls(ui, &mut draft.model, &draft.layout, draft.rate, self.snap.latency));
                         ui.label(tr!("Track pre FX includes instruments and mapped input; post mixer includes mute, solo, gain and pan. Deck pre FX is the source; post FX includes deck gain/EQ/filter and transition; post mixer adds crossfader gain."));
                         ui.label(tr!("Stereo performance source attribution is unavailable while explicit routing is active. Playlist events remain available."));
                         ui.collapsing(tr!("Live input choices"), |ui| {
@@ -658,6 +767,23 @@ impl App {
                             ui.add(egui::DragValue::new(&mut panel.record_seconds).range(1..=600).prefix("Maximum seconds "));
                             ui.label(tr!("Apply routes before capture. A worker writes up to 26 channels and 128 MiB. Stop keeps completed audio; Cancel discards the partial file. Existing files are preserved."));
                             if ui.button(tr!("Record source to WAV")).help(ui, HelpControl::AudioRoutingRecord).clicked() { record = true; }
+                            if let Some(path) = &panel.recorded_path {
+                                ui.label(format!("Completed recording: {}", path.display()));
+                                let previous = panel.record_track;
+                                egui::ComboBox::from_id_salt("recording-target-track").selected_text(panel.record_track.and_then(|r| draft.layout.resolve(crate::engine::session::Axis::Track, r.id)).map_or("Choose recording destination", |slot| draft.layout.tracks[slot].name.as_str())).show_ui(ui, |ui| {
+                                    for &slot in &draft.layout.track_order {
+                                        if let Some(reference) = draft.layout.reference(crate::engine::session::Axis::Track, usize::from(slot)) {
+                                            ui.selectable_value(&mut panel.record_track, Some(reference), &draft.layout.tracks[usize::from(slot)].name);
+                                        }
+                                    }
+                                });
+                                if panel.record_track != previous { panel.recording_review = None; }
+                                ui.label("Choose a destination whose effects suit the recorded audio; a print already contains its source processing. Stop transport and decks before reviewing placement.");
+                                let stopped = !self.snap.playing && !self.snap.recording && !self.snap.decks.iter().any(|deck| deck.playing || deck.touching);
+                                if ui.add_enabled(panel.record_track.is_some() && stopped, egui::Button::new("Review recording placement")).clicked() {
+                                    review_recording = panel.record_track.map(|track| (path.clone(), track));
+                                }
+                            }
                         });
                     }
                     if ui.button(tr!("Review routing change…")).clicked() { panel.confirm = true; }
@@ -665,6 +791,14 @@ impl App {
             });
             if let Some(saved) = preview_input { panel.request(&self.engine, |cancel| Job::PreviewInput(saved, cancel)); }
             if record { panel.record(&self.engine); }
+            if let Some((path, target)) = review_recording { panel.recording_work(&self.engine, |work| Job::ReviewRecording(path, target, work)); }
+            if let Some(review) = panel.recording_review.clone() {
+                ui.label(format!("{} → track {} · start {:.6} beats · duration {:.6} beats · captured delay {} frames · trim before song zero {} frames", review.path.display(), review.target.id.0, review.start, review.duration, review.delay_frames, review.trimmed_frames));
+                ui.label("Placement preserves the WAV and its original time map. Song playback remains at its current setting. Edit the placement in Arrangement timeline after applying.");
+                let stopped = !self.snap.playing && !self.snap.recording && !self.snap.decks.iter().any(|deck| deck.playing || deck.touching);
+                if ui.add_enabled(ready && stopped, egui::Button::new("Place recording on song")).clicked() { panel.recording_work(&self.engine, |work| Job::PlaceRecording(review, work)); }
+                if ui.button("Discard recording review").clicked() { panel.recording_review = None; }
+            }
             if self.engine.routing.recorder.alias() != 0 {
                 ui.label(format!("Record-source frames captured: {}", self.engine.routing.recorder.frames()));
                 if ui.button(tr!("Stop record-source capture")).clicked() { self.engine.routing.recorder.stop(); }
@@ -697,8 +831,11 @@ impl App {
         }
         if panel.confirm && !panel.busy() {
             egui::Window::new(tr!("Confirm routing change")).id(egui::Id::new("confirm-routing")).collapsible(false).show(ctx, |ui| {
-                ui.label(tr!("Apply this draft to the current project? Cycles, invalid maps and stale project state reject the entire change. Stop playback before changing routes."));
-                if ui.add_enabled(!self.snap.playing && !self.snap.recording && !self.snap.decks.iter().any(|deck| deck.playing || deck.touching), egui::Button::new(tr!("Apply routing"))).clicked() { panel.confirm = false; panel.apply(&self.engine); }
+                let latency_only = panel.draft.as_ref().is_some_and(Draft::latency_only);
+                ui.label(if latency_only { "Apply latency reports and monitor policy? Audio remains running through a 10 ms alignment transition. Recording, warming histories and another transition refuse this change." } else { "Apply this draft to the current project? Cycles, invalid maps and stale project state reject the entire change. Stop playback before changing routes or delay reserve." });
+                let stopped = !self.snap.playing && !self.snap.recording && !self.snap.decks.iter().any(|deck| deck.playing || deck.touching);
+                let live = latency_only && !self.snap.recording && self.snap.latency.transition_frames == 0 && self.snap.latency.priming_frames == 0 && !self.engine.routing.recorder.busy();
+                if ui.add_enabled(stopped || live, egui::Button::new(tr!("Apply routing"))).clicked() { panel.confirm = false; panel.apply(&self.engine); }
                 if ui.button(tr!("Cancel routing change")).clicked() { panel.confirm = false; }
             });
         }

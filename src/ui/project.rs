@@ -32,7 +32,9 @@ pub(crate) struct Document {
     pub mapping_schema: u32,
 }
 impl Document {
-    pub(super) fn validate(&self) -> Result<(), String> {
+    /// Validate a persisted native document.
+    /// Takes saved controller/view metadata; returns a schema or source-identity refusal before worker publication.
+    pub(crate) fn validate(&self) -> Result<(), String> {
         if self.mapping_schema != FACTORY_MAPPING_SCHEMA {
             return Err(format!(
                 "Unsupported controller mapping schema {}; this build supports {}",
@@ -305,6 +307,7 @@ impl App {
         }
         self.project_versions.cancel();
         self.project_import.cancel();
+        self.ableton.cancel();
         if self.project_versions.busy() {
             self.project_versions.open = true;
             self.project.message = Some("Close cancelled while named version work settles. Wait for its publication or cancellation result before closing.".into());
@@ -312,6 +315,10 @@ impl App {
         } else if self.project_import.busy() {
             self.project_import.open = true;
             self.project.message = Some("Close cancelled while project import settles. Wait for its application or cancellation result before closing.".into());
+            true
+        } else if self.ableton.busy() {
+            self.ableton.open=true;
+            self.project.message=Some("Close cancelled while Ableton migration settles. Wait for publication or cancellation before closing.".into());
             true
         } else { false }
     }
@@ -429,7 +436,7 @@ impl App {
     fn guard_project_drafts(&mut self) -> bool {
         let dependencies = self.dependencies.guard_replacement();
         let timing = self.timing.guard_replacement();
-        let templates = self.templates.busy() || self.project_import.busy() || self.project_versions.busy();
+        let templates = self.templates.busy() || self.project_import.busy() || self.project_versions.busy() || self.ableton.busy();
         let blocked = dependencies || timing || templates;
         if blocked { self.project.message = Some(if self.templates.busy() {
             "Finish or cancel the pending template operation before replacing the project.".into()
@@ -921,6 +928,8 @@ impl App {
         }
         self.pad_held = [false; 16];
         self.pad_inputs = [0; 16];
+        self.release_cue_inputs();
+        self.release_censor_inputs();
         self.touch_input.clear();
         accessibility::cancel_editor(ctx);
 
@@ -1037,6 +1046,8 @@ impl App {
                             if ui.button(tr!("Project and track templates…")).help(ui, HelpControl::TemplateOpen).clicked() { self.templates.open = true; ui.close(); }
                             if ui.button(tr!("Named versions…")).help(ui, HelpControl::ProjectVersionsOpen).clicked() { self.project_versions.open = true; ui.close(); }
                             if ui.button(tr!("Import from another project…")).help(ui, HelpControl::ProjectImportOpen).clicked() { self.project_import.open = true; ui.close(); }
+                            if ui.button("Import Ableton Live Set…").clicked() {self.ableton.open=true;ui.close();}
+                            if ui.button("DJ FX…").help(ui,HelpControl::DjFx).clicked() { self.dj_fx_open=true;ui.close(); }
                             if ui.button(tr!("Tempo and meter…")).help(ui, HelpControl::TimingOpen).clicked() { self.open_timing(); ui.close(); }
                             let response = ui.button(tr!("New project"));
                             help::annotate(ui, &response, help::Control::ProjectNew);

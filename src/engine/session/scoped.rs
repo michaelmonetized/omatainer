@@ -36,13 +36,22 @@ impl Scoped {
                     _ => unreachable!(),
                 }
             }
+            Command::MidiAdjust(adjust) => {
+                let Some(track) = adjust.track() else { return Ok(command); };
+                (Some(track), None)
+            }
             Command::TrackGain { track, .. }
+            | Command::ClipCancel { track }
             | Command::TrackPan { track, .. }
             | Command::Mute { track }
             | Command::Solo { track }
             | Command::Arm { track }
+            | Command::TrackArm { track, .. }
+            | Command::TrackMonitor { track, .. }
+            | Command::TrackPfl { track, .. }
             | Command::OpenFxTrack(track) => (Some(*track as usize), None),
             Command::LaunchClip { track, scene }
+            | Command::ClipPress(super::super::clip_launch::Press { target: super::super::clip_launch::Target::Slot { track, scene, .. }, .. })
             | Command::FireClip { track, scene, .. }
             | Command::ClipGain { track, scene, .. }
             | Command::SetNotes { track, scene, .. } => {
@@ -118,7 +127,7 @@ mod tests {
             },
         )
         .unwrap();
-        rt.apply(Command::SessionEdit(request));
+        rt.apply(Command::session_edit(request));
         assert_eq!(
             test_alloc::measure(|| rt.process(&mut [])),
             test_alloc::Counts::default()

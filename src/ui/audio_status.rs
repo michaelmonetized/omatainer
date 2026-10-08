@@ -14,12 +14,17 @@ impl App {
                 if ui.button(tr!("Content & licenses")).help(ui, HelpControl::License).clicked() { self.licenses.open = true; }
                 if ui.button(tr!("Music providers")).help_detail(ui, HelpControl::MusicProvider, "Browse licensed remote music with explicit provider capabilities.").clicked() { self.music_provider.open = true; }
                 if ui.button(tr!("Video")).help(ui, HelpControl::VideoImport).clicked() { self.video.open = true; }
+                if ui.button(tr!("Audio export & recording")).help(ui,HelpControl::AudioExport).clicked() { self.audio_delivery.open = true; }
+                if ui.button("Session clips").help(ui,HelpControl::ClipManager).clicked(){self.open_clip_manager(self.snap.selected_track,self.snap.selected_scene);}
+                if ui.button("Arrangement timeline").help(ui,HelpControl::Arrangement).clicked(){self.open_arrangement();}
+                if ui.button(tr!("Audio clip")).help(ui,HelpControl::AudioClip).clicked() { self.open_audio_clip(self.snap.selected_track as u8, self.snap.selected_scene as u16); }
                 if ui.button(tr!("Automation")).help(ui, HelpControl::AutomationOpen).clicked() { self.automation_panel.open = true; }
                 if ui.button(tr!("Preferences")).help(ui, HelpControl::Preferences).clicked() { self.settings.open = true; }
                 if ui.button(tr!("Workspaces")).help(ui, HelpControl::Preferences).clicked() {self.settings.open=true;self.settings.workspace_open=true;}
                 let label = command_palette::chord(self.settings.profile()).map_or_else(|| tr!("Commands").into(), |key| format!("{} (Ctrl+Shift+{})", tr!("Commands"), key.name()));
                 if ui.button(label).help(ui, HelpControl::PreferenceShortcut).clicked() { self.command_palette.open(ctx.viewport_id()); }
                 if ui.button(tr!("Touch & pen")).help(ui, HelpControl::SamplerPad).clicked() {self.touch_input.open=true;}
+                if ui.button(tr!("Mic & aux")).help(ui,HelpControl::MicAux).clicked() { self.mic_aux.open = true; }
                 if ui.button(tr!("Audio routing")).help(ui, HelpControl::AudioRouting).clicked() { self.audio_routing.open = true; }
                 if !self.settings.open && !self.settings.message.is_empty() {
                     let label = if self.settings.message.starts_with("Preferences failed") { "Preferences failed" } else { "Preferences update" };
@@ -30,6 +35,8 @@ impl App {
                 if let Some(notice) = &self.settings.startup_notice {
                     if ui.button(tr!("Setup notice")).help_detail(ui, HelpControl::Preferences, notice).clicked() { self.settings.open = true; }
                 }
+            });
+            ui.horizontal_wrapped(|ui| {
                 if let Some(sample) = metrics.last_callback {
                     let cpu = sample.render_cpu_fraction().map(|value| format!("{:.1}%", value * 100.0))
                         .unwrap_or_else(|| "unavailable".into());
@@ -44,6 +51,7 @@ impl App {
                 ui.label({ let __omatainer_args = (&(metrics.deadline_overruns),); crate::localization::format("Deadline overruns: {}", &[format!("{}", __omatainer_args.0)]) })
                     .on_hover_text({ let __omatainer_args = (&(metrics.max_elapsed_ns as f64 / 1e6),&(metrics.max_overrun_ns as f64 / 1e6),); crate::localization::format("Callbacks longer than their buffer duration. Longest callback: {:.2} ms; greatest overrun: {:.2} ms. These count service-time overruns, not measured hardware dropouts.", &[format!("{:.2}", __omatainer_args.0), format!("{:.2}", __omatainer_args.1)]) });
                 ui.label({ let __omatainer_args = (&(metrics.backend_errors),&(metrics.device_lost),); crate::localization::format("Audio errors: {} · device lost: {}", &[format!("{}", __omatainer_args.0), format!("{}", __omatainer_args.1)]) });
+                if metrics.cpu_budget_exhaustions > 0 { ui.label(format!("Audio CPU limit stops: {}", metrics.cpu_budget_exhaustions)); }
                 ui.label(tr!("Dropped buffers: unavailable"))
                     .on_hover_text(tr!("The current CPAL backend does not expose an exact dropped-buffer counter. Overruns and backend errors are reported separately."));
             });
@@ -67,27 +75,32 @@ mod tests {
             }),
             deadline_overruns: 3,
             backend_errors: 1,
+            cpu_budget_exhaustions: 2,
             ..Default::default()
         };
         let ctx = egui::Context::default();
-        let output = ctx.run(
+        let mut output = egui::FullOutput::default();
+        for _ in 0..2 {
+        output = ctx.run(
             egui::RawInput {
                 screen_rect: Some(Rect::from_min_size(Pos2::ZERO, egui::vec2(1440.0, 900.0))),
                 ..Default::default()
             },
             |ctx| fixture.app.audio_status(ctx),
         );
+        }
         for expected in [
             "Render CPU: 10.0%",
             "Callback elapsed: 20.00 ms / 10.00 ms budget",
             "Deadline overruns: 3",
             "Audio errors: 1",
+            "Audio CPU limit stops: 2",
             "Dropped buffers: unavailable",
         ] {
             assert!(
                 output.shapes.iter().any(|shape| matches!(&shape.shape,
                 egui::epaint::Shape::Text(text) if text.galley.text().contains(expected))),
-                "missing {expected}"
+                "missing {expected}: {:?}", output.shapes.iter().filter_map(|s| match &s.shape { egui::epaint::Shape::Text(t)=>Some(t.galley.text()), _=>None }).collect::<Vec<_>>()
             );
         }
     }

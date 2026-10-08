@@ -10,6 +10,8 @@ pub(super) enum Action {
     Sync(u8),
     Scene(u16),
     Crossfader(u8),
+    BeatJump(bool),
+    BeatJumpScale(bool),
     Load,
     Help,
     Midi,
@@ -125,7 +127,7 @@ pub(super) const BINDINGS: &[Binding] = &[
         "Play / pause deck A",
         Action::Play(0),
     ),
-    b(Key::A, Modifiers::NONE, "A", "Cue deck A", Action::Cue(0)),
+    b(Key::A, Modifiers::NONE, "A", "Hold Cue audition deck A", Action::Cue(0)),
     b(
         Key::W,
         Modifiers::NONE,
@@ -140,7 +142,7 @@ pub(super) const BINDINGS: &[Binding] = &[
         "Play / pause deck B",
         Action::Play(1),
     ),
-    b(Key::L, Modifiers::NONE, "L", "Cue deck B", Action::Cue(1)),
+    b(Key::L, Modifiers::NONE, "L", "Hold Cue audition deck B", Action::Cue(1)),
     b(
         Key::O,
         Modifiers::NONE,
@@ -176,6 +178,10 @@ pub(super) const BINDINGS: &[Binding] = &[
         "Show / hide contextual help and lessons",
         Action::Help,
     ),
+    b(Key::OpenBracket, Modifiers::SHIFT, "Shift+[", "Beat jump backward on selected deck", Action::BeatJump(false)),
+    b(Key::CloseBracket, Modifiers::SHIFT, "Shift+]", "Beat jump forward on selected deck", Action::BeatJump(true)),
+    b(Key::OpenBracket, Modifiers::ALT, "Alt+[", "Smaller beat jump on selected deck", Action::BeatJumpScale(false)),
+    b(Key::CloseBracket, Modifiers::ALT, "Alt+]", "Larger beat jump on selected deck", Action::BeatJumpScale(true)),
     b(
         Key::F1,
         Modifiers::NONE,
@@ -221,6 +227,11 @@ pub(super) const BINDINGS: &[Binding] = &[
 ];
 
 impl Binding {
+    /// Describe a one-shot command without implying a keyboard hold.
+    /// Takes this binding; returns the command palette's action label.
+    pub(super) fn command_description(&self) -> &'static str {
+        match self.action { Action::Cue(0) => "Set/return Cue deck A", Action::Cue(_) => "Set/return Cue deck B", _ => self.description }
+    }
     pub(super) fn id(&self) -> &'static str {
         match self.action {
             Action::Transport => "transport", Action::Play(0) => "play_a", Action::Play(_) => "play_b",
@@ -228,6 +239,8 @@ impl Binding {
             Action::Scene(0) => "scene_1", Action::Scene(1) => "scene_2", Action::Scene(2) => "scene_3", Action::Scene(3) => "scene_4",
             Action::Scene(4) => "scene_5", Action::Scene(5) => "scene_6", Action::Scene(6) => "scene_7", Action::Scene(_) => "scene_8",
             Action::Crossfader(0) => "crossfader_a", Action::Crossfader(_) => "crossfader_b", Action::Load => "load",
+            Action::BeatJump(false) => "beat_jump_back", Action::BeatJump(true) => "beat_jump_forward",
+            Action::BeatJumpScale(false) => "beat_jump_smaller", Action::BeatJumpScale(true) => "beat_jump_larger",
             Action::Undo => "undo", Action::Redo if self.key == Key::Z => "redo_shift_z", Action::Redo => "redo_y",
             Action::Help if self.key == Key::F1 => "help_f1", Action::Help => "help_question", Action::Midi => "midi", Action::CloseFx => "close_fx",
         }
@@ -255,6 +268,17 @@ pub(super) fn validate(profile: &crate::preferences::Profile) -> Result<(), Stri
         }
     }
     Ok(())
+}
+
+/// Preserve old shortcut owners when introducing beat jump defaults.
+/// Takes a legacy profile; disables each new default chord already owned by an existing action.
+pub(super) fn migrate_beat_jump(profile: &mut crate::preferences::Profile) {
+    for binding in BINDINGS.iter().filter(|b| matches!(b.action, Action::BeatJump(_) | Action::BeatJumpScale(_))) {
+        let occupied = BINDINGS.iter().filter(|b| !matches!(b.action, Action::BeatJump(_) | Action::BeatJumpScale(_)))
+            .filter_map(|b| b.effective(profile)).any(|value| Key::from_name(&value.key) == Some(binding.key)
+                && value.ctrl == binding.modifiers.ctrl && value.shift == binding.modifiers.shift && value.alt == binding.modifiers.alt);
+        if occupied { profile.shortcuts.insert(binding.id().into(), None); }
+    }
 }
 
 #[cfg(test)]
@@ -313,6 +337,10 @@ impl App {
                 if let Some(scene)=scene { self.send(Command::LaunchScene { scene }); }
             },
             Action::Crossfader(deck) => self.send(Command::Xfader(deck as f32)),
+            Action::BeatJump(forward) => self.send(Command::DeckControl { source: 0, deck: self.load_target() as u8,
+                control: crate::engine::deck_controls::Control::BeatJump { forward } }),
+            Action::BeatJumpScale(up) => self.send(Command::DeckControl { source: 0, deck: self.load_target() as u8,
+                control: crate::engine::deck_controls::Control::BeatJumpScale { up } }),
             Action::Load => self.load_sel(self.load_target() as u8),
             Action::Help => self.keys_open = !self.keys_open,
             Action::Midi => self.midi_open = !self.midi_open,

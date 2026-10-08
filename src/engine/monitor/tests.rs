@@ -2,7 +2,7 @@ use super::*;
 use crate::engine::{audio, Command, Engine, RtEngine, Sample};
 use std::sync::Arc;
 
-fn engine() -> RtEngine {
+pub(super) fn engine() -> RtEngine {
     let (_, mut rt) = Engine::headless_for_test(48_000, 64);
     rt.apply(Command::Stop);
     rt.master = 0.5;
@@ -10,6 +10,7 @@ fn engine() -> RtEngine {
     rt.fx_wet = [0.0; 3];
     for (slot, deck) in rt.decks.iter_mut().enumerate() {
         deck.audio = Some(Arc::new(Sample {
+            spectrum: None,
             name: "monitor reference".into(),
             sr: 48_000,
             ch: 2,
@@ -23,15 +24,16 @@ fn engine() -> RtEngine {
         deck.keylock = false;
         deck.gain = 1.0;
     }
-    rt.monitor.status.available = true;
+    rt.monitor.native = true;
+    rt.monitor.route(None, true, 4);
     rt
 }
 
-fn control(rt: &mut RtEngine, value: Control) {
+pub(super) fn control(rt: &mut RtEngine, value: Control) {
     rt.apply(Command::Monitor(value));
 }
 
-fn block(rt: &mut RtEngine) -> Vec<f32> {
+pub(super) fn block(rt: &mut RtEngine) -> Vec<f32> {
     let mut output = vec![0.0; 4096 * 4];
     rt.process_interleaved(&mut output, 4);
     output

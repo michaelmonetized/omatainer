@@ -4,6 +4,79 @@ mod sampler_tests;
 mod gain_tests;
 mod dependency_tests;
 mod template_tests;
+#[test]
+fn channel_effects_native_archive_reopen_rate_change_and_legacy_migration_preserve_both_decks() {
+    let mut original = rt();
+    original.decks[0].channel_effect = channel_fx::Kind::Echo;
+    original.decks[0].filter_amt = 0.18;
+    original.decks[1].channel_effect = channel_fx::Kind::Room;
+    original.decks[1].filter_amt = 0.83;
+    let saved = captured(&original);
+    let directory = std::env::temp_dir().join(format!("omatainer-channel-effects-{}", std::process::id()));
+    std::fs::create_dir_all(&directory).unwrap();
+    let path = directory.join("two-decks.omat");
+    let cancelled = AtomicBool::new(false);
+    let outcome = crate::project_file::save(&path, &crate::project_file::Bundle { state: saved.state.clone(), media: saved.media.clone() }, crate::project_file::Overwrite::Never, &Default::default(), &cancelled).unwrap();
+    assert_eq!(outcome, crate::project_file::SaveOutcome::Durable);
+    let loaded = crate::project_file::load::<State>(&path, &Default::default(), &cancelled).unwrap();
+    for rate in [44100, 48000, 96000] {
+        let reopened = Prepared::from_state(loaded.state.clone(), loaded.media.clone(), rate).unwrap();
+        for deck in 0..2 { assert_eq!(reopened.rt.decks[deck].channel_effect, original.decks[deck].channel_effect); assert_eq!(reopened.rt.decks[deck].filter_amt, original.decks[deck].filter_amt); }
+    }
+    let mut legacy = serde_json::to_value(captured(&rt()).state).unwrap();
+    legacy["version"] = 34.into();
+    assert!(legacy["decks"].as_array().unwrap().iter().all(|deck| deck.get("channel_effect").is_none()));
+    let migrated: State = serde_json::from_value(legacy.clone()).unwrap();
+    assert!(migrated.decks.iter().all(|deck| deck.channel_effect == channel_fx::Kind::Filter));
+    for field in [serde_json::Value::Null, serde_json::json!("filter"), serde_json::json!("echo")] { let mut invalid = legacy.clone(); invalid["decks"][0]["channel_effect"] = field; assert!(serde_json::from_value::<State>(invalid).is_err()); }
+    legacy["version"] = STATE_VERSION.into(); legacy["decks"][0]["channel_effect"] = "unknown".into();
+    assert!(serde_json::from_value::<State>(legacy).is_err());
+    println!("CHANNEL_EFFECT_PROJECT {{\"native_archive\":true,\"three_output_rates\":true,\"legacy_filter_migration\":true,\"physical_devices_opened\":false}}");
+}
+#[test]
+fn named_controller_lanes_roundtrip_in_schema_fifteen_and_reject_legacy_or_invalid_labels() {
+    let mut original = rt();
+    let lanes = midi_data::Lanes::named(960, 15360, vec![crate::midi_file::Message { tick: 120, order: 1, bytes: [0xbf,74,99], length: 3 }], vec![], vec![midi_data::Label { channel: 15, control: midi_data::ControlKind::Cc { controller: 74 }, name: "Filter cutoff".into() }]).unwrap();
+    original.tracks[2].clips[7].kind = ClipKind::Midi; original.tracks[2].clips[7].lanes = Some(lanes.clone());
+    let saved = captured(&original);
+    let json = serde_json::to_value(&saved.state).unwrap();
+    assert_eq!(json["version"], STATE_VERSION);
+    assert!(json["tracks"][2]["clips"][7]["lanes"].get("state").is_none());
+    let decoded: State = serde_json::from_value(json.clone()).unwrap();
+    let prepared = Prepared::from_state(decoded, saved.media.clone(), 48000).unwrap();
+    assert_eq!(prepared.rt.tracks[2].clips[7].lanes, Some(lanes));
+    assert!(prepared.rt.tracks[2].clips[7].lanes.as_ref().unwrap().prepared());
+    for labels in [serde_json::json!([]), serde_json::Value::Null] {
+        let mut old = json.clone(); old["version"] = 14.into(); old["tracks"][2]["clips"][7]["lanes"]["labels"] = labels;
+        assert!(serde_json::from_value::<State>(old).is_err());
+    }
+    let mut invalid = saved.state.clone(); let source = invalid.tracks[2].clips[7].lanes.as_mut().unwrap();
+    Arc::make_mut(source).labels[0].channel = 16;
+    assert!(invalid.validate(&saved.media).is_err());
+}
+#[test]
+fn prepared_controller_edit_is_saveable_allocation_free_and_rejects_concurrent_project_changes() {
+    let (engine, mut live) = Engine::headless_for_test(48000, 256);
+    let baseline = midi_edit::Document::capture(captured(&live), 2, 7).unwrap();
+    let lanes = midi_data::Lanes::new(960,15360,vec![crate::midi_file::Message { tick: 960, order: 1, bytes: [0xb2,74,88], length: 3 }],vec![]).unwrap();
+    let create = |live: &RtEngine| {
+        let (request, ack, _) = midi_edit::Request::with_lanes(baseline.clone(), "Filter".into(), midi_edit::Region::full(4.0), vec![], Some(lanes.clone())).unwrap();
+        (request.guard_metadata(captured(live), &AtomicBool::new(false)).unwrap(), ack)
+    };
+    let (request, rejected) = create(&live);
+    engine.send(Command::TrackGain { track: 3, value: 0.25 }).unwrap(); live.process(&mut []);
+    engine.send(Command::MidiEdit(request)).unwrap(); live.process(&mut []);
+    assert_eq!(rejected.state(), midi_edit::Outcome::Rejected);
+    assert!(live.tracks[2].clips[7].lanes.is_none());
+    let (request, applied) = create(&live); engine.send(Command::MidiEdit(request)).unwrap();
+    assert_eq!(super::super::test_alloc::measure(|| live.process(&mut [])), super::super::test_alloc::Counts::default());
+    assert_eq!(applied.state(), midi_edit::Outcome::Applied);
+    let saved = captured(&live); saved.state.validate(&saved.media).unwrap();
+    let bytes = serde_json::to_vec(&saved.state).unwrap();
+    let state: State = serde_json::from_slice(&bytes).unwrap();
+    let reopened = Prepared::from_state(state,saved.media,48000).unwrap();
+    assert_eq!(reopened.rt.tracks[2].clips[7].lanes,Some(lanes));
+}
 pub(super) mod session_tests;
 
 fn legacy_midi_fields(state: &mut serde_json::Value) {
@@ -88,8 +161,8 @@ fn explicit_region_clock_cursor_survives_capture_install_and_output_rate_change(
     // must capture its own clock origin, while saved state uses transport beat.
     live.midi_beat += 0.125;
     live.apply(Command::SetNotes {track:2, scene:7, notes:vec![
-        MidiNote { channel:0,release_vel:64,source_timing:None, id:midi_edit::NoteId::new(), muted:false, pitch:60, start:0.0, len:2.0, vel:80 },
-        MidiNote { channel:0,release_vel:64,source_timing:None, id:midi_edit::NoteId::new(), muted:false, pitch:62, start:4.0, len:1.0, vel:90 },
+        MidiNote { variation: None, channel:0,release_vel:64,source_timing:None, id:midi_edit::NoteId::new(), muted:false, pitch:60, start:0.0, len:2.0, vel:80 },
+        MidiNote { variation: None, channel:0,release_vel:64,source_timing:None, id:midi_edit::NoteId::new(), muted:false, pitch:62, start:4.0, len:1.0, vel:90 },
     ]});
     live.tracks[2].clips[7].bars = 16.0;
     live.tracks[2].clips[7].region = Some(midi_edit::Region::full(16.0));
@@ -192,8 +265,9 @@ fn populated() -> RtEngine {
             })
             .collect();
         for s in 0..SCENES {
-            rt.tracks[t].clips[s] = Clip {
-                lanes: None,
+            rt.tracks[t].clips[s] = Clip { variation: None,
+                properties: Default::default(),
+                audio_region: None, lanes: None,
                 region: None,
                 kind: if s == 7 {
                     ClipKind::Audio
@@ -203,7 +277,7 @@ fn populated() -> RtEngine {
                 name: format!("clip {t}:{s}"),
                 bars: 2.0,
                 gain: 0.7,
-                notes: vec![MidiNote {
+                notes: vec![MidiNote { variation: None,
                     channel:0,release_vel:64,source_timing:None, id: crate::engine::midi_edit::NoteId::new(), muted: false,
                     pitch: (30 + t + s) as u8,
                     start: 1.125,
@@ -538,7 +612,7 @@ fn dirty_revision_ignores_performance_gates_but_tracks_note_recording_and_contro
 fn stopped_resume_edits_replace_scheduled_notes_and_first_arp_step_chases() {
     for arp in [false, true] {
         let mut source = rt();
-        source.tracks[2].clips[0].notes = vec![MidiNote {
+        source.tracks[2].clips[0].notes = vec![MidiNote { variation: None,
             channel:0,release_vel:64,source_timing:None, id: crate::engine::midi_edit::NoteId::new(), muted: false,
             pitch: 60,
             start: 0.0,
@@ -557,7 +631,7 @@ fn stopped_resume_edits_replace_scheduled_notes_and_first_arp_step_chases() {
         opened.rt.apply(Command::SetNotes {
             track: 2,
             scene: 0,
-            notes: vec![MidiNote {
+            notes: vec![MidiNote { variation: None,
                 channel:0,release_vel:64,source_timing:None, id: crate::engine::midi_edit::NoteId::new(), muted: false,
                 pitch: 72,
                 start: 0.0,
@@ -680,7 +754,7 @@ fn largest_supported_capture_is_bounded_and_has_no_callback_heap_traffic() {
             clip.notes.clear();
         }
         track.clips[0].notes = vec![
-            MidiNote {
+            MidiNote { variation: None,
                 channel:0,release_vel:64,source_timing:None, id: crate::engine::midi_edit::NoteId::new(), muted: false,
                 pitch: 60,
                 start: 0.0,
@@ -726,7 +800,7 @@ fn largest_supported_capture_is_bounded_and_has_no_callback_heap_traffic() {
     micros.sort();
     eprintln!("maximum project capture: {} notes, {} rack slots, 16 banks, 4096-byte names; wall us median={} max={}; zero allocation/free (local copy cost, not stream deadline proof)",
         MAX_TOTAL_NOTES, MAX_FX_PER_RACK * (TRACKS + SCENES), micros[4], micros[8]);
-    live.tracks[0].clips[1].notes.push(MidiNote {
+    live.tracks[0].clips[1].notes.push(MidiNote { variation: None,
         channel:0,release_vel:64,source_timing:None, id: crate::engine::midi_edit::NoteId::new(), muted: false,
         pitch: 60,
         start: 0.0,
@@ -1028,4 +1102,28 @@ fn sample_based_position_roundtrips_and_legacy_headers_cannot_hide_it() {
     wire.as_object_mut().unwrap().remove("timeline_seconds");
     let legacy:State=serde_json::from_value(wire).unwrap();
     assert_eq!(legacy.timeline_seconds,saved.state.beat*60.0/f64::from(saved.state.bpm));
+}
+
+mod input_monitor_tests;
+
+#[test]
+fn key_shift_offsets_roundtrip_native_project_pcm_and_reject_older_headers_or_invalid_ranges() {
+    use crate::engine::key_shift;
+    let mut live=Box::new(rt());live.publish_for_test();
+    for (deck,offset,lock) in [(0,3,true),(1,-2,false)] {
+        let request={let snapshot=live.snap.lock();key_shift::Request::new(deck,&snapshot.decks[usize::from(deck)],offset,lock).unwrap()};
+        live.apply(Command::DeckKeyShift(request));
+    }
+    let saved=captured(&live);let audio=saved.media.clone();let wire=serde_json::to_value(&saved.state).unwrap();assert_eq!(wire["version"],STATE_VERSION);assert_eq!(wire["decks"][0]["key_shift"],3);assert_eq!(wire["decks"][1]["key_shift"],-2);
+    let path=std::env::temp_dir().join(format!("omatainer-key-shift-project-{}.omat",std::process::id()));
+    struct Remove(std::path::PathBuf);impl Drop for Remove {fn drop(&mut self){let _=std::fs::remove_file(&self.0);}}let _remove=Remove(path.clone());
+    let cancel=AtomicBool::new(false);let bundle=crate::project_file::Bundle {state:saved.state.clone(),media:saved.media.clone()};
+    assert_eq!(crate::project_file::save(&path,&bundle,crate::project_file::Overwrite::Never,&crate::project_file::Limits::default(),&cancel).unwrap(),crate::project_file::SaveOutcome::Durable);
+    let decoded=crate::project_file::load::<State>(&path,&crate::project_file::Limits::default(),&cancel).unwrap();assert_eq!(decoded.media.len(),audio.len());for (actual,original) in decoded.media.iter().zip(&audio){assert_eq!(actual.data,original.data);}
+    let reopened=Prepared::from_state(decoded.state,decoded.media,44100).unwrap();assert_eq!(reopened.rt.decks[0].key_shift,3);assert!(reopened.rt.decks[0].keylock);assert_eq!(reopened.rt.decks[1].key_shift,-2);assert!(!reopened.rt.decks[1].keylock);assert!(reopened.rt.decks.iter().all(|deck|!deck.playing));
+    for value in [serde_json::json!(0),serde_json::Value::Null] {let mut legacy=wire.clone();legacy["version"]=27.into();for deck in legacy["decks"].as_array_mut().unwrap(){deck.as_object_mut().unwrap().remove("key_shift");}legacy["decks"][0]["key_shift"]=value;assert!(serde_json::from_value::<State>(legacy).is_err());}
+    let mut legacy=serde_json::to_value(State::blank()).unwrap();legacy["version"]=27.into();let legacy:State=serde_json::from_value(legacy).unwrap();assert!(legacy.decks.iter().all(|deck|deck.key_shift==0));
+    for offset in [-7,7] {let mut invalid=saved.state.clone();invalid.decks[0].key_shift=offset;assert!(invalid.validate(&saved.media).is_err());}
+    let mut invalid=saved.state;invalid.version=27;assert!(invalid.validate(&saved.media).is_err());
+    println!("KEY_SHIFT_PROJECT_RECEIPT {}",serde_json::json!({"project_state_version":STATE_VERSION,"real_native_file_roundtrip":true,"embedded_pcm_preserved":true,"output_sample_rate":44100,"offsets":[3,-2],"reopen_starts_stopped":true,"legacy_zero_migrated":true,"legacy_field_injection_refused":true,"invalid_offsets_refused":true,"physical_devices_opened":false}));
 }

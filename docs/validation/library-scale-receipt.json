@@ -1,0 +1,633 @@
+{
+  "schema": 1,
+  "platform": "Linux ARM64; native egui/AccessKit, actual renderer PCM, actual worker analysis/import and native files",
+  "hardware": {
+    "model": "Apple MacBook Pro (16-inch, M1 Pro, 2021)",
+    "memory": "MemTotal:       15763184 kB",
+    "architecture": "arm64",
+    "logicalCpus": 10,
+    "kernel": "7.1.13-3-2-ARCH"
+  },
+  "sourceFiles": {
+    "src/library/search.rs": "7f62f951742be262882df46005b26dfd372570a8ad6cb7714a24fcad22d440f3",
+    "src/library/search/tests.rs": "f40bc8e03f0ba6ae61c0feaa2ab97d1e6766c633f4a640b7a295d5d2a00dd069",
+    "src/ui/library_analysis/tests.rs": "736c549fbdcf91585c0b4cffb4da0ddaba4f1b13c187274d02324fe40fcdff53",
+    "src/ui/library_layout/sort.rs": "f2f7dce92836ce4c272fc96255de567e9329199e1b4ac2ce31ed999b4d4b9906",
+    "src/ui/library_metadata.rs": "5cb3b218e29f2043b723d3c24ead6ed0f29702646c3ede5ef328c7178bbb0637",
+    "src/ui/library_metadata/collection_rows.rs": "9dc599233e4005253e521f139b932f0ab1a9225cf16d868e2015c71ea2bcc7b1",
+    "src/ui/library_metadata/collection_rows/search_index.rs": "6f0fcb2342d1ec0f967c4dbd891ce940552460b8a338e0b6e4d195749b65754a",
+    "src/ui/library_metadata/collection_rows/search_index/tests.rs": "defeb88c1898fa5105b6e44af937b9e36b7d1047fa91054544705c88e60bff51",
+    "src/ui/library_view.rs": "41690228cf1ba57ac80eb3a73a42229cc8edc8a78bf1c84afffc040ff2de87fb",
+    "src/ui/library_view_tests.rs": "bcf561d9ef95e82463b3f1bad1a169f43b8099efdaf3efaeec8b80751ccea4be"
+  },
+  "testBinary": {
+    "path": "target/app-backlog/qualification-bin/library-scale-tests-fifth",
+    "sha256": "82d10faa9dd3a1b594f251266d2491406fec5153242f5100b2738e3e43011f8f"
+  },
+  "compiledInventory": {
+    "path": "target/app-backlog/library-scale-fifth-compiled-source-inventory.json",
+    "sha256": "68c00d795d51e34179ce02a03d2cd1214c3b1af1c5bbb17eaebba2892797dbc0",
+    "baseRevision": "3442b12a35c1f608e2e2c5edb067fee9239d3714",
+    "files": 770
+  },
+  "embeddedInputs": {
+    "schema": 1,
+    "baselineRevision": "3442b12a35c1f608e2e2c5edb067fee9239d3714",
+    "embeddedInputs": {
+      "README.md": "abab5cb8b9a15a180652402e983142ce2a3baf21f5272fe1c4e9079a5083143f",
+      "licenses/manifest.json": "d20bf91efdb1e913f01f1dbcaea622b0fefe477393d311af0ac85ec6b0fc1b1c",
+      "licenses/notices.json": "b15a146c83e362b540c860ae618b80f9ee0150cd9d8d41683a5d3d3fcb85c244"
+    }
+  },
+  "tests": {
+    "search": {
+      "path": "target/app-backlog/library-scale-fifth-search.log",
+      "sha256": "7bbe38b984c08a2a80b6b9dd40921a9ff3e27f09d191d60f0e1e8df99db8ad2b",
+      "outcome": "ok",
+      "passed": 3,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2047,
+      "seconds": 0
+    },
+    "index": {
+      "path": "target/app-backlog/library-scale-fifth-index.log",
+      "sha256": "c13bd303a29d46f2388fa2ff9a6ea4196e65d6537f23dff29c8c919a27d911e4",
+      "outcome": "ok",
+      "passed": 3,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2047,
+      "seconds": 1.42
+    },
+    "native-delta": {
+      "path": "target/app-backlog/library-scale-fifth-native-delta.log",
+      "sha256": "f86c90ff0a7049682350b71a18335a478903878d35a57e3f37aecaca71195801",
+      "outcome": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2049,
+      "seconds": 0.12
+    },
+    "native-owner": {
+      "path": "target/app-backlog/library-scale-fifth-native-owner.log",
+      "sha256": "c27ba59fc53f1b2d601ba46d77ab5f094063721cf0113acd58cc54d0c4ac3c36",
+      "outcome": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2049,
+      "seconds": 1.16
+    },
+    "native-scale": {
+      "path": "target/app-backlog/library-scale-fifth-native-scale.log",
+      "sha256": "0eb573a7ddaec837c3036640a91e0cdd0c62c18f81f85d9e26cda526755f9d36",
+      "outcome": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2049,
+      "seconds": 24.69
+    },
+    "full": {
+      "path": "target/app-backlog/library-scale-fifth-full.log",
+      "sha256": "96a07438a2862142541d1d7f0b85a9d21d52db744c84f7162c1af229ff65610b",
+      "outcome": "ok",
+      "passed": 2006,
+      "failed": 0,
+      "ignored": 44,
+      "filtered": 0,
+      "seconds": 554.47
+    }
+  },
+  "scale": [
+    {
+      "architecture": "aarch64",
+      "incremental_update": {
+        "max_ns": 931131,
+        "median_ns": 613212,
+        "p95_ns": 795505,
+        "samples": 32
+      },
+      "index_build_ns": 16180609,
+      "kernel": "7.1.13-3-2-ARCH",
+      "logical_cpus": 10,
+      "physical_devices_opened": false,
+      "process_memory": [
+        "VmHWM:\t  387904 kB",
+        "VmRSS:\t  387904 kB"
+      ],
+      "query": {
+        "max_ns": 2548725,
+        "median_ns": 803339,
+        "p95_ns": 1794262,
+        "samples": 120
+      },
+      "retained_index_bytes": 2465080,
+      "scroll": {
+        "max_ns": 118750,
+        "median_ns": 85793,
+        "p95_ns": 92500,
+        "samples": 480
+      },
+      "tracks": 10000
+    },
+    {
+      "architecture": "aarch64",
+      "incremental_update": {
+        "max_ns": 1991264,
+        "median_ns": 1816720,
+        "p95_ns": 1980014,
+        "samples": 32
+      },
+      "index_build_ns": 195269315,
+      "kernel": "7.1.13-3-2-ARCH",
+      "logical_cpus": 10,
+      "physical_devices_opened": false,
+      "process_memory": [
+        "VmHWM:\t 1238400 kB",
+        "VmRSS:\t 1238400 kB"
+      ],
+      "query": {
+        "max_ns": 35739575,
+        "median_ns": 11330035,
+        "p95_ns": 23926619,
+        "samples": 120
+      },
+      "retained_index_bytes": 24650080,
+      "scroll": {
+        "max_ns": 100459,
+        "median_ns": 86501,
+        "p95_ns": 92834,
+        "samples": 480
+      },
+      "tracks": 100000
+    }
+  ],
+  "mix": {
+    "callback_allocations": 0,
+    "energy": 736582.2898345334,
+    "minimum_seconds": 300,
+    "output_rate": 48000,
+    "physical_devices_opened": false,
+    "rendered_frames": 14400000
+  },
+  "owner": {
+    "actual_analysis_fields": "all",
+    "analysis_and_replacement_import_ns": 752659987,
+    "builtin_sources": 2,
+    "initial_tracks": 10005,
+    "loaded_audio_preserved": true,
+    "physical_devices_opened": false,
+    "published_tracks": 10006,
+    "real_audio_sources": 3,
+    "selection_preserved": true,
+    "synthetic_sources": 10000
+  },
+  "clockLoadRegression": {
+    "path": "target/app-backlog/library-scale-fifth-full-output-timing.json",
+    "sha256": "6a973aaa7e4db8e3fc10c4861e12758149e68228a20b4dee073ba5c34abc07e7",
+    "physical_devices_opened": false,
+    "real_decode_egui_iterations": 5330,
+    "schema": 1,
+    "tempos": [
+      {
+        "bpm": 40,
+        "clocks": 24,
+        "delay_ns": [
+          116776,
+          59025,
+          112623,
+          18069,
+          103807,
+          86337,
+          67575,
+          126272,
+          154802,
+          76023,
+          44241,
+          112044,
+          150638,
+          95732,
+          169118,
+          44169,
+          13596,
+          59815,
+          150035,
+          60336,
+          82430,
+          151066,
+          7867,
+          110545
+        ],
+        "max_delay_ns": 169118
+      },
+      {
+        "bpm": 73,
+        "clocks": 24,
+        "delay_ns": [
+          80318,
+          125147,
+          167852,
+          88764,
+          81009,
+          143839,
+          23875,
+          25455,
+          67201,
+          20696,
+          37609,
+          95731,
+          13392,
+          148681,
+          78301,
+          114839,
+          123126,
+          107247,
+          149951,
+          126863,
+          172651,
+          46854,
+          161268,
+          73471
+        ],
+        "max_delay_ns": 172651
+      },
+      {
+        "bpm": 120,
+        "clocks": 24,
+        "delay_ns": [
+          76234,
+          28917,
+          124644,
+          46535,
+          21177,
+          41361,
+          74753,
+          21853,
+          125163,
+          101429,
+          49571,
+          28505,
+          17355,
+          114165,
+          18931,
+          131615,
+          99466,
+          100317,
+          49249,
+          78434,
+          144993,
+          48467,
+          45234,
+          59502
+        ],
+        "max_delay_ns": 144993
+      },
+      {
+        "bpm": 137,
+        "clocks": 24,
+        "delay_ns": [
+          71067,
+          146515,
+          88504,
+          3742,
+          133607,
+          110929,
+          57376,
+          10865,
+          38521,
+          81719,
+          96417,
+          31447,
+          4227,
+          155301,
+          129623,
+          100820,
+          42850,
+          123049,
+          16703,
+          114818,
+          86307,
+          36587,
+          119785,
+          52648
+        ],
+        "max_delay_ns": 155301
+      },
+      {
+        "bpm": 180,
+        "clocks": 24,
+        "delay_ns": [
+          149484,
+          99384,
+          148577,
+          106768,
+          127043,
+          60443,
+          80801,
+          20826,
+          88977,
+          55085,
+          36610,
+          53844,
+          111036,
+          129061,
+          43627,
+          50194,
+          145429,
+          123787,
+          144395,
+          126504,
+          65654,
+          131763,
+          99412,
+          48104
+        ],
+        "max_delay_ns": 149484
+      },
+      {
+        "bpm": 240,
+        "clocks": 24,
+        "delay_ns": [
+          30649,
+          149014,
+          70292,
+          48362,
+          107559,
+          130464,
+          112867,
+          113856,
+          116384,
+          152414,
+          72901,
+          36221,
+          13917,
+          33322,
+          57226,
+          117172,
+          115243,
+          81480,
+          98759,
+          7747,
+          135944,
+          22971,
+          66335,
+          54572
+        ],
+        "max_delay_ns": 152414
+      }
+    ]
+  },
+  "node": {
+    "path": "target/app-backlog/library-scale-fifth-node.log",
+    "sha256": "9bce37b7ae0f62b11ffd36a790c6cdcd4a9659f06e02ce329096ad6f66023373",
+    "passed": 15,
+    "failed": 0
+  },
+  "retainedPreliminaryResults": {
+    "second": {
+      "binary": {
+        "compiledBinary": "/home/michael/Projects/omatainer-work/remaining-backlog/target/debug/deps/omatainer-700b0f43c8079203",
+        "privateBinary": "target/app-backlog/qualification-bin/library-scale-tests-second",
+        "sha256": "b377bf6e7c709ba840c3ff29ee7352898664439baffa4e96719b379d0e5f4a3f",
+        "compileLogSha256": "4055b35ac47557b0bfee91536011a0516d8b4192dbbc521b2cb94ed0c6d0798e"
+      },
+      "compiledInventory": {
+        "path": "target/app-backlog/library-scale-second-compiled-source-inventory.json",
+        "sha256": "652f81ea1b3352a75bca2a83eeacc978c3b8ce814552af8aacf82051d56f8313"
+      },
+      "tests": {
+        "search": {
+          "path": "target/app-backlog/library-scale-second-search.log",
+          "sha256": "7bbe38b984c08a2a80b6b9dd40921a9ff3e27f09d191d60f0e1e8df99db8ad2b",
+          "outcome": "ok",
+          "passed": 3,
+          "failed": 0,
+          "ignored": 0,
+          "filtered": 2047,
+          "seconds": 0
+        },
+        "index": {
+          "path": "target/app-backlog/library-scale-second-index.log",
+          "sha256": "c13bd303a29d46f2388fa2ff9a6ea4196e65d6537f23dff29c8c919a27d911e4",
+          "outcome": "ok",
+          "passed": 3,
+          "failed": 0,
+          "ignored": 0,
+          "filtered": 2047,
+          "seconds": 1.42
+        },
+        "native-delta": {
+          "path": "target/app-backlog/library-scale-second-native-delta.log",
+          "sha256": "2041b5ac012799d159cea30ed9f33ccb9bde3736613e090554bb187de50af09a",
+          "outcome": "ok",
+          "passed": 1,
+          "failed": 0,
+          "ignored": 0,
+          "filtered": 2049,
+          "seconds": 0.13
+        },
+        "native-owner": {
+          "path": "target/app-backlog/library-scale-second-native-owner.log",
+          "sha256": "c5a860d252020363f7da34401336b77c8204fd83899083cb2e8dd223b095c1ed",
+          "outcome": "FAILED",
+          "passed": 0,
+          "failed": 1,
+          "ignored": 0,
+          "filtered": 2049,
+          "seconds": 0.41
+        },
+        "native-scale": {
+          "path": "target/app-backlog/library-scale-second-native-scale.log",
+          "sha256": "d10ca460c65c1d10a1b68393ba3e7aa1b7217ccc3f682cc200dcfbc90ba71d97",
+          "outcome": "ok",
+          "passed": 1,
+          "failed": 0,
+          "ignored": 0,
+          "filtered": 2049,
+          "seconds": 25.03
+        }
+      },
+      "reason": "Search, index, incremental native view and both catalog-scale benchmarks passed. The real owner fixture initially omitted the two actual built-in rows from its initial-count expectation; the final fixture verifies 10,000 synthetic sources, all three real audio files and both built-ins."
+    },
+    "third": {
+      "binary": {
+        "compiledBinary": "/home/michael/Projects/omatainer-work/remaining-backlog/target/debug/deps/omatainer-700b0f43c8079203",
+        "privateBinary": "target/app-backlog/qualification-bin/library-scale-tests-third",
+        "sha256": "fa6a6a21024d384cceaa1e080d601fb418865108bdd8a99c74d9ba240b2c11b8",
+        "compileLogSha256": "6d11d74ec945fce5b728b90a5cb10031c6a8d795b4450ad6e356ed2853575ac6"
+      },
+      "compiledInventory": {
+        "path": "target/app-backlog/library-scale-third-compiled-source-inventory.json",
+        "sha256": "994659ea6df196ebc8a87db27550461ef5af45e7ed5582e00ccaed017f5e1d13"
+      },
+      "tests": {
+        "native-owner": {
+          "path": "target/app-backlog/library-scale-third-native-owner.log",
+          "sha256": "c5ab8fcb08eeda7b1614aad670cad103291cb8da6edcc8f20312551bd4d85d99",
+          "outcome": "FAILED",
+          "passed": 0,
+          "failed": 1,
+          "ignored": 0,
+          "filtered": 2049,
+          "seconds": 10.42
+        }
+      },
+      "reason": "The real loader applied the file but the fixture waited for automatic disappearance of load status. Production intentionally retains Loaded status until native dismissal; the fixture now requires actual Loaded state and a new renderer-owned audio Arc. Production behavior and all ownership assertions were retained."
+    },
+    "fourth": {
+      "binary": {
+        "compiledBinary": "/home/michael/Projects/omatainer-work/remaining-backlog/target/debug/deps/omatainer-700b0f43c8079203",
+        "privateBinary": "target/app-backlog/qualification-bin/library-scale-tests-fourth",
+        "sha256": "cf08e984339b425b2e47290bc65d5a8562473068ff65c4066c4d44bd6645926c",
+        "compileLogSha256": "42d2b8f80165efbdbe36e3179fce9b1c8c65b0f47020b5a9ecb02a5ee755ea91"
+      },
+      "compiledInventory": {
+        "path": "target/app-backlog/library-scale-fourth-compiled-source-inventory.json",
+        "sha256": "cc5110a4686077b249add52a87bdb4fe210c36291c59ca9c5aaa5eff903f0441"
+      },
+      "tests": {
+        "search": {
+          "path": "target/app-backlog/library-scale-fourth-search.log",
+          "sha256": "7bbe38b984c08a2a80b6b9dd40921a9ff3e27f09d191d60f0e1e8df99db8ad2b",
+          "outcome": "ok",
+          "passed": 3,
+          "failed": 0,
+          "ignored": 0,
+          "filtered": 2047,
+          "seconds": 0
+        },
+        "index": {
+          "path": "target/app-backlog/library-scale-fourth-index.log",
+          "sha256": "aafb4227df63a88444140333bb2c7b426fe427145d36efcab78833fdad2ae53d",
+          "outcome": "ok",
+          "passed": 3,
+          "failed": 0,
+          "ignored": 0,
+          "filtered": 2047,
+          "seconds": 1.43
+        },
+        "native-delta": {
+          "path": "target/app-backlog/library-scale-fourth-native-delta.log",
+          "sha256": "f86c90ff0a7049682350b71a18335a478903878d35a57e3f37aecaca71195801",
+          "outcome": "ok",
+          "passed": 1,
+          "failed": 0,
+          "ignored": 0,
+          "filtered": 2049,
+          "seconds": 0.12
+        },
+        "native-owner": {
+          "path": "target/app-backlog/library-scale-fourth-native-owner.log",
+          "sha256": "32ed7f6a4738696dd666bee8bad6a65f2b602fb9d25821557b52749a0b9d1dca",
+          "outcome": "ok",
+          "passed": 1,
+          "failed": 0,
+          "ignored": 0,
+          "filtered": 2049,
+          "seconds": 1.26
+        },
+        "native-scale": {
+          "path": "target/app-backlog/library-scale-fourth-native-scale.log",
+          "sha256": "0b107539c4870e702e0c369c6a93b2be8656b1c3abeca5934ee2f1b497b3c88a",
+          "outcome": "ok",
+          "passed": 1,
+          "failed": 0,
+          "ignored": 0,
+          "filtered": 2049,
+          "seconds": 25.45
+        }
+      },
+      "incompleteFullSuite": {
+        "path": "target/app-backlog/library-scale-fourth-full.log",
+        "sha256": "20e9292d30aa7194152d36dc885b36823a0b7e4db619bcea4655b29c71a23fee",
+        "complete": false
+      },
+      "reason": "All focused checks passed. Review identified that changing an already-present play timestamp must also move the Played sort row. The owned full-suite runner was stopped with its partial log retained; production now includes exact timestamp changes in its delta, and final index/native fixtures check Some-to-Some timestamp reinsertion. The stage app was untouched."
+    }
+  },
+  "limits": "Linux ARM64 software qualification at 10,000 and 100,000 catalog rows: actual native egui field queries, all eleven sorted columns, real wheel scrolling and prepared small whole-library metadata publications under at least 300 seconds of rendered two-deck audio. Search p95 below 100 ms; scrolling and GUI application of prepared small updates p95 below 16.7 ms; retained normalized search records capped at 128 MiB with explicit oversized metadata refusal. Synthetic scale publications use the real index builder through a fixture adapter, not the real metadata worker; measured GUI update excludes worker preparation. A separate actual metadata/analysis/scan/loader workflow on 10,005 rows qualifies a two-path replacement/import batch plus all analysis fields in under five seconds, preserving selected source and already loaded audio. Bulk import of 1,000 files and five minutes of wall-clock mixing are not claimed. Small incremental sorted/unsorted updates apply to whole-library views; selected crates and identity/order/large changes use exact full membership. No physical audio/MIDI device, new GUI or capture opened; stage processes/session preserved.",
+  "releaseInstallation": {
+    "schema": 1,
+    "package": {
+      "path": "/home/michael/Projects/omatainer-work/hardware-resurrection/target/app-backlog/release-library-scale-qualified",
+      "manifestSha256": "67054fc425e49d04725a79bfaf81ba867bfe4563da4d024ce354c8148dd1dacc",
+      "revision": "c68a4c9e254f1085502f5e272e0bffaea584fb4f",
+      "version": "0.1.0+c68a4c9e254f",
+      "executableSha256": "973e7d90ae1a80f7d8ce9f7c514f72fd635c72c7c95672e6cdaf6a34b61b32f0"
+    },
+    "installed": {
+      "schema": 1,
+      "before": "0ba496fa670b37d9f24099e12bf3de50371d308466f44649f952b9462e2715cd",
+      "after": "973e7d90ae1a80f7d8ce9f7c514f72fd635c72c7c95672e6cdaf6a34b61b32f0",
+      "installedAt": "2026-10-07T08:21:16.828Z"
+    },
+    "buildInfo": {
+      "arch": "aarch64",
+      "debug_assertions": false,
+      "os": "linux",
+      "pkg_version": "0.1.0",
+      "schema": 1
+    },
+    "applicationProcessesPreserved": [
+      {
+        "pid": 1649895,
+        "executable": "/home/michael/Projects/omatainer-work/hardware-resurrection/target/hardware/pioneer-apc/bin/omatainer",
+        "arguments": [
+          "/home/michael/Projects/omatainer-work/hardware-resurrection/target/hardware/pioneer-apc/bin/omatainer",
+          "--empty-once"
+        ],
+        "sha256": "646aa453a269d7c49feec0f5e88fcac94a030034f051468a82d2828ef05c4915"
+      },
+      {
+        "pid": 3973522,
+        "executable": "/home/michael/.local/bin/omatainer (deleted)",
+        "arguments": [
+          "/home/michael/.local/bin/omatainer",
+          "ctl",
+          "follow"
+        ],
+        "sha256": "23f88a47125de6eb19a7921d64faef6dafed56d3c25debdb89ac04d060d9b2e4"
+      }
+    ],
+    "protectedSessionPreserved": {
+      "path": "/home/michael/Projects/omatainer-work/hardware-resurrection/target/hardware/apc-restart-20261006/session.omat",
+      "sha256": "96e0b2495cdbdc549c324ecf8337fdef5590bdcbfe8916e4f014eb05d1ee827d",
+      "bytes": 162882871
+    },
+    "additionalProcessesAfterInstall": [],
+    "preinstallState": {
+      "master": 0.8188976645469666,
+      "playing": false,
+      "recording": false,
+      "decks": [
+        {
+          "title": "What More Can I Say",
+          "playing": false
+        },
+        {
+          "title": "Public Service Announcement",
+          "playing": false
+        }
+      ]
+    },
+    "postinstallState": {
+      "master": 0.8188976645469666,
+      "playing": false,
+      "recording": false,
+      "decks": [
+        {
+          "title": "What More Can I Say",
+          "playing": false
+        },
+        {
+          "title": "Public Service Announcement",
+          "playing": false
+        }
+      ]
+    },
+    "scope": "Default executable installed for next launch. Previously active independent private GUI and follower processes retained; no hardware device opened or live playback restarted. An unavailable live state is recorded when no GUI was present."
+  }
+}

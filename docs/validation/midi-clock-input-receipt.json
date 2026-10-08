@@ -1,0 +1,1495 @@
+{
+  "schema": 1,
+  "platform": "Linux ARM64 software renderer/OutputCallback PCM and actual native egui/AccessKit",
+  "sourceFiles": {
+    "src/engine/audio.rs": "4af09d92b6446452efc84594f7d6cec3101a29f8b53cb137a7c71f17fd097d73",
+    "src/engine/control.rs": "f798eeac42b75492a82c34def19159a39e247b7cb2bd0ea4963cd59ae45f293b",
+    "src/engine/midi.rs": "1f5d673855c8cd231988f41271aac4ff2c572fdf50d0dc47eb189f318e7751e8",
+    "src/engine/midi/clock.rs": "36d3f57159f730a48e55796da646f470996e97b5d0a9b94147819abe6c05725b",
+    "src/engine/midi/clock/tests.rs": "6e6254843853a9b199008b1ddb68ba03c551836c4c88cf0871513218ab8a475e",
+    "src/engine/midi/clock_input.rs": "5dda36f18c49e13fbe7db702498129f07efe17156ec8b82758e67344e2788c43",
+    "src/engine/midi/clock_input/tests.rs": "36ae8b73fbdcd2542f665269504bbd6e7ef2100ee9a990a27268ae54a773d7ca",
+    "src/engine/midi/handoff.rs": "adb326e9c4a8177e7fa1ec46069feab95a592a370a58f6d671c4e88334bf62e0",
+    "src/engine/midi/handoff/tests.rs": "42b9427550c79064f08e00663740247b3e5db2151be2a3d75cdb7bd85501bf51",
+    "src/engine/midi/routing/packet.rs": "3447a3264e9b6cd18c391d12e25e6030ee611ec3ddea2eb92ca417bdf296ec73",
+    "src/engine/mod.rs": "9400f62bab8e69e5e203225075d10129b03c703dea523121a5dd3813f4d46a5b",
+    "src/engine/performance.rs": "8fd227166b31255e03a768df25e64cb9552530533ce0c294fb4eedcd10acc32d",
+    "src/engine/project.rs": "ee5282b6779ebe49637fe196a3ca39ad6fe1346542ede9c2b83b8abdeddc4a5f",
+    "src/engine/project/prepare.rs": "78c5fccc60ea6592c053d5e8ff147a7413dab188ebf9ee12e5e10f59fc105385",
+    "src/engine/project/tests/session_tests.rs": "dae48ec7c4bf6a5a4e3460887a4026d6f45b4621ce44301e2ef18faa9484f376",
+    "src/engine/snapshot.rs": "3ebfe7535f7a6c8492defb0a006cededf392667fcac93efe7e3eea6921b4c150",
+    "src/engine/song_navigation/playback.rs": "04f2be8cbf305c3555542fa69aa204b08f6f239b1ac6e1a11b89f43e6b7faa2d",
+    "src/engine/undo/midi_import.rs": "0e230aeae4ee587f254c8b325622f21e13b11cc12eebb36ace32f58330dd32d6",
+    "src/engine/undo/patch.rs": "2878f17e55c442424eb62ec74f82beb0bcba570610a1f31ecb389bceb42fd67e",
+    "src/engine/video_transport.rs": "7735e857a3b7722375f16c27c4694a74ca5c27a350effc3eaeeabdc142397566",
+    "src/ipc_follow.rs": "ca0f43b37adf99b99ca11cefe20e198666fdeb1f22aeb436d0f7a1399d612d1a",
+    "src/ipc_follow_tests.rs": "9fdf090dd525b3577ccfb61b2a6fdee593005131ddf8cccc9eab575e63a485a7",
+    "src/ipc_limits_tests.rs": "dd7e8bb4607c73d5bc3b1ca9bc608130a0634594e017227de9d7e9f314f82bc9",
+    "src/ipc_transport.rs": "9a946288f0b6296290eee800a0d76f54ec44eaaad7075476c722a9695fce8721",
+    "src/main.rs": "ea869282c11d3e1da11872c4511c943958d820136c693976d5f1c5de41253e37",
+    "src/ui/help/catalogue.rs": "12dfbc68928ee0129bd1078038f074568f12c49d3380a05d177b0a15ca889594",
+    "src/ui/midi_clock.rs": "e010ace087f5e0851f1863e3715ccc6609a04565dafd75a95e9cc6f870f01317",
+    "src/ui/midi_clock/input.rs": "faef3ae0164208259d088be530cf060aa9de8407fd990c1e45515bb1dc69b865",
+    "src/ui/midi_clock/input/tests.rs": "1f429a394cfa0a7bf2b5a11d4f9114b640da99bc45499a0c57bf48b1b72d1039"
+  },
+  "testBinary": {
+    "path": "target/app-backlog/qualification-bin/clock-input-tests-eleventh",
+    "sha256": "5639a544ea2949a1450ac668fbf4486403d4edc2fdbe66cdc0efbb4eb5a79a2f"
+  },
+  "compiledInventory": {
+    "path": "target/app-backlog/clock-input-eleventh-source.json",
+    "sha256": "4f8972605f1e47394bf5fb4d37a296a3417e8beb141ca3053f3b5182e28f9276",
+    "baseRevision": "fd9e29c0fc2780af755574144599338dbb966273",
+    "files": 741
+  },
+  "embeddedInputs": {
+    "README.md": "abab5cb8b9a15a180652402e983142ce2a3baf21f5272fe1c4e9079a5083143f",
+    "licenses/manifest.json": "1b0a4de36008cca963ea22dbcd37247e39d8909b30f1b17582c98ae3733b088b",
+    "licenses/notices.json": "b15a146c83e362b540c860ae618b80f9ee0150cd9d8d41683a5d3d3fcb85c244"
+  },
+  "compileLog": {
+    "path": "target/app-backlog/clock-input-eleventh-build.log",
+    "sha256": "87320553482406fe06b79e5ce7c9b1c104151a9236b0b2ffbe65216db2fd798f"
+  },
+  "tests": {
+    "core": {
+      "path": "target/app-backlog/clock-input-eleventh-core.log",
+      "sha256": "42c4be752bdae858917f97bc7a32b01d4208f48690d001d362654f51c0534b4e",
+      "outcome": "ok",
+      "passed": 18,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2101,
+      "seconds": 2.87
+    },
+    "native": {
+      "path": "target/app-backlog/clock-input-eleventh-native.log",
+      "sha256": "cc21291f8886fdb4d5bed7fea25019e961c3e54656da28660c5b2d853d259073",
+      "outcome": "ok",
+      "passed": 2,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2117,
+      "seconds": 0
+    },
+    "legacy": {
+      "path": "target/app-backlog/clock-input-eleventh-legacy.log",
+      "sha256": "46af2072e58665a50c170902e66dec33237c69eb22852534bc2b11c01e7f31df",
+      "outcome": "ok",
+      "passed": 7,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2112,
+      "seconds": 0.24
+    },
+    "handoff": {
+      "path": "target/app-backlog/clock-input-eleventh-handoff.log",
+      "sha256": "7fd33846c7336ad0ce7b9a03a182308fb1123c158d1f08357b1dff16d60c45e3",
+      "outcome": "ok",
+      "passed": 25,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2094,
+      "seconds": 2.55
+    },
+    "clock-output": {
+      "path": "target/app-backlog/clock-input-eleventh-clock-output.log",
+      "sha256": "e4961705b697f215a5f741e88cc4010be1bf94181be161f9def30dae8f654ced",
+      "outcome": "ok",
+      "passed": 13,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2106,
+      "seconds": 10.98
+    },
+    "ipc-follow": {
+      "path": "target/app-backlog/clock-input-eleventh-ipc-follow.log",
+      "sha256": "934be39111b4b0d6cc54e4f94ca404705973603f26836350d460a3871c1945e3",
+      "outcome": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2118,
+      "seconds": 0.01
+    },
+    "ipc-limits": {
+      "path": "target/app-backlog/clock-input-eleventh-ipc-limits.log",
+      "sha256": "86b7fc61ba7e0c6aea83ce634a7774a44fd81894e289cd758cc70f57d5378bc5",
+      "outcome": "ok",
+      "passed": 11,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2108,
+      "seconds": 0.99
+    },
+    "song-navigation": {
+      "path": "target/app-backlog/clock-input-eleventh-song-navigation.log",
+      "sha256": "d31c83afdd6420c655c9cea73f2fd180f3e5dcf3516f2b67bc22aff85f0aff58",
+      "outcome": "ok",
+      "passed": 11,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2108,
+      "seconds": 2.65
+    },
+    "project-timing": {
+      "path": "target/app-backlog/clock-input-eleventh-project-timing.log",
+      "sha256": "38fadc342be6b16df40f45d6e5e67ccc7f244982ae983b8baed31ebd7b2d60c4",
+      "outcome": "ok",
+      "passed": 6,
+      "failed": 0,
+      "ignored": 1,
+      "filtered": 2112,
+      "seconds": 1.5
+    },
+    "metronome": {
+      "path": "target/app-backlog/clock-input-eleventh-metronome.log",
+      "sha256": "7584421f05e7ce53c7c93203bd43669281c2677cb376cc97bb9776a08de62df1",
+      "outcome": "ok",
+      "passed": 6,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2113,
+      "seconds": 2.06
+    },
+    "recording": {
+      "path": "target/app-backlog/clock-input-eleventh-recording.log",
+      "sha256": "a326867ddf6687c25217233fe051f0b81b163ce0fc96ae30607dcc9ec211f489",
+      "outcome": "ok",
+      "passed": 12,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2107,
+      "seconds": 3.66
+    },
+    "audio": {
+      "path": "target/app-backlog/clock-input-eleventh-audio.log",
+      "sha256": "f7ce75f9218f8bff962411a3284a9d0c007fd33ff52effa56b08bb8088a40017",
+      "outcome": "ok",
+      "passed": 4,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2115,
+      "seconds": 0.39
+    },
+    "sync": {
+      "path": "target/app-backlog/clock-input-eleventh-sync.log",
+      "sha256": "d60204dfe926996d362fb9f1d4e33b7620f769cf27b7c3ebb4938bf5abd77a25",
+      "outcome": "ok",
+      "passed": 10,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2109,
+      "seconds": 6.28
+    },
+    "manual": {
+      "path": "target/app-backlog/clock-input-eleventh-manual.log",
+      "sha256": "f850470fd544e24d7d28d5d151455793db102e3fddabb46bef665d6ca136d409",
+      "outcome": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2118,
+      "seconds": 0
+    },
+    "help": {
+      "path": "target/app-backlog/clock-input-eleventh-help.log",
+      "sha256": "24bbf74b5849e103253167c583a37c14a7fe2a585bacd429ce28cd5ba8d787c5",
+      "outcome": "ok",
+      "passed": 14,
+      "failed": 0,
+      "ignored": 1,
+      "filtered": 2104,
+      "seconds": 2.91
+    },
+    "full": {
+      "path": "target/app-backlog/clock-input-eleventh-repeat-full.log",
+      "sha256": "9a8c93b846bda98cee72ac2f416d2453726841071a6cc94a58cbd0b8ea5bd071",
+      "outcome": "ok",
+      "passed": 2075,
+      "failed": 0,
+      "ignored": 44,
+      "filtered": 0,
+      "seconds": 623.02
+    }
+  },
+  "oracle": {
+    "cases": 48,
+    "maximum_phase_beats": 0.06804360591585001,
+    "jitter_amplitudes_ns": [
+      100000,
+      1000000
+    ],
+    "physical_devices_opened": false
+  },
+  "callback": {
+    "other_deck_compared_frames": 16384,
+    "other_deck_max_error": 0,
+    "callback_allocations": 0,
+    "callback_frees": 0,
+    "energy": 5.6304423934586,
+    "physical_devices_opened": false
+  },
+  "loop": {
+    "sample_rates": 4,
+    "maximum_position_error_beats": 7.475300156656317e-9,
+    "automatic_wrap_retains_clock": true,
+    "manual_locator_returns_internal": true,
+    "physical_devices_opened": false
+  },
+  "tempo": {
+    "cases": 4,
+    "accepted_pulses_per_case": 89,
+    "physical_devices_opened": false
+  },
+  "clockLoadRegression": {
+    "path": "target/app-backlog/clock-input-eleventh-repeat-full-output-timing.json",
+    "sha256": "7afc8b28c045895f284c12b2d0f0c6aa1f31c9b6520e18b41d2963b0b81cc027",
+    "physical_devices_opened": false,
+    "real_decode_egui_iterations": 5135,
+    "schema": 1,
+    "tempos": [
+      {
+        "bpm": 40,
+        "clocks": 24,
+        "delay_ns": [
+          105736,
+          37610,
+          121235,
+          29150,
+          142025,
+          119691,
+          149482,
+          6397,
+          78272,
+          81188,
+          87520,
+          146687,
+          51644,
+          135852,
+          97309,
+          79767,
+          9266,
+          113391,
+          44681,
+          116056,
+          7138,
+          59262,
+          15678,
+          135511
+        ],
+        "max_delay_ns": 149482
+      },
+      {
+        "bpm": 73,
+        "clocks": 24,
+        "delay_ns": [
+          178862,
+          28918,
+          21934,
+          146867,
+          61632,
+          116773,
+          44497,
+          34846,
+          149237,
+          118295,
+          140435,
+          45284,
+          81633,
+          103690,
+          75622,
+          61929,
+          30195,
+          71336,
+          22018,
+          75741,
+          138382,
+          36897,
+          55997,
+          108054
+        ],
+        "max_delay_ns": 178862
+      },
+      {
+        "bpm": 120,
+        "clocks": 24,
+        "delay_ns": [
+          81112,
+          62056,
+          91209,
+          126236,
+          122264,
+          69875,
+          52152,
+          121805,
+          15291,
+          44484,
+          36512,
+          34999,
+          109817,
+          93095,
+          23789,
+          154150,
+          64970,
+          102873,
+          33941,
+          63261,
+          145372,
+          4023,
+          45593,
+          24663
+        ],
+        "max_delay_ns": 154150
+      },
+      {
+        "bpm": 137,
+        "clocks": 24,
+        "delay_ns": [
+          50903,
+          65666,
+          59222,
+          130319,
+          31624,
+          152889,
+          150403,
+          141333,
+          23805,
+          13568,
+          62874,
+          106721,
+          130569,
+          119625,
+          22513,
+          6985,
+          41874,
+          87430,
+          35652,
+          96166,
+          70805,
+          42068,
+          57582,
+          29845
+        ],
+        "max_delay_ns": 152889
+      },
+      {
+        "bpm": 180,
+        "clocks": 24,
+        "delay_ns": [
+          38362,
+          47186,
+          118677,
+          41834,
+          28449,
+          48940,
+          87098,
+          6547,
+          32828,
+          12235,
+          26601,
+          111051,
+          95208,
+          108657,
+          9147,
+          139722,
+          129004,
+          144703,
+          133693,
+          13309,
+          95758,
+          93582,
+          110281,
+          25854
+        ],
+        "max_delay_ns": 144703
+      },
+      {
+        "bpm": 240,
+        "clocks": 24,
+        "delay_ns": [
+          143570,
+          102918,
+          47473,
+          136653,
+          81876,
+          48723,
+          58861,
+          4584,
+          48097,
+          22277,
+          63167,
+          88472,
+          137903,
+          28791,
+          157097,
+          49735,
+          121167,
+          144014,
+          34485,
+          135000,
+          16554,
+          85985,
+          38416,
+          15679
+        ],
+        "max_delay_ns": 157097
+      }
+    ]
+  },
+  "node": {
+    "path": "target/app-backlog/clock-input-eleventh-node.log",
+    "sha256": "c7e0d599ef63b30d9fd1afe6e1716afa2ee4da3fc751bc4fb57c53b859698efc",
+    "passed": 15,
+    "failed": 0
+  },
+  "retainedPreliminaryResults": {
+    "first": {
+      "reason": "Compile refused the larger status JSON macro. Clock status is added outside the existing macro without increasing its recursion limit.",
+      "binary": null,
+      "artifacts": [
+        {
+          "path": "target/app-backlog/clock-input-first-build.log",
+          "sha256": "6a7c2504cf38caefcea4ef9d38b262d9fa70e4b45aa58c631e6067f7141dd5be"
+        }
+      ],
+      "focused": {}
+    },
+    "second": {
+      "reason": "Focused fixtures found invalid synthetic timing, unsupported-boundary locking, a native label assertion and an Internal legacy input regression. Real Internal dispatch was restored and timing/status fixtures corrected.",
+      "binary": {
+        "path": "target/app-backlog/qualification-bin/clock-input-tests-second",
+        "sha256": "92e4423eccbaa91592947f0df25ab2a2ab40ae7cfff64dff4e7cb9c7bfc62bc0"
+      },
+      "artifacts": [
+        {
+          "path": "target/app-backlog/clock-input-second-build.log",
+          "sha256": "b0eb54cf26b336fbf553704c5666a8916c333dc3e47981ed45b99d0c4ceb13f0"
+        },
+        {
+          "path": "target/app-backlog/clock-input-second-core.log",
+          "sha256": "f421c19e7fb6aef2758f276c0d6e66a1ae65b6acac5c8abcafb31c4293e14086"
+        },
+        {
+          "path": "target/app-backlog/clock-input-second-legacy.log",
+          "sha256": "4b2c58ddd5018073061e84dea9d8716284c75f152d488e6cbe768755b990380d"
+        },
+        {
+          "path": "target/app-backlog/clock-input-second-native.log",
+          "sha256": "5a7a9db9389350228f85ddede4c758a46fecf73332ef9a3352efe3e2fe1f5ac0"
+        },
+        {
+          "path": "target/app-backlog/clock-input-second-source.json",
+          "sha256": "e39e6563dfe0c6edf08cb42915b092eb3b9e321d73b2bc2f38c2ccff7d5a2e41"
+        }
+      ],
+      "focused": {
+        "core": {
+          "path": "target/app-backlog/clock-input-second-core.log",
+          "sha256": "f421c19e7fb6aef2758f276c0d6e66a1ae65b6acac5c8abcafb31c4293e14086",
+          "outcome": "FAILED",
+          "passed": 5,
+          "failed": 3,
+          "ignored": 0,
+          "filtered": 2098,
+          "seconds": 0.12
+        },
+        "native": {
+          "path": "target/app-backlog/clock-input-second-native.log",
+          "sha256": "5a7a9db9389350228f85ddede4c758a46fecf73332ef9a3352efe3e2fe1f5ac0",
+          "outcome": "FAILED",
+          "passed": 0,
+          "failed": 1,
+          "ignored": 0,
+          "filtered": 2105,
+          "seconds": 0
+        },
+        "legacy": {
+          "path": "target/app-backlog/clock-input-second-legacy.log",
+          "sha256": "4b2c58ddd5018073061e84dea9d8716284c75f152d488e6cbe768755b990380d",
+          "outcome": "FAILED",
+          "passed": 6,
+          "failed": 1,
+          "ignored": 0,
+          "filtered": 2099,
+          "seconds": 0.24
+        }
+      }
+    },
+    "third": {
+      "reason": "Core and legacy passed; native assertion addressed an AccessKit value rather than its label. The corrected native fixture reads the actual value.",
+      "binary": {
+        "path": "target/app-backlog/qualification-bin/clock-input-tests-third",
+        "sha256": "a3e89d533ebe0ced50ebb302a30847c5e37c88e6700240256c5773ce33c79a5a"
+      },
+      "artifacts": [
+        {
+          "path": "target/app-backlog/clock-input-third-build.log",
+          "sha256": "57fe049348da5a4915777c52b190c307a28827b5beae4d35dad342dbe37dc19d"
+        },
+        {
+          "path": "target/app-backlog/clock-input-third-core.log",
+          "sha256": "abe324b47ed5e6aa345b463aad50efd866727591857a8f770fb10b650438eccf"
+        },
+        {
+          "path": "target/app-backlog/clock-input-third-legacy.log",
+          "sha256": "e7d406ead0a7b59311079bd0b9516154038197c71683abddd91d3384817a8173"
+        },
+        {
+          "path": "target/app-backlog/clock-input-third-native.log",
+          "sha256": "458e63c743616f1cc092ceb556197a5a9215f26d40fe50e58e46baed43782aac"
+        },
+        {
+          "path": "target/app-backlog/clock-input-third-source.json",
+          "sha256": "50b66250977e5029a6a37a0d394322994d0681cdb32b94832ec50ebe6bea96ea"
+        }
+      ],
+      "focused": {
+        "core": {
+          "path": "target/app-backlog/clock-input-third-core.log",
+          "sha256": "abe324b47ed5e6aa345b463aad50efd866727591857a8f770fb10b650438eccf",
+          "outcome": "ok",
+          "passed": 8,
+          "failed": 0,
+          "ignored": 0,
+          "filtered": 2098,
+          "seconds": 0.28
+        },
+        "native": {
+          "path": "target/app-backlog/clock-input-third-native.log",
+          "sha256": "458e63c743616f1cc092ceb556197a5a9215f26d40fe50e58e46baed43782aac",
+          "outcome": "FAILED",
+          "passed": 0,
+          "failed": 1,
+          "ignored": 0,
+          "filtered": 2105,
+          "seconds": 0
+        },
+        "legacy": {
+          "path": "target/app-backlog/clock-input-third-legacy.log",
+          "sha256": "e7d406ead0a7b59311079bd0b9516154038197c71683abddd91d3384817a8173",
+          "outcome": "ok",
+          "passed": 7,
+          "failed": 0,
+          "ignored": 0,
+          "filtered": 2099,
+          "seconds": 0.24
+        }
+      }
+    },
+    "fourth": {
+      "reason": "Compile refused private worker access from the parent fixture and an incorrect FX array length. Queue-pressure qualification was moved to the actual private worker boundary.",
+      "binary": null,
+      "artifacts": [
+        {
+          "path": "target/app-backlog/clock-input-fourth-build.log",
+          "sha256": "83c2fb9a655fd3c662da3adee646382cae842212d146c5086ab4ce391d5b4c71"
+        },
+        {
+          "path": "target/app-backlog/clock-input-fourth-source.json",
+          "sha256": "7a4ca4a1f4ce2d0cb12177f687b42ebf48f62670dc4598c94edebfce403ceaac"
+        }
+      ],
+      "focused": {}
+    },
+    "fifth": {
+      "reason": "Focused checks found cached IPC follow omitted the new status. An empty limits filter is retained and not counted as qualification.",
+      "binary": {
+        "path": "target/app-backlog/qualification-bin/clock-input-tests-fifth",
+        "sha256": "660121e9167ec80049ddc8d93fe4fa539c576508d338d67b565eff4ce043e76e"
+      },
+      "artifacts": [
+        {
+          "path": "target/app-backlog/clock-input-fifth-build.log",
+          "sha256": "c432ae33d5d03ad7689de27517ce9d793325fc5a937ba26e57d9b49c1ee8806d"
+        },
+        {
+          "path": "target/app-backlog/clock-input-fifth-clock-output.log",
+          "sha256": "2736ca32712d3997b0391b56aa7009f8dfa770aee80e324ce56aadf4962b2af6"
+        },
+        {
+          "path": "target/app-backlog/clock-input-fifth-core.log",
+          "sha256": "4decb33d2830902a9854e29865bfc7acf580552835980f2fa2288551e91abe66"
+        },
+        {
+          "path": "target/app-backlog/clock-input-fifth-handoff.log",
+          "sha256": "9e555fd23e3e663d96889a5dbe5f57e8bf8c7de5b68959e58e937c42fbaa1265"
+        },
+        {
+          "path": "target/app-backlog/clock-input-fifth-ipc-follow.log",
+          "sha256": "a7ffe6a25577366b37ef0e197ebe13f1dd31b3ed0d31632d19d2e77f4c46d6fc"
+        },
+        {
+          "path": "target/app-backlog/clock-input-fifth-ipc-limits.log",
+          "sha256": "ab5bd905d70cbdf18cac0a3f02a5a6933631f210161dec2a0c0e9206a8dd2c3c"
+        },
+        {
+          "path": "target/app-backlog/clock-input-fifth-legacy.log",
+          "sha256": "6307c41e65200be5d780c8c61c85d267a4e3ac09f009cbd76bdf98d2c1f2da4c"
+        },
+        {
+          "path": "target/app-backlog/clock-input-fifth-native.log",
+          "sha256": "994ae76a6b0e869ab28c3808bf8bc1fc5200f675635e302a39f4304dbe116aed"
+        },
+        {
+          "path": "target/app-backlog/clock-input-fifth-output-timing.json",
+          "sha256": "f8c5f94a12b3cacf3bfde38988b8fe1bde32dbf1b4c50c361421e279a3dd63f4"
+        },
+        {
+          "path": "target/app-backlog/clock-input-fifth-source.json",
+          "sha256": "d6832d40a6e5902b4a289789196b50f8095ed13fbaf22f1aee8fa46de2274903"
+        }
+      ],
+      "focused": {
+        "core": {
+          "path": "target/app-backlog/clock-input-fifth-core.log",
+          "sha256": "4decb33d2830902a9854e29865bfc7acf580552835980f2fa2288551e91abe66",
+          "outcome": "ok",
+          "passed": 13,
+          "failed": 0,
+          "ignored": 0,
+          "filtered": 2099,
+          "seconds": 1.13
+        },
+        "native": {
+          "path": "target/app-backlog/clock-input-fifth-native.log",
+          "sha256": "994ae76a6b0e869ab28c3808bf8bc1fc5200f675635e302a39f4304dbe116aed",
+          "outcome": "ok",
+          "passed": 1,
+          "failed": 0,
+          "ignored": 0,
+          "filtered": 2111,
+          "seconds": 0
+        },
+        "legacy": {
+          "path": "target/app-backlog/clock-input-fifth-legacy.log",
+          "sha256": "6307c41e65200be5d780c8c61c85d267a4e3ac09f009cbd76bdf98d2c1f2da4c",
+          "outcome": "ok",
+          "passed": 7,
+          "failed": 0,
+          "ignored": 0,
+          "filtered": 2105,
+          "seconds": 0.28
+        },
+        "handoff": {
+          "path": "target/app-backlog/clock-input-fifth-handoff.log",
+          "sha256": "9e555fd23e3e663d96889a5dbe5f57e8bf8c7de5b68959e58e937c42fbaa1265",
+          "outcome": "ok",
+          "passed": 25,
+          "failed": 0,
+          "ignored": 0,
+          "filtered": 2087,
+          "seconds": 2.57
+        },
+        "clock-output": {
+          "path": "target/app-backlog/clock-input-fifth-clock-output.log",
+          "sha256": "2736ca32712d3997b0391b56aa7009f8dfa770aee80e324ce56aadf4962b2af6",
+          "outcome": "ok",
+          "passed": 12,
+          "failed": 0,
+          "ignored": 0,
+          "filtered": 2100,
+          "seconds": 10.92
+        },
+        "ipc-follow": {
+          "path": "target/app-backlog/clock-input-fifth-ipc-follow.log",
+          "sha256": "a7ffe6a25577366b37ef0e197ebe13f1dd31b3ed0d31632d19d2e77f4c46d6fc",
+          "outcome": "FAILED",
+          "passed": 0,
+          "failed": 1,
+          "ignored": 0,
+          "filtered": 2111,
+          "seconds": 0
+        },
+        "ipc-limits": {
+          "path": "target/app-backlog/clock-input-fifth-ipc-limits.log",
+          "sha256": "ab5bd905d70cbdf18cac0a3f02a5a6933631f210161dec2a0c0e9206a8dd2c3c",
+          "outcome": "ok",
+          "passed": 0,
+          "failed": 0,
+          "ignored": 0,
+          "filtered": 2112,
+          "seconds": 0
+        }
+      }
+    },
+    "sixth": {
+      "reason": "Focused checks found maximum clock telemetry plus title fields exceeded the fixed status reply budget. Status and follow share a 512-byte title bound and maximum-scalar fixtures.",
+      "binary": {
+        "path": "target/app-backlog/qualification-bin/clock-input-tests-sixth",
+        "sha256": "bb9d97aec1efbabdd6360dfaa2f66fb13e4081324ca6136472312de3f1d26bc9"
+      },
+      "artifacts": [
+        {
+          "path": "target/app-backlog/clock-input-sixth-build.log",
+          "sha256": "12c9d0c9021a70960da9c74dc53c63f2d35cd32038b425021f5db68988d9b976"
+        },
+        {
+          "path": "target/app-backlog/clock-input-sixth-clock-output.log",
+          "sha256": "e1eb28acb185c699ab1cf374ae449d1ba45a9531da7464e750d0e4f9509bc481"
+        },
+        {
+          "path": "target/app-backlog/clock-input-sixth-core.log",
+          "sha256": "7c96f6ec414b51d2929792fe3d50ec578f9c49510965e9f60694f0fe036b8b70"
+        },
+        {
+          "path": "target/app-backlog/clock-input-sixth-handoff.log",
+          "sha256": "16623b54009988d95af5cdec7b05468f875937d9308bf5805761f75c21a3ef2d"
+        },
+        {
+          "path": "target/app-backlog/clock-input-sixth-ipc-follow.log",
+          "sha256": "7f67f9bc9bd842f097f61145cea4801119f91479db8d0f619246f2a08378cf28"
+        },
+        {
+          "path": "target/app-backlog/clock-input-sixth-ipc-limits.log",
+          "sha256": "96978efd749e2e4a89be0c0c1238b7a108d2339c04ce71f347c4e2adf9cc4e06"
+        },
+        {
+          "path": "target/app-backlog/clock-input-sixth-legacy.log",
+          "sha256": "765b293f52ace29105d9dc39a245feec53753684577f6f9d661641ea454c0ee2"
+        },
+        {
+          "path": "target/app-backlog/clock-input-sixth-native.log",
+          "sha256": "be41a460a6b1d7d390b7aa1bc340d13f2295ef9de6e3c0a6ef8c547cfe346462"
+        },
+        {
+          "path": "target/app-backlog/clock-input-sixth-output-timing.json",
+          "sha256": "553090eb944edb63d0e491da6cc57fb30ebde45ed3ff1e14860460d06b4c1fd7"
+        },
+        {
+          "path": "target/app-backlog/clock-input-sixth-source.json",
+          "sha256": "ba9adaf44a96699793fa4c2cf300b7041aea6cc31a68cedfed2f5d93ac962aec"
+        }
+      ],
+      "focused": {
+        "core": {
+          "path": "target/app-backlog/clock-input-sixth-core.log",
+          "sha256": "7c96f6ec414b51d2929792fe3d50ec578f9c49510965e9f60694f0fe036b8b70",
+          "outcome": "ok",
+          "passed": 13,
+          "failed": 0,
+          "ignored": 0,
+          "filtered": 2101,
+          "seconds": 1.19
+        },
+        "native": {
+          "path": "target/app-backlog/clock-input-sixth-native.log",
+          "sha256": "be41a460a6b1d7d390b7aa1bc340d13f2295ef9de6e3c0a6ef8c547cfe346462",
+          "outcome": "ok",
+          "passed": 2,
+          "failed": 0,
+          "ignored": 0,
+          "filtered": 2112,
+          "seconds": 0
+        },
+        "legacy": {
+          "path": "target/app-backlog/clock-input-sixth-legacy.log",
+          "sha256": "765b293f52ace29105d9dc39a245feec53753684577f6f9d661641ea454c0ee2",
+          "outcome": "ok",
+          "passed": 7,
+          "failed": 0,
+          "ignored": 0,
+          "filtered": 2107,
+          "seconds": 0.24
+        },
+        "handoff": {
+          "path": "target/app-backlog/clock-input-sixth-handoff.log",
+          "sha256": "16623b54009988d95af5cdec7b05468f875937d9308bf5805761f75c21a3ef2d",
+          "outcome": "ok",
+          "passed": 25,
+          "failed": 0,
+          "ignored": 0,
+          "filtered": 2089,
+          "seconds": 2.61
+        },
+        "clock-output": {
+          "path": "target/app-backlog/clock-input-sixth-clock-output.log",
+          "sha256": "e1eb28acb185c699ab1cf374ae449d1ba45a9531da7464e750d0e4f9509bc481",
+          "outcome": "ok",
+          "passed": 13,
+          "failed": 0,
+          "ignored": 0,
+          "filtered": 2101,
+          "seconds": 11.01
+        },
+        "ipc-follow": {
+          "path": "target/app-backlog/clock-input-sixth-ipc-follow.log",
+          "sha256": "7f67f9bc9bd842f097f61145cea4801119f91479db8d0f619246f2a08378cf28",
+          "outcome": "ok",
+          "passed": 1,
+          "failed": 0,
+          "ignored": 0,
+          "filtered": 2113,
+          "seconds": 0.01
+        },
+        "ipc-limits": {
+          "path": "target/app-backlog/clock-input-sixth-ipc-limits.log",
+          "sha256": "96978efd749e2e4a89be0c0c1238b7a108d2339c04ce71f347c4e2adf9cc4e06",
+          "outcome": "FAILED",
+          "passed": 10,
+          "failed": 1,
+          "ignored": 0,
+          "filtered": 2103,
+          "seconds": 0.99
+        }
+      }
+    },
+    "seventh": {
+      "reason": "All focused checks passed. Review added long-idle fresh transport and wider jitter/tempo-change regressions before the full suite.",
+      "binary": {
+        "path": "target/app-backlog/qualification-bin/clock-input-tests-seventh",
+        "sha256": "762dbdb1f2e5b778d9e5b0cffa2eac40ac3ced093e188836703a37aecea5f349"
+      },
+      "artifacts": [
+        {
+          "path": "target/app-backlog/clock-input-seventh-build.log",
+          "sha256": "12c9d0c9021a70960da9c74dc53c63f2d35cd32038b425021f5db68988d9b976"
+        },
+        {
+          "path": "target/app-backlog/clock-input-seventh-clock-output.log",
+          "sha256": "2d0b509a0d80327aa2b6d5ca62fc6615c980246ac18be5777d286e378eabbf4e"
+        },
+        {
+          "path": "target/app-backlog/clock-input-seventh-core.log",
+          "sha256": "236a800ebaba0d40754ec5137b650a69b9efbe21de42e29388e26803845bd7c4"
+        },
+        {
+          "path": "target/app-backlog/clock-input-seventh-handoff.log",
+          "sha256": "cbec5464dcf1cb8694d082cb41eda4ce73f39cfc26e64f90e186f518a2bb5b7e"
+        },
+        {
+          "path": "target/app-backlog/clock-input-seventh-ipc-follow.log",
+          "sha256": "f19c39ae04bf804b98336ebc8e8fb00e7695e40102d1f2987924274ef1e0199b"
+        },
+        {
+          "path": "target/app-backlog/clock-input-seventh-ipc-limits.log",
+          "sha256": "4ff5a9eb91b51d96e6e97cc1ce94a88d1c6d0024e61d3c99077668b9d8c6ed10"
+        },
+        {
+          "path": "target/app-backlog/clock-input-seventh-legacy.log",
+          "sha256": "4d312b170525c683ab550681addb305d498550736a92b43c00aff801f85f200d"
+        },
+        {
+          "path": "target/app-backlog/clock-input-seventh-native.log",
+          "sha256": "253d157a6a37e2066b24be8dcc67f11006f5659a7bb1fdeb92b68878e6c12183"
+        },
+        {
+          "path": "target/app-backlog/clock-input-seventh-output-timing.json",
+          "sha256": "3a9e8c94e43d04992d2aa7b276b73c19ba693b219674685f8b972cd8fc27e624"
+        },
+        {
+          "path": "target/app-backlog/clock-input-seventh-source.json",
+          "sha256": "98f87f2118d5691826594e9d6796b4936d36223da73fbe30e3842c312f5aee13"
+        }
+      ],
+      "focused": {
+        "core": {
+          "path": "target/app-backlog/clock-input-seventh-core.log",
+          "sha256": "236a800ebaba0d40754ec5137b650a69b9efbe21de42e29388e26803845bd7c4",
+          "outcome": "ok",
+          "passed": 15,
+          "failed": 0,
+          "ignored": 0,
+          "filtered": 2101,
+          "seconds": 2.72
+        },
+        "native": {
+          "path": "target/app-backlog/clock-input-seventh-native.log",
+          "sha256": "253d157a6a37e2066b24be8dcc67f11006f5659a7bb1fdeb92b68878e6c12183",
+          "outcome": "ok",
+          "passed": 2,
+          "failed": 0,
+          "ignored": 0,
+          "filtered": 2114,
+          "seconds": 0
+        },
+        "legacy": {
+          "path": "target/app-backlog/clock-input-seventh-legacy.log",
+          "sha256": "4d312b170525c683ab550681addb305d498550736a92b43c00aff801f85f200d",
+          "outcome": "ok",
+          "passed": 7,
+          "failed": 0,
+          "ignored": 0,
+          "filtered": 2109,
+          "seconds": 0.24
+        },
+        "handoff": {
+          "path": "target/app-backlog/clock-input-seventh-handoff.log",
+          "sha256": "cbec5464dcf1cb8694d082cb41eda4ce73f39cfc26e64f90e186f518a2bb5b7e",
+          "outcome": "ok",
+          "passed": 25,
+          "failed": 0,
+          "ignored": 0,
+          "filtered": 2091,
+          "seconds": 2.6
+        },
+        "clock-output": {
+          "path": "target/app-backlog/clock-input-seventh-clock-output.log",
+          "sha256": "2d0b509a0d80327aa2b6d5ca62fc6615c980246ac18be5777d286e378eabbf4e",
+          "outcome": "ok",
+          "passed": 13,
+          "failed": 0,
+          "ignored": 0,
+          "filtered": 2103,
+          "seconds": 10.83
+        },
+        "ipc-follow": {
+          "path": "target/app-backlog/clock-input-seventh-ipc-follow.log",
+          "sha256": "f19c39ae04bf804b98336ebc8e8fb00e7695e40102d1f2987924274ef1e0199b",
+          "outcome": "ok",
+          "passed": 1,
+          "failed": 0,
+          "ignored": 0,
+          "filtered": 2115,
+          "seconds": 0.01
+        },
+        "ipc-limits": {
+          "path": "target/app-backlog/clock-input-seventh-ipc-limits.log",
+          "sha256": "4ff5a9eb91b51d96e6e97cc1ce94a88d1c6d0024e61d3c99077668b9d8c6ed10",
+          "outcome": "ok",
+          "passed": 11,
+          "failed": 0,
+          "ignored": 0,
+          "filtered": 2105,
+          "seconds": 1.01
+        }
+      }
+    },
+    "eighth": {
+      "reason": "Wider jitter plus dropout at the 40 BPM boundary exposed a biased median and false unsupported tempo. A fixed central-half interval mean handles the retained timestamps.",
+      "binary": {
+        "path": "target/app-backlog/qualification-bin/clock-input-tests-eighth",
+        "sha256": "51c3c4453a3bdc9cb32a80736c2deda160ff4a447822dc306f9669c6a142233a"
+      },
+      "artifacts": [
+        {
+          "path": "target/app-backlog/clock-input-eighth-build.log",
+          "sha256": "f22c21456d1a49530ea9715cbdba85d403350daac180d82e76787ca405a6dac5"
+        },
+        {
+          "path": "target/app-backlog/clock-input-eighth-clock-output.log",
+          "sha256": "621cc62a33007c073970c1c1cff75cd49ab15b99aaa20020508a47456a8d22db"
+        },
+        {
+          "path": "target/app-backlog/clock-input-eighth-core.log",
+          "sha256": "415e3aac8cfab63d5617d435dd1d5db4abb412f3ad44eeb235834ac5f887284e"
+        },
+        {
+          "path": "target/app-backlog/clock-input-eighth-handoff.log",
+          "sha256": "bb4f9e59b1a1a6fb050cea6f44a141e928585f0216a5789d9715d7dbd0a3c547"
+        },
+        {
+          "path": "target/app-backlog/clock-input-eighth-ipc-follow.log",
+          "sha256": "9d250ce2a9d7efaa505417ef6099aa61b46f13222d07f1d7db48f7afd43c0571"
+        },
+        {
+          "path": "target/app-backlog/clock-input-eighth-ipc-limits.log",
+          "sha256": "4c9881bfaf58c1578b7f0e197aaa740505a020ccc59433ebc9d94ae92124e396"
+        },
+        {
+          "path": "target/app-backlog/clock-input-eighth-legacy.log",
+          "sha256": "79648f13c431635c7e2a59ec39bd876396ed79f9f963da4302e5a634e6adc727"
+        },
+        {
+          "path": "target/app-backlog/clock-input-eighth-native.log",
+          "sha256": "73b82b416a73234810da6173451fbf289af1f81a924911349cb4546521f00d5a"
+        },
+        {
+          "path": "target/app-backlog/clock-input-eighth-output-timing.json",
+          "sha256": "0015f3637bb8bca065e60cb37679d250b8300bb744f94c4a1374fff085b45336"
+        },
+        {
+          "path": "target/app-backlog/clock-input-eighth-source.json",
+          "sha256": "65c12e8082fc896de44dfcfb6413c7d1c8678311913d527863800b1d5fe488e9"
+        }
+      ],
+      "focused": {
+        "core": {
+          "path": "target/app-backlog/clock-input-eighth-core.log",
+          "sha256": "415e3aac8cfab63d5617d435dd1d5db4abb412f3ad44eeb235834ac5f887284e",
+          "outcome": "FAILED",
+          "passed": 16,
+          "failed": 1,
+          "ignored": 0,
+          "filtered": 2101,
+          "seconds": 2.62
+        },
+        "native": {
+          "path": "target/app-backlog/clock-input-eighth-native.log",
+          "sha256": "73b82b416a73234810da6173451fbf289af1f81a924911349cb4546521f00d5a",
+          "outcome": "ok",
+          "passed": 2,
+          "failed": 0,
+          "ignored": 0,
+          "filtered": 2116,
+          "seconds": 0.01
+        },
+        "legacy": {
+          "path": "target/app-backlog/clock-input-eighth-legacy.log",
+          "sha256": "79648f13c431635c7e2a59ec39bd876396ed79f9f963da4302e5a634e6adc727",
+          "outcome": "ok",
+          "passed": 7,
+          "failed": 0,
+          "ignored": 0,
+          "filtered": 2111,
+          "seconds": 0.24
+        },
+        "handoff": {
+          "path": "target/app-backlog/clock-input-eighth-handoff.log",
+          "sha256": "bb4f9e59b1a1a6fb050cea6f44a141e928585f0216a5789d9715d7dbd0a3c547",
+          "outcome": "ok",
+          "passed": 25,
+          "failed": 0,
+          "ignored": 0,
+          "filtered": 2093,
+          "seconds": 2.63
+        },
+        "clock-output": {
+          "path": "target/app-backlog/clock-input-eighth-clock-output.log",
+          "sha256": "621cc62a33007c073970c1c1cff75cd49ab15b99aaa20020508a47456a8d22db",
+          "outcome": "ok",
+          "passed": 13,
+          "failed": 0,
+          "ignored": 0,
+          "filtered": 2105,
+          "seconds": 11.01
+        },
+        "ipc-follow": {
+          "path": "target/app-backlog/clock-input-eighth-ipc-follow.log",
+          "sha256": "9d250ce2a9d7efaa505417ef6099aa61b46f13222d07f1d7db48f7afd43c0571",
+          "outcome": "ok",
+          "passed": 1,
+          "failed": 0,
+          "ignored": 0,
+          "filtered": 2117,
+          "seconds": 0.01
+        },
+        "ipc-limits": {
+          "path": "target/app-backlog/clock-input-eighth-ipc-limits.log",
+          "sha256": "4c9881bfaf58c1578b7f0e197aaa740505a020ccc59433ebc9d94ae92124e396",
+          "outcome": "ok",
+          "passed": 11,
+          "failed": 0,
+          "ignored": 0,
+          "filtered": 2107,
+          "seconds": 1
+        }
+      }
+    },
+    "ninth": {
+      "reason": "The jitter checks passed; the fresh slower reacquisition fixture found that retired tempo could be mistaken for dropped pulses. Missing-pulse inference now waits for a fresh established history.",
+      "binary": {
+        "path": "target/app-backlog/qualification-bin/clock-input-tests-ninth",
+        "sha256": "bff2f854cbc520681011e0be371f97798684779c9e80d657169dd5793ee99d58"
+      },
+      "artifacts": [
+        {
+          "path": "target/app-backlog/clock-input-ninth-build.log",
+          "sha256": "40404d5032ca8c2c2ab178ff7f03d06a30c02a56410bb2a77399bb7fed1c4261"
+        },
+        {
+          "path": "target/app-backlog/clock-input-ninth-clock-output.log",
+          "sha256": "f1c709c947caf6fe69b0e5c32b7a3837ca3ea9421809a81c387dd32b68b8fc5a"
+        },
+        {
+          "path": "target/app-backlog/clock-input-ninth-core.log",
+          "sha256": "6c56d5b0f6bd3e6cf2a31ccbee6760318e785159a66df663c7411b280e011163"
+        },
+        {
+          "path": "target/app-backlog/clock-input-ninth-handoff.log",
+          "sha256": "1102a297aa4f25797bf110b2fe29872a633009a8e6db2ff90e14add105a48d49"
+        },
+        {
+          "path": "target/app-backlog/clock-input-ninth-ipc-follow.log",
+          "sha256": "934be39111b4b0d6cc54e4f94ca404705973603f26836350d460a3871c1945e3"
+        },
+        {
+          "path": "target/app-backlog/clock-input-ninth-ipc-limits.log",
+          "sha256": "86b7fc61ba7e0c6aea83ce634a7774a44fd81894e289cd758cc70f57d5378bc5"
+        },
+        {
+          "path": "target/app-backlog/clock-input-ninth-legacy.log",
+          "sha256": "46af2072e58665a50c170902e66dec33237c69eb22852534bc2b11c01e7f31df"
+        },
+        {
+          "path": "target/app-backlog/clock-input-ninth-native.log",
+          "sha256": "85d82bcda08511936e161bece56ee218a21aa586aae83b37e06f0c66e5c6bcc5"
+        },
+        {
+          "path": "target/app-backlog/clock-input-ninth-output-timing.json",
+          "sha256": "4503f2e264a105762a05ff25d038c9d411434dbef04dc70aeec490e25512490b"
+        },
+        {
+          "path": "target/app-backlog/clock-input-ninth-source.json",
+          "sha256": "3044ac5fcb94e2c6ba5b80d46bfeec46ccb2417a33478b5d6ef53eaa801c4bad"
+        }
+      ],
+      "focused": {
+        "core": {
+          "path": "target/app-backlog/clock-input-ninth-core.log",
+          "sha256": "6c56d5b0f6bd3e6cf2a31ccbee6760318e785159a66df663c7411b280e011163",
+          "outcome": "FAILED",
+          "passed": 17,
+          "failed": 1,
+          "ignored": 0,
+          "filtered": 2101,
+          "seconds": 2.91
+        },
+        "native": {
+          "path": "target/app-backlog/clock-input-ninth-native.log",
+          "sha256": "85d82bcda08511936e161bece56ee218a21aa586aae83b37e06f0c66e5c6bcc5",
+          "outcome": "ok",
+          "passed": 2,
+          "failed": 0,
+          "ignored": 0,
+          "filtered": 2117,
+          "seconds": 0.01
+        },
+        "legacy": {
+          "path": "target/app-backlog/clock-input-ninth-legacy.log",
+          "sha256": "46af2072e58665a50c170902e66dec33237c69eb22852534bc2b11c01e7f31df",
+          "outcome": "ok",
+          "passed": 7,
+          "failed": 0,
+          "ignored": 0,
+          "filtered": 2112,
+          "seconds": 0.24
+        },
+        "handoff": {
+          "path": "target/app-backlog/clock-input-ninth-handoff.log",
+          "sha256": "1102a297aa4f25797bf110b2fe29872a633009a8e6db2ff90e14add105a48d49",
+          "outcome": "ok",
+          "passed": 25,
+          "failed": 0,
+          "ignored": 0,
+          "filtered": 2094,
+          "seconds": 2.49
+        },
+        "clock-output": {
+          "path": "target/app-backlog/clock-input-ninth-clock-output.log",
+          "sha256": "f1c709c947caf6fe69b0e5c32b7a3837ca3ea9421809a81c387dd32b68b8fc5a",
+          "outcome": "ok",
+          "passed": 13,
+          "failed": 0,
+          "ignored": 0,
+          "filtered": 2106,
+          "seconds": 10.99
+        },
+        "ipc-follow": {
+          "path": "target/app-backlog/clock-input-ninth-ipc-follow.log",
+          "sha256": "934be39111b4b0d6cc54e4f94ca404705973603f26836350d460a3871c1945e3",
+          "outcome": "ok",
+          "passed": 1,
+          "failed": 0,
+          "ignored": 0,
+          "filtered": 2118,
+          "seconds": 0.01
+        },
+        "ipc-limits": {
+          "path": "target/app-backlog/clock-input-ninth-ipc-limits.log",
+          "sha256": "86b7fc61ba7e0c6aea83ce634a7774a44fd81894e289cd758cc70f57d5378bc5",
+          "outcome": "ok",
+          "passed": 11,
+          "failed": 0,
+          "ignored": 0,
+          "filtered": 2108,
+          "seconds": 0.99
+        }
+      }
+    },
+    "tenth": {
+      "reason": "All focused checks, the complete 2075-pass unfiltered Rust suite and fifteen Node checks passed. Commit whitespace qualification caught a new blank line at the end of the private handoff test file. Only that final newline was corrected; the passing source-bound draft and all executable/log artifacts remain retained, and final-source compilation/qualification is fresh.",
+      "binary": {
+        "path": "target/app-backlog/qualification-bin/clock-input-tests-tenth",
+        "sha256": "88335f5054dafdbf9b51a9654363ab78a9d2d281e1911359fe6761cb00dbcff9"
+      },
+      "artifacts": [
+        {
+          "path": "target/app-backlog/clock-input-tenth-audio.log",
+          "sha256": "e3da01f56eb2d9c475c3f89060e027a5c4328eb403004ef6cc685939593a7e14"
+        },
+        {
+          "path": "target/app-backlog/clock-input-tenth-build.log",
+          "sha256": "76f74f0ef87db56660fd46623f8bdf93eaa076223b025ab9e783dd482c89af6a"
+        },
+        {
+          "path": "target/app-backlog/clock-input-tenth-clock-output.log",
+          "sha256": "38b423ec874d40742e0f725c7a5ad4cfccab4bff574e7398785f22d66e133cc0"
+        },
+        {
+          "path": "target/app-backlog/clock-input-tenth-core.log",
+          "sha256": "a3979a79986abd7ed0aed4737e5d04575429848a4083b43361beed4d3a6dfcdc"
+        },
+        {
+          "path": "target/app-backlog/clock-input-tenth-full-output-timing.json",
+          "sha256": "b4ce72e4ab9326f3c4e7975d38275d52e90f9d82ef87d031e500cd945f561fce"
+        },
+        {
+          "path": "target/app-backlog/clock-input-tenth-full.log",
+          "sha256": "7885e7fbccbf2a2a866947b151b8c850b342fc8deaf4c261f0bab279a5fd97b5"
+        },
+        {
+          "path": "target/app-backlog/clock-input-tenth-handoff.log",
+          "sha256": "748425197583784148bd78c6185142ccb31618e06ef293e6f7f95588cabf7980"
+        },
+        {
+          "path": "target/app-backlog/clock-input-tenth-help.log",
+          "sha256": "3d1a6d9ac206184c2fd67fe6db5e8adc994ca895ceef5b4d0baeaad5636c0b29"
+        },
+        {
+          "path": "target/app-backlog/clock-input-tenth-ipc-follow.log",
+          "sha256": "934be39111b4b0d6cc54e4f94ca404705973603f26836350d460a3871c1945e3"
+        },
+        {
+          "path": "target/app-backlog/clock-input-tenth-ipc-limits.log",
+          "sha256": "3446154d1d2a7e7b365cee8ada2e65a620da33bf52b51e3444d32118a1f675a9"
+        },
+        {
+          "path": "target/app-backlog/clock-input-tenth-legacy.log",
+          "sha256": "46af2072e58665a50c170902e66dec33237c69eb22852534bc2b11c01e7f31df"
+        },
+        {
+          "path": "target/app-backlog/clock-input-tenth-manual.log",
+          "sha256": "f850470fd544e24d7d28d5d151455793db102e3fddabb46bef665d6ca136d409"
+        },
+        {
+          "path": "target/app-backlog/clock-input-tenth-metronome.log",
+          "sha256": "f9907614f56207973166dc2b630cac0b3c6f2a4784a76abd317838fec90b6d4f"
+        },
+        {
+          "path": "target/app-backlog/clock-input-tenth-native.log",
+          "sha256": "cc21291f8886fdb4d5bed7fea25019e961c3e54656da28660c5b2d853d259073"
+        },
+        {
+          "path": "target/app-backlog/clock-input-tenth-node.log",
+          "sha256": "6fc0f3bf39d38e76a9715da89185d78d419d2397acd9e8d1ba92fce4e1049159"
+        },
+        {
+          "path": "target/app-backlog/clock-input-tenth-output-timing.json",
+          "sha256": "10550452aa5eb9f49f0e5629ff7fcd7f985549032e11c3f1c18def5225d0ced0"
+        },
+        {
+          "path": "target/app-backlog/clock-input-tenth-project-timing.log",
+          "sha256": "a0db14bf17fadf5986e6942d6c8567499ff351820fff15fa717bd4c5cffb920f"
+        },
+        {
+          "path": "target/app-backlog/clock-input-tenth-qualification-draft.json",
+          "sha256": "9f570ffde0ea8b43fd02c9069b05186a6a40b6e0abfedb0e1ff5c491a11f439e"
+        },
+        {
+          "path": "target/app-backlog/clock-input-tenth-recording.log",
+          "sha256": "a3aefd1ec2c37d21bb80257f4b892e1f85a2984964376be42ea92ed50b07ddc8"
+        },
+        {
+          "path": "target/app-backlog/clock-input-tenth-song-navigation.log",
+          "sha256": "610d3e6539b6062a6349f325b90587af68bfc854f32423a55689b9ff514558f8"
+        },
+        {
+          "path": "target/app-backlog/clock-input-tenth-source.json",
+          "sha256": "62853e4c337040828a49bbcd35483433a71a252c37753fbd31af3032220a3832"
+        },
+        {
+          "path": "target/app-backlog/clock-input-tenth-sync.log",
+          "sha256": "d490800cb00ee7bcd777450db007b1fa1aee2b7a50e4037966c399e8e108ae02"
+        }
+      ],
+      "focused": {
+        "core": {
+          "path": "target/app-backlog/clock-input-tenth-core.log",
+          "sha256": "a3979a79986abd7ed0aed4737e5d04575429848a4083b43361beed4d3a6dfcdc",
+          "outcome": "ok",
+          "passed": 18,
+          "failed": 0,
+          "ignored": 0,
+          "filtered": 2101,
+          "seconds": 2.92
+        },
+        "native": {
+          "path": "target/app-backlog/clock-input-tenth-native.log",
+          "sha256": "cc21291f8886fdb4d5bed7fea25019e961c3e54656da28660c5b2d853d259073",
+          "outcome": "ok",
+          "passed": 2,
+          "failed": 0,
+          "ignored": 0,
+          "filtered": 2117,
+          "seconds": 0
+        },
+        "legacy": {
+          "path": "target/app-backlog/clock-input-tenth-legacy.log",
+          "sha256": "46af2072e58665a50c170902e66dec33237c69eb22852534bc2b11c01e7f31df",
+          "outcome": "ok",
+          "passed": 7,
+          "failed": 0,
+          "ignored": 0,
+          "filtered": 2112,
+          "seconds": 0.24
+        },
+        "handoff": {
+          "path": "target/app-backlog/clock-input-tenth-handoff.log",
+          "sha256": "748425197583784148bd78c6185142ccb31618e06ef293e6f7f95588cabf7980",
+          "outcome": "ok",
+          "passed": 25,
+          "failed": 0,
+          "ignored": 0,
+          "filtered": 2094,
+          "seconds": 2.58
+        },
+        "clock-output": {
+          "path": "target/app-backlog/clock-input-tenth-clock-output.log",
+          "sha256": "38b423ec874d40742e0f725c7a5ad4cfccab4bff574e7398785f22d66e133cc0",
+          "outcome": "ok",
+          "passed": 13,
+          "failed": 0,
+          "ignored": 0,
+          "filtered": 2106,
+          "seconds": 11
+        },
+        "ipc-follow": {
+          "path": "target/app-backlog/clock-input-tenth-ipc-follow.log",
+          "sha256": "934be39111b4b0d6cc54e4f94ca404705973603f26836350d460a3871c1945e3",
+          "outcome": "ok",
+          "passed": 1,
+          "failed": 0,
+          "ignored": 0,
+          "filtered": 2118,
+          "seconds": 0.01
+        },
+        "ipc-limits": {
+          "path": "target/app-backlog/clock-input-tenth-ipc-limits.log",
+          "sha256": "3446154d1d2a7e7b365cee8ada2e65a620da33bf52b51e3444d32118a1f675a9",
+          "outcome": "ok",
+          "passed": 11,
+          "failed": 0,
+          "ignored": 0,
+          "filtered": 2108,
+          "seconds": 1
+        },
+        "full": {
+          "path": "target/app-backlog/clock-input-tenth-full.log",
+          "sha256": "7885e7fbccbf2a2a866947b151b8c850b342fc8deaf4c261f0bab279a5fd97b5",
+          "outcome": "ok",
+          "passed": 2075,
+          "failed": 0,
+          "ignored": 44,
+          "filtered": 0,
+          "seconds": 633.99
+        }
+      }
+    },
+    "finalSourceFirstFull": {
+      "reason": "The first final-source full run passed 2074 checks and timed out in the existing library_annotations Gui.wait used to initialize the continuous-playback native fixture. The isolated exact reproduction passed in 0.62 seconds and the complete six-test continuous-playback group passed. No source or deadline was changed; a second full run of the same frozen executable provides final qualification. The original failure is retained and is not described as a production fix.",
+      "failure": {
+        "path": "target/app-backlog/clock-input-eleventh-full.log",
+        "sha256": "b450232260a9adb2bd41c57aee3f0eb6595f3a1fe6e4561d620c5a023ff77cce",
+        "outcome": "FAILED",
+        "passed": 2074,
+        "failed": 1,
+        "ignored": 44,
+        "filtered": 0,
+        "seconds": 638.37
+      },
+      "reproduction": {
+        "path": "target/app-backlog/clock-input-eleventh-continuous-reproduction.log",
+        "sha256": "8a00392b211ef89c6bc509a36575656cb880fc8020b1bfffd0b9b6f38f9ef298",
+        "outcome": "ok",
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 2118,
+        "seconds": 0.62
+      },
+      "confirmation": {
+        "path": "target/app-backlog/clock-input-eleventh-continuous-confirmation.log",
+        "sha256": "3bdf582a4d39306f0f756589ad194fa48ffc5ec7e47890b6c1158e60694a6c5a",
+        "outcome": "ok",
+        "passed": 6,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 2113,
+        "seconds": 4.02
+      }
+    }
+  },
+  "limits": "Linux ARM64 software qualification only: selected timestamped source, stable 40–240 BPM tempo/phase, coherent Start/Continue/Stop/SPP, independent bounded handoff, generation-scoped retirement/overflow/feedback, configurable freewheel/stop and visible jitter/loss. Native egui/AccessKit, actual private input workers, software renderer and OutputCallback PCM, live-owner isolation, conductor/automatic-loop/manual-takeover and maximum bounded IPC status/follow checks. Internal preserves existing realtime dispatch. No new dependency or project/library/preferences schema. No physical audio/MIDI device, hardware capture, new OS GUI, listening or live-stage continuity acceptance; existing independent stage processes/session remain preserved.",
+  "releaseInstallation": {
+    "schema": 1,
+    "package": {
+      "path": "/home/michael/Projects/omatainer-work/hardware-resurrection/target/app-backlog/release-clock-input-qualified",
+      "manifestSha256": "57d9842e65c1c0047c5177c82a4001a50d2614f56086ab3769c0602b1b21751b",
+      "revision": "3fbda6c2d40df6d90c7fecd54d2e72af19cee2bb",
+      "version": "0.1.0+3fbda6c2d40d",
+      "executableSha256": "757ebe49d5a59597546bdf7aa73bebcd1e5cf9fd827d8986b07517678af417a2"
+    },
+    "installed": {
+      "schema": 1,
+      "before": "ca659198d33b2fb3721f925de242044a0a8b87812d59c79fdac2ab5afd0a0ca1",
+      "after": "757ebe49d5a59597546bdf7aa73bebcd1e5cf9fd827d8986b07517678af417a2",
+      "installedAt": "2026-10-07T14:54:38.263Z"
+    },
+    "buildInfo": {
+      "arch": "aarch64",
+      "debug_assertions": false,
+      "os": "linux",
+      "pkg_version": "0.1.0",
+      "schema": 1
+    },
+    "applicationProcessesPreserved": [
+      {
+        "pid": 1649895,
+        "executable": "/home/michael/Projects/omatainer-work/hardware-resurrection/target/hardware/pioneer-apc/bin/omatainer",
+        "arguments": [
+          "/home/michael/Projects/omatainer-work/hardware-resurrection/target/hardware/pioneer-apc/bin/omatainer",
+          "--empty-once"
+        ],
+        "sha256": "646aa453a269d7c49feec0f5e88fcac94a030034f051468a82d2828ef05c4915"
+      },
+      {
+        "pid": 3973522,
+        "executable": "/home/michael/.local/bin/omatainer (deleted)",
+        "arguments": [
+          "/home/michael/.local/bin/omatainer",
+          "ctl",
+          "follow"
+        ],
+        "sha256": "23f88a47125de6eb19a7921d64faef6dafed56d3c25debdb89ac04d060d9b2e4"
+      }
+    ],
+    "protectedSessionPreserved": {
+      "path": "/home/michael/Projects/omatainer-work/hardware-resurrection/target/hardware/apc-restart-20261006/session.omat",
+      "sha256": "96e0b2495cdbdc549c324ecf8337fdef5590bdcbfe8916e4f014eb05d1ee827d",
+      "bytes": 162882871
+    },
+    "additionalProcessesAfterInstall": [],
+    "preinstallState": {
+      "master": 0.8188976645469666,
+      "playing": false,
+      "recording": false,
+      "decks": [
+        {
+          "title": "What More Can I Say",
+          "playing": false
+        },
+        {
+          "title": "Public Service Announcement",
+          "playing": false
+        }
+      ]
+    },
+    "postinstallState": {
+      "master": 0.8188976645469666,
+      "playing": false,
+      "recording": false,
+      "decks": [
+        {
+          "title": "What More Can I Say",
+          "playing": false
+        },
+        {
+          "title": "Public Service Announcement",
+          "playing": false
+        }
+      ]
+    },
+    "scope": "Default executable installed for next launch. Previously active independent private GUI and follower processes retained; no hardware device opened or live playback restarted. An unavailable live state is recorded when no GUI was present."
+  }
+}

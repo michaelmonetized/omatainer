@@ -13,7 +13,7 @@ const WARMUP: usize = 16;
 
 struct Gui {
     app: App,
-    rt: RtEngine,
+    rt: Box<RtEngine>,
     ctx: egui::Context,
     nodes: Vec<(NodeId, Node)>,
     time: f64,
@@ -27,7 +27,7 @@ impl Gui {
         ctx.enable_accesskit();
         let mut gui = Self {
             app: App::with_loader(engine, Theme::default(), None),
-            rt,
+            rt: Box::new(rt),
             ctx,
             nodes: Vec::new(),
             time: 0.0,
@@ -457,7 +457,7 @@ fn project_roundtrip() -> Value {
             track: track as u8,
             scene: 0,
             notes: (0..1024)
-                .map(|n| crate::engine::MidiNote {
+                .map(|n| crate::engine::MidiNote { variation: None,
                     channel:0,release_vel:64,source_timing:None, id: crate::engine::midi_edit::NoteId::new(), muted: false,
                     pitch: 36 + ((n + track) % 48) as u8,
                     start: n as f32 * 0.125,

@@ -88,6 +88,22 @@ pub(super) fn check_engine_rejects_invalid_scenes() {
             rt.recording = true;
         }
         let before = scene_state(&rt);
+        let tracks = rt.tracks.clone();
+        let scalar = (rt.playing, rt.recording, rt.beat, rt.selected_track, rt.selected_scene, rt.compose_target, rt.fx_view);
+        let unchanged = |rt: &RtEngine| {
+            scalar == (rt.playing, rt.recording, rt.beat, rt.selected_track, rt.selected_scene, rt.compose_target, rt.fx_view)
+                && rt.tracks.len() == tracks.len()
+                && rt.tracks.iter().zip(&tracks).all(|(a,b)| {
+                    let playing = |t: &engine::TrackRt| t.playing.map(|p| (p.scene,p.start_beat,p.last_beat,p.looping));
+                    playing(a) == playing(b) && a.arp_note == b.arp_note && a.drum_pos == b.drum_pos
+                        && a.poly.voices.len() == b.poly.voices.len()
+                        && a.poly.voices.iter().zip(&b.poly.voices).all(|(a,b)| a.note() == b.note() && a.env.stage == b.env.stage)
+                        && a.clips.len() == b.clips.len()
+                        && a.clips.iter().zip(&b.clips).all(|(a,b)| a.kind == b.kind && a.name == b.name && a.bars == b.bars
+                            && a.notes == b.notes && a.gain == b.gain && a.region == b.region && a.lanes == b.lanes
+                            && a.audio.as_ref().map(Arc::as_ptr) == b.audio.as_ref().map(Arc::as_ptr))
+                })
+        };
         for scene in SCENES as u16..=u16::MAX {
             let commands = [
                 Command::LaunchScene { scene },
@@ -112,10 +128,9 @@ pub(super) fn check_engine_rejects_invalid_scenes() {
                 Command::ComposeArm { track: 0, scene: scene as usize },
                 Command::OpenFxScene(scene),
             ];
-            for command in commands {
-                let label = format!("{command:?}, playing={playing}");
+            for (index, command) in commands.into_iter().enumerate() {
                 rt.apply(command);
-                assert_eq!(scene_state(&rt), before, "{label}");
+                assert!(unchanged(&rt), "command {index}, scene={scene}, playing={playing}; before={before}, after={}", scene_state(&rt));
             }
         }
         for scene in [256, 257, usize::MAX] {
@@ -140,7 +155,7 @@ pub(super) fn check_valid_scene_operations() {
         rt.apply(Command::SetNotes {
             track: 0,
             scene,
-            notes: vec![MidiNote {
+            notes: vec![MidiNote { variation: None,
                 channel:0,release_vel:64,source_timing:None, id: crate::engine::midi_edit::NoteId::new(), muted: false,
                 pitch: 60,
                 start: 0.0,

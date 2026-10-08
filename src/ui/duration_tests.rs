@@ -45,27 +45,45 @@ impl Drop for Files {
         let _ = std::fs::remove_dir_all(&self.0);
     }
 }
-fn wait(mut check: impl FnMut() -> bool) {
+#[track_caller]
+fn wait(stage: &str, mut check: impl FnMut() -> Option<String>) {
     let deadline = Instant::now() + Duration::from_secs(5);
-    while !check() {
-        assert!(Instant::now() < deadline, "duration fixture timed out");
+    while let Some(state) = check() {
+        assert!(
+            Instant::now() < deadline,
+            "duration fixture timed out during {stage}: {state}"
+        );
         std::thread::sleep(Duration::from_millis(1));
     }
 }
+fn waiting(f: &Fixture, done: bool) -> Option<String> {
+    (!done).then(|| {
+        format!(
+            "{}; {}",
+            f.app.library_scan.label(),
+            f.app.library_metadata.pending_description()
+        )
+    })
+}
+#[track_caller]
 fn finish(f: &mut Fixture) {
-    wait(|| {
+    wait("loaded metadata publication", || {
         f.app.poll_load_receipts();
-        !f.app.library_metadata.active()
+        waiting(f, !f.app.library_metadata.active())
     });
 }
+#[track_caller]
 fn scan(f: &mut Fixture, files: &Files) {
     assert!(f
         .app
         .library_scan
         .start(vec![files.0.clone()], f.app.library.clone()));
-    wait(|| {
+    wait("file scan and metadata publication", || {
         f.app.poll_library_scan();
-        !f.app.library_scan.active() && !f.app.library_metadata.active()
+        waiting(
+            f,
+            !f.app.library_scan.active() && !f.app.library_metadata.active(),
+        )
     });
 }
 fn item<'a>(f: &'a Fixture, path: &PathBuf) -> &'a LibItem {
@@ -86,6 +104,7 @@ fn select(f: &mut Fixture, path: &PathBuf) {
         .unwrap();
     f.app.refresh_library_view();
 }
+#[track_caller]
 fn apply(f: &mut Fixture) {
     let command = f.rt.cmd_rx.try_recv().unwrap();
     assert!(matches!(command, Command::DeckLoadRequested { .. }));
@@ -201,14 +220,17 @@ fn duration_is_cached_by_bytes_and_cannot_be_rolled_back_by_an_older_scan() {
     });
     finish(&mut f);
     release.send(()).unwrap();
-    wait(|| {
+    wait("held older scan publication", || {
         f.app.poll_library_scan();
         assert_eq!(
             item(&f, &path).length,
             Some(3.5),
             "old scan exposed unknown duration"
         );
-        !f.app.library_scan.active() && !f.app.library_metadata.active()
+        waiting(
+            &f,
+            !f.app.library_scan.active() && !f.app.library_metadata.active(),
+        )
     });
     assert_eq!(
         f.app.selected_library_item().unwrap().source,
@@ -263,9 +285,18 @@ fn held_decode_keeps_real_crate_frames_and_controls_live_and_stale_file_duration
     f.decoder_results.send((0, Ok(report))).unwrap();
     f.poll_loads();
     finish(&mut f);
-    assert!(matches!(f.app.loads[0].as_ref().unwrap().phase, Phase::Failed(_)));
-    assert!(f.rt.cmd_rx.try_recv().is_err(), "changed decode must never request deck replacement");
-    assert!(Arc::ptr_eq(f.rt.decks[0].audio.as_ref().unwrap(), &outgoing));
+    assert!(matches!(
+        f.app.loads[0].as_ref().unwrap().phase,
+        Phase::Failed(_)
+    ));
+    assert!(
+        f.rt.cmd_rx.try_recv().is_err(),
+        "changed decode must never request deck replacement"
+    );
+    assert!(Arc::ptr_eq(
+        f.rt.decks[0].audio.as_ref().unwrap(),
+        &outgoing
+    ));
     assert_eq!(
         item(&f, &path).length,
         None,

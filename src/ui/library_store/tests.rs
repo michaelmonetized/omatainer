@@ -98,6 +98,7 @@ fn metadata(title: &str) -> Metadata {
 }
 fn prepared() -> Preparation {
     Preparation {
+        saved_loops: Default::default(),
         source_gain: crate::track_gain::Policy::Off,
         grid: None,        cue: 0.25,
         hotcue_styles: [crate::engine::cue_metadata::Style::default(); 8],

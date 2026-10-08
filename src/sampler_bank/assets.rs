@@ -257,7 +257,8 @@ fn sample_bytes(sample: &Sample) -> (u64, u64) {
             + std::mem::size_of::<Vec<[f32; 3]>>()
             + sample.name.capacity()
             + sample.path.capacity()
-            + sample.peaks.capacity() * std::mem::size_of::<[f32; 3]>()) as u64,
+            + sample.peaks.capacity() * std::mem::size_of::<[f32; 3]>()
+            + sample.spectrum.as_ref().map_or(0, |waveform| waveform.storage_bytes())) as u64,
     )
 }
 fn bank_bytes(bank: &Data) -> u64 {

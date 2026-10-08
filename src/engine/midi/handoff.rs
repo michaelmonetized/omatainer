@@ -20,6 +20,8 @@ struct Event {
     safety: u64,
     routing: u64,
     learning: u64,
+    clock: u64,
+    capture:u64,
     len: u16,
     bytes: [u8; EVENT_BYTES],
 }
@@ -32,6 +34,8 @@ impl Event {
             safety: 0,
             routing: 0,
             learning: 0,
+            clock: 0,
+            capture:0,
             len: bytes.len() as u16,
             bytes: [0; EVENT_BYTES],
         };
@@ -83,6 +87,8 @@ impl InputCounters {
 
 struct Shared {
     learning: Arc<super::learn::Shared>,
+    clock: Arc<super::clock_input::Shared>,
+    source: u64,
     epoch: AtomicU64,
     performance: crate::engine::performance::Handle,
     stop_pending: AtomicBool,
@@ -90,6 +96,7 @@ struct Shared {
     enabled: AtomicBool,
     counters: Arc<InputCounters>,
     routing: Arc<super::routing::Shared>,
+    capture:Arc<AtomicU64>,
 }
 
 struct Rules {
@@ -120,8 +127,7 @@ impl Rules {
                 if binding.kind == MsgKind::Cc
                     && matches!(
                         binding.action,
-                        Action::DeckPitch
-                            | Action::DeckGain
+                        Action::DeckGain
                             | Action::DeckEqHi
                             | Action::DeckEqMid
                             | Action::DeckEqLow
@@ -141,6 +147,9 @@ impl Rules {
                 }
             }
         }
+        for binding in map.bindings.iter().filter(|b|b.kind==MsgKind::Cc && b.action==Action::DeckPitch && b.data<128) {
+            for channel in 0..16 {if binding.ch==0xff || usize::from(binding.ch)==channel {rules.cc[channel][usize::from(binding.data)]=false;}}
+        }
         rules
     }
     fn coalescible(&self, bytes: &[u8]) -> bool {
@@ -150,14 +159,14 @@ impl Rules {
             && bytes[2] < 128
             && self.cc[(bytes[0] & 15) as usize][bytes[1] as usize]
     }
-    fn has_stop(&self, bytes: &[u8]) -> bool {
+    fn has_stop(&self, bytes: &[u8], realtime:bool) -> bool {
         if self.mmc && bytes.windows(6).any(|packet| packet[0] == 0xf0 && packet[1] == 0x7f && packet[2] < 128 && packet[3..] == [6, 1, 0xf7]) { return true; }
         // Bounded overflow-only scan preserves stop even with interleaved
         // realtime bytes. Normal MIDI parsing remains in handle_msg.
         let mut note = [0; 3];
         let mut len = 0;
         for &byte in bytes {
-            if byte == 0xfc {
+            if byte == 0xfc && realtime {
                 return true;
             }
             if byte >= 0xf8 {
@@ -195,17 +204,21 @@ pub(super) struct InputSink {
     sequence: u64,
 }
 impl InputSink {
-    fn overflow(&mut self, bytes: &[u8]) {
+    fn overflow(&mut self, bytes: &[u8], capture: u64) {
         self.shared.counters.dropped.fetch_add(1, Relaxed);
         if self.pending_cc.take().is_some() {
             self.shared.counters.dropped.fetch_add(1, Relaxed);
         }
-        if bytes.len() > EVENT_BYTES || self.shared.learning.ordered.load(Acquire) || self.rules.has_stop(bytes) {
+        if capture & 1 != 0 {self.shared.epoch.fetch_add(1,Release);return;}
+        if bytes.iter().take(EVENT_BYTES).any(|&byte|byte==0xfc) {self.shared.clock.request_stop(self.shared.source,self.shared.clock.generation());}
+        self.shared.clock.retire(self.shared.source,super::clock_input::Loss::Overflow);
+        if bytes.len() > EVENT_BYTES && !self.shared.clock.enabled() || self.shared.learning.ordered.load(Acquire) || bytes.len() <= EVENT_BYTES && self.rules.has_stop(bytes,!self.shared.clock.enabled()) {
             self.shared.stop_pending.store(true, Release);
         }
         self.shared.epoch.fetch_add(1, Release);
     }
-    pub(super) fn push(&mut self, bytes: &[u8]) {
+    pub(super) fn push(&mut self, bytes: &[u8]) {self.push_at(bytes,std::time::Instant::now());}
+    pub(super) fn push_at(&mut self, bytes:&[u8], at:std::time::Instant) {
         self.shared.counters.received.fetch_add(1, Relaxed);
         if self.shared.shutdown.load(Acquire) || self.producer.is_abandoned() {
             self.shared.counters.disconnected.fetch_add(1, Relaxed);
@@ -217,14 +230,16 @@ impl InputSink {
             self.shared.counters.dropped.fetch_add(1, Relaxed);
             return;
         }
+        let capture = self.shared.capture.load(Acquire);
         if bytes.len() > EVENT_BYTES {
             self.shared.counters.oversized.fetch_add(1, Relaxed);
-            self.overflow(bytes); // Never scans/copies an unbounded callback payload.
+            self.overflow(bytes, capture); // Never scans/copies an unbounded callback payload.
             return;
         }
         let epoch = self.shared.epoch.load(Acquire);
         self.sequence = self.sequence.wrapping_add(1);
         let mut event = Event::new(epoch, self.sequence, bytes);
+        event.at=at;event.clock=self.shared.clock.generation();event.capture=capture;
         event.safety = self.shared.performance.input_epoch();
         event.routing = self.shared.routing.generation.load(Acquire);
         event.learning = self.shared.learning.revision.load(Acquire);
@@ -243,7 +258,7 @@ impl InputSink {
         if let Some(pending) = self.pending_cc.take() {
             if self.producer.push(pending).is_err() {
                 self.shared.counters.dropped.fetch_add(1, Relaxed);
-                self.overflow(bytes);
+                self.overflow(bytes, capture);
                 return;
             }
         }
@@ -255,7 +270,7 @@ impl InputSink {
                 self.pending_cc.publish(event);
                 self.shared.counters.queued.fetch_add(1, Relaxed);
             }
-            Err(_) => self.overflow(bytes),
+            Err(_) => self.overflow(bytes, capture),
         }
     }
 }
@@ -263,6 +278,8 @@ impl InputSink {
 struct InputWorker {
     decoder: super::surface::Decoder,
     learning_revision: u64,
+    routing_revision: u64,
+    pairs: super::controls::Pairs,
     consumer: rtrb::Consumer<Event>,
     shared: Arc<Shared>,
     epoch: u64,
@@ -278,20 +295,26 @@ struct InputWorker {
     shift: Arc<Mutex<[bool; 4]>>,
     name: String,
     port_id: String,
+    profile:Option<(Arc<super::catalog::runtime::Registry>,String)>,
+    guide_revision:u64,
 }
 impl InputWorker {
     fn reset(&mut self) {
         self.cmd.release_midi_source(self.source);
         self.decoder.reset();
+        self.pairs.clear();
         self.shared.routing.release(self.sources,&self.cmd);
         *self.shift.lock() = [false; 4];
         self.shared.counters.resets.fetch_add(1, Relaxed);
     }
     fn step(&mut self) -> bool {
+        let revision=self.shared.capture.load(Acquire);if revision!=self.guide_revision{self.reset();self.guide_revision=revision;}
         let learning = self.shared.learning.revision.load(Acquire);
         if learning != self.learning_revision { self.reset(); self.learning_revision = learning; }
+        let routing = self.shared.routing.generation.load(Acquire);
+        if self.routing_revision != routing { self.pairs.clear(); self.routing_revision = routing; }
         let safety = self.shared.performance.input_epoch();
-        if self.safety != safety { *self.shift.lock() = [false; 4]; self.decoder.reset(); self.safety = safety; }
+        if self.safety != safety { *self.shift.lock() = [false; 4]; self.decoder.reset(); self.pairs.clear(); self.safety = safety; }
         let epoch = self.shared.epoch.load(Acquire);
         let reset = epoch != self.epoch;
         if reset {
@@ -304,36 +327,50 @@ impl InputWorker {
         let Some(event) = self.next_event() else {
             return reset;
         };
-        if event.epoch == self.shared.epoch.load(Acquire) && event.epoch == self.epoch && event.safety == safety && event.learning == learning {
-            let cmd=self.cmd.for_input_epoch(event.safety);
+        if event.epoch == self.shared.epoch.load(Acquire) && event.epoch == self.epoch && event.safety == safety && event.learning == learning && event.capture==self.guide_revision {
+            let cmd=self.cmd.for_input_epoch(event.safety).for_midi_context([event.epoch,learning,routing]);
+            let observed = self.profile.as_ref().is_some_and(|(registry,id)|registry.observe(id,event.bytes()));
+            if event.capture & 1 != 0 || observed {self.shared.counters.dispatched.fetch_add(1, Relaxed);return true;}
+            let packet_ticks=super::routing::packet::frames(event.bytes()).filter(|frame|matches!(frame,super::routing::packet::Frame::Realtime(0xf8))).count() as u16;
             for frame in super::routing::packet::frames(event.bytes()) {
+                let mut paired = super::controls::PairValues::default();
                 match frame {
                     super::routing::packet::Frame::Musical(packet) => {
                         if self.map.name.starts_with("Akai MPD232") && super::surface::mpd232::transport(packet.bytes(), &cmd) { continue; }
                         if packet.bytes().len()==3 && packet.channel().is_some() {
                             let message:[u8;3]=packet.bytes().try_into().unwrap();
-                            match self.shared.learning.input_at(self.source,&self.name,&self.port_id,&message,&self.map,event.learning) {
+                            if let Some(mut release) = crate::engine::deck_pads::wire_release(&message, self.source) { release.key=super::pad_key(&self.map.name,&message); let _ = cmd.send(Command::DeckPadRelease(release)); }
+                            if let Some(release) = crate::engine::clip_launch::wire_release(&message, self.source) { let _ = cmd.send(Command::ClipRelease(release)); }
+                            if event.routing == routing { paired = self.pairs.input(&message, event.at); }
+                            match self.shared.learning.input_value_at(self.source,&self.name,&self.port_id,&message,&self.map,event.learning,paired) {
                                 super::learn::Dispatch::Consume => continue,
-                                super::learn::Dispatch::Binding(binding) => { let _=super::dispatch(&binding,self.source,message[0]&0xf0,message[2],&message,&cmd,&self.shift);continue; },
+                                super::learn::Dispatch::Binding(binding) => { let _=super::dispatch_value_key(&binding,self.source,message[0]&0xf0,message[2],&message,&cmd,&self.shift,paired.value(binding.pair_order),Some(super::pad_key(&self.map.name,&message)));continue; },
                                 super::learn::Dispatch::Normal => {},
                             }
                         }
-                        self.shared.routing.input(self.sources,&self.name,&self.port_id,event.routing,packet,&cmd,|allow_live| {
+                        self.shared.routing.input_at(self.sources,&self.name,&self.port_id,event.routing,packet,event.at,&cmd,|allow_live| {
                             if packet.bytes().len()==3 && packet.channel().is_some() {
                                 let frame:[u8;3]=packet.bytes().try_into().unwrap();
                                 if !self.decoder.input_at(&self.map,&frame,&cmd,self.source,event.at) {
-                                    super::handle_channel(&frame,self.source,&self.map,&cmd,&self.log,&self.shift,&self.name,allow_live);
+                                    super::handle_channel_value(&frame,self.source,&self.map,&cmd,&self.log,&self.shift,&self.name,allow_live,paired);
                                 }
                             }
                         });
                     },
-                    super::routing::packet::Frame::Realtime(status) => handle_msg(&[status],self.source,&self.map,&cmd,&self.log,&self.shift,&self.name),
+                    super::routing::packet::Frame::Realtime(status) => {
+                        if status == 0xff { self.pairs.clear(); }
+                        use super::clock_input::Message;
+                        let message=match status {0xf8=>Some(Message::Tick{packet_ticks}),0xfa=>Some(Message::Start),0xfb=>Some(Message::Continue),0xfc=>Some(Message::Stop),_=>None};
+                        if let Some(message)=message {if self.shared.clock.input(self.source,event.clock,event.safety,event.at,message,cmd.clock_output().guards_transport_port(&self.name,&self.port_id)) {continue;}}
+                        handle_msg(&[status],self.source,&self.map,&cmd,&self.log,&self.shift,&self.name)
+                    },
+                    super::routing::packet::Frame::SongPosition(position)=>{self.shared.clock.input(self.source,event.clock,event.safety,event.at,super::clock_input::Message::Position(position),cmd.clock_output().guards_transport_port(&self.name,&self.port_id));},
                     super::routing::packet::Frame::Malformed => self.shared.routing.malformed(),
                 }
             }
             self.shared.counters.dispatched.fetch_add(1, Relaxed);
         } else {
-            if event.learning != learning && Rules::new(&self.map).has_stop(event.bytes()) { let _=self.cmd.send(Command::Stop); }
+            if event.capture & 1 == 0 && event.learning != learning && Rules::new(&self.map).has_stop(event.bytes(),!self.shared.clock.enabled()) { let _=self.cmd.send(Command::Stop); }
             self.shared.counters.dropped.fetch_add(1, Relaxed);
         }
         true
@@ -383,7 +420,10 @@ impl InputWorker {
         let rules = Rules::new(&self.map);
         let mut stop = self.shared.stop_pending.swap(false, AcqRel);
         while let Some(event) = self.next_event() {
-            stop |= rules.has_stop(event.bytes());
+            if event.capture & 1 == 0 {
+                if event.bytes().contains(&0xfc) {self.shared.clock.request_stop(self.source,event.clock);}
+                stop |= rules.has_stop(event.bytes(),!self.shared.clock.enabled());
+            }
             self.shared.counters.dropped.fetch_add(1, Relaxed);
         }
         let _ = self.pending_cc.take();
@@ -423,11 +463,16 @@ fn channel(
     port_id:String,
     counters: Arc<InputCounters>,
 ) -> std::io::Result<(InputSink, InputWorker)> {
+    channel_with_capture(capacity,source,map,cmd,log,name,port_id,counters,Arc::new(AtomicU64::new(0)))
+}
+fn channel_with_capture(capacity:usize,source:u64,map:MidiMap,cmd:CommandPort,log:Arc<Mutex<Vec<String>>>,name:String,port_id:String,counters:Arc<InputCounters>,capture:Arc<AtomicU64>)->std::io::Result<(InputSink,InputWorker)>{
     let routing=cmd.midi_routing().clone();
     let sources=routing.register(source,&name,&port_id)?;
     let (producer, consumer) = rtrb::RingBuffer::new(capacity);
     let shared = Arc::new(Shared {
         learning: cmd.midi_learn(),
+        clock:cmd.clock_input().clone(),
+        source,
         epoch: AtomicU64::new(0),
         performance: cmd.performance().clone(),
         stop_pending: AtomicBool::new(false),
@@ -435,8 +480,9 @@ fn channel(
         enabled: AtomicBool::new(true),
         counters,
         routing,
+        capture,
     });
-    shared.learning.connected(source,&name,&port_id);
+    shared.learning.connected_modes(source,&name,&port_id, if map.name.contains("DDJ-SP1") { 255 } else { 0 });
     let rules = Rules::new(&map);
     let (pending_writer, pending_reader) = latest::channel();
     Ok((
@@ -450,6 +496,8 @@ fn channel(
         InputWorker {
             decoder: super::surface::Decoder::default(),
             learning_revision: shared.learning.revision.load(Acquire),
+            routing_revision: shared.routing.generation.load(Acquire),
+            pairs: super::controls::Pairs::default(),
             consumer,
             shared,
             epoch: 0,
@@ -465,6 +513,7 @@ fn channel(
             shift: Arc::new(Mutex::new([false; 4])),
             port_id,
             name,
+            profile:None,guide_revision:0,
         },
     ))
 }
@@ -511,7 +560,15 @@ pub(super) fn start_on_port(
     source:u64,map:MidiMap,cmd:CommandPort,log:Arc<Mutex<Vec<String>>>,
     name:String,id:String,counters:Arc<InputCounters>,enabled:bool,completed:impl FnOnce()+Send+'static,
 ) -> std::io::Result<(InputSink,InputGuard)> {
-    let (sink, worker) = channel(EVENTS, source, map, cmd, log,  name, id, counters)?;
+    start_profile(source,map,cmd,log,name,id,None,counters,enabled,completed)
+}
+pub(super) fn start_profile(
+    source:u64,map:MidiMap,cmd:CommandPort,log:Arc<Mutex<Vec<String>>>,name:String,id:String,
+    profile:Option<(Arc<super::catalog::runtime::Registry>,String)>,counters:Arc<InputCounters>,enabled:bool,completed:impl FnOnce()+Send+'static,
+)->std::io::Result<(InputSink,InputGuard)> {
+    let capture=profile.as_ref().map_or_else(||Arc::new(AtomicU64::new(0)),|(r,id)|r.capture_state(id));
+    let (sink, mut worker) = channel_with_capture(EVENTS, source, map, cmd, log, name, id, counters,capture)?;
+    worker.profile=profile;
     sink.shared.enabled.store(enabled, Release);
     let shared = sink.shared.clone();
     let worker = std::thread::Builder::new()
@@ -538,3 +595,8 @@ impl Drop for InputWorker {
 
 #[cfg(test)]
 mod tests;
+
+#[cfg(test)]
+pub(super) fn paused_profile_for_test(source:u64,map:MidiMap,cmd:CommandPort,registry:Arc<super::catalog::runtime::Registry>,id:String,counters:Arc<InputCounters>)->std::io::Result<(InputSink,impl FnMut()->bool)>{
+    let capture=registry.capture_state(&id);let(sink,mut worker)=channel_with_capture(EVENTS,source,map,cmd,Arc::new(Mutex::new(Vec::new())),id.clone(),id.clone(),counters,capture)?;worker.profile=Some((registry,id));Ok((sink,move||worker.step()))
+}

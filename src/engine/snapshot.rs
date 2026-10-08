@@ -48,6 +48,7 @@ impl Publisher {
                         next.midi = std::mem::take(&mut current.midi);
                         next.midi_feedback = current.midi_feedback;
                         next.midi_input = current.midi_input;
+        next.midi_profiles = std::mem::take(&mut current.midi_profiles);
                         *current = next;
                         worker_published.store(frame.sequence, Ordering::Release);
                     } else {
@@ -117,7 +118,7 @@ struct Frame {
     scene_count: usize,
     clip_names: Vec<Vec<usize>>,
     deck_titles: [usize; DECKS],
-    bank_names: Vec<usize>,
+    bank_names: [usize; sampler::MAX_BANKS],
     bank_count: usize,
     fx_count: usize,
     fx_name_length: usize,
@@ -129,8 +130,14 @@ fn reserve(value: &mut String, needed: usize) {
     value.reserve(needed.saturating_sub(value.len()));
 }
 
+#[track_caller]
 fn copy(value: &mut String, source: &str) {
-    debug_assert!(value.capacity() >= source.len());
+    debug_assert!(
+        value.capacity() >= source.len(),
+        "snapshot string has capacity {} for {} bytes",
+        value.capacity(),
+        source.len()
+    );
     value.clear();
     value.push_str(source);
 }
@@ -162,7 +169,7 @@ impl Frame {
             track_count: TRACKS, scene_count: SCENES,
             clip_names: vec![vec![0; session::MAX_SCENES]; session::MAX_TRACKS],
             deck_titles: [0; DECKS],
-            bank_names: Vec::new(),
+            bank_names: [0; sampler::MAX_BANKS],
             bank_count: 0,
             fx_count: 0,
             fx_name_length: 16,
@@ -200,7 +207,15 @@ impl Frame {
         }
         for (index, track) in rt.tracks.iter().take(self.track_count).enumerate() {
             self.track_names[index] = track.name.len().max(rt.session.tracks[index].name.len());
-            fits &= self.values.tracks.get(index).is_some_and(|out| out.name.capacity() >= track.name.len() && out.clips.len() == self.scene_count);
+            fits &= self.values.tracks.get(index).is_some_and(|out| {
+                out.name.capacity() >= track.name.len() && out.clips.len() == self.scene_count
+            });
+            fits &= self
+                .values
+                .session
+                .as_ref()
+                .and_then(|layout| layout.tracks.get(index))
+                .is_some_and(|out| out.name.capacity() >= self.track_names[index]);
             for (scene, clip) in track.clips.iter().take(self.scene_count).enumerate() {
                 self.clip_names[index][scene] = clip.name.len();
                 fits &= self.values.tracks.get(index).and_then(|t| t.clips.get(scene)).is_some_and(|out| out.name.capacity() >= clip.name.len());
@@ -210,20 +225,21 @@ impl Frame {
             self.deck_titles[index] = deck.title.len();
             fits &= self.values.decks[index].title.capacity() >= deck.title.len();
         }
-        for ((needed, value), source) in self
-            .bank_names
-            .iter_mut()
-            .zip(&self.values.sampler_banks)
-            .zip(&rt.sampler_banks)
-        {
-            *needed = source.name().len();
-            fits &= value.capacity() >= source.name().len();
+        for (index, source) in rt.sampler_banks.iter().enumerate() {
+            self.bank_names[index] = source.name().len();
+            fits &= self
+                .values
+                .sampler_banks
+                .get(index)
+                .is_some_and(|value| value.capacity() >= source.name().len());
         }
         if !fits {
             return;
         }
 
         let target = &mut self.values;
+        target.sync_leader = rt.deck_sync.leader;
+        target.sync_leader_ready = rt.deck_sync_ready();
         target.session.as_mut().unwrap().copy_from_prepared(&rt.session);
         target.performance = rt.performance.status();
         let held = rt.note_recording.held_targets();
@@ -235,15 +251,21 @@ impl Frame {
             out.mute = track.mute;
             out.solo = track.solo;
             out.armed = track.armed;
+            out.input_monitor = track.input_monitor;
+            out.input_enabled = track.input_enabled(rt.recording || rt.routing_pipe.recorder.monitoring_inputs());
+            out.pfl = track.pfl;
             out.meter = track.meter;
             out.playing_scene = track.playing.map(|p| p.scene as i16).unwrap_or(-1);
             out.clip_pending = track.playing.is_some_and(|p| p.last_beat < 0.0);
+            out.clip_queued = track.launch.queued_scene();
+            out.clip_stopping = track.launch.stopping();
             out.clip_progress = track
                 .playing
                 .map(|p| {
                     if p.last_beat < 0.0 {
                         return 0.0;
                     }
+                    if let Some(plan)=track.clips[p.scene as usize].audio_region {return plan.progress(p.last_beat,p.looping);}
                     let len = (track.clips[p.scene as usize].bars.max(0.25) * 4.0) as f64;
                     (p.last_beat.rem_euclid(len) / len) as f32
                 })
@@ -260,9 +282,13 @@ impl Frame {
                 copy(&mut out.name, &clip.name);
                 out.bars = clip.bars;
                 out.gain = clip_gain(clip.gain);
+                out.properties = clip.properties;
             }
         }
         for (index, (out, deck)) in target.decks.iter_mut().zip(&rt.decks).enumerate() {
+            out.natural_end=deck.natural_end;
+            out.end_media_key=deck.end_media_key;
+            out.transport_generation=deck.transport_generation;
             out.load_gate_word = rt.performance.deck_load_word(index);
             copy(&mut out.title, &deck.title);
             out.playing = deck.playing;
@@ -289,10 +315,19 @@ impl Frame {
             out.gain = deck.gain;
             out.eq = [deck.eq[0].low_g, deck.eq[0].mid_g, deck.eq[0].high_g];
             out.filter = deck.filter_amt;
+            out.channel_effect = deck.channel_effect;
+            out.channel_effect_feedback = midi::ChannelEffectFeedback::applied(index as u8, deck.channel_effect, deck.filter_amt);
             out.vinyl = deck.vinyl;
             out.sync = deck.sync;
+            out.sync_mode = deck.sync_mode();
+            out.sync_aligned = deck.sync && deck.sync_phase_locked && rt.deck_sync_ready() && deck.playing && !deck.touching;
+            out.sync_target_bpm = deck.sync_bpm;
+            out.pitch_pickup = rt.pitch_pickup_status(index);
             out.keylock = deck.keylock;
+            out.key_shift = deck.key_shift;
+            out.key_shift_mode = deck.key_shift_mode();
             out.controls = deck.controls.status();
+            out.saved_loops = deck.audio.as_ref().map_or_else(Default::default, |audio| deck.controls.saved_loops(audio.sr));
             out.keylock_mode = deck.keylock_mode();
             out.pfl = deck.pfl;
             out.loop_on = deck.loop_on;
@@ -326,17 +361,35 @@ impl Frame {
         }
         target.playing = rt.playing;
         target.midi_clock = rt.midi_clock;
+        target.midi_clock_output = rt.clock_output.counters();
+        target.midi_clock_input = rt.clock_input.status();
         target.recording = rt.recording;
         target.bpm = rt.bpm;
         target.beat = rt.beat;
         target.timeline_seconds = rt.timeline_seconds();
+        target.arrangement_enabled=rt.arrangement.enabled();
+        target.arrangement_end=rt.arrangement.plan.as_ref().map_or(0.0,|p|p.end);
+        target.navigation = rt.navigation.saved.clone();
+        target.scenes = rt.scenes;
+        target.navigation_pending = rt.navigation.pending.map(|p|[p.beat,p.when]);
+        target.navigation_error = rt.navigation.error;
         target.file_conductor = rt.conductor.is_some();
+        target.musical_context = rt.musical_context;
+        target.note_seed = rt.note_seed;
+        target.active_scale = musical_context::active(rt.musical_context, rt.tracks.iter().filter(|_| rt.playing).filter_map(|track| track.playing.map(|launch| track.clips[launch.scene as usize].properties.context)));
+        target.sampler_scale = rt.sampler_scale;
+        let owner = rt.compose_target.unwrap_or(ComposeTarget { track: rt.selected_track, scene: rt.selected_scene });
+        target.sampler_context = musical_context::resolve(rt.tracks.get(owner.track).and_then(|track| track.clips.get(owner.scene)).and_then(|clip| clip.properties.context), rt.musical_context).context;
         target.count_in_remaining = rt.count_in.as_ref().map_or(0.0, |count| count.remaining());
         if let Some(conductor) = &rt.conductor {
             let (bar, beat, meter) = conductor.position(rt.precise_midi_beat());
             target.bar = bar; target.beat_in_bar = beat;
             target.meter_numerator = meter.numerator;
             target.meter_denominator = 1u16 << meter.denominator_power;
+        } else if let Some(timing) = rt.scenes.timing {
+            (target.bar, target.beat_in_bar) = timing.position(rt.precise_midi_beat());
+            target.meter_numerator = timing.signature.numerator;
+            target.meter_denominator = 1_u16 << timing.signature.denominator_power;
         } else {
             target.bar = (rt.beat / 4.0).floor() as u32 + 1;
             target.beat_in_bar = (rt.beat % 4.0) as f32;
@@ -351,6 +404,8 @@ impl Frame {
         target.master_meters = rt.master_meters;
         target.cue_mix = rt.cue_mix;
         target.monitor = rt.monitor.status;
+        target.latency = rt.routing.as_ref().map_or(Default::default(), |graph| graph.latency_status());
+        target.mic_aux = rt.mic_aux.status();
         target.surfaces = rt.surface_status();
         target.view = match rt.view {
             View::Session => 0,
@@ -414,7 +469,6 @@ impl Frame {
             self.values
                 .sampler_banks
                 .resize_with(self.bank_count, String::new);
-            self.bank_names.resize(self.bank_count, 128);
         }
         self.values.sampler_instances.reserve(self.bank_count.saturating_sub(self.values.sampler_instances.len()));
         for (out, needed) in self.values.sampler_banks.iter_mut().zip(&self.bank_names) {
@@ -436,6 +490,7 @@ impl Frame {
         // Ownership travels once to the snapshot worker. Audio receives a
         // cleared frame and cannot retire the last old timeline reference.
         next.timing = self.timing.take();
+        self.values.navigation = None;
         next.sampler_banks.truncate(self.bank_count);
         next.fx_slots.truncate(self.fx_count);
         for (deck, sample) in next.decks.iter_mut().zip(&mut self.samples) {
@@ -443,6 +498,7 @@ impl Frame {
                 // One shared reference for the published snapshot, never a peak
                 // vector copy. The temporary media owner also retires here.
                 deck.peaks = sample.peaks.clone();
+                deck.spectrum = sample.spectrum.clone();
             }
             // Otherwise retain the shared empty waveform captured by new().
         }
@@ -477,6 +533,7 @@ impl RtEngine {
         next.midi = std::mem::take(&mut current.midi);
         next.midi_feedback = current.midi_feedback;
         next.midi_input = current.midi_input;
+                        next.midi_profiles = std::mem::take(&mut current.midi_profiles);
         *current = next;
     }
 

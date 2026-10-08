@@ -87,7 +87,7 @@ mod tests {
         for action in [Action::Move {axis:Axis::Track,id:track.id,position:0}, Action::Delete {axis:Axis::Track,id:track.id}] {
             let deleting = matches!(action, Action::Delete {..});
             let (request, ack) = Request::metadata(&gui.rt.session, gui.app.engine.undo.checkpoint().epoch, action).unwrap();
-            gui.app.engine.send(Command::SessionEdit(request)).unwrap();
+            gui.app.engine.send(Command::session_edit(request)).unwrap();
             for _ in 0..4 {gui.frame(vec![]);}
             assert_eq!(ack.state(), crate::engine::midi_edit::Outcome::Applied);
             if deleting {

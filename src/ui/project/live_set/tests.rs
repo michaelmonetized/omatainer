@@ -148,3 +148,44 @@ fn unavailable_processors_and_missing_embedded_sampler_audio_refuse_preflight() 
         assert!(!gui.app.engine.project.live_sets().busy());
     }
 }
+
+#[test]
+fn routed_prints_preload_with_muted_source_devices_but_pre_mute_sends_still_refuse() {
+    use crate::engine::audio::routing::model::*;
+    let files = Files::new();
+    let source = files.path("source.omat");
+    let mut gui = Gui::new();
+    gui.render = false;
+    gui.app.begin_project_save(SaveKind::As, None, source.clone(), false);
+    wait(&mut gui, |gui| !gui.app.project.busy() && gui.app.project.current_path.as_ref() == Some(&source));
+    let mut bundle: crate::project_file::Bundle<Document> = crate::project_file::load(&source, &Default::default(), &AtomicBool::new(false)).unwrap();
+    let track = &mut bundle.state.engine.tracks[0];
+    track.mute = true;
+    track.synth.offline = Some(Arc::new(crate::engine::fx::OfflineDevice::new("retained.unavailable.source".into(), None).unwrap()));
+    bundle.state.engine.routing = Some(Arc::new(Model::default()));
+    let printed = files.path("printed.omat");
+    crate::project_file::save(&printed, &bundle, Overwrite::Never, &Default::default(), &AtomicBool::new(false)).unwrap();
+    let track_id = bundle.state.engine.session.as_ref().unwrap().tracks[0].id;
+    Arc::make_mut(bundle.state.engine.routing.as_mut().unwrap()).connections.push(Connection {
+        source: Source { group: Group::Track(track_id), tap: Tap::PreFx }, destination: Group::Main,
+        map: vec![ChannelMap { source: 0, destination: 0, gain: 1.0 }],
+    });
+    let sent = files.path("sent-before-mute.omat");
+    crate::project_file::save(&sent, &bundle, Overwrite::Never, &Default::default(), &AtomicBool::new(false)).unwrap();
+    gui.app.send(crate::engine::Command::DeckPlay { deck: 0 });
+    frame(&mut gui);
+    let namespace = gui.rt.session.namespace;
+    gui.click("Project");
+    gui.click("Next live set…");
+    choose(&mut gui, &printed);
+    wait(&mut gui, |gui| gui.app.project.live.control.as_ref().is_some_and(|control| control.ready()));
+    assert!(gui.app.project.live.control.as_ref().unwrap().cue_available.load(Ordering::Acquire));
+    assert!(gui.rt.decks[0].playing);
+    gui.click("Cancel next set");
+    wait(&mut gui, |gui| !gui.app.project.live.busy);
+    choose(&mut gui, &sent);
+    wait(&mut gui, |gui| !gui.app.project.live.busy);
+    assert!(gui.app.project.live.message.as_deref().unwrap().contains("unavailable instrument"));
+    assert_eq!(gui.rt.session.namespace, namespace);
+    assert!(gui.rt.decks[0].playing);
+}

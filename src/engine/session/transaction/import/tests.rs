@@ -33,6 +33,7 @@ fn import_undo_redo_preserve_existing_processors_live_inputs_source_and_embedded
     let (source_engine, mut source_rt) = Engine::headless_for_test(44_100, 256);
     let mut source = capture(&source_engine, &mut source_rt);
     source.state.bpm = 91.0;
+    source.state.tracks[2].input_monitor = Some(crate::engine::input_monitor::Mode::In);
     source.state.tracks[2].clips[0].lanes = Some(
         crate::engine::midi_data::Lanes::new(
             960,
@@ -75,7 +76,7 @@ fn import_undo_redo_preserve_existing_processors_live_inputs_source_and_embedded
         48_000,
     )
     .unwrap();
-    engine.send(Command::SessionEdit(request)).unwrap();
+    engine.send(Command::session_edit(request)).unwrap();
     assert_eq!(
         test_alloc::measure(|| rt.process(&mut [])),
         test_alloc::Counts::default()
@@ -91,6 +92,7 @@ fn import_undo_redo_preserve_existing_processors_live_inputs_source_and_embedded
     let imported = &rt.tracks[old_tracks];
     assert!(!imported.armed && !imported.solo && imported.playing.is_none());
     assert_eq!(imported.scene_bus, old_scenes);
+    assert_eq!(imported.input_monitor, Some(crate::engine::input_monitor::Mode::Off));
     assert_eq!(
         imported.clips[old_scenes].lanes,
         source.state.tracks[2].clips[0].lanes
@@ -179,7 +181,7 @@ fn invalid_selection_stale_revision_and_cancellation_leave_destination_intact() 
     )
     .unwrap();
     rt.apply(Command::SetBpm(145.0));
-    engine.send(Command::SessionEdit(request)).unwrap();
+    engine.send(Command::session_edit(request)).unwrap();
     rt.process(&mut []);
     assert_eq!(ack.state(), Outcome::Rejected);
     assert_eq!(rt.tracks.len(), tracks);
@@ -192,7 +194,7 @@ fn invalid_selection_stale_revision_and_cancellation_leave_destination_intact() 
     )
     .unwrap();
     assert!(ack.cancel());
-    engine.send(Command::SessionEdit(request)).unwrap();
+    engine.send(Command::session_edit(request)).unwrap();
     rt.process(&mut []);
     assert_eq!(ack.state(), Outcome::Cancelled);
     assert_eq!(rt.tracks.len(), tracks);
@@ -243,7 +245,7 @@ fn imported_audio_and_unavailable_devices_survive_output_rate_changes_and_empty_
         48_000,
     )
     .unwrap();
-    engine.send(Command::SessionEdit(request)).unwrap();
+    engine.send(Command::session_edit(request)).unwrap();
     rt.process(&mut []);
     assert_eq!(ack.state(), Outcome::Applied);
     assert_eq!(rt.tracks[base_tracks].fx.slots[0].offline, Some(device));
@@ -274,7 +276,7 @@ fn imported_audio_and_unavailable_devices_survive_output_rate_changes_and_empty_
     settings.tracks = vec![source.state.session.as_ref().unwrap().tracks[0].id];
     let (request, ack) =
         Request::import(imported, &source.state, &source.media, &settings, 44_100).unwrap();
-    engine.send(Command::SessionEdit(request)).unwrap();
+    engine.send(Command::session_edit(request)).unwrap();
     rt.process(&mut []);
     assert_eq!(ack.state(), Outcome::Applied);
     assert!(rt.tracks.last().unwrap().fx.slots.is_empty());
@@ -405,7 +407,7 @@ fn imported_media_numbering_matches_native_capture_across_decimal_widths() {
         },
     )
     .unwrap();
-    engine.send(Command::SessionEdit(request)).unwrap();
+    engine.send(Command::session_edit(request)).unwrap();
     rt.process(&mut []);
     assert_eq!(ack.state(), Outcome::Applied);
     let actual = capture(&engine, &mut rt);
@@ -469,7 +471,7 @@ fn import_preflight_retains_space_for_unjournaled_launches_and_transport_positio
     }
     rt.beat = 12_345_678.123456789;
     assert_eq!(engine.project.revision(), revision);
-    engine.send(Command::SessionEdit(request)).unwrap();
+    engine.send(Command::session_edit(request)).unwrap();
     assert_eq!(test_alloc::measure(|| rt.process(&mut [])), test_alloc::Counts::default());
     assert_eq!(ack.state(), Outcome::Applied);
     let after = capture(&engine, &mut rt);
@@ -483,4 +485,49 @@ fn import_preflight_retains_space_for_unjournaled_launches_and_transport_positio
         launch.looping = false;
         assert!(serde_json::to_vec(&Some(launch)).unwrap().len() < 96);
     }
+}
+
+#[test]
+fn structural_and_import_edits_retain_latency_at_the_actual_output_rate_through_undo() {
+    use crate::engine::audio::routing::{latency::{Configuration, Report}, model::{Group, Model}, prepared::Prepared};
+    for rate in [44100, 96000] {
+        let (engine, mut rt) = Engine::headless_for_test(rate, 256);
+        let mut model = Model::default();
+        model.latency = Some(Configuration {
+            reserve_micros: 10000,
+            reports: vec![Report { group: Group::Deck(0), external_micros: 0, processing_micros: 7000 }],
+            ..Default::default()
+        });
+        rt.routing = Some(Box::new(Prepared::at_rate(Arc::new(model), &rt.session, rate).unwrap()));
+        let expected_frames = (u64::from(rate) * 7000 + 500000) / 1000000;
+        let check = |rt: &RtEngine| {
+            let status = rt.routing.as_ref().unwrap().latency_status();
+            assert_eq!(status.rate, rate);
+            assert_eq!(u64::from(status.program_frames), expected_frames);
+        };
+        check(&rt);
+        let (request, ack) = Request::structural(capture(&engine, &mut rt), rate, super::super::Structure::Track {
+            name: "Retained clock track".into(), audio: false, position: 0,
+        }).unwrap();
+        engine.send(Command::session_edit(request)).unwrap();
+        assert_eq!(test_alloc::measure(|| rt.process(&mut [])), Default::default());
+        assert_eq!(ack.state(), Outcome::Applied);
+        check(&rt);
+        for command in [Command::Undo, Command::Redo, Command::Undo] {
+            assert_eq!(test_alloc::measure(|| rt.apply(command)), Default::default());
+            check(&rt);
+        }
+        let source = capture(&engine, &mut rt);
+        let selected = selection(&source.state);
+        let (request, ack) = Request::import(capture(&engine, &mut rt), &source.state, &source.media, &selected, rate).unwrap();
+        engine.send(Command::session_edit(request)).unwrap();
+        assert_eq!(test_alloc::measure(|| rt.process(&mut [])), Default::default());
+        assert_eq!(ack.state(), Outcome::Applied);
+        check(&rt);
+        for command in [Command::Undo, Command::Redo] {
+            assert_eq!(test_alloc::measure(|| rt.apply(command)), Default::default());
+            check(&rt);
+        }
+    }
+    println!("LATENCY_SESSION_EDITS {{\"sample_rates\":2,\"actual_rate_prepared\":true,\"structural_import_undo_redo\":true,\"callback_allocations\":0,\"physical_devices_opened\":false}}");
 }

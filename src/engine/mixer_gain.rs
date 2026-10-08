@@ -67,6 +67,7 @@ pub(super) fn crossfader_gains(position: f32, curve: f32) -> [f32; 2] {
 
 impl super::RtEngine {
     pub(super) fn prepare_mixer_gains(&mut self) {
+        self.monitor.status.blend = self.cue_mix;
         self.monitor.prepare(self.sr);
         self.surface.prepare(self.sr, self.crossfader_position(), self.xfader_curve);
         // The reference path models the previous loop without preparing a

@@ -17,7 +17,7 @@ fn load(rt: &mut RtEngine, deck: usize, period: &[[f32; 2]]) {
     data.extend_from_slice(&[0.0; 2]);
     rt.apply(Command::DeckAudio {
         deck: deck as u8,
-        audio: Arc::new(Sample {
+        audio: Arc::new(Sample { spectrum: None,
             name: "filter broadband".into(),
             sr: rt.sr as u32,
             ch: 2,

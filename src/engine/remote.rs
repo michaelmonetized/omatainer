@@ -28,10 +28,14 @@ pub(crate) enum Action {
         target: Reference,
         value: f32,
     },
+    Arm { slot: usize, target: Reference, value: bool },
+    TrackMonitor { slot: usize, target: Reference, mode: super::input_monitor::Mode },
+    TrackCue { slot: usize, target: Reference, value: bool },
     Crossfader(f32),
     CrossfaderContour(f32),
     Master(f32),
     DeckControl { deck: u8, control: super::deck_controls::Control },
+    Monitor(super::monitor::Control),
 }
 impl Action {
     /// Resolve a prepared control.
@@ -49,10 +53,14 @@ impl Action {
                 track: slot as u8,
                 value,
             },
+            Self::Arm { slot, value, .. } => Command::TrackArm { track: slot as u8, value },
+            Self::TrackMonitor { slot, mode, .. } => Command::TrackMonitor { track: slot as u8, mode },
+            Self::TrackCue { slot, value, .. } => Command::TrackPfl { track: slot as u8, value },
             Self::Crossfader(value) => Command::Xfader(value),
             Self::CrossfaderContour(value) => Command::XfaderCurve(value),
             Self::Master(value) => Command::Master(value),
             Self::DeckControl { deck, control } => Command::DeckControl { source: 0, deck, control },
+            Self::Monitor(control) => Command::Monitor(control),
         }
     }
 
@@ -79,10 +87,12 @@ impl Action {
                     && value.is_finite()
                     && (0.0..=1.0).contains(&value)
             }
+            Self::Arm { slot, target, .. } | Self::TrackMonitor { slot, target, .. } | Self::TrackCue { slot, target, .. } => layout.resolves(Axis::Track, slot, target),
             Self::Crossfader(value) => value.is_finite() && (0.0..=1.0).contains(&value),
             Self::CrossfaderContour(value) => value.is_finite() && (0.0..=1.0).contains(&value),
             Self::Master(value) => value.is_finite() && (0.0..=1.5).contains(&value),
             Self::DeckControl { deck, control } => usize::from(deck) < super::DECKS && control.valid(),
+            Self::Monitor(control) => control.valid(),
             Self::Play | Self::Stop => true,
         }
     }
@@ -106,6 +116,7 @@ impl Request {
             && self.transport_epoch == rt.transport_epoch
             && self.safety_epoch == rt.performance.safety_epoch()
             && self.action.current(&rt.session)
+            && match self.action { Action::Monitor(control) => rt.monitor_can_apply(control), _ => true }
     }
 }
 
@@ -255,6 +266,8 @@ impl RtEngine {
             || !request.ack.claim()
         {
             request.ack.reject();
+        } else if self.defer_quantized_deck_command(&command) {
+            request.ack.applied();
         } else if let Some(command) = self.history_before(command) {
             self.apply_plain(command);
             match request.action {

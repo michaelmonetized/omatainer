@@ -4,7 +4,7 @@ use egui::accesskit::{Action, ActionData, ActionRequest, Node, NodeId};
 
 struct Gui {
     app: App,
-    rt: RtEngine,
+    rt: Box<RtEngine>,
     ctx: egui::Context,
     time: f64,
     nodes: Vec<(NodeId, Node)>,
@@ -18,7 +18,7 @@ impl Gui {
         ctx.enable_accesskit();
         let mut g = Self {
             app: App::with_loader(engine, Theme::default(), None),
-            rt,
+            rt: Box::new(rt),
             ctx,
             time: 0.0,
             nodes: Vec::new(),
@@ -245,7 +245,7 @@ fn lesson_rejects_capacity_failure_and_project_identity_change() {
     // The live voice remains playable when a recording write is refused. A
     // held gate alone must never certify a new note or completed recording.
     g.rt.tracks[4].clips[3].notes = vec![
-        crate::engine::MidiNote {
+        crate::engine::MidiNote { variation: None,
             channel:0,release_vel:64,source_timing:None, id: crate::engine::midi_edit::NoteId::new(), muted: false,
             pitch: 60,
             vel: 100,

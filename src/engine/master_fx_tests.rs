@@ -23,7 +23,7 @@ fn signal(rt: &mut RtEngine, frames: usize) {
     data.extend([0.0; 2]);
     rt.apply(Command::DeckAudio {
         deck: 0,
-        audio: Arc::new(Sample {
+        audio: Arc::new(Sample { spectrum: None,
             name: "legacy FX test".into(),
             sr: rt.sr as u32,
             ch: 2,

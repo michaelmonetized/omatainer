@@ -1,4 +1,22 @@
 use super::*;
+#[test]
+fn channel_effect_assignment_applies_only_pressed_selected_deck_and_existing_knob_controls_it() {
+    let (engine, mut rt) = crate::engine::Engine::headless_for_test(48000, 128);
+    let hub = super::super::MidiHub::without_devices();
+    let mut selected = binding(Action::DeckChannelEffect); selected.deck = 1; selected.extra = 2;
+    let mut knob = binding(Action::DeckFilter); knob.deck = 1; knob.data = 61;
+    let mapping = map(vec![selected, knob]);
+    let mut input = hub.open_for_test(&engine.cmd, 881, mapping, "effect controls", "private-test-only");
+    input.push(&[0x90, 60, 127]); rt.process(&mut []);
+    assert_eq!(rt.decks[1].channel_effect, crate::engine::channel_fx::Kind::Room);
+    assert_eq!(rt.decks[0].channel_effect, crate::engine::channel_fx::Kind::Filter);
+    input.push(&[0xb0, 61, 100]); rt.process(&mut []);
+    assert_eq!(rt.decks[1].filter_amt, 100.0 / 127.0);
+    let revision = rt.project.revision();
+    input.push(&[0x80, 60, 0]); rt.process(&mut []);
+    assert_eq!(rt.project.revision(), revision);
+    for invalid in [Binding { extra: 3, ..selected }, Binding { deck: 2, ..selected }, Binding { kind: MsgKind::Cc, ..selected }] { assert!(validate_binding(&invalid).is_err()); }
+}
 
 fn binding(action: Action) -> Binding {
     let kind = kind(action);
@@ -13,6 +31,8 @@ fn binding(action: Action) -> Binding {
             encoding: super::super::relative::RelativeEncoding::OffsetBinary,
             scale: 1.0,
         }),
+     controls: None,
+     pair_order: None,
     }
 }
 fn map(bindings: Vec<Binding>) -> MidiMap {
@@ -362,4 +382,26 @@ fn saved_overrides_and_captured_assignment_refuse_new_port_ambiguity() {
             .contains("ambiguous")
     );
     assert_eq!(shared.view().config.mappings.len(), 1);
+}
+
+#[test]
+fn learned_chromatic_mode_retains_ninth_bit_and_old_manufacturer_modes_without_opening_ports() {
+    let shared = Shared::default();
+    shared.connected_modes(7, "Fixture controller", "port-a", 255);
+    let mut chosen = binding(Action::DeckPadMode);
+    chosen.extra = u16::from(crate::engine::deck_pads::Mode::PitchCue.index());
+    let config = Config { mappings: vec![Mapping { endpoint: Endpoint { name: "Fixture controller".into(), id: "port-a".into() }, binding: chosen }] };
+    config.validate().unwrap();
+    let json = serde_json::to_vec(&config).unwrap();
+    let reopened: Config = serde_json::from_slice(&json).unwrap();
+    reopened.validate().unwrap();
+    shared.configure(reopened).unwrap();
+    assert_eq!(shared.view().devices[0].pad_modes, 511);
+    assert!(matches!(shared.input(7, "Fixture controller", "port-a", &[0x90,60,127], &map(vec![])), Dispatch::Binding(Binding { action: Action::DeckPadMode, extra: 8, .. })));
+    let mut invalid = shared.view().config;
+    invalid.mappings[0].binding.extra = 9;
+    assert!(invalid.validate().is_err());
+    invalid.mappings[0].binding = binding(Action::DeckPad);
+    invalid.mappings[0].binding.extra = 8;
+    assert!(invalid.validate().is_err());
 }

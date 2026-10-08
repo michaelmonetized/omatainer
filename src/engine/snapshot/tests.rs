@@ -39,17 +39,21 @@ fn snapshot_publication_preserves_controller_worker_counters() {
     let mut rt = engine();
     let feedback = midi::FeedbackStats { sent: 90, failed: 2, connected: 3 };
     let input = midi::InputStats { received: 7, dispatched: 4, ..Default::default() };
+    let profiles=serde_json::json!({"schema":1,"input_open":3,"physical_qualification":"pending"});
     {
         let mut snapshot = rt.snap.lock();
         snapshot.midi_feedback = feedback;
         snapshot.midi_input = input;
+        snapshot.midi_profiles = profiles.clone();
     }
     rt.publish_initial();
     assert_eq!(rt.snap.lock().midi_feedback, feedback);
     assert_eq!(rt.snap.lock().midi_input, input);
+    assert_eq!(rt.snap.lock().midi_profiles, profiles);
     rt.publish_for_test();
     assert_eq!(rt.snap.lock().midi_feedback, feedback);
     assert_eq!(rt.snap.lock().midi_input, input);
+    assert_eq!(rt.snap.lock().midi_profiles, profiles);
 }
 
 #[test]
@@ -71,6 +75,69 @@ fn snapshot_periodic_publication_allocates_and_frees_nothing_on_audio() {
     }
     rt.publish_for_test();
     assert_eq!(rt.snap.lock().beat, rt.beat);
+}
+
+#[test]
+fn renamed_track_reserves_both_snapshot_names_before_audio_copies() {
+    let mut rt = engine();
+    let mut frame = Frame::new(rt.publisher.empty_peaks.clone());
+    frame.capture(&rt);
+    frame.prepare();
+    frame.capture(&rt);
+    assert!(frame.complete);
+    frame.materialize();
+    rt.tracks[0].name = "音楽🎹".repeat(1024);
+    reserve(&mut frame.values.tracks[0].name, rt.tracks[0].name.len());
+    assert!(
+        frame.values.session.as_ref().unwrap().tracks[0]
+            .name
+            .capacity()
+            < rt.tracks[0].name.len()
+    );
+    assert_eq!(
+        test_alloc::measure(|| frame.capture(&rt)),
+        Default::default()
+    );
+    assert!(!frame.complete);
+    frame.prepare();
+    assert_eq!(
+        test_alloc::measure(|| frame.capture(&rt)),
+        Default::default()
+    );
+    assert!(frame.complete);
+    let snapshot = frame.materialize();
+    assert_eq!(snapshot.tracks[0].name, rt.tracks[0].name);
+    assert_eq!(snapshot.session.unwrap().tracks[0].name, rt.tracks[0].name);
+}
+
+#[test]
+fn default_single_bank_name_can_grow_without_an_audio_allocation() {
+    let mut rt = engine();
+    rt.sampler_banks.truncate(1);
+    let mut frame = Frame::new(rt.publisher.empty_peaks.clone());
+    frame.capture(&rt);
+    frame.prepare();
+    frame.capture(&rt);
+    assert!(frame.complete);
+    frame.materialize();
+    rt.sampler_banks = vec![sampler::test_bank(
+        &rt,
+        "Imported 音楽 bank".into(),
+        std::array::from_fn(|_| None),
+    )];
+    assert_eq!(frame.values.sampler_banks.len(), 1);
+    assert_eq!(
+        test_alloc::measure(|| frame.capture(&rt)),
+        Default::default()
+    );
+    assert!(!frame.complete);
+    frame.prepare();
+    assert_eq!(
+        test_alloc::measure(|| frame.capture(&rt)),
+        Default::default()
+    );
+    assert!(frame.complete);
+    assert_eq!(frame.materialize().sampler_banks, ["Imported 音楽 bank"]);
 }
 
 #[test]
@@ -152,7 +219,7 @@ fn snapshot_large_metadata_grows_off_audio_and_old_media_retires_on_worker() {
             slot
         })
         .collect();
-    let media = Arc::new(Sample {
+    let media = Arc::new(Sample { spectrum: None,
         name: "large media".repeat(8192),
         sr: 48_000,
         ch: 2,
@@ -246,7 +313,7 @@ fn isolated_publisher(capacity: usize) -> (Publisher, Receiver<Box<Frame>>, Send
 fn large_frame() -> (Box<Frame>, std::sync::Weak<Sample>) {
     let mut frame = Box::new(Frame::new(Arc::new(Vec::new())));
     frame.values.tracks[0].name = "old name".repeat(32_768);
-    let sample = Arc::new(Sample {
+    let sample = Arc::new(Sample { spectrum: None,
         name: "old".into(),
         sr: 48_000,
         ch: 1,

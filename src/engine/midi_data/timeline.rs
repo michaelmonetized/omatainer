@@ -2,6 +2,32 @@
 //! Beats are quarter-note coordinates, independent of the displayed meter.
 use serde::{Deserialize, Serialize};
 
+/// Integrate a mapped transport from integer output frames.
+/// Holds one musical-position anchor and the consumed frame count so callback size cannot change tempo-ramp sampling.
+pub(crate) struct Clock {
+    seconds: f64,
+    frames: u64,
+    pub beat: f64,
+}
+impl Clock {
+    /// Anchor a stopped or repositioned musical clock.
+    /// Takes the prepared tempo map and beat; returns scalar playback storage without allocating.
+    pub fn new(map: &super::Conductor, beat: f64) -> Self {
+        Self {
+            seconds: map.seconds_at(beat),
+            frames: 0,
+            beat,
+        }
+    }
+    /// Advance one output sample through the map.
+    /// Takes the prepared map and nominal output rate; returns the exact next beat from the shared integer frame count.
+    pub fn advance(&mut self, map: &super::Conductor, rate: f32) -> f64 {
+        self.frames += 1;
+        self.beat = map.beat_at_seconds(self.seconds + self.frames as f64 / f64::from(rate));
+        self.beat
+    }
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub(crate) struct Settings {
@@ -193,8 +219,14 @@ mod tests {
         let reopened: Conductor = serde_json::from_slice(&value).unwrap();
         let reopened = reopened.prepare().unwrap();
         assert_eq!(map, reopened);
-        assert_eq!(reopened.bar_boundaries(0.0, 12.5, 32), vec![(0.5, 1), (3.5, 2), (8.5, 3), (12.5, 4)]);
-        assert_eq!(reopened.bar_boundaries(4.0, 65536.0, 2), vec![(8.5, 3), (12.5, 4)]);
+        assert_eq!(
+            reopened.bar_boundaries(0.0, 12.5, 32),
+            vec![(0.5, 1), (3.5, 2), (8.5, 3), (12.5, 4)]
+        );
+        assert_eq!(
+            reopened.bar_boundaries(4.0, 65536.0, 2),
+            vec![(8.5, 3), (12.5, 4)]
+        );
         for (beat, bar, within, numerator, denominator) in [
             (0.0, 0, 6.0, 7, 3),
             (0.25, 0, 6.5, 7, 3),
@@ -235,16 +267,63 @@ mod tests {
     fn pickup_aligned_meter_changes_do_not_add_a_phantom_bar() {
         for bars in 1..=8 {
             let boundary = 1.025 + f64::from(bars) * 3.0;
-            let map = Conductor::native(960, vec![Tempo::new(0, 120.0, false).unwrap()],
-                vec![Meter { tick: 0, numerator: 3, denominator_power: 2, clocks: 24, thirty_seconds: 8 },
-                    Meter { tick: (boundary * 960.0).round() as u64, numerator: 4, denominator_power: 2, clocks: 24, thirty_seconds: 8 }],
-                Settings { pickup: 1.025, ..Settings::default() }).unwrap();
+            let map = Conductor::native(
+                960,
+                vec![Tempo::new(0, 120.0, false).unwrap()],
+                vec![
+                    Meter {
+                        tick: 0,
+                        numerator: 3,
+                        denominator_power: 2,
+                        clocks: 24,
+                        thirty_seconds: 8,
+                    },
+                    Meter {
+                        tick: (boundary * 960.0).round() as u64,
+                        numerator: 4,
+                        denominator_power: 2,
+                        clocks: 24,
+                        thirty_seconds: 8,
+                    },
+                ],
+                Settings {
+                    pickup: 1.025,
+                    ..Settings::default()
+                },
+            )
+            .unwrap();
             assert_eq!(map.position(boundary).0, bars + 1, "{boundary}");
         }
-        let map = Conductor::native(960, vec![Tempo::new(0, 120.0, false).unwrap()],
-            vec![Meter { tick: 0, numerator: 3, denominator_power: 2, clocks: 24, thirty_seconds: 8 }, Meter { tick: 2976, numerator: 4, denominator_power: 2, clocks: 24, thirty_seconds: 8 }],
-            Settings { pickup: 0.0999, ..Settings::default() }).unwrap();
-        assert_eq!(map.position(3.1).0, 3, "a genuinely fractional previous bar still counts");
+        let map = Conductor::native(
+            960,
+            vec![Tempo::new(0, 120.0, false).unwrap()],
+            vec![
+                Meter {
+                    tick: 0,
+                    numerator: 3,
+                    denominator_power: 2,
+                    clocks: 24,
+                    thirty_seconds: 8,
+                },
+                Meter {
+                    tick: 2976,
+                    numerator: 4,
+                    denominator_power: 2,
+                    clocks: 24,
+                    thirty_seconds: 8,
+                },
+            ],
+            Settings {
+                pickup: 0.0999,
+                ..Settings::default()
+            },
+        )
+        .unwrap();
+        assert_eq!(
+            map.position(3.1).0,
+            3,
+            "a genuinely fractional previous bar still counts"
+        );
     }
 
     #[test]
@@ -303,7 +382,7 @@ mod tests {
             let notes = starts
                 .iter()
                 .enumerate()
-                .map(|(i, &beat)| MidiNote {
+                .map(|(i, &beat)| MidiNote { variation: None,
                     id: crate::engine::midi_edit::NoteId::new(),
                     muted: false,
                     pitch: 60 + i as u8,

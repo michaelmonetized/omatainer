@@ -28,8 +28,16 @@ fn frame(
     time: f64,
     events: Vec<egui::Event>,
 ) -> egui::FullOutput {
+    frame_with_height(ctx, app, time, events, 108.0)
+}
+
+fn wheel_frame(ctx: &egui::Context, app: &mut App, time: f64, events: Vec<egui::Event>) -> egui::FullOutput {
+    frame_with_height(ctx, app, time, events, 144.0)
+}
+
+fn frame_with_height(ctx: &egui::Context, app: &mut App, time: f64, events: Vec<egui::Event>, height: f32) -> egui::FullOutput {
     let input = egui::RawInput {
-        screen_rect: Some(Rect::from_min_size(Pos2::ZERO, Vec2::new(1440.0, 108.0))),
+        screen_rect: Some(Rect::from_min_size(Pos2::ZERO, Vec2::new(1440.0, height))),
         time: Some(time),
         events,
         ..Default::default()
@@ -373,10 +381,10 @@ fn real_wheel_scrolling_keeps_work_bounded_and_selection_stable() {
     let mut fixture = Fixture::new(48);
     fixture.app.library = Arc::new(items(50_000));
     let ctx = egui::Context::default();
-    let output = frame(&ctx, &mut fixture.app, 0.0, vec![]);
+    let output = wheel_frame(&ctx, &mut fixture.app, 0.0, vec![]);
     let pointer = label_center(&output, "Track 00000");
     let source = selected_source(&mut fixture.app);
-    frame(
+    wheel_frame(
         &ctx,
         &mut fixture.app,
         0.1,
@@ -390,7 +398,7 @@ fn real_wheel_scrolling_keeps_work_bounded_and_selection_stable() {
         ],
     );
     for i in 1..=60 {
-        frame(&ctx, &mut fixture.app, 0.1 + i as f64 / 60.0, vec![]);
+        wheel_frame(&ctx, &mut fixture.app, 0.1 + i as f64 / 60.0, vec![]);
         assert!(fixture.app.library_view.stats.rendered <= 6);
         assert!(fixture.app.library_view.stats.formatted <= 6);
         assert!(fixture.app.library_view.cells.len() <= 6);
@@ -400,8 +408,80 @@ fn real_wheel_scrolling_keeps_work_bounded_and_selection_stable() {
     assert_eq!(fixture.app.lib_sel, 0);
     let offset = fixture.app.library_view.offset;
     let rebuilds = fixture.app.library_view.stats.rebuilds;
-    frame(&ctx, &mut fixture.app, 1.2, vec![]);
+    wheel_frame(&ctx, &mut fixture.app, 1.2, vec![]);
     assert!((fixture.app.library_view.offset - offset).abs() < 0.1);
     assert_eq!(fixture.app.library_view.stats.rebuilds, rebuilds);
     assert_eq!(fixture.app.library_view.stats.formatted, 0);
+}
+
+#[test]
+fn native_indexed_metadata_updates_preserve_selection_and_scrolling_without_full_refilter() {
+    let mut f=Fixture::new(48);let mut library=items(1000);
+    let catalog=Arc::make_mut(&mut f.app.library_metadata.catalog);
+    for (index,item) in library.iter_mut().enumerate() {
+        item.source=LibSource::File(format!("/indexed-native/{index}.wav").into());
+        catalog.upsert(item.source.clone(),item.fingerprint,item.stored_metadata()).unwrap();
+        catalog.tracks[index].annotations.rating=if index%2==0 {5} else {1};
+    }
+    f.app.library=Arc::new(library);f.app.library_metadata.bind_test_rows(&f.app.library);
+    f.app.lib_filter="rating:5".into();let ctx=egui::Context::default();frame(&ctx,&mut f.app,0.0,vec![]);
+    f.app.lib_sel=200;f.app.refresh_library_view();let selected=selected_source(&mut f.app);
+    f.app.library_view.pending_offset=Some(100.0*f.app.library_view.stride+3.0);frame(&ctx,&mut f.app,0.05,vec![]);let offset=f.app.library_view.offset;
+    let stats=f.app.library_view.stats;let old_rows=f.app.library.clone();let old_catalog=f.app.library_metadata.catalog.clone();
+    let catalog=Arc::make_mut(&mut f.app.library_metadata.catalog);catalog.tracks[20].annotations.rating=1;catalog.tracks[21].annotations.rating=5;
+    f.app.library_metadata.bind_incremental_test_rows(&f.app.library);
+    frame(&ctx,&mut f.app,0.1,vec![]);
+    assert_eq!(selected_source(&mut f.app),selected);assert!((f.app.library_view.offset-offset).abs()<0.01);
+    assert_eq!(f.app.library_view.stats.rebuilds,stats.rebuilds);assert_eq!(f.app.library_view.stats.updates,stats.updates+1);assert_eq!(f.app.library_view.stats.examined,stats.examined+2);
+    let expected:Vec<_>=(0..1000).filter(|i|*i!=20&&(*i%2==0||*i==21)).collect();assert_eq!(*f.app.library_view.indices,expected);
+    assert!(!f.app.library_metadata.collection_rows().is_for(&old_rows,&old_catalog));
+    let mut reversed=(*f.app.library).clone();reversed.reverse();f.app.library=Arc::new(reversed);f.app.library_metadata.bind_incremental_test_rows(&f.app.library);
+    frame(&ctx,&mut f.app,0.2,vec![]);assert_eq!(selected_source(&mut f.app),selected);
+    assert_eq!(f.app.library_view.stats.rebuilds,stats.rebuilds+1);assert_eq!(f.app.library_view.indices.len(),500);
+    f.app.sort_library_column(crate::preferences::library_layout::Column::Title,false);frame(&ctx,&mut f.app,0.3,vec![]);let stats=f.app.library_view.stats;let changed=*f.app.library_view.indices.last().unwrap();let _old=f.app.library.clone();Arc::make_mut(&mut f.app.library)[changed].title="AAA first".into();f.app.library_metadata.bind_incremental_test_rows(&f.app.library);frame(&ctx,&mut f.app,0.4,vec![]);assert_eq!(f.app.library_view.indices[0],changed);assert_eq!(selected_source(&mut f.app),selected);assert_eq!(f.app.library_view.stats.rebuilds,stats.rebuilds);assert_eq!(f.app.library_view.stats.updates,stats.updates+1);assert_eq!(f.app.library_view.stats.examined,stats.examined+1);
+    let played_a=f.app.library_view.indices[10];let played_b=f.app.library_view.indices[11];let _old=f.app.library.clone();let rows=Arc::make_mut(&mut f.app.library);
+    rows[played_a].last_play=Some(SystemTime::UNIX_EPOCH+std::time::Duration::from_secs(10));rows[played_b].last_play=Some(SystemTime::UNIX_EPOCH+std::time::Duration::from_secs(20));
+    f.app.library_metadata.bind_incremental_test_rows(&f.app.library);f.app.sort_library_column(crate::preferences::library_layout::Column::Played,false);frame(&ctx,&mut f.app,0.5,vec![]);assert_eq!(f.app.library_view.indices[0],played_a);let stats=f.app.library_view.stats;
+    let _old=f.app.library.clone();Arc::make_mut(&mut f.app.library)[played_b].last_play=Some(SystemTime::UNIX_EPOCH+std::time::Duration::from_secs(5));f.app.library_metadata.bind_incremental_test_rows(&f.app.library);frame(&ctx,&mut f.app,0.6,vec![]);
+    assert_eq!(f.app.library_view.indices[0],played_b);assert_eq!(selected_source(&mut f.app),selected);assert_eq!(f.app.library_view.stats.rebuilds,stats.rebuilds);assert_eq!(f.app.library_view.stats.updates,stats.updates+1);assert_eq!(f.app.library_view.stats.examined,stats.examined+1);
+}
+
+#[test]
+fn native_indexed_10000_and_100000_track_search_scroll_and_updates_meet_budgets_during_a_mix() {
+    use std::sync::atomic::{AtomicBool,Ordering};
+    let stop=Arc::new(AtomicBool::new(false));let stopping=stop.clone();
+    struct Stop(Arc<AtomicBool>);impl Drop for Stop {fn drop(&mut self){self.0.store(true,Ordering::Release);}}
+    let _stop=Stop(stop.clone());
+    let mix=std::thread::spawn(move||{
+        let (engine,mut rt)=crate::engine::Engine::headless_for_test(48000,256);
+        for deck in 0..2 {engine.send(Command::DeckPlay {deck}).unwrap();engine.send(Command::DeckLoop {deck,beats:4.0}).unwrap();}
+        let mut out=[0.0;512];let mut callbacks=0_u64;let mut energy=0.0_f64;
+        while !stopping.load(Ordering::Acquire)||callbacks<56250 {
+            assert_eq!(crate::engine::test_alloc::measure(||rt.process(&mut out)),Default::default());
+            assert!(out.iter().all(|s|s.is_finite()));assert!(rt.decks.iter().all(|deck|deck.playing));energy+=out.iter().map(|s|f64::from(*s).powi(2)).sum::<f64>();callbacks+=1;
+        }
+        (callbacks,energy)
+    });
+    for count in [10000,100000] {
+        let mut f=Fixture::new(48);let mut library=items(count);let catalog=Arc::make_mut(&mut f.app.library_metadata.catalog);
+        for (index,item) in library.iter_mut().enumerate(){item.source=LibSource::File(format!("/indexed-bench/{index}.wav").into());catalog.upsert(item.source.clone(),item.fingerprint,item.stored_metadata()).unwrap();catalog.tracks[index].annotations.rating=(index%6) as u8;}
+        f.app.library=Arc::new(library);let build=Instant::now();f.app.library_metadata.bind_test_rows(&f.app.library);let build_ns=build.elapsed().as_nanos();
+        let index_bytes=f.app.library_metadata.collection_rows().search_bytes();assert!(index_bytes<128*1024*1024);
+        f.app.sort_library_column(crate::preferences::library_layout::Column::Bpm,false);f.app.sort_library_column(crate::preferences::library_layout::Column::Title,true);let ctx=egui::Context::default();wheel_frame(&ctx,&mut f.app,0.0,vec![]);let mut queries=Vec::new();let mut scroll=Vec::new();let mut updates=Vec::new();
+        for number in 1..=120 {
+            let query=if number%3==0 {"artist:\"Even Artist\" rating>=4"} else if number%3==1 {"title:Track bpm>=105"} else {"key:C length>=150"};
+            f.app.lib_filter=query.into();let started=Instant::now();wheel_frame(&ctx,&mut f.app,number as f64,vec![]);queries.push(started.elapsed().as_nanos());
+            let visible=f.app.library_view.indices.len();assert!(visible>0);
+            f.app.library_view.pending_offset=Some((visible/4) as f32*f.app.library_view.stride);let output=wheel_frame(&ctx,&mut f.app,number as f64+0.01,vec![]);let first=*f.app.library_view.cells.keys().min().unwrap();let pointer=label_center(&output,&f.app.library[f.app.library_view.indices[first]].title);let offset=f.app.library_view.offset;let selected=selected_source(&mut f.app);
+            for step in 0..4 {let started=Instant::now();wheel_frame(&ctx,&mut f.app,number as f64+0.1+step as f64/10.0,vec![egui::Event::PointerMoved(pointer),egui::Event::MouseWheel {unit:egui::MouseWheelUnit::Point,delta:Vec2::new(0.0,-22.0),modifiers:egui::Modifiers::NONE}]);scroll.push(started.elapsed().as_nanos());assert!(f.app.library_view.stats.rendered<=6);}
+            assert!(f.app.library_view.offset>offset);assert_eq!(selected_source(&mut f.app),selected);
+        }
+        f.app.lib_filter="rating:5".into();wheel_frame(&ctx,&mut f.app,200.0,vec![]);f.app.lib_sel=10;f.app.refresh_library_view();let selected=selected_source(&mut f.app);
+        for number in 0..32 {let _old=f.app.library_metadata.catalog.clone();Arc::make_mut(&mut f.app.library_metadata.catalog).tracks[number].annotations.rating=5;f.app.library_metadata.bind_incremental_test_rows(&f.app.library);let started=Instant::now();wheel_frame(&ctx,&mut f.app,201.0+number as f64,vec![]);updates.push(started.elapsed().as_nanos());assert_eq!(selected_source(&mut f.app),selected);}
+        let distribution=|mut times:Vec<u128>|{times.sort_unstable();serde_json::json!({"samples":times.len(),"median_ns":times[times.len()/2],"p95_ns":times[times.len()*95/100],"max_ns":times[times.len()-1]})};
+        let query=distribution(queries);let scroll=distribution(scroll);let update=distribution(updates);
+        assert!(query["p95_ns"].as_u64().unwrap()<100_000_000,"query {count}: {query}");assert!(scroll["p95_ns"].as_u64().unwrap()<16_700_000,"scroll {count}: {scroll}");assert!(update["p95_ns"].as_u64().unwrap()<16_700_000,"update {count}: {update}");
+        println!("LIBRARY_SCALE_RECEIPT {}",serde_json::json!({"tracks":count,"index_build_ns":build_ns,"retained_index_bytes":index_bytes,"kernel":std::fs::read_to_string("/proc/sys/kernel/osrelease").unwrap().trim(),"architecture":std::env::consts::ARCH,"logical_cpus":std::thread::available_parallelism().unwrap().get(),"process_memory":std::fs::read_to_string("/proc/self/status").unwrap().lines().filter(|line|line.starts_with("VmRSS:")||line.starts_with("VmHWM:")).collect::<Vec<_>>(),"query":query,"scroll":scroll,"incremental_update":update,"physical_devices_opened":false}));
+    }
+    stop.store(true,Ordering::Release);let (callbacks,energy)=mix.join().unwrap();assert!(energy>1.0);println!("LIBRARY_SCALE_MIX_RECEIPT {}",serde_json::json!({"output_rate":48000,"rendered_frames":callbacks*256,"minimum_seconds":300,"energy":energy,"callback_allocations":0,"physical_devices_opened":false}));
 }

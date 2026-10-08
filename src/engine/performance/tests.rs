@@ -13,7 +13,7 @@ fn tick(rt: &mut RtEngine) {
 fn protected_loads_are_checked_again_on_renderer_without_dropping_payloads() {
     let (engine, mut rt) = fixture();
     let original = rt.decks[0].audio.clone().unwrap();
-    let audio = Arc::new(Sample {
+    let audio = Arc::new(Sample { spectrum: None,
         name: "queued replacement".into(),
         path: String::new(),
         sr: 48_000,
@@ -71,7 +71,7 @@ fn protected_loads_are_checked_again_on_renderer_without_dropping_payloads() {
 #[test]
 fn safe_stop_finalizes_capture_releases_all_owners_and_rejects_queued_onsets() {
     let (engine, mut rt) = fixture();
-    rt.tracks[2].clips[7].notes = vec![MidiNote {
+    rt.tracks[2].clips[7].notes = vec![MidiNote { variation: None,
         channel:0,release_vel:64,source_timing:None, id: crate::engine::midi_edit::NoteId::new(), muted: false,
         pitch: 50,
         start: 0.0,
@@ -167,6 +167,27 @@ fn emergency_output_ramps_then_stays_muted_after_explicit_ack_and_quiet_observat
     assert!(output.nonfinite && output.quiet == 0);
 }
 #[test]
+fn controller_reconnect_never_authorizes_audio_or_clears_recovery() {
+    let handle = Handle::default();
+    handle.set_enabled(true).unwrap();
+    assert!(matches!(handle.controller_change(), Err(Error::Protected)));
+    handle.request_safety(Safety::Stop);
+    assert!(matches!(handle.controller_change(), Err(Error::Protected)));
+    handle.stopped(handle.safety_request().unwrap().0);
+    let permit = handle.controller_change().unwrap();
+    assert!(!permit.valid_for_audio(&handle));
+    assert_eq!(handle.acknowledge_inputs_released(), Err(Error::Changing));
+    assert_eq!(handle.check(&Command::Play, None), Err(Error::Recovery));
+    drop(permit);
+    assert!(handle.status().recovery && handle.status().stopped);
+    assert!(matches!(handle.project_change(), Err(Error::Protected)));
+    assert!(matches!(handle.optional_work(), Err(Error::Protected)));
+    handle.acknowledge_inputs_released().unwrap();
+    assert!(handle.try_recover(|| true));
+    assert!(matches!(handle.controller_change(), Err(Error::Protected)));
+}
+
+#[test]
 fn exclusive_jobs_and_optional_cancellation_close_mode_entry_races() {
     let handle = Handle::default();
     let permit = handle.audio_change().unwrap();
@@ -198,7 +219,7 @@ fn exclusive_jobs_and_optional_cancellation_close_mode_entry_races() {
 fn safety_mailbox_bypasses_full_owned_queue_and_retires_rejected_payloads_off_audio() {
     let (engine, mut rt) = fixture();
     let original = rt.decks[0].audio.clone().unwrap();
-    let replacement = Arc::new(Sample {
+    let replacement = Arc::new(Sample { spectrum: None,
         name: "rejected owned media".into(),
         path: String::new(),
         sr: 48_000,
@@ -219,7 +240,7 @@ fn safety_mailbox_bypasses_full_owned_queue_and_retires_rejected_payloads_off_au
             track: 2,
             scene: 7,
             notes: vec![
-                MidiNote {
+                MidiNote { variation: None,
                     channel:0,release_vel:64,source_timing:None, id: crate::engine::midi_edit::NoteId::new(), muted: false,
                     pitch: 62,
                     start: 0.0,
@@ -493,7 +514,7 @@ fn explicit_deck_lock_guards_studio_loads_and_ejects_without_callback_heap_or_au
     rt.legacy_gain_math = true;
     rt.xfader = 0.0;
     rt.master = 1.0;
-    rt.apply(Command::DeckAudio { deck: 0, audio: Arc::new(Sample { name: "continuous source".into(), path: String::new(), sr: 48000, ch: 2,
+    rt.apply(Command::DeckAudio { deck: 0, audio: Arc::new(Sample { spectrum: None, name: "continuous source".into(), path: String::new(), sr: 48000, ch: 2,
         data: vec![0.25; 65536], peaks: Arc::new(Vec::new()), bpm: 120.0 }) });
     rt.apply(Command::DeckPlay { deck: 0 });
     tick(&mut rt);

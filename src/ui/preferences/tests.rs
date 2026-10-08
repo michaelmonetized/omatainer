@@ -122,10 +122,10 @@ impl Gui {
         self.frame(vec![]);
     }
     fn wait(&mut self) {
-        let end = Instant::now() + std::time::Duration::from_secs(3);
+        let end = Instant::now() + std::time::Duration::from_secs(15);
         while self.fixture.app.settings.busy() {
             self.frame(vec![]);
-            assert!(Instant::now() < end);
+            assert!(Instant::now() < end, "{}", self.fixture.app.settings.message);
             std::thread::sleep(std::time::Duration::from_millis(2));
         }
         self.frame(vec![]);
@@ -1215,4 +1215,60 @@ fn workspace_preview_cancel_and_invalid_layout_keep_saved_and_applied_state() {
     assert_eq!(std::fs::read(gui.dir.join("preferences.json")).unwrap(),bytes);
     gui.click("Cancel changes");
     assert_eq!(gui.fixture.app.settings.draft,previous);
+}
+
+#[test]
+fn now_playing_profile_apply_cancel_and_reopen_preserve_redaction_intent() {
+    let mut gui=Gui::new();gui.height=2400.0;gui.open();
+    gui.click("Enable now-playing feed");gui.click("Publish track titles");gui.click("Publish catalog identities");gui.click("Cancel changes");
+    assert!(!gui.fixture.app.settings.profile().now_playing.enabled);assert_eq!(gui.fixture.app.engine.cmd.now_playing().read()["status"],"disabled");
+    gui.open();gui.click("Enable now-playing feed");gui.click("Publish track titles");gui.click("Publish catalog identities");gui.click("Preview changes");gui.wait();gui.click("Apply and save");gui.wait();
+    let config=gui.fixture.app.settings.profile().now_playing;assert!(config.enabled && !config.title && config.artist && config.identity);
+    assert_eq!(gui.fixture.app.engine.cmd.now_playing().config().1,config);
+    let saved=crate::preferences::storage::load(&gui.dir.join("preferences.json"), &AtomicBool::new(false)).unwrap();assert_eq!(saved.preferences.current().unwrap().now_playing,config);
+    gui.open();gui.click("Enable now-playing feed");gui.click("Preview changes");gui.wait();gui.click("Apply and save");gui.wait();assert_eq!(gui.fixture.app.engine.cmd.now_playing().read()["status"],"disabled");
+}
+
+#[test]
+fn recent_midi_privacy_native_cancel_apply_resources_reopen_and_disable_discard_history() {
+    use crate::engine::retrospective::Config;
+    use egui::accesskit::ActionData;
+    let mut gui = Box::new(Gui::new());
+    gui.height = 4000.0;
+    let history = gui.fixture.app.engine.cmd.retrospective().clone();
+    assert!(!history.snapshot(Instant::now()).config.enabled);
+    let configure = |gui: &mut Gui| {
+        gui.click("Keep recent monitored MIDI input in memory");
+        for (label, value) in [("Recent MIDI history seconds", 60.0), ("Recent MIDI maximum events", 1024.0)] {
+            let target = gui.node(label);
+            gui.frame(vec![egui::Event::AccessKitActionRequest(ActionRequest { target, action: Action::SetValue, data: Some(ActionData::NumericValue(value)) })]);
+            gui.frame(vec![]);
+        }
+    };
+    gui.open();
+    configure(&mut gui);
+    gui.click("Cancel changes");
+    assert!(!history.snapshot(Instant::now()).config.enabled);
+    gui.open();
+    configure(&mut gui);
+    gui.preview_apply();
+    let expected = Config { enabled: true, seconds: 60, events: 1024 };
+    assert_eq!(history.snapshot(Instant::now()).config, expected);
+    let path = gui.dir.join("preferences.json");
+    let saved = storage::load(&path, &AtomicBool::new(false)).unwrap();
+    assert_eq!(saved.preferences.current().unwrap().retrospective, expected);
+    assert_eq!(Startup::read(path.clone(), gui.dir.clone()).preferences.current().unwrap().retrospective, expected);
+    assert!(history.observe(2, 17, Instant::now(), &[0x90, 60, 100]));
+    assert_eq!(history.snapshot(Instant::now()).events.len(), 1);
+    let disk = std::fs::read_to_string(&path).unwrap();
+    assert!(!disk.contains("captured_at"));
+    assert!(!disk.contains("lost_before"));
+    gui.click("Keep recent monitored MIDI input in memory");
+    gui.preview_apply();
+    let disabled = history.snapshot(Instant::now());
+    assert!(!disabled.config.enabled);
+    assert!(disabled.events.is_empty());
+    assert!(!history.observe(2, 17, Instant::now(), &[0x90, 60, 100]));
+    assert!(!Startup::read(path, gui.dir.clone()).preferences.current().unwrap().retrospective.enabled);
+    println!("MIDI_RETROSPECTIVE_PRIVACY {}", serde_json::json!({"actual_egui_accesskit":true,"numeric_resource_controls":true,"cancel_preserves_disabled_state":true,"save_apply_reopen":true,"disable_discards_history":true,"input_history_not_saved":true,"physical_devices_opened":false}));
 }

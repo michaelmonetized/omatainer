@@ -103,7 +103,7 @@ fn unavailable_instruments_preserve_state_use_rendered_fallback_and_restore_comp
     let mut original = rt();
     let device = Arc::new(fx::OfflineDevice::new("org.example.instrument".into(), Some(fx::DeviceState {schema: 2, data: vec![255, 0, 42]})).unwrap());
     original.tracks[2].poly.offline = Some(device.clone());
-    let fallback = Arc::new(Sample { name: "Rendered instrument".into(), sr: 48000, ch: 2,
+    let fallback = Arc::new(Sample { spectrum: None, name: "Rendered instrument".into(), sr: 48000, ch: 2,
         data: (0..1024).flat_map(|i| [i as f32 / 2048.0, -(i as f32) / 4096.0]).collect(),
         peaks: Arc::new(Vec::new()), bpm: 120.0, path: "rendered".into() });
     original.tracks[2].clips[0].audio = Some(fallback.clone());

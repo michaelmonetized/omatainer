@@ -7,7 +7,7 @@ use crate::engine::{
 use std::sync::{atomic::Ordering::Acquire, Arc};
 
 fn sample() -> Arc<Sample> {
-    Arc::new(Sample {
+    Arc::new(Sample { spectrum: None,
         name: String::with_capacity(31),
         path: String::with_capacity(63),
         sr: 48_000,

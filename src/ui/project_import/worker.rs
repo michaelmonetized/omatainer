@@ -96,7 +96,7 @@ impl Worker {
                                 }
                             }
                             unavailable.sort(); unavailable.dedup();
-                            let mut text = format!("Import {} tracks and {} new scenes. Existing tracks, deck audio, tempo, meter and output routing remain. Source tempo: {} BPM; destination: {} BPM. Clips retain beat/tick positions and play at destination timing. Source audio rates: {:?}; native playback converts to {} Hz. Imported tracks are disarmed, not soloed and not auto-launched. Scene buses use imported source scenes when selected; other buses use the current selected destination scene. Available native devices are restored; unavailable devices retain serialized state and remain bypassed. Picture, decks, global sampler banks, hardware profiles and project-wide conductor automation are outside this selection. Embedded clip/drum audio and clip MIDI controller lanes accompany their tracks.", selection.tracks.len(), selection.scenes.len(), source.state.engine.bpm, captured.state.bpm, source_rates, rate);
+                            let mut text = format!("Import {} tracks and {} new scenes. Existing tracks, deck audio, tempo, meter and output routing remain. Source tempo: {} BPM; destination: {} BPM. Clips retain beat/tick positions and play at destination timing. Source audio rates: {:?}; native playback converts to {} Hz. Imported tracks are disarmed, not soloed and not auto-launched. Their input monitoring is Off because external input routes are not imported. Scene buses use imported source scenes when selected; other buses use the current selected destination scene. Available native devices are restored; unavailable devices retain serialized state and remain bypassed. Picture, decks, global sampler banks, hardware profiles and project-wide conductor automation are outside this selection. Embedded clip/drum audio and clip MIDI controller lanes accompany their tracks.", selection.tracks.len(), selection.scenes.len(), source.state.engine.bpm, captured.state.bpm, source_rates, rate);
                             if !selection.devices { text.push_str("\nInstrument/effect settings omitted: MIDI tracks use native Keys, neutral EQ and destination drum defaults."); }
                             if !unavailable.is_empty() { text.push_str(&format!("\nUnavailable device identifiers ({}): {}", unavailable.len(), unavailable.join(", "))); }
                             view.deck_identities = std::array::from_fn(|deck| captured.playback_receipts[deck].as_ref().and_then(|r| identities.iter().find(|i| i.receipt.same_request(r)).map(|i| i.identity.clone())));
@@ -115,7 +115,7 @@ impl Worker {
                             }
                             if FileFingerprint::read(&catalog.path) != Some(catalog.fingerprint) { ack.cancel(); return Err("Source project changed after review; browse it again".into()); }
                             if cancel.load(Ordering::Acquire) { ack.cancel(); return Err("Project import cancelled".into()); }
-                            commands.send(Command::SessionEdit(request)).map_err(|e| e.to_string())?;
+                            commands.send(Command::session_edit(request)).map_err(|e| e.to_string())?;
                             Ok(Event::Finished(ack))
                         }
                     }

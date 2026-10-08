@@ -5,7 +5,7 @@ fn fixture(sr: u32, deck: u8, keylock: bool) -> RtEngine {
     let mut rt = RtEngine::new(sr as f32, rx, Arc::new(Mutex::new(Snapshot::default())));
     rt.apply(Command::DeckAudio {
         deck,
-        audio: Arc::new(Sample {
+        audio: Arc::new(Sample { spectrum: None,
             name: "nonzero at every pause position".into(),
             sr,
             ch: 2,
