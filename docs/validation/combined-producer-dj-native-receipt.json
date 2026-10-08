@@ -1076,7 +1076,7 @@
       "xfader": 0.5275590419769287
     }
   },
-  "status": "in progress; source65 software/native worker checks and production installation pass, actual host-sleep recovery still fails; reset-resume correction installed but unqualified",
+  "status": "in progress; source66 production package16 verified and installed, 24 native worker checks pass, source65 additional saved-Set/recovery/live-catalog/offline-catalog checks pass. NS7 driver0.1.2 normal preparation passes; actual sleep retry requires DDJ-SP1 return after physical hub cycle.",
   "priorCheckpoint": {
     "source": "b028ca05bc9f0172bf16e484d03f343501d510b7",
     "qualificationCommit": "940d959fd9f69e52fb6050975c750d02fadf1813",
@@ -7792,6 +7792,285 @@
       "install_log_sha256": "4bee2d739da45c2ab26c0bc926e60bd8db9789e24afbf36de52801b9b57d63d1",
       "alsa_probe": "open: 0 Success\nany: 0 Success\nsettings: 0 Success\nhw_params: 0 Success\nprepare: 0 Success\n",
       "behavior": "Only the original NS7 requests USB_QUIRK_RESET_RESUME. Shared transfers and interrupted PCM remain stopped until explicit application recovery."
+    },
+    "additionalNative": {
+      "provenance": {
+        "source_revision": "bf37c80b5bdc859b234f05edd5f3d79bce14ad33",
+        "compiler_profile": "release tests, opt-level3, codegen-units4, debug0, test unwind",
+        "compiler_flags": [
+          "opt-level=3",
+          "embed-bitcode=no",
+          "codegen-units=4",
+          "metadata=ccce059c87a51535",
+          "extra-filename=-552c0e61ca670d04",
+          "strip=debuginfo"
+        ],
+        "test_sha256": "99ef1603c91815b49e16940116a0266c3fbdd209e28237dc141ffadb7bba2135",
+        "inventory_sha256": "5d559991f280298571e073fe2599636e44d3ab5bf3d507621fc8ddfc5e8966b5",
+        "build_log_sha256": "3d653908b1abc5e49258dbf8c47513a1353ace3ae53300433641e93b485dbb2d"
+      },
+      "results": [
+        {
+          "name": "native-live12-saved-set",
+          "passed": 1,
+          "failed": 0,
+          "seconds": 0.23,
+          "sha256": "f6b82f190879264c446decad39b284b777f4e2b202dddb5917ea4803734b5847"
+        },
+        {
+          "name": "native-live-set-recovery",
+          "passed": 1,
+          "failed": 0,
+          "seconds": 4.92,
+          "sha256": "e31a24edd32abccc151b6d29c70ee56bea14b273fe9637d121758f8de520407b"
+        },
+        {
+          "name": "native-live-catalog",
+          "passed": 1,
+          "failed": 0,
+          "seconds": 2.43,
+          "sha256": "4e4b3585908da19542b7f2c1b54e0193420ffe33dd928d607869019cb5f854fe"
+        },
+        {
+          "name": "native-offline-catalog",
+          "passed": 1,
+          "failed": 0,
+          "seconds": 0.63,
+          "sha256": "6dcfdcbeb0a71594abed51ab1a77e7d89c1f8c8ba6ce188067c5c4e1e59d5e66"
+        }
+      ],
+      "recovery": {
+        "durable": true,
+        "media_assets": 2,
+        "native_reopen": true,
+        "pcm_samples": 21168064,
+        "recovered_sequence": 1,
+        "scope": "Actual imported native Set metadata and decoded PCM, isolated private recovery store; original unchanged.",
+        "source_sha256": "9f4cbc85dfd0797196fd623fb72acbad6fe483022c24852f98003832c2975f84",
+        "state_bytes": 12490642,
+        "state_sha256": "6e7af6f02042b69a3919f4707e172d8a7c8cf56c864277d70d6ddb9ddb42477e"
+      },
+      "private_set": {
+        "format": "12.0_12402",
+        "tracks": 8,
+        "scenes": 8,
+        "differences": 831
+      },
+      "original_live9_refusal": {
+        "status": "documented unsupported format refused",
+        "diagnostic_test_result": "failure because the valid-Set fixture was selected with an unsupported Live9 root",
+        "log_sha256": "41180e671b681c6500722b2e718a97719a1a4c847b6f503a3b46eaa4dc3df625"
+      },
+      "boundary": "These four additional source65 opt-in checks preserve original data and qualify current saved-Set structure, durable imported metadata/PCM recovery and actual HTTPS/offline profile owners. They do not qualify authored Live10/11 playback or any physical controller function."
+    }
+  },
+  "source66": {
+    "driver": {
+      "status": "compiled, installed, ordinary ALSA preparation passes; actual sleep retry pending",
+      "version": "0.1.2",
+      "kernel": "7.1.13-3-2-ARCH",
+      "source_sha256": "bf060ec186fa5ef6ee3842a34daa9f17e1a51568d07798ddda4a1435d3433820",
+      "module_sha256": "dc4804a420306dee43366e2b17635312fc469e30995eae6e2df249553e56ae23",
+      "srcversion": "DFE5604C1A61E0E41F1E492",
+      "quirks": "0x2",
+      "build_log_sha256": "448e00f5aae67254d491009d86725c1511e0e9000d3bf455ad878166df014982",
+      "install_log_sha256": "4bee2d739da45c2ab26c0bc926e60bd8db9789e24afbf36de52801b9b57d63d1",
+      "alsa_probe": "open: 0 Success\nany: 0 Success\nsettings: 0 Success\nhw_params: 0 Success\nprepare: 0 Success\n",
+      "behavior": "Only the original NS7 requests USB_QUIRK_RESET_RESUME. Shared transfers and interrupted PCM remain stopped until explicit application recovery.",
+      "source_revision": "e324833e1462002aaedff7bcf92e0bd32479f120"
+    },
+    "productionInstallation": {
+      "manifest_sha": "7e2de35f2133ca9397985001ff45eecc28ee43efbeea6e08bb706a0e617d8134",
+      "revision": "e324833e1462002aaedff7bcf92e0bd32479f120",
+      "receipt": {
+        "schema": 1,
+        "before": "cd112d1c7bd3b8c79a650eba2e402e49b982e178b792bc8d301b44925a7ecb82",
+        "after": "886d286076f08b2941376531649c306bf83538af5590fbd4d63c1112d1ff7c8e",
+        "installedAt": "2026-10-08T23:46:19.134Z"
+      },
+      "compiler": {
+        "pid": 390415,
+        "observed": "2026-10-08T23:44:09.624Z",
+        "flags": [
+          "opt-level=3",
+          "panic=abort",
+          "embed-bitcode=no",
+          "codegen-units=4",
+          "metadata=17f6e552a9d4c863",
+          "extra-filename=-68b42ed4c26fb812",
+          "strip=debuginfo",
+          "metadata=e324833e1462002aaedff7bcf92e0bd32479f120"
+        ],
+        "crate": "omatainer",
+        "production": true,
+        "environment": {
+          "OMATAINER_REVISION": "e324833e1462002aaedff7bcf92e0bd32479f120",
+          "OMATAINER_SOURCE_REVISION": "e324833e1462002aaedff7bcf92e0bd32479f120",
+          "CARGO_TARGET_DIR": "/home/michael/Projects/omatainer-work/hardware-resurrection/target/app-backlog",
+          "CARGO_INCREMENTAL": "0",
+          "CARGO_PROFILE_RELEASE_DEBUG": "0"
+        },
+        "output": "/home/michael/Projects/omatainer-work/hardware-resurrection/target/app-backlog/release/deps"
+      },
+      "installed_build_info": {
+        "arch": "aarch64",
+        "debug_assertions": false,
+        "os": "linux",
+        "pkg_version": "0.1.0",
+        "schema": 1
+      },
+      "build_log_sha256": "f8ed1523b798ee335521325fcdcb12721e62f2f9796d8bafeba4867b91b4cf8e",
+      "app_started": false,
+      "reason": "Controller-hub power cycle pending before owner restoration or next actual sleep trial."
+    },
+    "nativeWorkers": {
+      "test_provenance": {
+        "source_revision": "bf37c80b5bdc859b234f05edd5f3d79bce14ad33",
+        "compiler_profile": "release tests, opt-level3, codegen-units4, debug0, test unwind",
+        "compiler_flags": [
+          "opt-level=3",
+          "embed-bitcode=no",
+          "codegen-units=4",
+          "metadata=ccce059c87a51535",
+          "extra-filename=-552c0e61ca670d04",
+          "strip=debuginfo"
+        ],
+        "test_sha256": "99ef1603c91815b49e16940116a0266c3fbdd209e28237dc141ffadb7bba2135",
+        "inventory_sha256": "5d559991f280298571e073fe2599636e44d3ab5bf3d507621fc8ddfc5e8966b5",
+        "build_log_sha256": "3d653908b1abc5e49258dbf8c47513a1353ace3ae53300433641e93b485dbb2d"
+      },
+      "production_source": "e324833e1462002aaedff7bcf92e0bd32479f120",
+      "rust_and_profile_inputs_unchanged": true,
+      "worker": "/home/michael/.local/bin/omatainer",
+      "worker_sha256": "886d286076f08b2941376531649c306bf83538af5590fbd4d63c1112d1ff7c8e",
+      "results": [
+        {
+          "name": "native-plugin-graph",
+          "selector": "engine::audio::routing::plugin_tests::",
+          "exit": 0,
+          "signal": null,
+          "error": null,
+          "passed": 8,
+          "failed": 0,
+          "ignored": 0,
+          "seconds": 2.24,
+          "expected": 8,
+          "log_sha256": "e593f920cdcdfb4b2553ee2b8c81b476307505c54cc826d3b296e59c1820ca11"
+        },
+        {
+          "name": "native-plugin-scanner",
+          "selector": "plugin_host::scanner::tests::native_",
+          "exit": 0,
+          "signal": null,
+          "error": null,
+          "passed": 3,
+          "failed": 0,
+          "ignored": 0,
+          "seconds": 1.26,
+          "expected": 3,
+          "log_sha256": "537b1a8dab4fe119caa34456d47dba83f0814ff3abf3dcc76399e2d0a3a37c93"
+        },
+        {
+          "name": "native-plugin-bridge",
+          "selector": "plugin_host::realtime::tests::native_processor_bridge_preserves_delay_state_and_samples",
+          "exit": 0,
+          "signal": null,
+          "error": null,
+          "passed": 1,
+          "failed": 0,
+          "ignored": 0,
+          "seconds": 0.08,
+          "expected": 1,
+          "log_sha256": "4aff8875d5b6e1745cb3f9ab229f5b82efef4aded4be27b80681ceca4106b36d"
+        },
+        {
+          "name": "native-ableton-workflows",
+          "selector": "ui::ableton::tests::",
+          "exit": 0,
+          "signal": null,
+          "error": null,
+          "passed": 5,
+          "failed": 0,
+          "ignored": 0,
+          "seconds": 0.9,
+          "expected": 5,
+          "log_sha256": "c0bbfb12393aba47f69e8d1d262e9fdf78379efe6ba16fe8c2e7f37bf5f2d0cd"
+        },
+        {
+          "name": "native-ableton-plugin",
+          "selector": "ableton::plugins::tests::",
+          "exit": 0,
+          "signal": null,
+          "error": null,
+          "passed": 1,
+          "failed": 0,
+          "ignored": 0,
+          "seconds": 0.46,
+          "expected": 1,
+          "log_sha256": "172fe59771adc6bb3a0679b91e226cdeca774b2a82774f380cddf71196d22c1f"
+        },
+        {
+          "name": "native-ableton-worker",
+          "selector": "ableton::process::tests::actual_worker_transfers_source_state_and_refuses_corruption_mutation_and_cancel",
+          "exit": 0,
+          "signal": null,
+          "error": null,
+          "passed": 1,
+          "failed": 0,
+          "ignored": 0,
+          "seconds": 0.03,
+          "expected": 1,
+          "log_sha256": "b8e92166c99f5d4bf9035f017047bdfbffff4d4aa63e4c5c2931660c72257fd9"
+        },
+        {
+          "name": "native-producer-library",
+          "selector": "producer_library::tests::",
+          "exit": 0,
+          "signal": null,
+          "error": null,
+          "passed": 3,
+          "failed": 0,
+          "ignored": 0,
+          "seconds": 0.09,
+          "expected": 3,
+          "log_sha256": "a2a6524f54fcf28819e0362588fd663d34116f9756dd415e98e7d4c42ce8a960"
+        },
+        {
+          "name": "native-library-workflow",
+          "selector": "ui::ableton::library::tests::",
+          "exit": 0,
+          "signal": null,
+          "error": null,
+          "passed": 1,
+          "failed": 0,
+          "ignored": 0,
+          "seconds": 0.16,
+          "expected": 1,
+          "log_sha256": "0b31785117900105dbde70f874b1a3a4032f4b3c1daeed980a0e54f1fff6de8f"
+        },
+        {
+          "name": "native-dj-worker",
+          "selector": "dj_library::tests::native_worker_ipc_cancellation_and_crash_keep_previous_sources",
+          "exit": 0,
+          "signal": null,
+          "error": null,
+          "passed": 1,
+          "failed": 0,
+          "ignored": 0,
+          "seconds": 0.76,
+          "expected": 1,
+          "log_sha256": "4c8a2b003782fef14dd234d53e44d18b5b80de8da84852f282d82497957fa288"
+        }
+      ]
+    },
+    "rustAndProfileInputsUnchangedFromSource65": true,
+    "owner": "not started; required powered controller hub cycle pending",
+    "hostSleepRetry": "not armed; DDJ-SP1 remains absent",
+    "temporaryDdjResetResume": {
+      "before": "",
+      "after": "08e4:0181:b",
+      "scope": "Temporary runtime test: request reset-resume only for newly enumerated DDJ-SP1 USB 08e4:0181. Existing parameter entries are preserved. No boot configuration changed.",
+      "at": "2026-10-08T23:35:35.329Z"
     }
   }
 }
