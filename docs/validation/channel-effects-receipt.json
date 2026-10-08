@@ -3321,5 +3321,88 @@
   },
   "physicalDevicesOpened": false,
   "osGuiOpened": false,
-  "limits": "Linux aarch64 software qualification uses actual native egui/AccessKit controls, MIDI dispatch workers without OS ports, durable project and preset file I/O, independently compared playing PCM, bounded stereo histories and fixed renderer transitions. Controller feedback exposes the renderer-confirmed deck assignment, effect name, knob and neutral flag in status; physical display behavior is unqualified. Existing signed factory profiles remain version 6 and unchanged. Portable learned selections use version 7, preferences version 26 and project state version 35. Echo history is capped at two seconds and the neutral detent clears previous side histories. The active app, follower and session remain preserved. This milestone does not complete the remaining software checklist or establish physical controller/audio acceptance."
+  "limits": "Linux aarch64 software qualification uses actual native egui/AccessKit controls, MIDI dispatch workers without OS ports, durable project and preset file I/O, independently compared playing PCM, bounded stereo histories and fixed renderer transitions. Controller feedback exposes the renderer-confirmed deck assignment, effect name, knob and neutral flag in status; physical display behavior is unqualified. Existing signed factory profiles remain version 6 and unchanged. Portable learned selections use version 7, preferences version 26 and project state version 35. Echo history is capped at two seconds and the neutral detent clears previous side histories. The active app, follower and session remain preserved. This milestone does not complete the remaining software checklist or establish physical controller/audio acceptance.",
+  "releaseDeployment": {
+    "schema": 1,
+    "integratedQualification": {
+      "receipt": "docs/validation/channel-effects-receipt.json",
+      "frozenInventory": {
+        "path": "target/app-backlog/note-variation-eighteenth-source.json",
+        "sha256": "a764a29cb26cd3e58ecb3ef1b86b9bc89503b8547b3a7bd718cc24d0f9426658",
+        "files": 963
+      },
+      "testBinary": {
+        "path": "target/app-backlog/qualification-bin/note-variation-tests-eighteenth",
+        "sha256": "3e7f77233d7489a639da08d0af3b10424a61ff2ff9a0a218433244b688953c8a"
+      },
+      "full": {
+        "path": "target/app-backlog/note-variation-eighteenth-full.log",
+        "sha256": "ded0adce0330b0cdd660e92736ae326d122cce6c2b36a78a7936fe92c7251882",
+        "passed": 2278,
+        "failed": 0,
+        "ignored": 75,
+        "filtered": 0,
+        "seconds": 734.5
+      },
+      "nativeWorker": {
+        "path": "target/app-backlog/qualification-bin/note-variation-native-worker-eighteenth",
+        "sha256": "fa5b484734c28cbab6bf7ab561cb1ba8361ffc04cdebe062d5fc107e75248877",
+        "bytes": 68873536
+      },
+      "nativeImportWorkflows": 13
+    },
+    "status": "ready_installation_deferred_active_app",
+    "package": {
+      "path": "/home/michael/Projects/omatainer-work/hardware-resurrection/target/app-backlog/release-channel-effects-qualified",
+      "manifestSha256": "4a7a7dd13dae3e4e402a5f377629924230db3f0cb824aa0d52fc01724f17e5bd",
+      "revision": "9ab842a0d775944b5c003f5e1fe0615a3ca4745b",
+      "version": "0.1.0+9ab842a0d775",
+      "executableSha256": "176baa3e14580341891c2099cd7330f37ec175db95dac29e9597d259d8e423d1"
+    },
+    "installed": false,
+    "installedExecutableSha256": "f54fe26efd2b4e67664cf9a2bbfe5615b1b9e11a767eeb0244fceac5efc802d1",
+    "buildInfo": {
+      "arch": "aarch64",
+      "debug_assertions": false,
+      "os": "linux",
+      "pkg_version": "0.1.0",
+      "schema": 1
+    },
+    "applicationProcessesPreserved": [
+      {
+        "pid": 2273135,
+        "executable": "/home/michael/.local/bin/omatainer (deleted)",
+        "arguments": [
+          "/home/michael/.local/bin/omatainer",
+          "ctl",
+          "follow"
+        ],
+        "sha256": "3217e4bfce388cac60e0ad7bea4caf83ec0d323f6eb620d4bf3a04d2c09ed69d"
+      },
+      {
+        "pid": 472901,
+        "executable": "/home/michael/.local/bin/omatainer",
+        "arguments": [
+          "/home/michael/.local/bin/omatainer",
+          "--empty-once"
+        ],
+        "sha256": "f54fe26efd2b4e67664cf9a2bbfe5615b1b9e11a767eeb0244fceac5efc802d1"
+      },
+      {
+        "pid": 584439,
+        "executable": "/home/michael/.local/bin/omatainer",
+        "arguments": [
+          "/home/michael/.local/bin/omatainer",
+          "dj-discover-worker"
+        ],
+        "sha256": "f54fe26efd2b4e67664cf9a2bbfe5615b1b9e11a767eeb0244fceac5efc802d1"
+      }
+    ],
+    "protectedSessionPreserved": {
+      "path": "/home/michael/Projects/omatainer-work/hardware-resurrection/target/hardware/apc-restart-20261006/session.omat",
+      "bytes": 162882871,
+      "sha256": "96e0b2495cdbdc549c324ecf8337fdef5590bdcbfe8916e4f014eb05d1ee827d"
+    },
+    "reason": "The default GUI is active. The active application was preserved without attempting executable replacement. The verified package is ready; installation awaits closure of the active app. No GUI, follower, capture, audio or MIDI connection was restarted or opened."
+  }
 }
