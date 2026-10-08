@@ -883,9 +883,15 @@ fn cancel_after_publication_claim_reports_applied_and_recovery_resets_output() {
     a.push(&[0xc0, 9]);
     a.push(&[0xb0, 1, 64]);
     until(|| counters.snapshot().dispatched == 3);
-    assert!(fixture.trace.lock().is_empty());
     assert!(engine.cmd.performance().status().recovery);
     drop(a);
     drop(guard);
     drop(manager);
+    let trace = fixture.trace.lock();
+    assert!(trace.iter().all(|packet| match packet.as_slice() {
+        [status, 120 | 121 | 123, 0] => status & 0xf0 == 0xb0,
+        [status, 0, 64] => status & 0xf0 == 0xe0,
+        [status, 0] => status & 0xf0 == 0xd0,
+        _ => false,
+    }), "Recovery emitted MIDI beyond its channel resets: {trace:?}");
 }

@@ -2,6 +2,9 @@ use super::*;
 use crate::engine::{live_set, project::{self, Prepared}, session, test_alloc, ClipKind, MidiNote};
 use std::time::{Duration, Instant};
 
+#[path = "audio_live_set_tests/native.rs"]
+mod native;
+
 fn source(value: f32) -> Arc<crate::engine::dsp::Sample> {
     Arc::new(crate::engine::dsp::Sample { spectrum: None, name: "resident 32 MiB".into(), sr: 48_000, ch: 2,
         data: vec![value; 8 * 1024 * 1024], peaks: Arc::new(vec![]), bpm: 120.0, path: String::new() })
