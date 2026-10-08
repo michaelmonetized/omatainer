@@ -310,7 +310,7 @@ fn native_ns7_loopback(output_channels: u16, required: std::ops::Range<u16>, hea
                 }
             };
             pairs.push(row);
-            std::fs::write(directory.join("ns7-peavey-pairs.json"),serde_json::to_vec_pretty(&serde_json::json!({"nominal_rate":44100,"probe_level_dbfs":level_db,"output_device":output.device,"input_device":input.device,"owner_reported_wiring":wiring,"pairs":pairs,"output_detected_on_selected_return":found,"required_output_channels":required.clone().collect::<Vec<_>>(),"headphone_jack_captured":headphones&&required.clone().all(|channel|found[channel as usize]),"scope":"Three distinct probe matches per successful output/input pair. Common host callback-entry timing includes converter, mixer and callback batching; this is not isolated analog converter latency, simultaneous stereo playback or physical listening proof. Outputs 1/2 are the expected master pair; outputs 3/4 must reach the directly wired headphone jack for headphone qualification."})).unwrap()).unwrap();
+            std::fs::write(directory.join("ns7-peavey-pairs.json"),serde_json::to_vec_pretty(&serde_json::json!({"nominal_rate":44100,"probe_level_dbfs":level_db,"output_device":output.device,"input_device":input.device,"owner_reported_wiring":wiring,"pairs":pairs,"output_detected_on_selected_return":found,"required_output_channels":required.clone().collect::<Vec<_>>(),"status":"in_progress","headphone_jack_captured":false,"scope":"Three distinct probe matches per successful output/input pair. Common host callback-entry timing includes converter, mixer and callback batching; this is not isolated analog converter latency, simultaneous stereo playback or physical listening proof. Outputs 1/2 are the expected master pair; outputs 3/4 must reach the directly wired headphone jack for headphone qualification."})).unwrap()).unwrap();
         }
     }
     assert!(required.clone().all(|channel|found[channel as usize]),"Each selected NS7 output must deliver all three probes to at least one Peavey USB input: {pairs:?}");
@@ -319,6 +319,11 @@ fn native_ns7_loopback(output_channels: u16, required: std::ops::Range<u16>, hea
         let matched_inputs: Vec<_> = required.map(|channel| pairs.iter().filter(|row|row["output_channel"]==channel && row["status"]=="matched").map(|row|row["input_channel"].as_u64().unwrap()).collect::<Vec<_>>()).collect();
         assert!(matched_inputs.iter().all(|inputs|inputs.len()==1) && matched_inputs[0]!=matched_inputs[1], "Headphone left/right must arrive on separate Peavey inputs: {pairs:?}");
     }
+    let path = directory.join("ns7-peavey-pairs.json");
+    let mut receipt: serde_json::Value = serde_json::from_slice(&std::fs::read(&path).unwrap()).unwrap();
+    receipt["status"] = "qualified".into();
+    receipt["headphone_jack_captured"] = headphones.into();
+    std::fs::write(path, serde_json::to_vec_pretty(&receipt).unwrap()).unwrap();
 }
 
 #[test]
