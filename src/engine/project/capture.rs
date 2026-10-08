@@ -182,6 +182,7 @@ impl Frame {
         );
         target.conductor = rt.conductor.clone();
         target.navigation = rt.navigation.saved.clone();
+        target.migration = rt.migration.clone();
         target.scene_timing = rt.scenes.timing;
         target.sync_leader = rt.deck_sync.leader;
         target.routing = rt.routing.as_ref().map(|routing| routing.model.clone());

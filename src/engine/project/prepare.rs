@@ -89,6 +89,7 @@ impl Prepared {
         rt.tracks.reserve(session::MAX_TRACKS);
         rt.conductor = state.conductor.as_ref().map(|c| c.prepare()).transpose().map_err(Error::Invalid)?;
         rt.navigation.saved = state.navigation.clone();
+        rt.migration = state.migration.take();
         rt.scenes.timing = state.scene_timing;
         rt.deck_sync.leader = state.sync_leader;
         rt.arrangement=arrangement::Playback::new(state.arrangement.as_ref().map(|model|arrangement::Plan::prepare(model.clone(),&media,&rt.session,&AtomicBool::new(false))).transpose().map_err(Error::Invalid)?,state.beat);
@@ -244,6 +245,7 @@ impl Prepared {
             conductor,
             arrangement,
             navigation,
+            migration,
             scenes,
             routing,
             mic_aux,

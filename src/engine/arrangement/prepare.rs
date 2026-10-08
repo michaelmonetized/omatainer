@@ -31,7 +31,7 @@ impl Plan {
                 .audio_region
                 .map(|r| r.prepare(audio.as_ref().unwrap()).map_err(str::to_owned))
                 .transpose()?;
-            let length = audio_region.map_or_else(
+            let mut length = audio_region.map_or_else(
                 || {
                     source
                         .clip
@@ -40,6 +40,28 @@ impl Plan {
                 },
                 |r| r.duration_beats,
             );
+            let audio_clock = source
+                .audio_clock
+                .as_ref()
+                .map(|clock| -> Result<_, String> {
+                    let conductor = clock.conductor.prepare()?;
+                    let region = audio_region
+                        .ok_or("Aligned render has no prepared audio region")?
+                        .region;
+                    let seconds =
+                        (region.end - region.start) as f64 / f64::from(audio.as_ref().unwrap().sr);
+                    length = conductor
+                        .beat_at_seconds(conductor.seconds_at(clock.origin) + seconds)
+                        - clock.origin;
+                    if !length.is_finite() || length <= 0. || clock.origin + length > MAX_BEATS {
+                        return Err("Aligned render exceeds the native timeline".into());
+                    }
+                    Ok(AudioClock {
+                        origin: clock.origin,
+                        conductor,
+                    })
+                })
+                .transpose()?;
             if source.clip.kind == ClipKind::Audio
                 && audio.as_ref().is_none_or(|s| {
                     s.frames() == 0
@@ -55,6 +77,7 @@ impl Plan {
                 audio,
                 audio_region,
                 length,
+                audio_clock,
             });
         }
         let mut tracks = (0..layout.tracks.len())

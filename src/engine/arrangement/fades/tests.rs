@@ -72,7 +72,11 @@ fn model(captured: &mut Captured) -> Model {
     Model {
         enabled: true,
         next_id: 6,
-        sources: vec![Source { id: 1, clip }],
+        sources: vec![Source {
+            id: 1,
+            clip,
+            audio_clock: None,
+        }],
         instances,
     }
 }

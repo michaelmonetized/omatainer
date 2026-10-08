@@ -58,7 +58,11 @@ fn song_model(captured: &mut Captured, audio: Arc<Sample>) -> Model {
     Model {
         enabled: true,
         next_id: 4,
-        sources: vec![Source { id: 1, clip }],
+        sources: vec![Source {
+            id: 1,
+            clip,
+            audio_clock: None,
+        }],
         instances: vec![
             Instance {
                 id: 2,
@@ -273,7 +277,11 @@ fn midi_same_pitch_holds_and_seek_chase_keep_independent_instance_owners() {
     let model = Model {
         enabled: true,
         next_id: 4,
-        sources: vec![Source { id: 1, clip }],
+        sources: vec![Source {
+            id: 1,
+            clip,
+            audio_clock: None,
+        }],
         instances: vec![
             instance,
             Instance {
@@ -655,7 +663,11 @@ fn clip_management_disabled_arrangement_snapshots_have_no_audio_notes_or_monitor
     let model = Model {
         enabled: true,
         next_id: 3,
-        sources: vec![Source { id: 1, clip }],
+        sources: vec![Source {
+            id: 1,
+            clip,
+            audio_clock: None,
+        }],
         instances: vec![Instance {
             id: 2,
             source: 1,

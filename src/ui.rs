@@ -55,6 +55,7 @@ mod piano_roll;
 mod midi_files;
 mod audio_clips;
 mod audio_fades;
+mod ableton;
 mod arrangement;
 mod song_navigation;
 mod clip_manager;
@@ -67,7 +68,7 @@ mod midi_clock;
 mod midi_learn;
 mod midi_presets;
 mod play_time;
-mod project;
+pub(crate) mod project;
 mod templates;
 mod project_import;
 mod project_versions;
@@ -175,6 +176,7 @@ pub struct App {
     project: project::Projects,
     templates: templates::Templates,
     project_import: project_import::Panel,
+    ableton: ableton::Panel,
     project_versions: project_versions::Panel,
     undo_history: undo::History,
     theme: Theme,
@@ -336,6 +338,7 @@ impl App {
             project,
             templates: templates::Templates::default(),
             project_import: project_import::Panel::default(),
+            ableton: Default::default(),
             project_versions: project_versions::Panel::default(),
             undo_history: undo::History::default(),
             theme,
@@ -908,6 +911,7 @@ impl App {
         self.poll_portability();
         self.poll_templates();
         self.project_import.poll();
+        self.ableton.poll();
         self.project_versions.poll();
         self.poll_sampler_editor();
         self.poll_library_backup(ctx);
@@ -963,6 +967,7 @@ impl App {
         self.portability_ui(ctx);
         self.templates_ui(ctx);
         self.project_import_ui(ctx);
+        self.ableton_ui(ctx);
         self.project_versions_ui(ctx);
         self.sampler_editor_ui(ctx);
         self.library_analysis_ui(ctx);

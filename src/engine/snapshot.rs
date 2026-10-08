@@ -117,7 +117,7 @@ struct Frame {
     scene_count: usize,
     clip_names: Vec<Vec<usize>>,
     deck_titles: [usize; DECKS],
-    bank_names: Vec<usize>,
+    bank_names: [usize; sampler::MAX_BANKS],
     bank_count: usize,
     fx_count: usize,
     fx_name_length: usize,
@@ -129,8 +129,14 @@ fn reserve(value: &mut String, needed: usize) {
     value.reserve(needed.saturating_sub(value.len()));
 }
 
+#[track_caller]
 fn copy(value: &mut String, source: &str) {
-    debug_assert!(value.capacity() >= source.len());
+    debug_assert!(
+        value.capacity() >= source.len(),
+        "snapshot string has capacity {} for {} bytes",
+        value.capacity(),
+        source.len()
+    );
     value.clear();
     value.push_str(source);
 }
@@ -162,7 +168,7 @@ impl Frame {
             track_count: TRACKS, scene_count: SCENES,
             clip_names: vec![vec![0; session::MAX_SCENES]; session::MAX_TRACKS],
             deck_titles: [0; DECKS],
-            bank_names: Vec::new(),
+            bank_names: [0; sampler::MAX_BANKS],
             bank_count: 0,
             fx_count: 0,
             fx_name_length: 16,
@@ -200,7 +206,15 @@ impl Frame {
         }
         for (index, track) in rt.tracks.iter().take(self.track_count).enumerate() {
             self.track_names[index] = track.name.len().max(rt.session.tracks[index].name.len());
-            fits &= self.values.tracks.get(index).is_some_and(|out| out.name.capacity() >= track.name.len() && out.clips.len() == self.scene_count);
+            fits &= self.values.tracks.get(index).is_some_and(|out| {
+                out.name.capacity() >= track.name.len() && out.clips.len() == self.scene_count
+            });
+            fits &= self
+                .values
+                .session
+                .as_ref()
+                .and_then(|layout| layout.tracks.get(index))
+                .is_some_and(|out| out.name.capacity() >= self.track_names[index]);
             for (scene, clip) in track.clips.iter().take(self.scene_count).enumerate() {
                 self.clip_names[index][scene] = clip.name.len();
                 fits &= self.values.tracks.get(index).and_then(|t| t.clips.get(scene)).is_some_and(|out| out.name.capacity() >= clip.name.len());
@@ -210,14 +224,13 @@ impl Frame {
             self.deck_titles[index] = deck.title.len();
             fits &= self.values.decks[index].title.capacity() >= deck.title.len();
         }
-        for ((needed, value), source) in self
-            .bank_names
-            .iter_mut()
-            .zip(&self.values.sampler_banks)
-            .zip(&rt.sampler_banks)
-        {
-            *needed = source.name().len();
-            fits &= value.capacity() >= source.name().len();
+        for (index, source) in rt.sampler_banks.iter().enumerate() {
+            self.bank_names[index] = source.name().len();
+            fits &= self
+                .values
+                .sampler_banks
+                .get(index)
+                .is_some_and(|value| value.capacity() >= source.name().len());
         }
         if !fits {
             return;
@@ -447,7 +460,6 @@ impl Frame {
             self.values
                 .sampler_banks
                 .resize_with(self.bank_count, String::new);
-            self.bank_names.resize(self.bank_count, 128);
         }
         self.values.sampler_instances.reserve(self.bank_count.saturating_sub(self.values.sampler_instances.len()));
         for (out, needed) in self.values.sampler_banks.iter_mut().zip(&self.bank_names) {

@@ -199,6 +199,12 @@ pub(crate) struct StateSnapshot {
     pub controller: Option<Vec<u8>>,
 }
 
+/// Encode independent VST3 state streams for project interchange.
+/// Takes the component stream and optional controller stream from the same processor; returns the host's versioned state envelope or a storage refusal.
+pub fn encode_project_state(component: Vec<u8>, controller: Option<Vec<u8>>) -> Result<Vec<u8>> {
+    encode_state_snapshot(&StateSnapshot { component, controller })
+}
+
 const STATE_SNAPSHOT_MAGIC: &[u8; 16] = b"VST3HOST_STATE\0\0";
 const STATE_SNAPSHOT_VERSION: u32 = 1;
 const STATE_SNAPSHOT_HEADER_SIZE: usize = 16 + 4 + 4 + 4;

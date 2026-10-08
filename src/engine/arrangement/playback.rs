@@ -154,7 +154,21 @@ impl Playback {
             let audio = source.audio.as_ref().unwrap();
             let local = span.offset + beat - span.start;
             let value = if let Some(region) = source.audio_region {
-                if span.fades.is_some() { region.sample(audio, local, span.repeating) } else { region.faded_sample(audio,local,span.repeating,beats_per_second) }
+                let (local, tempo) =
+                    source
+                        .audio_clock
+                        .as_ref()
+                        .map_or((local, beats_per_second), |clock| {
+                            let seconds = clock.conductor.seconds_at(clock.origin + local)
+                                - clock.conductor.seconds_at(clock.origin);
+                            let tempo = f64::from(region.region.tempo) / 60.;
+                            (seconds * tempo, tempo)
+                        });
+                if span.fades.is_some() {
+                    region.sample(audio, local, span.repeating)
+                } else {
+                    region.faded_sample(audio, local, span.repeating, tempo)
+                }
             } else if span.repeating || local < source.length {
                 let (l, r) = audio
                     .at(local.rem_euclid(source.length) / source.length * audio.frames() as f64);
