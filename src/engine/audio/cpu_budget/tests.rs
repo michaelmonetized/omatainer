@@ -1,4 +1,3 @@
-use super::super::owner::Backend;
 use super::*;
 use std::{
     process::Command,
@@ -211,7 +210,7 @@ fn native_ns7_master_to_peavey_usb_return_channels() {
     std::fs::create_dir_all(&directory).unwrap();
     let output = config::Plan {
         backend: "ALSA".into(),
-        graph: None,
+        graph: Default::default(),
         device: "hw:CARD=NS7,DEV=0".into(),
         channels: 4,
         rate: 44100,
@@ -221,7 +220,7 @@ fn native_ns7_master_to_peavey_usb_return_channels() {
     };
     let input = config::Plan {
         backend: "ALSA".into(),
-        graph: None,
+        graph: Default::default(),
         device: "hw:CARD=CODEC,DEV=0".into(),
         channels: 2,
         rate: 44100,
