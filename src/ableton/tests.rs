@@ -142,6 +142,27 @@ fn live_12_main_track_alias_requires_one_authoritative_record() {
     }
 }
 #[test]
+fn disabled_return_sends_do_not_create_feedback_or_override_source_flags() {
+    let fixture = Fixture::new();
+    let send = r#"<DeviceChain><Mixer><Sends><TrackSendHolder Id="0"><Send><Manual Value="0.5"/></Send><EnabledByUser Value="false"/></TrackSendHolder></Sends></Mixer></DeviceChain>"#;
+    let text = document(12).replace("MasterTrack", "MainTrack").replace("</ReturnTrack>", &format!("{send}</ReturnTrack>"));
+    let imported = load(&fixture.set(&text), &Default::default(), &AtomicBool::new(false)).unwrap();
+    let source = &imported.state.migration.as_ref().unwrap().sources[0];
+    assert_eq!(source.xml, text);
+    let graph = imported.state.routing.as_ref().unwrap();
+    let id = source.tracks[2].native.id;
+    assert!(!graph.connections.iter().any(|route| route.source.group == crate::engine::audio::routing::model::Group::Track(id) && route.destination == crate::engine::audio::routing::model::Group::Track(id)));
+    for invalid in [
+        text.replace("EnabledByUser Value=\"false\"", "EnabledByUser Value=\"true\""),
+        text.replace("EnabledByUser Value=\"false\"", "EnabledByUser Value=\"invalid\""),
+        text.replace("<EnabledByUser Value=\"false\"/>", "<EnabledByUser Value=\"false\"/><Active Value=\"invalid\"/>"),
+    ] {
+        assert!(load(&fixture.set(&invalid), &Default::default(), &AtomicBool::new(false)).is_err());
+    }
+    let inactive = text.replace("<EnabledByUser Value=\"false\"/>", "<EnabledByUser Value=\"true\"/><Active Value=\"false\"/>");
+    assert!(load(&fixture.set(&inactive), &Default::default(), &AtomicBool::new(false)).is_ok());
+}
+#[test]
 fn gzip_crc_members_decompression_and_xml_boundaries_are_enforced() {
     let fixture = Fixture::new();
     let text = document(11);

@@ -82,7 +82,9 @@ pub(super) fn convert(
                 if !(0.0..=1.).contains(&amount) {
                     return Err("Source send gain is outside supported 0–1 range".into());
                 }
-                if amount == 0. || !boolean(holder, &["Active"], true)? {
+                let enabled_by_user = boolean(holder, &["EnabledByUser"], true)?;
+                let active = boolean(holder, &["Active"], true)?;
+                if amount == 0. || !enabled_by_user || !active {
                     continue;
                 }
                 let Some(return_track) = returns.get(ordinal as usize) else {
