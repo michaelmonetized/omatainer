@@ -14,7 +14,7 @@ impl Drop for Capture {
 
 fn carrier(frequencies: [f64; 2]) -> Arc<crate::engine::dsp::Sample> {
     let data = (0..4 * 1024 * 1024).flat_map(|frame| frequencies.map(|frequency|
-        (std::f64::consts::TAU * frequency * frame as f64 / 48000.0).sin() as f32 * 0.02)).collect();
+        (std::f64::consts::TAU * frequency * frame as f64 / 48000.0).sin() as f32 * 0.04)).collect();
     Arc::new(crate::engine::dsp::Sample { spectrum: None, name: "Private continuous transition carrier".into(),
         sr: 48000, ch: 2, data, peaks: Arc::new(vec![]), bpm: 120.0, path: String::new() })
 }
@@ -48,6 +48,19 @@ fn tone(samples: &[f32], channel: usize, frequency: f64) -> f64 {
 fn windows(samples: &[f32]) -> Vec<f64> {
     samples.chunks_exact(882 * 2).map(|window|
         (window.iter().map(|sample| f64::from(*sample).powi(2)).sum::<f64>() / window.len() as f64).sqrt()).collect()
+}
+
+fn workers() -> Vec<serde_json::Value> {
+    use std::io::Read;
+    std::fs::read_dir("/proc/self/task").unwrap().take(256).filter_map(|entry| {
+        let entry = entry.ok()?;
+        let mut text = String::new();
+        std::fs::File::open(entry.path().join("status")).ok()?.take(16 * 1024).read_to_string(&mut text).ok()?;
+        let name = text.lines().find_map(|line| line.strip_prefix("Name:\t"))?;
+        if !name.starts_with("cpal_alsa_") { return None; }
+        let cpus = text.lines().find_map(|line| line.strip_prefix("Cpus_allowed_list:\t"))?;
+        Some(serde_json::json!({"tid":entry.file_name().to_string_lossy(),"name":name,"allowed_cpus":cpus}))
+    }).collect()
 }
 
 #[test]
@@ -121,6 +134,7 @@ fn native_transition(routed: bool) {
     let output = start_with_settings(rt, &output_settings).unwrap();
     wait(&engine, &output, &directory, "warmup", || engine.cmd.audio_metrics().callbacks >= 100);
     let warmed = engine.cmd.audio_metrics();
+    let native_workers = workers();
     let measured_start = origin.elapsed().as_nanos() as u64;
     let mut trials = Vec::new();
     let mut process_memory = Vec::new();
@@ -200,7 +214,7 @@ fn native_transition(routed: bool) {
         "physical_return":"Master XLR L/R to owner-restored Peavey PV8 USB 7/8, stereo CODEC input","routed":routed,"reported_deck_processing_micros":if routed {20000} else {0},"stored_tracks":64,"stored_notes_per_graph":32768,
         "launched_clip_tracks_per_graph":8,"loaded_decks_per_graph":2,"resident_pcm_bytes_per_graph":32*1024*1024,
         "baseline_memory":baseline_memory,"preloaded_memory":process_memory,"final_memory":memory(),"trials":trials,
-        "warmup_audio":warmed,"final_audio":metrics,"capture_frames":samples.len()/2,"input_failed":input_failed,
+        "warmup_audio":warmed,"final_audio":metrics,"native_workers":native_workers,"carrier_peak":0.04,"capture_frames":samples.len()/2,"input_failed":input_failed,
         "measured_ns":measured_end-measured_start,"capture_window_frames":882,"quiet_windows":gaps,"median_window_rms":median,"minimum_window_rms":minimum,
         "final_expected_tone_amplitudes":final_tones,"final_opposite_tone_amplitudes":wrong_tones,
         "scope":"Actual production native output owner and three complete graph fades, independent cue admission, captured stereo master continuity in 20 ms windows. Startup metrics retained separately. No physical headphone cue capture, listening, display timing, all-track maximum-polyphony or stage-duration claim."});

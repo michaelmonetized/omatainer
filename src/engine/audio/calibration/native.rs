@@ -101,7 +101,7 @@ where
     let callback_fault = fault.clone();
     #[cfg(target_os = "linux")]
     let mut cpu_guard = super::super::cpu_budget::Guard::new();
-    device.build_input_stream(
+    super::super::scheduling::open(|| device.build_input_stream(
         plan.config(),
         move |data: &[T], _| {
             #[cfg(target_os = "linux")]
@@ -123,7 +123,7 @@ where
             }
         },
         None,
-    )
+    ))
 }
 fn output<T>(
     device: &cpal::Device,
@@ -143,7 +143,7 @@ where
     let callback_fault = fault.clone();
     #[cfg(target_os = "linux")]
     let mut cpu_guard = super::super::cpu_budget::Guard::new();
-    device.build_output_stream(
+    super::super::scheduling::open(|| device.build_output_stream(
         plan.config(),
         move |data: &mut [T], _| {
             #[cfg(target_os = "linux")]
@@ -174,7 +174,7 @@ where
             }
         },
         None,
-    )
+    ))
 }
 macro_rules! formats {($format:expr,$call:ident,$($argument:expr),*)=>{match $format {
     cpal::SampleFormat::F32=>$call::<f32>($($argument),*),cpal::SampleFormat::F64=>$call::<f64>($($argument),*),

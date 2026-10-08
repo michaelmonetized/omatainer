@@ -352,7 +352,7 @@ where
     super::super::cpu_budget::install()?;
     #[cfg(target_os = "linux")]
     let mut cpu_guard = super::super::cpu_budget::Guard::new();
-    device
+    super::super::scheduling::open(|| device
         .build_input_stream(
             plan.config(),
             move |data: &[T], _| {
@@ -370,7 +370,7 @@ where
             },
             None,
         )
-        .map_err(|error| error.to_string())
+        .map_err(|error| error.to_string()))
 }
 enum NativeInput {
     Alsa(cpal::Stream),

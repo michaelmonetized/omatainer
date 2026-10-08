@@ -3,6 +3,7 @@ pub mod calibration;
 pub mod config;
 #[cfg(target_os = "linux")]
 mod cpu_budget;
+mod scheduling;
 pub(crate) mod graph;
 #[cfg(target_os = "linux")]
 pub(crate) mod jack;
@@ -92,7 +93,7 @@ impl owner::Backend for Native {
         };
         macro_rules! build {
             ($type:ty) => {
-                build::<$type>(&device, &cfg, callback, error, output_discontinuity, callback_fault)
+                scheduling::open(|| build::<$type>(&device, &cfg, callback, error, output_discontinuity, callback_fault))
                     .map(NativeStream::Alsa)
                     .map_err(|e| e.to_string())
             };
