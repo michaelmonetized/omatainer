@@ -3366,5 +3366,98 @@
       "sha256": "148c10060f83cac1bb0105062299c737252e13202ad409f3e5d45b37c26cf9c0"
     }
   ],
-  "limits": "Software qualification uses actual local files, the existing single catalog owner, real native save/reopen, actual egui/AccessKit widgets and an independent PCM comparison while the private headless engine plays. No physical audio or MIDI ports and no new OS GUI were opened. Selection is bounded to 128 tracks; copies require an existing absolute destination, at most 8 GiB per source and 64 GiB per batch. Duplicate candidates are only likely matches until independently verified byte-identical; the retained identity and preparation are explicit. Moves keep original bytes in sibling recovery paths until explicit restoration; Keep archives the private recovery record and allows another batch. Restoring a saved move requires unchanged reviewed catalog rows and owned files, refuses changed preparation or occupied paths, and retains the last copy on uncertainty. At most 128 saved move records are inspected. Removing a reference never deletes audio. This does not implement project-wide storage cleanup (#170), complete the remaining backlog or qualify physical controller behavior. The active app/session are preserved and installation remains deferred while the independent GUI is open."
+  "limits": "Software qualification uses actual local files, the existing single catalog owner, real native save/reopen, actual egui/AccessKit widgets and an independent PCM comparison while the private headless engine plays. No physical audio or MIDI ports and no new OS GUI were opened. Selection is bounded to 128 tracks; copies require an existing absolute destination, at most 8 GiB per source and 64 GiB per batch. Duplicate candidates are only likely matches until independently verified byte-identical; the retained identity and preparation are explicit. Moves keep original bytes in sibling recovery paths until explicit restoration; Keep archives the private recovery record and allows another batch. Restoring a saved move requires unchanged reviewed catalog rows and owned files, refuses changed preparation or occupied paths, and retains the last copy on uncertainty. At most 128 saved move records are inspected. Removing a reference never deletes audio. This does not implement project-wide storage cleanup (#170), complete the remaining backlog or qualify physical controller behavior. The active app/session are preserved and installation remains deferred while the independent GUI is open.",
+  "releaseDeployment": {
+    "schema": 1,
+    "integratedQualification": {
+      "receipt": "docs/validation/music-file-management-integrated-receipt.json",
+      "frozenInventory": {
+        "path": "target/app-backlog/note-variation-fifteenth-source.json",
+        "sha256": "7e57e7be0be14583985171205218d4ce19b9ee6cc3e778463659b3a691368ddb",
+        "files": 957
+      },
+      "testBinary": {
+        "path": "target/app-backlog/qualification-bin/note-variation-tests-fifteenth",
+        "sha256": "439ff841718bf4e188f1a84e668984bd0fbb854e09095ca6344c8531555a3c03"
+      },
+      "full": {
+        "path": "target/app-backlog/note-variation-fifteenth-full.log",
+        "sha256": "68fb90a8080b29378a8f676214be65ddcb65743ed714cca72933a2e85585f972",
+        "outcome": "ok",
+        "passed": 2256,
+        "failed": 0,
+        "ignored": 75,
+        "filtered": 0,
+        "seconds": 726.92
+      },
+      "nativeWorker": {
+        "path": "target/app-backlog/qualification-bin/note-variation-native-worker-fifteenth",
+        "sha256": "ea20d701ed109753551d2aa23de33cd689b3b244dd642f249ae7a61dd96be463",
+        "bytes": 68501520
+      },
+      "nativeImportWorkflows": 13
+    },
+    "status": "ready_installation_deferred_active_app",
+    "package": {
+      "path": "/home/michael/Projects/omatainer-work/hardware-resurrection/target/app-backlog/release-music-file-management-qualified",
+      "manifestSha256": "f310cbf7a45568db6ede88922a46b4cbc7b2656be6abf534d87f534c29edf1b4",
+      "revision": "1b8a0122f242f3916762bdffaf90b03f61dc50ec",
+      "version": "0.1.0+1b8a0122f242",
+      "executableSha256": "bd5b80df728ebfd32eaa74908c101dc06c10329b3a859fe4257a567af66cbe43"
+    },
+    "installed": false,
+    "installedExecutableSha256": "463d40d467101a704ffffb6e18112a6854e7350c7829e1c041e490babdb8c2c9",
+    "buildInfo": {
+      "arch": "aarch64",
+      "debug_assertions": false,
+      "os": "linux",
+      "pkg_version": "0.1.0",
+      "schema": 1
+    },
+    "applicationProcessesPreserved": [
+      {
+        "pid": 151927,
+        "executable": "/home/michael/.local/bin/omatainer",
+        "arguments": [
+          "/home/michael/.local/bin/omatainer",
+          "--empty-once"
+        ],
+        "sha256": "463d40d467101a704ffffb6e18112a6854e7350c7829e1c041e490babdb8c2c9"
+      },
+      {
+        "pid": 2273135,
+        "executable": "/home/michael/.local/bin/omatainer (deleted)",
+        "arguments": [
+          "/home/michael/.local/bin/omatainer",
+          "ctl",
+          "follow"
+        ],
+        "sha256": "3217e4bfce388cac60e0ad7bea4caf83ec0d323f6eb620d4bf3a04d2c09ed69d"
+      },
+      {
+        "pid": 2945129,
+        "executable": "/home/michael/Projects/omatainer-work/producer-dj-completion/target/validation/combined-completion/release-qualified/6/omatainer",
+        "arguments": [
+          "/home/michael/Projects/omatainer-work/producer-dj-completion/target/validation/combined-completion/release-qualified/6/omatainer",
+          "--empty-once"
+        ],
+        "sha256": "86b783a34a16ec7dda4a42a7f325c949bac4ee5610ab57d11fe70f84c3a6c4ae"
+      },
+      {
+        "pid": 2971887,
+        "executable": "/home/michael/Projects/omatainer-work/producer-dj-completion/target/validation/combined-completion/release-qualified/6/omatainer",
+        "arguments": [
+          "/home/michael/Projects/omatainer-work/producer-dj-completion/target/validation/combined-completion/release-qualified/6/omatainer",
+          "vst3-worker"
+        ],
+        "sha256": "86b783a34a16ec7dda4a42a7f325c949bac4ee5610ab57d11fe70f84c3a6c4ae"
+      }
+    ],
+    "protectedSessionPreserved": {
+      "path": "/home/michael/Projects/omatainer-work/hardware-resurrection/target/hardware/apc-restart-20261006/session.omat",
+      "bytes": 162882871,
+      "sha256": "96e0b2495cdbdc549c324ecf8337fdef5590bdcbfe8916e4f014eb05d1ee827d"
+    },
+    "reason": "The default GUI is active. The active application was preserved without attempting executable replacement. The verified package is ready; installation awaits closure of the active app. No GUI, follower, capture, audio or MIDI connection was restarted or opened."
+  }
 }
