@@ -104,7 +104,7 @@ impl App {
         let enabled = !self.engine.cmd.performance().protected()
             && !self.ableton.busy()
             && !self.project.busy();
-        egui::Window::new("Producer libraries").id(egui::Id::new("producer-libraries")).open(&mut open).default_width(680.).show(ctx,|ui|{
+        egui::Window::new("Producer libraries").id(egui::Id::new("producer-libraries")).open(&mut open).default_width(680.).vscroll(true).show(ctx,|ui|{
             let panel=&mut self.ableton.library;
             ui.label("Discover samples, user presets and installed Pack manifests. Source installations stay unchanged.");
             let label=ui.label("Custom producer library directory");ui.add(egui::TextEdit::singleline(&mut panel.custom_root).char_limit(4096)).labelled_by(label.id);
