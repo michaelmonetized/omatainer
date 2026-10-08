@@ -267,7 +267,14 @@ pub(crate) fn run(
     if output.invalid || cancel.load(Ordering::Acquire) || stopped.load(Ordering::Acquire) {
         return Err("Calibration cancelled or output stamps overflowed; no measurement".into());
     }
-    let result = analyze(&probe, &capture, &output.stamps)?;
+    let result = analyze(&probe, &capture, &output.stamps).map_err(|error| {
+        if capture.samples.is_empty() || capture.samples.iter().any(|sample| !sample.is_finite()) {
+            return error;
+        }
+        let peak = capture.samples.iter().map(|sample| sample.abs()).fold(0.0f32, f32::max);
+        let rms = (capture.samples.iter().map(|sample| f64::from(*sample).powi(2)).sum::<f64>() / capture.samples.len() as f64).sqrt();
+        format!("{error}. Captured return peak {:.1} dBFS, RMS {:.1} dBFS; check the selected return and its levels.", 20.0 * f64::from(peak).max(1e-12).log10(), 20.0 * rms.max(1e-12).log10())
+    })?;
     if cancel.load(Ordering::Acquire) || stopped.load(Ordering::Acquire) {
         return Err("Calibration cancelled; no measurement retained".into());
     }

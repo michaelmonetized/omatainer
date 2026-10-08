@@ -124,7 +124,14 @@ fn native_kernel_cpu_limit_demotes_only_owned_audio_threads() {
             recovered_flags & libc::SCHED_RESET_ON_FORK,
             initial_flags & libc::SCHED_RESET_ON_FORK
         );
-        assert!(cpu_ns >= 5_804_000);
+        let mut raised: libc::rlimit = unsafe { std::mem::zeroed() };
+        assert_eq!(
+            unsafe { libc::getrlimit(libc::RLIMIT_RTTIME, &mut raised) },
+            0
+        );
+        assert_eq!(raised.rlim_cur, 1_005_804);
+        assert_eq!(raised.rlim_max, 200_000);
+        assert!(cpu_ns > 0);
         let signal_tid = SIGNAL_TID.load(Ordering::Acquire);
         assert_ne!(signal_tid, 0);
         if scenario == "budget-blocked" {
@@ -138,7 +145,7 @@ fn native_kernel_cpu_limit_demotes_only_owned_audio_threads() {
             directory.join(format!("kernel-{scenario}.json")),
             serde_json::to_vec_pretty(&serde_json::json!({
                 "pid":std::process::id(),"tid":tid,"signal_tid":signal_tid,"signal_blocked_on_owned_thread":scenario=="budget-blocked","soft_limit_us":5804,"hard_limit_us":200000,
-                "cpu_ns":cpu_ns,"initial_policy":initial_policy,"recovered_policy":recovered_policy,"reset_on_fork_preserved":true,
+                "cpu_ns_after_promotion_return":cpu_ns,"kernel_raised_soft_limit_us":raised.rlim_cur,"initial_policy":initial_policy,"recovered_policy":recovered_policy,"reset_on_fork_preserved":true,
                 "guard_exceeded":guard.as_mut().unwrap().exceeded(),"physical_devices_opened":false,
             }))
             .unwrap(),
@@ -233,6 +240,14 @@ fn native_ns7_master_to_peavey_usb_return_channels() {
     let directory = std::path::PathBuf::from(std::env::var_os("OMATAINER_LOOPBACK_DIR").unwrap());
     assert!(directory.starts_with("/home"));
     std::fs::create_dir_all(&directory).unwrap();
+    let level_db = std::env::var("OMATAINER_LOOPBACK_LEVEL_DBFS")
+        .map(|value| value.parse::<f32>().expect("numeric probe level"))
+        .unwrap_or(-48.0);
+    assert!(level_db.is_finite() && (-60.0..=-24.0).contains(&level_db));
+    let output_channels = std::env::var("OMATAINER_LOOPBACK_OUTPUT_CHANNELS")
+        .map(|value| value.parse::<u16>().expect("numeric channel count"))
+        .unwrap_or(2);
+    assert!(matches!(output_channels, 2 | 4));
     let output = config::Plan {
         backend: "ALSA".into(),
         graph: Default::default(),
@@ -254,8 +269,8 @@ fn native_ns7_master_to_peavey_usb_return_channels() {
         warning: None,
     };
     let mut pairs = Vec::new();
-    let mut found = [false; 2];
-    for output_channel in 0..2 {
+    let mut found = vec![false; output_channels as usize];
+    for output_channel in 0..output_channels {
         for input_channel in 0..2 {
             let request = calibration::Request {
                 profile: "NS7 XLR -> Peavey 8 channel 6 -> USB Audio CODEC".into(),
@@ -263,7 +278,7 @@ fn native_ns7_master_to_peavey_usb_return_channels() {
                 output: output.clone(),
                 input_channel,
                 output_channel,
-                level_db: -48.0,
+                level_db,
             };
             let result = calibration::native::run(
                 &request,
@@ -280,10 +295,10 @@ fn native_ns7_master_to_peavey_usb_return_channels() {
                 }
             };
             pairs.push(row);
-            std::fs::write(directory.join("ns7-peavey-pairs.json"),serde_json::to_vec_pretty(&serde_json::json!({"nominal_rate":44100,"probe_level_dbfs":-48.0,"output_device":output.device,"input_device":input.device,"owner_reported_wiring":"NS7 XLR outputs to Peavey 8 channel 6; mixer USB return to m1pro16","pairs":pairs,"master_output_detected":found,"headphone_outputs_tested":false,"scope":"Three distinct probe matches per successful output/input pair. Common host callback-entry timing includes converter, mixer and callback batching; this is not isolated analog converter latency or an independent-channel claim."})).unwrap()).unwrap();
+            std::fs::write(directory.join("ns7-peavey-pairs.json"),serde_json::to_vec_pretty(&serde_json::json!({"nominal_rate":44100,"probe_level_dbfs":level_db,"output_device":output.device,"input_device":input.device,"owner_reported_wiring":"NS7 XLR outputs to Peavey 8 channel 6; mixer USB return to m1pro16","pairs":pairs,"output_detected_on_wired_master_return":found,"headphone_jack_captured":false,"scope":"Three distinct probe matches per successful output/input pair. Common host callback-entry timing includes converter, mixer and callback batching; this is not isolated analog converter latency or an independent-channel claim. Outputs 1/2 are the expected master pair; optional outputs 3/4 are a channel-assignment diagnostic."})).unwrap()).unwrap();
         }
     }
-    assert!(found.iter().all(|v|*v),"Each wired NS7 master output must deliver all three probes to at least one Peavey USB input: {pairs:?}");
+    assert!(found[..2].iter().all(|v|*v),"Each expected NS7 master output must deliver all three probes to at least one Peavey USB input: {pairs:?}");
 }
 
 #[test]
