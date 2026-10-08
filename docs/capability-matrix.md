@@ -306,6 +306,36 @@ Extended software implementation on Linux aarch64 under single todo #511. Folder
 
 Local software export/worker/native UI/API qualification; no provider-hosted publishing or new physical listening acceptance. Text/CSV include all entries in history insertion order. M3U8 requires explicit location consent and every played entry to have its exact recorded local file; unavailable entries refuse the entire playlist. Local feed is off by default, removes stale labels, caps requested labels at 512 UTF-8 bytes and never publishes paths. Preferences schema 15; project schema stays 15.
 
+### Issue #163: implemented
+
+- bounded producer transformations: [src/engine/midi_tools.rs](../src/engine/midi_tools.rs) — Source-precise quantize, independent recombination, velocity/time curves, stretch/reverse and unique expression ownership
+- native reversible worker preview: [src/ui/piano_roll/tools.rs](../src/ui/piano_roll/tools.rs) — Drawable/numeric curves, deterministic settings history, exact Restore/Keep and existing guarded one-Undo Apply
+- Acceptance fixtures: `engine::midi_tools::tests`, `ui::piano_roll::tools::tests`.
+- Evidence: [docs/validation/midi-transformations.md](../docs/validation/midi-transformations.md).
+- Evidence: [docs/validation/midi-transformations-receipt.json](../docs/validation/midi-transformations-receipt.json).
+
+Linux ARM64 software qualification of native MIDI transformations. Quantize straight/triplet starts and/or ends at partial strength; seeded independent pitch/position/length/velocity Shuffle, Mirror and Rotation; drawable/cyclic velocity; anchored Stretch, Reverse and integrated three-point time-speed curve. Preview retains an exact original, compares timing summaries, stores 32 transient parameter settings and commits once through existing worker preparation and Undo. Imported PPQN, event orders, stable note identity, channels, release velocity, metadata and labels survive; poly-pressure follows its unique note, with explicitly chosen lower/upper MPE member-channel range for pitch bend/pressure/CC74. Ambiguous, orphaned or newly overlapping expression refuses publication. Bounds are 8192 notes and existing lane/SMF limits; timing rounding is displayed. Parameters/history are live editor state, not saved presets. Automatic MPE-zone inference and a per-note expression editor remain separate work. No physical port, capture, OS GUI or listening test was opened.
+
+### Issue #164: implemented
+
+- bounded producer transformations: [src/engine/midi_tools.rs](../src/engine/midi_tools.rs) — Source-precise quantize, independent recombination, velocity/time curves, stretch/reverse and unique expression ownership
+- native reversible worker preview: [src/ui/piano_roll/tools.rs](../src/ui/piano_roll/tools.rs) — Drawable/numeric curves, deterministic settings history, exact Restore/Keep and existing guarded one-Undo Apply
+- Acceptance fixtures: `engine::midi_tools::tests`, `ui::piano_roll::tools::tests`.
+- Evidence: [docs/validation/midi-transformations.md](../docs/validation/midi-transformations.md).
+- Evidence: [docs/validation/midi-transformations-receipt.json](../docs/validation/midi-transformations-receipt.json).
+
+Linux ARM64 software qualification of native MIDI transformations. Quantize straight/triplet starts and/or ends at partial strength; seeded independent pitch/position/length/velocity Shuffle, Mirror and Rotation; drawable/cyclic velocity; anchored Stretch, Reverse and integrated three-point time-speed curve. Preview retains an exact original, compares timing summaries, stores 32 transient parameter settings and commits once through existing worker preparation and Undo. Imported PPQN, event orders, stable note identity, channels, release velocity, metadata and labels survive; poly-pressure follows its unique note, with explicitly chosen lower/upper MPE member-channel range for pitch bend/pressure/CC74. Ambiguous, orphaned or newly overlapping expression refuses publication. Bounds are 8192 notes and existing lane/SMF limits; timing rounding is displayed. Parameters/history are live editor state, not saved presets. Automatic MPE-zone inference and a per-note expression editor remain separate work. No physical port, capture, OS GUI or listening test was opened.
+
+### Issue #165: implemented
+
+- atomic owned MIDI edits: [src/engine/midi_interchange/editor.rs](../src/engine/midi_interchange/editor.rs) — Coherent owner/content/metadata validation and one guarded multiple-target Undo
+- native shared ruler and protected owners: [src/ui/piano_roll/comparison.rs](../src/ui/piano_roll/comparison.rs) — Explicit focus, ghost protection, owner permissions and shared pitch/time/velocity selection
+- Acceptance fixtures: `engine::midi_interchange::tests::combined_editor_preparation_refuses_duplicates_stale_notes_and_cancellation_without_partial_prepared_targets`, `engine::midi_interchange::tests::combined_editor_preserves_owned_regions_lanes_properties_and_stable_notes_in_one_allocation_free_undo`, `engine::midi_interchange::tests::combined_editor_refuses_every_target_when_metadata_or_one_captured_owner_changes_and_cancel_preserves_truth`, `ui::piano_roll::comparison::tests`.
+- Evidence: [docs/validation/midi-clip-comparison.md](../docs/validation/midi-clip-comparison.md).
+- Evidence: [docs/validation/midi-clip-comparison-receipt.json](../docs/validation/midi-clip-comparison-receipt.json).
+
+Linux ARM64 native software qualification. Compare at most 64 captured empty/MIDI clips and at most 65536 notes, with the existing 8192-note and lane limits per clip. Ghost notes are read-only until their owner is focused; shared tools additionally require group enablement and explicit permission per companion. Criteria combine pitch, shared time and velocity, optional overlap and inversion. Each owner retains its source region, loop, shared display offset, track tuning, stable identities and controller/expression content. Worker preparation validates every owner before one guarded atomic Apply and one Undo step; any stale/cancelled target refuses the whole edit. Comparison membership, offsets and permission are current editor state, while applied notes and native musical regions persist. This does not claim saved scale context or per-note expression editing. No physical ports, capture, OS GUI or listening check was opened.
+
 ### Issue #167: implemented
 
 - native UI: [src/ui/piano_roll.rs](../src/ui/piano_roll.rs) — Independent rhythmic voices, seeded density, bounded common periods and guarded preview/restore
@@ -802,9 +832,9 @@ Music source: FreeToUse public keyless API. Michael excludes other third-party p
 | [#160](https://github.com/michaelmonetized/omatainer/issues/160) | Integrate an authorized TIDAL DJ account and catalog | excluded from release |
 | [#161](https://github.com/michaelmonetized/omatainer/issues/161) | Implement Link-compatible tempo, phase and start/stop synchronization | planned |
 | [#162](https://github.com/michaelmonetized/omatainer/issues/162) | Recover recent MIDI performances with retrospective capture | planned |
-| [#163](https://github.com/michaelmonetized/omatainer/issues/163) | Recombine note properties and shape velocity using editable transformation tools | planned |
-| [#164](https://github.com/michaelmonetized/omatainer/issues/164) | Add quantize, stretch, reverse and tempo-curve MIDI transformations | planned |
-| [#165](https://github.com/michaelmonetized/omatainer/issues/165) | Edit multiple MIDI clips together with explicit focus and ghost notes | planned |
+| [#163](https://github.com/michaelmonetized/omatainer/issues/163) | Recombine note properties and shape velocity using editable transformation tools | implemented |
+| [#164](https://github.com/michaelmonetized/omatainer/issues/164) | Add quantize, stretch, reverse and tempo-curve MIDI transformations | implemented |
+| [#165](https://github.com/michaelmonetized/omatainer/issues/165) | Edit multiple MIDI clips together with explicit focus and ghost notes | implemented |
 | [#166](https://github.com/michaelmonetized/omatainer/issues/166) | Add per-note chance, velocity ranges and expressive note properties | planned |
 | [#167](https://github.com/michaelmonetized/omatainer/issues/167) | Generate editable rhythmic and Euclidean MIDI patterns | implemented |
 | [#168](https://github.com/michaelmonetized/omatainer/issues/168) | Make keys and scales shared musical context for editing and devices | planned |

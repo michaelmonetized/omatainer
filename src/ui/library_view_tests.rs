@@ -28,8 +28,16 @@ fn frame(
     time: f64,
     events: Vec<egui::Event>,
 ) -> egui::FullOutput {
+    frame_with_height(ctx, app, time, events, 108.0)
+}
+
+fn wheel_frame(ctx: &egui::Context, app: &mut App, time: f64, events: Vec<egui::Event>) -> egui::FullOutput {
+    frame_with_height(ctx, app, time, events, 144.0)
+}
+
+fn frame_with_height(ctx: &egui::Context, app: &mut App, time: f64, events: Vec<egui::Event>, height: f32) -> egui::FullOutput {
     let input = egui::RawInput {
-        screen_rect: Some(Rect::from_min_size(Pos2::ZERO, Vec2::new(1440.0, 108.0))),
+        screen_rect: Some(Rect::from_min_size(Pos2::ZERO, Vec2::new(1440.0, height))),
         time: Some(time),
         events,
         ..Default::default()
@@ -373,10 +381,10 @@ fn real_wheel_scrolling_keeps_work_bounded_and_selection_stable() {
     let mut fixture = Fixture::new(48);
     fixture.app.library = Arc::new(items(50_000));
     let ctx = egui::Context::default();
-    let output = frame(&ctx, &mut fixture.app, 0.0, vec![]);
+    let output = wheel_frame(&ctx, &mut fixture.app, 0.0, vec![]);
     let pointer = label_center(&output, "Track 00000");
     let source = selected_source(&mut fixture.app);
-    frame(
+    wheel_frame(
         &ctx,
         &mut fixture.app,
         0.1,
@@ -390,7 +398,7 @@ fn real_wheel_scrolling_keeps_work_bounded_and_selection_stable() {
         ],
     );
     for i in 1..=60 {
-        frame(&ctx, &mut fixture.app, 0.1 + i as f64 / 60.0, vec![]);
+        wheel_frame(&ctx, &mut fixture.app, 0.1 + i as f64 / 60.0, vec![]);
         assert!(fixture.app.library_view.stats.rendered <= 6);
         assert!(fixture.app.library_view.stats.formatted <= 6);
         assert!(fixture.app.library_view.cells.len() <= 6);
@@ -400,7 +408,7 @@ fn real_wheel_scrolling_keeps_work_bounded_and_selection_stable() {
     assert_eq!(fixture.app.lib_sel, 0);
     let offset = fixture.app.library_view.offset;
     let rebuilds = fixture.app.library_view.stats.rebuilds;
-    frame(&ctx, &mut fixture.app, 1.2, vec![]);
+    wheel_frame(&ctx, &mut fixture.app, 1.2, vec![]);
     assert!((fixture.app.library_view.offset - offset).abs() < 0.1);
     assert_eq!(fixture.app.library_view.stats.rebuilds, rebuilds);
     assert_eq!(fixture.app.library_view.stats.formatted, 0);
@@ -459,17 +467,17 @@ fn native_indexed_10000_and_100000_track_search_scroll_and_updates_meet_budgets_
         for (index,item) in library.iter_mut().enumerate(){item.source=LibSource::File(format!("/indexed-bench/{index}.wav").into());catalog.upsert(item.source.clone(),item.fingerprint,item.stored_metadata()).unwrap();catalog.tracks[index].annotations.rating=(index%6) as u8;}
         f.app.library=Arc::new(library);let build=Instant::now();f.app.library_metadata.bind_test_rows(&f.app.library);let build_ns=build.elapsed().as_nanos();
         let index_bytes=f.app.library_metadata.collection_rows().search_bytes();assert!(index_bytes<128*1024*1024);
-        f.app.sort_library_column(crate::preferences::library_layout::Column::Bpm,false);f.app.sort_library_column(crate::preferences::library_layout::Column::Title,true);let ctx=egui::Context::default();frame(&ctx,&mut f.app,0.0,vec![]);let mut queries=Vec::new();let mut scroll=Vec::new();let mut updates=Vec::new();
+        f.app.sort_library_column(crate::preferences::library_layout::Column::Bpm,false);f.app.sort_library_column(crate::preferences::library_layout::Column::Title,true);let ctx=egui::Context::default();wheel_frame(&ctx,&mut f.app,0.0,vec![]);let mut queries=Vec::new();let mut scroll=Vec::new();let mut updates=Vec::new();
         for number in 1..=120 {
             let query=if number%3==0 {"artist:\"Even Artist\" rating>=4"} else if number%3==1 {"title:Track bpm>=105"} else {"key:C length>=150"};
-            f.app.lib_filter=query.into();let started=Instant::now();frame(&ctx,&mut f.app,number as f64,vec![]);queries.push(started.elapsed().as_nanos());
+            f.app.lib_filter=query.into();let started=Instant::now();wheel_frame(&ctx,&mut f.app,number as f64,vec![]);queries.push(started.elapsed().as_nanos());
             let visible=f.app.library_view.indices.len();assert!(visible>0);
-            f.app.library_view.pending_offset=Some((visible/4) as f32*f.app.library_view.stride);let output=frame(&ctx,&mut f.app,number as f64+0.01,vec![]);let first=*f.app.library_view.cells.keys().min().unwrap();let pointer=label_center(&output,&f.app.library[f.app.library_view.indices[first]].title);let offset=f.app.library_view.offset;let selected=selected_source(&mut f.app);
-            for step in 0..4 {let started=Instant::now();frame(&ctx,&mut f.app,number as f64+0.1+step as f64/10.0,vec![egui::Event::PointerMoved(pointer),egui::Event::MouseWheel {unit:egui::MouseWheelUnit::Point,delta:Vec2::new(0.0,-22.0),modifiers:egui::Modifiers::NONE}]);scroll.push(started.elapsed().as_nanos());assert!(f.app.library_view.stats.rendered<=6);}
+            f.app.library_view.pending_offset=Some((visible/4) as f32*f.app.library_view.stride);let output=wheel_frame(&ctx,&mut f.app,number as f64+0.01,vec![]);let first=*f.app.library_view.cells.keys().min().unwrap();let pointer=label_center(&output,&f.app.library[f.app.library_view.indices[first]].title);let offset=f.app.library_view.offset;let selected=selected_source(&mut f.app);
+            for step in 0..4 {let started=Instant::now();wheel_frame(&ctx,&mut f.app,number as f64+0.1+step as f64/10.0,vec![egui::Event::PointerMoved(pointer),egui::Event::MouseWheel {unit:egui::MouseWheelUnit::Point,delta:Vec2::new(0.0,-22.0),modifiers:egui::Modifiers::NONE}]);scroll.push(started.elapsed().as_nanos());assert!(f.app.library_view.stats.rendered<=6);}
             assert!(f.app.library_view.offset>offset);assert_eq!(selected_source(&mut f.app),selected);
         }
-        f.app.lib_filter="rating:5".into();frame(&ctx,&mut f.app,200.0,vec![]);f.app.lib_sel=10;f.app.refresh_library_view();let selected=selected_source(&mut f.app);
-        for number in 0..32 {let _old=f.app.library_metadata.catalog.clone();Arc::make_mut(&mut f.app.library_metadata.catalog).tracks[number].annotations.rating=5;f.app.library_metadata.bind_incremental_test_rows(&f.app.library);let started=Instant::now();frame(&ctx,&mut f.app,201.0+number as f64,vec![]);updates.push(started.elapsed().as_nanos());assert_eq!(selected_source(&mut f.app),selected);}
+        f.app.lib_filter="rating:5".into();wheel_frame(&ctx,&mut f.app,200.0,vec![]);f.app.lib_sel=10;f.app.refresh_library_view();let selected=selected_source(&mut f.app);
+        for number in 0..32 {let _old=f.app.library_metadata.catalog.clone();Arc::make_mut(&mut f.app.library_metadata.catalog).tracks[number].annotations.rating=5;f.app.library_metadata.bind_incremental_test_rows(&f.app.library);let started=Instant::now();wheel_frame(&ctx,&mut f.app,201.0+number as f64,vec![]);updates.push(started.elapsed().as_nanos());assert_eq!(selected_source(&mut f.app),selected);}
         let distribution=|mut times:Vec<u128>|{times.sort_unstable();serde_json::json!({"samples":times.len(),"median_ns":times[times.len()/2],"p95_ns":times[times.len()*95/100],"max_ns":times[times.len()-1]})};
         let query=distribution(queries);let scroll=distribution(scroll);let update=distribution(updates);
         assert!(query["p95_ns"].as_u64().unwrap()<100_000_000,"query {count}: {query}");assert!(scroll["p95_ns"].as_u64().unwrap()<16_700_000,"scroll {count}: {scroll}");assert!(update["p95_ns"].as_u64().unwrap()<16_700_000,"update {count}: {update}");

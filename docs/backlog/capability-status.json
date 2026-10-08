@@ -921,6 +921,80 @@
       ],
       "limits": "Local software export/worker/native UI/API qualification; no provider-hosted publishing or new physical listening acceptance. Text/CSV include all entries in history insertion order. M3U8 requires explicit location consent and every played entry to have its exact recorded local file; unavailable entries refuse the entire playlist. Local feed is off by default, removes stale labels, caps requested labels at 512 UTF-8 bytes and never publishes paths. Preferences schema 15; project schema stays 15."
     },
+    "163": {
+      "status": "implemented",
+      "paths": [
+        {
+          "kind": "bounded producer transformations",
+          "file": "src/engine/midi_tools.rs",
+          "entry": "Source-precise quantize, independent recombination, velocity/time curves, stretch/reverse and unique expression ownership"
+        },
+        {
+          "kind": "native reversible worker preview",
+          "file": "src/ui/piano_roll/tools.rs",
+          "entry": "Drawable/numeric curves, deterministic settings history, exact Restore/Keep and existing guarded one-Undo Apply"
+        }
+      ],
+      "fixtures": [
+        "engine::midi_tools::tests",
+        "ui::piano_roll::tools::tests"
+      ],
+      "evidence": [
+        "docs/validation/midi-transformations.md",
+        "docs/validation/midi-transformations-receipt.json"
+      ],
+      "limits": "Linux ARM64 software qualification of native MIDI transformations. Quantize straight/triplet starts and/or ends at partial strength; seeded independent pitch/position/length/velocity Shuffle, Mirror and Rotation; drawable/cyclic velocity; anchored Stretch, Reverse and integrated three-point time-speed curve. Preview retains an exact original, compares timing summaries, stores 32 transient parameter settings and commits once through existing worker preparation and Undo. Imported PPQN, event orders, stable note identity, channels, release velocity, metadata and labels survive; poly-pressure follows its unique note, with explicitly chosen lower/upper MPE member-channel range for pitch bend/pressure/CC74. Ambiguous, orphaned or newly overlapping expression refuses publication. Bounds are 8192 notes and existing lane/SMF limits; timing rounding is displayed. Parameters/history are live editor state, not saved presets. Automatic MPE-zone inference and a per-note expression editor remain separate work. No physical port, capture, OS GUI or listening test was opened."
+    },
+    "164": {
+      "status": "implemented",
+      "paths": [
+        {
+          "kind": "bounded producer transformations",
+          "file": "src/engine/midi_tools.rs",
+          "entry": "Source-precise quantize, independent recombination, velocity/time curves, stretch/reverse and unique expression ownership"
+        },
+        {
+          "kind": "native reversible worker preview",
+          "file": "src/ui/piano_roll/tools.rs",
+          "entry": "Drawable/numeric curves, deterministic settings history, exact Restore/Keep and existing guarded one-Undo Apply"
+        }
+      ],
+      "fixtures": [
+        "engine::midi_tools::tests",
+        "ui::piano_roll::tools::tests"
+      ],
+      "evidence": [
+        "docs/validation/midi-transformations.md",
+        "docs/validation/midi-transformations-receipt.json"
+      ],
+      "limits": "Linux ARM64 software qualification of native MIDI transformations. Quantize straight/triplet starts and/or ends at partial strength; seeded independent pitch/position/length/velocity Shuffle, Mirror and Rotation; drawable/cyclic velocity; anchored Stretch, Reverse and integrated three-point time-speed curve. Preview retains an exact original, compares timing summaries, stores 32 transient parameter settings and commits once through existing worker preparation and Undo. Imported PPQN, event orders, stable note identity, channels, release velocity, metadata and labels survive; poly-pressure follows its unique note, with explicitly chosen lower/upper MPE member-channel range for pitch bend/pressure/CC74. Ambiguous, orphaned or newly overlapping expression refuses publication. Bounds are 8192 notes and existing lane/SMF limits; timing rounding is displayed. Parameters/history are live editor state, not saved presets. Automatic MPE-zone inference and a per-note expression editor remain separate work. No physical port, capture, OS GUI or listening test was opened."
+    },
+    "165": {
+      "status": "implemented",
+      "paths": [
+        {
+          "kind": "atomic owned MIDI edits",
+          "file": "src/engine/midi_interchange/editor.rs",
+          "entry": "Coherent owner/content/metadata validation and one guarded multiple-target Undo"
+        },
+        {
+          "kind": "native shared ruler and protected owners",
+          "file": "src/ui/piano_roll/comparison.rs",
+          "entry": "Explicit focus, ghost protection, owner permissions and shared pitch/time/velocity selection"
+        }
+      ],
+      "fixtures": [
+        "engine::midi_interchange::tests::combined_editor_preparation_refuses_duplicates_stale_notes_and_cancellation_without_partial_prepared_targets",
+        "engine::midi_interchange::tests::combined_editor_preserves_owned_regions_lanes_properties_and_stable_notes_in_one_allocation_free_undo",
+        "engine::midi_interchange::tests::combined_editor_refuses_every_target_when_metadata_or_one_captured_owner_changes_and_cancel_preserves_truth",
+        "ui::piano_roll::comparison::tests"
+      ],
+      "evidence": [
+        "docs/validation/midi-clip-comparison.md",
+        "docs/validation/midi-clip-comparison-receipt.json"
+      ],
+      "limits": "Linux ARM64 native software qualification. Compare at most 64 captured empty/MIDI clips and at most 65536 notes, with the existing 8192-note and lane limits per clip. Ghost notes are read-only until their owner is focused; shared tools additionally require group enablement and explicit permission per companion. Criteria combine pitch, shared time and velocity, optional overlap and inversion. Each owner retains its source region, loop, shared display offset, track tuning, stable identities and controller/expression content. Worker preparation validates every owner before one guarded atomic Apply and one Undo step; any stale/cancelled target refuses the whole edit. Comparison membership, offsets and permission are current editor state, while applied notes and native musical regions persist. This does not claim saved scale context or per-note expression editing. No physical ports, capture, OS GUI or listening check was opened."
+    },
     "167": {
       "status": "implemented",
       "paths": [

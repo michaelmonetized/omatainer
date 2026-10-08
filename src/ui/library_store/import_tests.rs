@@ -105,6 +105,7 @@ impl Gui {
         );
         self.nonzero |= actual.iter().any(|v| v.abs() > 0.001);
     }
+    #[track_caller]
     fn wait(&mut self, mut predicate: impl FnMut(&Self) -> bool) {
         let until = Instant::now() + Duration::from_secs(8);
         loop {
@@ -114,9 +115,10 @@ impl Gui {
             }
             assert!(
                 Instant::now() < until,
-                "{} / {} / loads {:?}",
-                self.app.library_scan.label(),
+                "{} / {} / {} / loads {:?}",
+                self.app.library_scan.pending_description(),
                 self.app.library_metadata.label(),
+                self.app.library_metadata.pending_description(),
                 self.app.loads.iter().map(|l|l.as_ref().map(|l|match &l.phase {Phase::Failed(e)=>e.as_str(),Phase::Loading=>"loading",Phase::Queued=>"queued",Phase::Loaded=>"loaded",Phase::Superseded=>"superseded"})).collect::<Vec<_>>()
             );
             std::thread::sleep(Duration::from_millis(1));

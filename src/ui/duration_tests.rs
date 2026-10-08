@@ -46,21 +46,30 @@ impl Drop for Files {
     }
 }
 #[track_caller]
-fn wait(stage: &str, mut check: impl FnMut() -> bool) {
+fn wait(stage: &str, mut check: impl FnMut() -> Option<String>) {
     let deadline = Instant::now() + Duration::from_secs(5);
-    while !check() {
+    while let Some(state) = check() {
         assert!(
             Instant::now() < deadline,
-            "duration fixture timed out during {stage}"
+            "duration fixture timed out during {stage}: {state}"
         );
         std::thread::sleep(Duration::from_millis(1));
     }
+}
+fn waiting(f: &Fixture, done: bool) -> Option<String> {
+    (!done).then(|| {
+        format!(
+            "{}; {}",
+            f.app.library_scan.label(),
+            f.app.library_metadata.pending_description()
+        )
+    })
 }
 #[track_caller]
 fn finish(f: &mut Fixture) {
     wait("loaded metadata publication", || {
         f.app.poll_load_receipts();
-        !f.app.library_metadata.active()
+        waiting(f, !f.app.library_metadata.active())
     });
 }
 #[track_caller]
@@ -71,7 +80,10 @@ fn scan(f: &mut Fixture, files: &Files) {
         .start(vec![files.0.clone()], f.app.library.clone()));
     wait("file scan and metadata publication", || {
         f.app.poll_library_scan();
-        !f.app.library_scan.active() && !f.app.library_metadata.active()
+        waiting(
+            f,
+            !f.app.library_scan.active() && !f.app.library_metadata.active(),
+        )
     });
 }
 fn item<'a>(f: &'a Fixture, path: &PathBuf) -> &'a LibItem {
@@ -215,7 +227,10 @@ fn duration_is_cached_by_bytes_and_cannot_be_rolled_back_by_an_older_scan() {
             Some(3.5),
             "old scan exposed unknown duration"
         );
-        !f.app.library_scan.active() && !f.app.library_metadata.active()
+        waiting(
+            &f,
+            !f.app.library_scan.active() && !f.app.library_metadata.active(),
+        )
     });
     assert_eq!(
         f.app.selected_library_item().unwrap().source,

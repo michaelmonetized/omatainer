@@ -2269,9 +2269,12 @@
       "dependencies": [
         110
       ],
-      "state": "planned",
+      "state": "implemented",
       "prs": [],
-      "evidence": []
+      "evidence": [
+        "docs/validation/midi-transformations.md",
+        "docs/validation/midi-transformations-receipt.json"
+      ]
     },
     {
       "issue": 164,
@@ -2283,9 +2286,12 @@
         110,
         83
       ],
-      "state": "planned",
+      "state": "implemented",
       "prs": [],
-      "evidence": []
+      "evidence": [
+        "docs/validation/midi-transformations.md",
+        "docs/validation/midi-transformations-receipt.json"
+      ]
     },
     {
       "issue": 165,
@@ -2296,9 +2302,12 @@
       "dependencies": [
         110
       ],
-      "state": "planned",
+      "state": "implemented",
       "prs": [],
-      "evidence": []
+      "evidence": [
+        "docs/validation/midi-clip-comparison.md",
+        "docs/validation/midi-clip-comparison-receipt.json"
+      ]
     },
     {
       "issue": 166,
@@ -2480,7 +2489,9 @@
       "prs": [],
       "evidence": [
         "docs/validation/graph-latency.md",
-        "docs/validation/graph-latency-receipt.json"
+        "docs/validation/graph-latency-receipt.json",
+        "docs/validation/vst3-graph.md",
+        "docs/validation/vst3-graph-receipt.json"
       ]
     },
     {
@@ -2564,7 +2575,9 @@
       "prs": [],
       "evidence": [
         "docs/validation/vst3-core.md",
-        "docs/validation/vst3-core-receipt.json"
+        "docs/validation/vst3-core-receipt.json",
+        "docs/validation/vst3-graph.md",
+        "docs/validation/vst3-graph-receipt.json"
       ]
     },
     {
@@ -3057,7 +3070,9 @@
       "prs": [],
       "evidence": [
         "docs/validation/vst3-core.md",
-        "docs/validation/vst3-core-receipt.json"
+        "docs/validation/vst3-core-receipt.json",
+        "docs/validation/vst3-graph.md",
+        "docs/validation/vst3-graph-receipt.json"
       ]
     },
     {

@@ -164,26 +164,33 @@ fn monitor_alias_validation_uses_actual_maps_and_preserves_versioned_project_rou
     let mut invalid = good.clone();
     invalid.version = 1;
     assert!(invalid.order(&rt.session).is_err());
-    invalid = good.clone();
-    invalid.version = 3;
-    assert!(invalid.order(&rt.session).is_err());
+    for version in [0, u32::MAX] {
+        invalid = good.clone();
+        invalid.version = version;
+        assert!(invalid.order(&rt.session).is_err());
+    }
     let old = serde_json::to_value(Model::default()).unwrap();
     assert!(old.get("monitor_output").is_none());
     assert_eq!(
         serde_json::from_value::<Model>(old).unwrap().monitor_output,
         None
     );
-    let bytes = serde_json::to_vec(&good).unwrap();
-    let model = serde_json::from_slice(&bytes).unwrap();
-    let mut prepared = crate::engine::project::Prepared::empty(96_000).unwrap();
-    prepared.rt.routing = Some(Box::new(
-        Prepared::new(Arc::new(model), &prepared.rt.session).unwrap(),
-    ));
-    assert_eq!(*prepared.rt.routing.as_ref().unwrap().model, good);
-    prepared.swap_into(&mut rt);
-    rt.process_interleaved(&mut [], 2);
-    assert_eq!(rt.monitor.status.channels, Some([4, 5]));
-    assert!(!rt.monitor.status.available);
+    for version in [2, 3] {
+        let mut expected = good.clone();
+        expected.version = version;
+        assert!(expected.order(&rt.session).is_ok());
+        let bytes = serde_json::to_vec(&expected).unwrap();
+        let model = serde_json::from_slice(&bytes).unwrap();
+        let mut prepared = crate::engine::project::Prepared::empty(96_000).unwrap();
+        prepared.rt.routing = Some(Box::new(
+            Prepared::new(Arc::new(model), &prepared.rt.session).unwrap(),
+        ));
+        assert_eq!(*prepared.rt.routing.as_ref().unwrap().model, expected);
+        prepared.swap_into(&mut rt);
+        rt.process_interleaved(&mut [], 2);
+        assert_eq!(rt.monitor.status.channels, Some([4, 5]));
+        assert!(!rt.monitor.status.available);
+    }
 }
 
 #[test]

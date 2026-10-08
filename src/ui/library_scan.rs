@@ -184,6 +184,17 @@ impl Default for LibraryScan {
     fn default() -> Self { Self::with_inventory(crate::media_location::Snapshot::discover) }
 }
 impl LibraryScan {
+    #[cfg(test)]
+    pub(super) fn pending_description(&self) -> String {
+        format!(
+            "state={:?} phase={} visited={} found={} cancelled={} worker_finished={} progress={:?} protection={:?} jobs={:?}",
+            self.state, self.progress.phase.load(Ordering::Acquire),
+            self.progress.visited.load(Ordering::Relaxed), self.progress.found.load(Ordering::Relaxed),
+            self.cancel.load(Ordering::Acquire), self.worker.as_ref().is_none_or(JoinHandle::is_finished),
+            self.progress.reporter.lock().unwrap().values(), self.performance.status(), self.performance.jobs().snapshot(),
+        )
+    }
+
     pub(super) fn with_inventory(mut inventory: impl FnMut() -> Result<crate::media_location::Snapshot, crate::media_location::Failure> + Send + 'static) -> Self {
         #[cfg(test)]
         let tag_hook = Arc::new(std::sync::Mutex::new(None::<Arc<dyn Fn(&tag_jobs::Task) + Send + Sync>>));
@@ -216,6 +227,7 @@ impl LibraryScan {
                         Ok(admitted)=>admitted,
                         Err(error)=>{let completion=if let Some(job)=&request.tags {Completion::Tags(job.id,Arc::new(tag_jobs::Reply::Failed{message:error,record:None}))}
                             else if let Some(job)=&request.replacement {Completion::Replacement(job.id,Err(error))}else{Completion::Failed(error)};
+                            drop(request);
                             if finished.send(completion).is_err(){break;}continue;},
                     };
                     *request.progress.reporter.lock().unwrap()=ticket.reporter();
@@ -281,11 +293,15 @@ impl LibraryScan {
                             let old=summary_pin.replace(summary);drop(old);
                         }
                         Err(ScanFailure::Cancelled) => {
+                            drop(running.take());
+                            drop(request);
                             if finished.send(Completion::Cancelled).is_err() {
                                 break;
                             }
                         }
                         Err(ScanFailure::Io(error)) => {
+                            drop(running.take());
+                            drop(request);
                             if finished.send(Completion::Failed(error)).is_err() {
                                 break;
                             }

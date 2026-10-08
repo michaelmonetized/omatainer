@@ -953,6 +953,15 @@ impl Metadata {
     pub(super) fn active(&self) -> bool {
         self.dirty || self.in_flight || self.tag_reservation
     }
+    #[cfg(test)]
+    pub(super) fn pending_description(&self) -> String {
+        format!(
+            "revision={} dirty={} in_flight={} staged={} closed={} deferred={} pending={} captures={} protection={:?} storage_error={:?}",
+            self.revision, self.dirty, self.in_flight, self.staged.is_some(), self.worker_closed,
+            self.deferred, self.pending.len(), self.captures.len(), self.performance.status(),
+            self.storage_error,
+        )
+    }
 }
 
 impl App {

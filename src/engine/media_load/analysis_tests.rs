@@ -49,13 +49,22 @@ fn request(files: &Files) -> AnalysisRequest {
 fn failed(reason: &str) -> AnalysisFailure {
     AnalysisFailure::Failed(reason.into())
 }
+#[track_caller]
 fn wait_ready(loader: &Loader) -> AnalysisCompletion {
     let until = Instant::now() + Duration::from_secs(3);
     loop {
         if let Some(done) = loader.take_analysis_ready() {
             return done;
         }
-        assert!(Instant::now() < until, "analysis worker did not complete");
+        assert!(Instant::now() < until, "analysis worker did not complete: state={:?}; jobs={:?}; protection={:?}",
+            loader.shared.state.try_lock().ok().map(|state| (
+                state.analysis_pending.as_ref().map(|job| job.token.progress()),
+                state.analysis_active.as_ref().map(|token| token.progress()),
+                state.analysis_token.as_ref().map(|token| (token.id, token.failure())),
+                state.pending.iter().map(Option::is_some).collect::<Vec<_>>(),
+                state.active.iter().map(Option::is_some).collect::<Vec<_>>(),
+                state.stop,
+            )), loader.performance.jobs().snapshot(), loader.performance.status());
         std::thread::sleep(Duration::from_millis(1));
     }
 }

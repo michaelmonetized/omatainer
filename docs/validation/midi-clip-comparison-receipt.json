@@ -1,0 +1,973 @@
+{
+  "schema": 1,
+  "issues": [
+    165
+  ],
+  "status": "implemented",
+  "sourceFiles": {
+    "src/engine/midi_interchange/editor.rs": "027641777a00731875f389a41c94404c6564ed34aaa2a104a8650358221ef462",
+    "src/engine/midi_interchange.rs": "eeffe9ad2f463a2d60cb4a5dba5977849ea3cde10148effab99420d5b767573c",
+    "src/ui/piano_roll/canvas/comparison.rs": "76358f8b14b2e92c236ff6f1bccda527436b90a8ea6e4990d0e7595946cd7904",
+    "src/ui/piano_roll/canvas.rs": "c9a20e707b5154627bad5a5d67754b5b04efc079a34d4d74f070c87826224958",
+    "src/ui/piano_roll/comparison/batch.rs": "1a2988bb58da90da296410862b96efe909e8a4f03f4c1e6495c424cb365b2ad9",
+    "src/ui/piano_roll/comparison/group.rs": "bc4601010dd841c9f8c2454dc2ee80c5566bfc272c6d5bb0045c34e2367ba216",
+    "src/ui/piano_roll/comparison/selection.rs": "cbcc8a5ac04a01f324799dccd0a4841986738a5a0362e3818a1e7bcf1eaa7d38",
+    "src/ui/piano_roll/comparison/view.rs": "0a3fda57a2787d5b5ce47ebe390548acdd02d86decb7edf2ee3c2a7279a5f4cf",
+    "src/ui/piano_roll/comparison.rs": "a4073aee13a353dc9caa53f42c9479d2f3026c95d2410f5ef2a7886ad165706f",
+    "src/ui/piano_roll/tools.rs": "4b6d894eeaca26b6fbb892c4c7f01765daddb061791ab8d6eb739a09f8988cf3",
+    "src/ui/piano_roll.rs": "d932148a49c7c75eba540a32ae0472eef7351c4c826b456e772b75a427c22694",
+    "src/ui/piano_roll/comparison/tests.rs": "ed76cd335c14b56cf8556fa0399600048185acf7c998c023dbff1689f38ab025",
+    "src/engine/midi_interchange/tests.rs": "a77a4227e81f862701d6537dbcd63a073537c6ef45441c29df83ed45c1dbaca1"
+  },
+  "implementation": {
+    "retainedUnpublishedSource": {
+      "licenses/manifest.json": "95ac0bb25132582602e788128851ee35770467b51623a81f5d773c1e2f6314e9",
+      "src/engine/media_load/analysis_tests.rs": "4c89686eb3d50356b5b5ca1f511903547e1314561d67c52903936b81386edc57",
+      "src/engine/monitor/qualification_tests.rs": "8496455af283799459d1eed33531d2509be7888848e6263b3a93d83d2183da88",
+      "src/engine/plugin_midi.rs": "b82dd7700795a55fb8339b1dc97257e125b25545ce4836832a7ba353480d94eb",
+      "src/engine/plugin_midi/tests.rs": "56be1636e8006caa2eb7bf538afd675abf4a981792288337893a46e6e8052fbe",
+      "src/ui.rs": "9dff685dcd42c2d7a273a2c9b3d3d9054ff918b4d1c1d9564e1e713a02d754e6",
+      "src/ui/duration_tests.rs": "b66050d112a9118179202a1678955abf9e3447a9d970b50bee56cebe4848b822",
+      "src/ui/library_metadata.rs": "2ae31b38bf4753a28d41f9fbd420748bf6239473cd679cf549b7686abc0a80dd",
+      "src/ui/library_scan.rs": "0249a838c2972e96fc892b4df4f6d6f0e6e02203ab335e26c894dcb818164b61",
+      "src/ui/library_scan/tests.rs": "14ea60b8bd6950098a622b2d46b1131ea2b6d8f8bc85b76019d90b90f4a9a805",
+      "src/ui/library_store/import_tests.rs": "7a6892a144adbacf10f2a126344ab97909d5da8985787d9a7a25d39c87e0d125",
+      "src/ui/library_view_tests.rs": "e110f6f0a500afa8008b0b806e144b59c1b8955ecf866ff89ba7234115f6f52b",
+      "src/ui/sampler_editor/tests.rs": "cd13799586f6799ee7eb62a36cfeb68933735036cbf5b17b6b3aa9588b6b51eb"
+    },
+    "integrationReason": "The seventeenth full suite retained one original media-analysis timeout; all MIDI tool, scanner, relocation and other cases passed. Shared editing is integrated before the next single full qualification. No registry or release claim is made before that combined qualification passes.",
+    "baseRevision": "c060b55f8a01a097f248164322b90378a3e0f6aa",
+    "parents": {
+      "src/engine/midi_interchange.rs": "afecbef74e4c60b979dfb9d0c0c2590aaa41a76826d847860a2ea43059291e4f",
+      "src/ui/piano_roll/canvas.rs": "fe49be91758dd267f6c8a5b891513fe202679ad76e117b55bf3982a9c85fcab6",
+      "src/ui/piano_roll/tools.rs": "fceb5e5bab5c80db6f8f07a9093843d3eb6803cdb0e3cfaf548e6adcdb10d088",
+      "src/ui/piano_roll.rs": "067508c40f2949a251efb6566fa10f16fd686b24c4e76525d35fb6a7d19f1560"
+    },
+    "preparedSources": {
+      "src/engine/midi_interchange/editor.rs": "027641777a00731875f389a41c94404c6564ed34aaa2a104a8650358221ef462",
+      "src/engine/midi_interchange.rs": "eeffe9ad2f463a2d60cb4a5dba5977849ea3cde10148effab99420d5b767573c",
+      "src/ui/piano_roll/canvas/comparison.rs": "5bc0cbe1a89061f0613580d0088d58d635004e1a1c3bd396e22f48826898fd3d",
+      "src/ui/piano_roll/canvas.rs": "c9a20e707b5154627bad5a5d67754b5b04efc079a34d4d74f070c87826224958",
+      "src/ui/piano_roll/comparison/batch.rs": "1a2988bb58da90da296410862b96efe909e8a4f03f4c1e6495c424cb365b2ad9",
+      "src/ui/piano_roll/comparison/group.rs": "bc4601010dd841c9f8c2454dc2ee80c5566bfc272c6d5bb0045c34e2367ba216",
+      "src/ui/piano_roll/comparison/selection.rs": "cbcc8a5ac04a01f324799dccd0a4841986738a5a0362e3818a1e7bcf1eaa7d38",
+      "src/ui/piano_roll/comparison/view.rs": "d73b2502066a756044aa8c5a4e6301bb63e91fe52bb9f8dabe0890ed1e415924",
+      "src/ui/piano_roll/comparison.rs": "4c6f8e57a2593df22f88c39d5574ac03ee214951404965e31b62874b33602704",
+      "src/ui/piano_roll/tools.rs": "f16c5b8252c03cf9d7ad250a3ec17bb889a2eb7116a90b54027c663acc22a4b0",
+      "src/ui/piano_roll.rs": "d932148a49c7c75eba540a32ae0472eef7351c4c826b456e772b75a427c22694"
+    },
+    "appliedSources": {
+      "src/engine/midi_interchange/editor.rs": "027641777a00731875f389a41c94404c6564ed34aaa2a104a8650358221ef462",
+      "src/engine/midi_interchange.rs": "eeffe9ad2f463a2d60cb4a5dba5977849ea3cde10148effab99420d5b767573c",
+      "src/ui/piano_roll/canvas/comparison.rs": "76358f8b14b2e92c236ff6f1bccda527436b90a8ea6e4990d0e7595946cd7904",
+      "src/ui/piano_roll/canvas.rs": "c9a20e707b5154627bad5a5d67754b5b04efc079a34d4d74f070c87826224958",
+      "src/ui/piano_roll/comparison/batch.rs": "1a2988bb58da90da296410862b96efe909e8a4f03f4c1e6495c424cb365b2ad9",
+      "src/ui/piano_roll/comparison/group.rs": "bc4601010dd841c9f8c2454dc2ee80c5566bfc272c6d5bb0045c34e2367ba216",
+      "src/ui/piano_roll/comparison/selection.rs": "cbcc8a5ac04a01f324799dccd0a4841986738a5a0362e3818a1e7bcf1eaa7d38",
+      "src/ui/piano_roll/comparison/view.rs": "0a3fda57a2787d5b5ce47ebe390548acdd02d86decb7edf2ee3c2a7279a5f4cf",
+      "src/ui/piano_roll/comparison.rs": "a4073aee13a353dc9caa53f42c9479d2f3026c95d2410f5ef2a7886ad165706f",
+      "src/ui/piano_roll/tools.rs": "4b6d894eeaca26b6fbb892c4c7f01765daddb061791ab8d6eb739a09f8988cf3",
+      "src/ui/piano_roll.rs": "d932148a49c7c75eba540a32ae0472eef7351c4c826b456e772b75a427c22694",
+      "src/ui/piano_roll/comparison/tests.rs": "ed76cd335c14b56cf8556fa0399600048185acf7c998c023dbff1689f38ab025",
+      "src/engine/midi_interchange/tests.rs": "a77a4227e81f862701d6537dbcd63a073537c6ef45441c29df83ed45c1dbaca1"
+    },
+    "corrections": [
+      {
+        "round": "first",
+        "reason": "Production compilation refused a comparison view visible only to its immediate parent and a duplicate layers method. The view API now has the intended piano-roll scope and the duplicate method is removed. No first executable or runtime pass exists.",
+        "sourceFiles": {
+          "src/ui/piano_roll/comparison.rs": "a4073aee13a353dc9caa53f42c9479d2f3026c95d2410f5ef2a7886ad165706f",
+          "src/ui/piano_roll/comparison/view.rs": "0a3fda57a2787d5b5ce47ebe390548acdd02d86decb7edf2ee3c2a7279a5f4cf",
+          "src/ui/piano_roll/canvas/comparison.rs": "76358f8b14b2e92c236ff6f1bccda527436b90a8ea6e4990d0e7595946cd7904"
+        }
+      },
+      {
+        "round": "second",
+        "reason": "Production compiled. Test compilation refused equality on SavedClip, which has no PartialEq. The retained exact Undo/Redo comparisons now compare complete native serialized clip bytes, without changing production types or removing fields.",
+        "sourceFiles": {
+          "src/engine/midi_interchange/tests.rs": "9bf62f36eb5ac49f7290630184f52dd702a457283da81d68a805e03ffcbd7282"
+        }
+      },
+      {
+        "round": "third",
+        "reason": "Production and test compilation passed. All four native comparison workflows and every neighboring focused group passed. The three atomic checks found the imported sixteen-bar fixture contains only one musical SMF track. The two-owner fixture now explicitly copies that actual source track into a parallel two-track file before real import, producing distinct native note/owner identities. Separate loop lengths, properties, tuning, expression lanes, exact native Undo/Redo, cancellation and stale-target assertions remain unchanged. No third full run began.",
+        "sourceFiles": {
+          "src/engine/midi_interchange/tests.rs": "a77a4227e81f862701d6537dbcd63a073537c6ef45441c29df83ed45c1dbaca1"
+        }
+      }
+    ]
+  },
+  "compiledInventory": {
+    "path": "target/app-backlog/multi-clip-fourth-source.json",
+    "sha256": "461ac39b92fd014855631faa49c733f7ade4dc9f1d3950b8759a56bb0f27c4d8",
+    "baseRevision": "c060b55f8a01a097f248164322b90378a3e0f6aa",
+    "files": 890
+  },
+  "testBinary": {
+    "path": "target/app-backlog/qualification-bin/multi-clip-tests-fourth",
+    "sha256": "5eb2f8dd5a4849ed0d61559d308e602ba0fe8204935742f93e2815fe0de27455"
+  },
+  "compileLog": {
+    "path": "target/app-backlog/multi-clip-fourth-build.log",
+    "sha256": "eebd8e62be513a3d1d8a0e0ff6470e706be9140263de284175d08d09841e5402"
+  },
+  "testBuildArguments": [
+    "test",
+    "--locked",
+    "--offline",
+    "--no-run",
+    "--config",
+    "profile.test.package.omatainer.debug=0"
+  ],
+  "compiledTests": {
+    "total": 2219,
+    "ignored": 59,
+    "all": {
+      "path": "target/app-backlog/multi-clip-fourth-compiled-tests.log",
+      "sha256": "7a7125bd5abd3d60724fc911d56d42f147712e5cbb06bcdde8879f86c44fbd3c"
+    },
+    "ignoredFixtures": {
+      "path": "target/app-backlog/multi-clip-fourth-ignored-tests.log",
+      "sha256": "6e055db2142728f40598f1a19208efb3eef3f17c71d0af43251948a3d7b7fb1d"
+    }
+  },
+  "tests": {
+    "atomic": {
+      "path": "target/app-backlog/multi-clip-fourth-atomic.log",
+      "sha256": "45dda2c5dcfe1ea29aeb55581421143ff75348fd1716969605f57ff80efe7486",
+      "outcome": "ok",
+      "passed": 3,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2216,
+      "seconds": 0.94
+    },
+    "native": {
+      "path": "target/app-backlog/multi-clip-fourth-native.log",
+      "sha256": "291f07936af63a22e55da05df172707d5f39b6a34f7e9979dbc2323c2fe726fa",
+      "outcome": "ok",
+      "passed": 4,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2215,
+      "seconds": 1.87
+    },
+    "piano": {
+      "path": "target/app-backlog/multi-clip-fourth-piano.log",
+      "sha256": "748230d03ffbc42cff4a7284bd7f1296b7a3a68012686cf63ca50f41a33e1aa1",
+      "outcome": "ok",
+      "passed": 27,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2192,
+      "seconds": 12.56
+    },
+    "transformation-core": {
+      "path": "target/app-backlog/multi-clip-fourth-transformation-core.log",
+      "sha256": "722d06a16d5d420261b267aa86e92f369d540feb38f86bc5d270f48b6b3e30a5",
+      "outcome": "ok",
+      "passed": 7,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2212,
+      "seconds": 0.06
+    },
+    "interchange": {
+      "path": "target/app-backlog/multi-clip-fourth-interchange.log",
+      "sha256": "7979abede2f04ae53120a58bdd676040f04661e834d3c077a657649575639a83",
+      "outcome": "ok",
+      "passed": 14,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2205,
+      "seconds": 10.53
+    },
+    "edit": {
+      "path": "target/app-backlog/multi-clip-fourth-edit.log",
+      "sha256": "398d2ad6b93f80801196573f0a9c369155d5581846da9d573448aca79d238aae",
+      "outcome": "ok",
+      "passed": 9,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2210,
+      "seconds": 1.26
+    },
+    "file": {
+      "path": "target/app-backlog/multi-clip-fourth-file.log",
+      "sha256": "c3a31ea30c8a48688b5b7150351a7411566dbaa6a4180d51d230e3d6638afa81",
+      "outcome": "ok",
+      "passed": 9,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2210,
+      "seconds": 0
+    },
+    "undo": {
+      "path": "target/app-backlog/multi-clip-fourth-undo.log",
+      "sha256": "e67cb2d78c2ede7f88a9b61ba02377d21e9aa0a3c049613e1cdf6f9eef75bc67",
+      "outcome": "ok",
+      "passed": 36,
+      "failed": 0,
+      "ignored": 1,
+      "filtered": 2182,
+      "seconds": 5
+    },
+    "session": {
+      "path": "target/app-backlog/multi-clip-fourth-session.log",
+      "sha256": "60c95efd2764d3795e5465869e675d283f3a2d91636ff9bdcd7531da4a2d7d44",
+      "outcome": "ok",
+      "passed": 20,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2199,
+      "seconds": 3.81
+    },
+    "timing": {
+      "path": "target/app-backlog/multi-clip-fourth-timing.log",
+      "sha256": "b5c08bd908444cfa19c8f70a5486e919b09bb28cc3f1d93f167c774f109da050",
+      "outcome": "ok",
+      "passed": 6,
+      "failed": 0,
+      "ignored": 1,
+      "filtered": 2212,
+      "seconds": 1.45
+    },
+    "plugin-midi-storage-focused": {
+      "path": "target/app-backlog/multi-clip-fourth-plugin-midi-storage-focused.log",
+      "sha256": "ffa22620695b91c358c459c7fe70144b66ba099a56e0b1e3ed74a9d101c5b31e",
+      "outcome": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2218,
+      "seconds": 0
+    },
+    "plugin-midi-storage": {
+      "path": "target/app-backlog/multi-clip-fourth-plugin-midi-storage.log",
+      "sha256": "ffa22620695b91c358c459c7fe70144b66ba099a56e0b1e3ed74a9d101c5b31e",
+      "outcome": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2218,
+      "seconds": 0
+    },
+    "media-analysis": {
+      "path": "target/app-backlog/multi-clip-fourth-media-analysis.log",
+      "sha256": "94a85e5267eda79400e7ad439f92527b6527f942e36d0621304c819d043fe0cd",
+      "outcome": "ok",
+      "passed": 9,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2210,
+      "seconds": 0.33
+    },
+    "graph": {
+      "path": "target/app-backlog/multi-clip-fourth-graph.log",
+      "sha256": "5be379d3b0adc58f35d947bb21aadf9e9dabd253f6d5af0fc83d742d2f318712",
+      "outcome": "ok",
+      "passed": 10,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2209,
+      "seconds": 0.71
+    },
+    "workspace": {
+      "path": "target/app-backlog/multi-clip-fourth-workspace.log",
+      "sha256": "c0317bf2cba51997fce56312fb4396887214c6cb9c2e9de6f543e458bb589a90",
+      "outcome": "ok",
+      "passed": 8,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2211,
+      "seconds": 1.01
+    },
+    "touch": {
+      "path": "target/app-backlog/multi-clip-fourth-touch.log",
+      "sha256": "1e828cf52203d235457ac5acaaacf20d7f5a24d0732fc5f3619a03431c293131",
+      "outcome": "ok",
+      "passed": 12,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2207,
+      "seconds": 1.51
+    },
+    "background-jobs": {
+      "path": "target/app-backlog/multi-clip-fourth-background-jobs.log",
+      "sha256": "0bf8c2e9283437a7c3b8b292c2aeafad6bcf06c5d68ee4ff63aa145321a70841",
+      "outcome": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2218,
+      "seconds": 0.16
+    },
+    "library-scan": {
+      "path": "target/app-backlog/multi-clip-fourth-library-scan.log",
+      "sha256": "21d73d7295494ce110bd8219f09a9ef0c8a4a944a5d1ff7a25f6bf4c29185549",
+      "outcome": "ok",
+      "passed": 17,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2202,
+      "seconds": 3.48
+    },
+    "monitor-qualification": {
+      "path": "target/app-backlog/multi-clip-fourth-monitor-qualification.log",
+      "sha256": "86fec7961ddd1cb5542a84d92e2488f9424979c8dfa8a8fac82ead578335ba88",
+      "outcome": "ok",
+      "passed": 6,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2213,
+      "seconds": 4.31
+    },
+    "library-view": {
+      "path": "target/app-backlog/multi-clip-fourth-library-view.log",
+      "sha256": "00673fb05ab0cb15b9fc98203b0d3250c283855a6d679cdb39b29c63d47c36bc",
+      "outcome": "ok",
+      "passed": 10,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2209,
+      "seconds": 30
+    },
+    "duration": {
+      "path": "target/app-backlog/multi-clip-fourth-duration.log",
+      "sha256": "4ee0a2a6e68937b59c7882e53cf8d3b7e98fb06110ab09627a2e03b2056ff854",
+      "outcome": "ok",
+      "passed": 5,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2214,
+      "seconds": 1.15
+    },
+    "licenses": {
+      "path": "target/app-backlog/multi-clip-fourth-licenses.log",
+      "sha256": "e131dce85b008227fcc259816a8d9ed9b125bf0797f96d46666bcaa193b6ea4f",
+      "outcome": "ok",
+      "passed": 6,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2213,
+      "seconds": 0.57
+    },
+    "play-history": {
+      "path": "target/app-backlog/multi-clip-fourth-play-history.log",
+      "sha256": "2ad02c722bf6871907363fd0b1631ccb8b1ed13ba9d0dcac1aaafd21d6dab07e",
+      "outcome": "ok",
+      "passed": 11,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2208,
+      "seconds": 1.56
+    },
+    "sampler-editor": {
+      "path": "target/app-backlog/multi-clip-fourth-sampler-editor.log",
+      "sha256": "16ee394186d7e509f589e409162b3c81157e3e541f3ffd62a61c48b9c0a908bf",
+      "outcome": "ok",
+      "passed": 15,
+      "failed": 0,
+      "ignored": 1,
+      "filtered": 2203,
+      "seconds": 4.59
+    },
+    "sampler-store": {
+      "path": "target/app-backlog/multi-clip-fourth-sampler-store.log",
+      "sha256": "29fedd1c915e80350136e5f5ed4894e4f1e6612008457459a17f45a7a7f2f8d1",
+      "outcome": "ok",
+      "passed": 4,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2215,
+      "seconds": 0.04
+    },
+    "compose": {
+      "path": "target/app-backlog/multi-clip-fourth-compose.log",
+      "sha256": "0620594667bb38648b2c2a8dd8474fe164ca26d8309283dd8488da3b037b3dd3",
+      "outcome": "ok",
+      "passed": 2,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2217,
+      "seconds": 0.3
+    },
+    "waveform": {
+      "path": "target/app-backlog/multi-clip-fourth-waveform.log",
+      "sha256": "e273def060ddfa3c7cd06d7438b332ac47814755055f88a9f0e52e9f229f54a5",
+      "outcome": "ok",
+      "passed": 5,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2214,
+      "seconds": 0.5
+    },
+    "song-navigation": {
+      "path": "target/app-backlog/multi-clip-fourth-song-navigation.log",
+      "sha256": "fdb129185453d68ca445178de5d7179682d9cc36e9ef31257c589a60f4a654d2",
+      "outcome": "ok",
+      "passed": 11,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2208,
+      "seconds": 2.78
+    },
+    "project-timing": {
+      "path": "target/app-backlog/multi-clip-fourth-project-timing.log",
+      "sha256": "4a0d085919f4e7fbe3068f2903696b6f8e04c04e79c4184ce9bed9006469092e",
+      "outcome": "ok",
+      "passed": 6,
+      "failed": 0,
+      "ignored": 1,
+      "filtered": 2212,
+      "seconds": 1.49
+    },
+    "metronome": {
+      "path": "target/app-backlog/multi-clip-fourth-metronome.log",
+      "sha256": "94e9fdf26d458d225cbafeb24fb24c780a9b6b0ee8d348fdd30e2a2fdbd21219",
+      "outcome": "ok",
+      "passed": 6,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2213,
+      "seconds": 2.35
+    },
+    "recording": {
+      "path": "target/app-backlog/multi-clip-fourth-recording.log",
+      "sha256": "627410f2d6fc71163b4ec9c7ad625db66d6651cefc94b433c4c2132ced039c3c",
+      "outcome": "ok",
+      "passed": 12,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2207,
+      "seconds": 4.08
+    },
+    "audio": {
+      "path": "target/app-backlog/multi-clip-fourth-audio.log",
+      "sha256": "32a8564b49f282352469825015c94e15beee48b2a8b9068aaf9779af128f0010",
+      "outcome": "ok",
+      "passed": 4,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2215,
+      "seconds": 0.42
+    },
+    "full": {
+      "path": "target/app-backlog/multi-clip-fourth-full.log",
+      "sha256": "88bccda56d7f383f4567ef9b513a0601a315c369e07b35e2215ce031a654cc75",
+      "outcome": "ok",
+      "passed": 2160,
+      "failed": 0,
+      "ignored": 59,
+      "filtered": 0,
+      "seconds": 764.74
+    }
+  },
+  "checks": {
+    "workflow": {
+      "native_egui_accesskit": true,
+      "explicit_focus_and_permissions": true,
+      "one_undo": true,
+      "unequal_loops_and_offsets": true,
+      "different_tuning": true,
+      "native_save_reopen": true,
+      "physical_devices_opened": false
+    },
+    "pointer": {
+      "actual_egui_pointer": true,
+      "ghost_notes_protected": true,
+      "translated_negative_source_view": true,
+      "shared_ruler_retained": true,
+      "physical_devices_opened": false
+    }
+  },
+  "productionCheck": {
+    "path": "target/app-backlog/multi-clip-fourth-production-check.log",
+    "sha256": "56913f1ba5339ae745074dc6a0be4bfb8be01c0ec6b7d68e30f32d6d086dc44d",
+    "passed": true
+  },
+  "node": {
+    "path": "target/app-backlog/multi-clip-fourth-node.log",
+    "sha256": "3bc9d6864629f69fef69361d06b2822890b943e273bca0045d66511146118dc7",
+    "passed": 17,
+    "failed": 0
+  },
+  "clockLoadRegression": {
+    "path": "target/app-backlog/multi-clip-fourth-full-output-timing.json",
+    "sha256": "e29ff7712ed10994b3add54835c38089da0d6d67858567b4cd12cc5bed8c59a4",
+    "physical_devices_opened": false,
+    "real_decode_egui_iterations": 4974,
+    "schema": 1,
+    "tempos": [
+      {
+        "bpm": 40,
+        "clocks": 24,
+        "delay_ns": [
+          68572,
+          105573,
+          137990,
+          44449,
+          144617,
+          125118,
+          108160,
+          95327,
+          129078,
+          151621,
+          16496,
+          30580,
+          19623,
+          111874,
+          3245767,
+          102876,
+          114585,
+          7252,
+          108003,
+          40254,
+          142088,
+          3672,
+          41590,
+          57591
+        ],
+        "max_delay_ns": 3245767
+      },
+      {
+        "bpm": 73,
+        "clocks": 24,
+        "delay_ns": [
+          114864,
+          57755,
+          92188,
+          283622,
+          118763,
+          355364,
+          159338,
+          63313,
+          18162,
+          114304,
+          117946,
+          126504,
+          188604,
+          71870,
+          64428,
+          149028,
+          117294,
+          74477,
+          41077,
+          27301,
+          77777,
+          382045,
+          335394,
+          34409
+        ],
+        "max_delay_ns": 382045
+      },
+      {
+        "bpm": 120,
+        "clocks": 24,
+        "delay_ns": [
+          89779,
+          126725,
+          63878,
+          147822,
+          164226,
+          82129,
+          34698,
+          114060,
+          140422,
+          329867,
+          98436,
+          140673,
+          99450,
+          124937,
+          76215,
+          49909,
+          124605,
+          179175,
+          63910,
+          104022,
+          914180,
+          27744,
+          8064,
+          70260
+        ],
+        "max_delay_ns": 914180
+      },
+      {
+        "bpm": 137,
+        "clocks": 24,
+        "delay_ns": [
+          109822,
+          115794,
+          131434,
+          58073,
+          89629,
+          139560,
+          27532,
+          24755,
+          37977,
+          45533,
+          28464,
+          151229,
+          113744,
+          36299,
+          15772,
+          100787,
+          15384,
+          93315,
+          43913,
+          99677,
+          82358,
+          228415,
+          56262,
+          12692
+        ],
+        "max_delay_ns": 228415
+      },
+      {
+        "bpm": 180,
+        "clocks": 24,
+        "delay_ns": [
+          134155,
+          64604,
+          132054,
+          78586,
+          147285,
+          54901,
+          123809,
+          124176,
+          14707,
+          117365,
+          133148,
+          51889,
+          151214,
+          23495,
+          108904,
+          93061,
+          111261,
+          56084,
+          159951,
+          33192,
+          8849,
+          42049,
+          82706,
+          65114
+        ],
+        "max_delay_ns": 159951
+      },
+      {
+        "bpm": 240,
+        "clocks": 24,
+        "delay_ns": [
+          155072,
+          36711,
+          83975,
+          87364,
+          111295,
+          18600,
+          151823,
+          5754,
+          153310,
+          119073,
+          19171,
+          7643,
+          23740,
+          83005,
+          148436,
+          61407,
+          60714,
+          157520,
+          86575,
+          104048,
+          11895,
+          65159,
+          7548,
+          63187
+        ],
+        "max_delay_ns": 157520
+      }
+    ]
+  },
+  "retainedArtifacts": [
+    {
+      "path": "target/app-backlog/multi-clip-first-inventory.log",
+      "sha256": "7584389dca5718fda3c7198838d17b16287768a1280aff890ea1bfddcc67260c"
+    },
+    {
+      "path": "target/app-backlog/multi-clip-first-production-check.log",
+      "sha256": "7cfe6973d639041038f0995b5cb28cbb19457ee98aaf287167f7fef6a1ac8d5f"
+    },
+    {
+      "path": "target/app-backlog/multi-clip-first-source.json",
+      "sha256": "6b0dcf233a30d9877a66392e81479bf79efdfcbbfe3be42ef0bc13d930887767"
+    },
+    {
+      "path": "target/app-backlog/multi-clip-fourth-atomic.log",
+      "sha256": "45dda2c5dcfe1ea29aeb55581421143ff75348fd1716969605f57ff80efe7486"
+    },
+    {
+      "path": "target/app-backlog/multi-clip-fourth-audio.log",
+      "sha256": "32a8564b49f282352469825015c94e15beee48b2a8b9068aaf9779af128f0010"
+    },
+    {
+      "path": "target/app-backlog/multi-clip-fourth-background-jobs.log",
+      "sha256": "0bf8c2e9283437a7c3b8b292c2aeafad6bcf06c5d68ee4ff63aa145321a70841"
+    },
+    {
+      "path": "target/app-backlog/multi-clip-fourth-build.log",
+      "sha256": "eebd8e62be513a3d1d8a0e0ff6470e706be9140263de284175d08d09841e5402"
+    },
+    {
+      "path": "target/app-backlog/multi-clip-fourth-compiled-tests.log",
+      "sha256": "7a7125bd5abd3d60724fc911d56d42f147712e5cbb06bcdde8879f86c44fbd3c"
+    },
+    {
+      "path": "target/app-backlog/multi-clip-fourth-compose.log",
+      "sha256": "0620594667bb38648b2c2a8dd8474fe164ca26d8309283dd8488da3b037b3dd3"
+    },
+    {
+      "path": "target/app-backlog/multi-clip-fourth-duration.log",
+      "sha256": "4ee0a2a6e68937b59c7882e53cf8d3b7e98fb06110ab09627a2e03b2056ff854"
+    },
+    {
+      "path": "target/app-backlog/multi-clip-fourth-edit.log",
+      "sha256": "398d2ad6b93f80801196573f0a9c369155d5581846da9d573448aca79d238aae"
+    },
+    {
+      "path": "target/app-backlog/multi-clip-fourth-file.log",
+      "sha256": "c3a31ea30c8a48688b5b7150351a7411566dbaa6a4180d51d230e3d6638afa81"
+    },
+    {
+      "path": "target/app-backlog/multi-clip-fourth-full-output-timing.json",
+      "sha256": "e29ff7712ed10994b3add54835c38089da0d6d67858567b4cd12cc5bed8c59a4"
+    },
+    {
+      "path": "target/app-backlog/multi-clip-fourth-full.log",
+      "sha256": "88bccda56d7f383f4567ef9b513a0601a315c369e07b35e2215ce031a654cc75"
+    },
+    {
+      "path": "target/app-backlog/multi-clip-fourth-graph.log",
+      "sha256": "5be379d3b0adc58f35d947bb21aadf9e9dabd253f6d5af0fc83d742d2f318712"
+    },
+    {
+      "path": "target/app-backlog/multi-clip-fourth-ignored-tests.log",
+      "sha256": "6e055db2142728f40598f1a19208efb3eef3f17c71d0af43251948a3d7b7fb1d"
+    },
+    {
+      "path": "target/app-backlog/multi-clip-fourth-interchange.log",
+      "sha256": "7979abede2f04ae53120a58bdd676040f04661e834d3c077a657649575639a83"
+    },
+    {
+      "path": "target/app-backlog/multi-clip-fourth-inventory.log",
+      "sha256": "7584389dca5718fda3c7198838d17b16287768a1280aff890ea1bfddcc67260c"
+    },
+    {
+      "path": "target/app-backlog/multi-clip-fourth-library-scan.log",
+      "sha256": "21d73d7295494ce110bd8219f09a9ef0c8a4a944a5d1ff7a25f6bf4c29185549"
+    },
+    {
+      "path": "target/app-backlog/multi-clip-fourth-library-view.log",
+      "sha256": "00673fb05ab0cb15b9fc98203b0d3250c283855a6d679cdb39b29c63d47c36bc"
+    },
+    {
+      "path": "target/app-backlog/multi-clip-fourth-licenses.log",
+      "sha256": "e131dce85b008227fcc259816a8d9ed9b125bf0797f96d46666bcaa193b6ea4f"
+    },
+    {
+      "path": "target/app-backlog/multi-clip-fourth-media-analysis.log",
+      "sha256": "94a85e5267eda79400e7ad439f92527b6527f942e36d0621304c819d043fe0cd"
+    },
+    {
+      "path": "target/app-backlog/multi-clip-fourth-metronome.log",
+      "sha256": "94e9fdf26d458d225cbafeb24fb24c780a9b6b0ee8d348fdd30e2a2fdbd21219"
+    },
+    {
+      "path": "target/app-backlog/multi-clip-fourth-monitor-qualification.log",
+      "sha256": "86fec7961ddd1cb5542a84d92e2488f9424979c8dfa8a8fac82ead578335ba88"
+    },
+    {
+      "path": "target/app-backlog/multi-clip-fourth-native.log",
+      "sha256": "291f07936af63a22e55da05df172707d5f39b6a34f7e9979dbc2323c2fe726fa"
+    },
+    {
+      "path": "target/app-backlog/multi-clip-fourth-node.log",
+      "sha256": "3bc9d6864629f69fef69361d06b2822890b943e273bca0045d66511146118dc7"
+    },
+    {
+      "path": "target/app-backlog/multi-clip-fourth-piano.log",
+      "sha256": "748230d03ffbc42cff4a7284bd7f1296b7a3a68012686cf63ca50f41a33e1aa1"
+    },
+    {
+      "path": "target/app-backlog/multi-clip-fourth-play-history.log",
+      "sha256": "2ad02c722bf6871907363fd0b1631ccb8b1ed13ba9d0dcac1aaafd21d6dab07e"
+    },
+    {
+      "path": "target/app-backlog/multi-clip-fourth-plugin-midi-storage-focused.log",
+      "sha256": "ffa22620695b91c358c459c7fe70144b66ba099a56e0b1e3ed74a9d101c5b31e"
+    },
+    {
+      "path": "target/app-backlog/multi-clip-fourth-plugin-midi-storage.log",
+      "sha256": "ffa22620695b91c358c459c7fe70144b66ba099a56e0b1e3ed74a9d101c5b31e"
+    },
+    {
+      "path": "target/app-backlog/multi-clip-fourth-production-check.log",
+      "sha256": "56913f1ba5339ae745074dc6a0be4bfb8be01c0ec6b7d68e30f32d6d086dc44d"
+    },
+    {
+      "path": "target/app-backlog/multi-clip-fourth-project-timing.log",
+      "sha256": "4a0d085919f4e7fbe3068f2903696b6f8e04c04e79c4184ce9bed9006469092e"
+    },
+    {
+      "path": "target/app-backlog/multi-clip-fourth-recording.log",
+      "sha256": "627410f2d6fc71163b4ec9c7ad625db66d6651cefc94b433c4c2132ced039c3c"
+    },
+    {
+      "path": "target/app-backlog/multi-clip-fourth-sampler-editor.log",
+      "sha256": "16ee394186d7e509f589e409162b3c81157e3e541f3ffd62a61c48b9c0a908bf"
+    },
+    {
+      "path": "target/app-backlog/multi-clip-fourth-sampler-store.log",
+      "sha256": "29fedd1c915e80350136e5f5ed4894e4f1e6612008457459a17f45a7a7f2f8d1"
+    },
+    {
+      "path": "target/app-backlog/multi-clip-fourth-session.log",
+      "sha256": "60c95efd2764d3795e5465869e675d283f3a2d91636ff9bdcd7531da4a2d7d44"
+    },
+    {
+      "path": "target/app-backlog/multi-clip-fourth-song-navigation.log",
+      "sha256": "fdb129185453d68ca445178de5d7179682d9cc36e9ef31257c589a60f4a654d2"
+    },
+    {
+      "path": "target/app-backlog/multi-clip-fourth-source.json",
+      "sha256": "461ac39b92fd014855631faa49c733f7ade4dc9f1d3950b8759a56bb0f27c4d8"
+    },
+    {
+      "path": "target/app-backlog/multi-clip-fourth-timing.log",
+      "sha256": "b5c08bd908444cfa19c8f70a5486e919b09bb28cc3f1d93f167c774f109da050"
+    },
+    {
+      "path": "target/app-backlog/multi-clip-fourth-touch.log",
+      "sha256": "1e828cf52203d235457ac5acaaacf20d7f5a24d0732fc5f3619a03431c293131"
+    },
+    {
+      "path": "target/app-backlog/multi-clip-fourth-transformation-core.log",
+      "sha256": "722d06a16d5d420261b267aa86e92f369d540feb38f86bc5d270f48b6b3e30a5"
+    },
+    {
+      "path": "target/app-backlog/multi-clip-fourth-undo.log",
+      "sha256": "e67cb2d78c2ede7f88a9b61ba02377d21e9aa0a3c049613e1cdf6f9eef75bc67"
+    },
+    {
+      "path": "target/app-backlog/multi-clip-fourth-waveform.log",
+      "sha256": "e273def060ddfa3c7cd06d7438b332ac47814755055f88a9f0e52e9f229f54a5"
+    },
+    {
+      "path": "target/app-backlog/multi-clip-fourth-workspace.log",
+      "sha256": "c0317bf2cba51997fce56312fb4396887214c6cb9c2e9de6f543e458bb589a90"
+    },
+    {
+      "path": "target/app-backlog/multi-clip-fourth-write-receipt.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "target/app-backlog/multi-clip-implementation-source.json",
+      "sha256": "bea2733585461dc7829f26eb01e80b36e5d298e648812df9044480c006907a1c"
+    },
+    {
+      "path": "target/app-backlog/multi-clip-second-build.log",
+      "sha256": "8861a9a8d610bae98247d2ffd100116f87c7d815f2822f364915d1ef0f7a6a1d"
+    },
+    {
+      "path": "target/app-backlog/multi-clip-second-inventory.log",
+      "sha256": "7584389dca5718fda3c7198838d17b16287768a1280aff890ea1bfddcc67260c"
+    },
+    {
+      "path": "target/app-backlog/multi-clip-second-production-check.log",
+      "sha256": "d31acb917608373fa02117b371b277cfbf34e5fb28db8ca65124ce284cf4a05e"
+    },
+    {
+      "path": "target/app-backlog/multi-clip-second-source.json",
+      "sha256": "36459d55605400801da36bb1d33b8d3af396c2e86437605e7d8a42db7cf60abd"
+    },
+    {
+      "path": "target/app-backlog/multi-clip-third-atomic.log",
+      "sha256": "9dadfbdecd30174bdcfae06dd8b7a682e3a67a4908d565d2df07295fbf80e91a"
+    },
+    {
+      "path": "target/app-backlog/multi-clip-third-build.log",
+      "sha256": "38939207e5795d87abb5e17272de71de84af2576dbe9a22af32950c96a546d4e"
+    },
+    {
+      "path": "target/app-backlog/multi-clip-third-compiled-tests.log",
+      "sha256": "7a7125bd5abd3d60724fc911d56d42f147712e5cbb06bcdde8879f86c44fbd3c"
+    },
+    {
+      "path": "target/app-backlog/multi-clip-third-edit.log",
+      "sha256": "d91f55a137df0ca80da0484d80b6b387339603ea8e121dde30a27fe8ce844342"
+    },
+    {
+      "path": "target/app-backlog/multi-clip-third-file.log",
+      "sha256": "c3a31ea30c8a48688b5b7150351a7411566dbaa6a4180d51d230e3d6638afa81"
+    },
+    {
+      "path": "target/app-backlog/multi-clip-third-graph.log",
+      "sha256": "5bf00569147e127dbc901ac88b97ef3c5223e40d29c913b89050b578bd14a8a7"
+    },
+    {
+      "path": "target/app-backlog/multi-clip-third-ignored-tests.log",
+      "sha256": "6e055db2142728f40598f1a19208efb3eef3f17c71d0af43251948a3d7b7fb1d"
+    },
+    {
+      "path": "target/app-backlog/multi-clip-third-interchange.log",
+      "sha256": "5be2144cdc8ecfb50e21441825ae9f925cc7fcd7331036cc5c80db7ef239dd21"
+    },
+    {
+      "path": "target/app-backlog/multi-clip-third-inventory.log",
+      "sha256": "7584389dca5718fda3c7198838d17b16287768a1280aff890ea1bfddcc67260c"
+    },
+    {
+      "path": "target/app-backlog/multi-clip-third-native.log",
+      "sha256": "0515c21e6abf2fa9fa6fcb74ba9ca6b852926f3cc3b2f6b45b614ccf52200b88"
+    },
+    {
+      "path": "target/app-backlog/multi-clip-third-piano.log",
+      "sha256": "d29988139404265cea4bf4b1035e3eac2fbd7118ae1a4543acae33bb0593e223"
+    },
+    {
+      "path": "target/app-backlog/multi-clip-third-plugin-midi-storage-focused.log",
+      "sha256": "ffa22620695b91c358c459c7fe70144b66ba099a56e0b1e3ed74a9d101c5b31e"
+    },
+    {
+      "path": "target/app-backlog/multi-clip-third-production-check.log",
+      "sha256": "1f5fe4bec9d126d48ad75853e9590eecb4d364aab130a17a2e0552fb98f33680"
+    },
+    {
+      "path": "target/app-backlog/multi-clip-third-session.log",
+      "sha256": "804efb4184e6e63f442e429aa6a0b22931960908e5dce11599a3943b1eea7257"
+    },
+    {
+      "path": "target/app-backlog/multi-clip-third-source.json",
+      "sha256": "be6043d38ac836d9dbc8863c9ec5b6a8a5d50489230307df1e9bdca4c668c241"
+    },
+    {
+      "path": "target/app-backlog/multi-clip-third-timing.log",
+      "sha256": "4453548f83518e1c612959ded45b1476182b0b7eddbb6ec6af1f75c6afaac20b"
+    },
+    {
+      "path": "target/app-backlog/multi-clip-third-touch.log",
+      "sha256": "a3e3cb5dcbc9d8aee023c43911a76d0354a949ba738f2101e29b8535becaded6"
+    },
+    {
+      "path": "target/app-backlog/multi-clip-third-transformation-core.log",
+      "sha256": "511310e967678dbad3c811747815e0b79a0ebad835edd2636e249883014b3fef"
+    },
+    {
+      "path": "target/app-backlog/multi-clip-third-undo.log",
+      "sha256": "70997cddee3f047b64ab0fba4cae61449d57e36acef3cacc3dcde01abd6132ba"
+    },
+    {
+      "path": "target/app-backlog/multi-clip-third-workspace.log",
+      "sha256": "c889bbc01b141e0c7557172f135bd0d88d94097f777f46339e7fe90c894e17c3"
+    }
+  ],
+  "limits": "Linux ARM64 native software qualification. Compare at most 64 captured empty/MIDI clips and at most 65536 notes, with the existing 8192-note and lane limits per clip. Ghost notes are read-only until their owner is focused; shared tools additionally require group enablement and explicit permission per companion. Criteria combine pitch, shared time and velocity, optional overlap and inversion. Each owner retains its source region, loop, shared display offset, track tuning, stable identities and controller/expression content. Worker preparation validates every owner before one guarded atomic Apply and one Undo step; any stale/cancelled target refuses the whole edit. Comparison membership, offsets and permission are current editor state, while applied notes and native musical regions persist. This does not claim saved scale context or per-note expression editing. No physical ports, capture, OS GUI or listening check was opened."
+}

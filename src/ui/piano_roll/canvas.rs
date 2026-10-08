@@ -1,4 +1,6 @@
 use super::*;
+mod comparison;
+pub(super) use comparison::Layer;
 
 pub(super) enum Drag {
     Notes {
@@ -13,8 +15,15 @@ pub(super) enum Drag {
     },
 }
 pub(super) fn pitches(draft: &Draft) -> Vec<u8> {
+    pitches_compared(draft, &[])
+}
+fn pitches_compared(draft: &Draft, layers: &[Layer<'_>]) -> Vec<u8> {
     let mut used = [false; 128];
-    for note in &draft.notes {
+    for note in draft
+        .notes
+        .iter()
+        .chain(layers.iter().flat_map(|layer| layer.notes.iter()))
+    {
         if let Some(slot) = used.get_mut(note.pitch as usize) {
             *slot = true;
         }
@@ -41,27 +50,53 @@ fn pitch_at(pos: Pos2, body: Rect, rows: &[u8], height: f32) -> u8 {
     let row = ((pos.y - body.top()).max(0.0) / height).floor() as usize;
     rows[row.min(rows.len().saturating_sub(1))]
 }
-fn note_rect(note: &MidiNote, body: Rect, rows: &[u8], draft: &Draft, row_pixels: f32) -> Option<Rect> {
+fn note_rect(
+    note: &MidiNote,
+    body: Rect,
+    rows: &[u8],
+    draft: &Draft,
+    row_pixels: f32,
+) -> Option<Rect> {
     let row = rows.iter().position(|p| *p == note.pitch)?;
     let left = body.left() + (note.start as f64 - draft.view_beat) as f32 * draft.beat_pixels;
     let top = body.top() + row as f32 * row_pixels;
     Some(Rect::from_min_size(
         Pos2::new(left, top + 1.0),
-        Vec2::new(
-            (note.len * draft.beat_pixels).max(5.0),
-            row_pixels - 2.0,
-        ),
+        Vec2::new((note.len * draft.beat_pixels).max(5.0), row_pixels - 2.0),
     ))
 }
-pub(super) fn show(ui: &mut Ui, theme: &Theme, draft: &mut Draft, timing: Option<&crate::engine::midi_data::Conductor>) -> Result<(), String> {
+pub(super) fn show(
+    ui: &mut Ui,
+    theme: &Theme,
+    draft: &mut Draft,
+    timing: Option<&crate::engine::midi_data::Conductor>,
+) -> Result<(), String> {
+    show_compared(ui, theme, draft, timing, draft.region.start, &[])
+}
+/// Show focused notes beside protected captured clip layers.
+/// Takes the native canvas, focused draft, timing and explicit offsets; edits only the focused source while painting a shared ruler.
+pub(super) fn show_compared(
+    ui: &mut Ui,
+    theme: &Theme,
+    draft: &mut Draft,
+    timing: Option<&crate::engine::midi_data::Conductor>,
+    focus_offset: f64,
+    layers: &[Layer<'_>],
+) -> Result<(), String> {
     let row_pixels = draft.row_pixels.max(theme.text_size(10.0) * 1.25 + 4.0);
     let marker_size = theme.target_size(12.0);
     let ruler_height = theme.text_size(10.0) + marker_size * 2.0 + 12.0;
     let (rect, response) = ui.allocate_exact_size(
-        Vec2::new(ui.available_width().max(140.0), (290.0_f32).max(ruler_height + row_pixels * 4.0)),
+        Vec2::new(
+            ui.available_width().max(140.0),
+            (290.0_f32).max(ruler_height + row_pixels * 4.0),
+        ),
         Sense::click_and_drag(),
     );
-    let body = Rect::from_min_max(rect.min + Vec2::new((94.0_f32).max(theme.text_size(10.0) * 8.0), ruler_height), rect.max);
+    let body = Rect::from_min_max(
+        rect.min + Vec2::new((94.0_f32).max(theme.text_size(10.0) * 8.0), ruler_height),
+        rect.max,
+    );
     if body.width() < 20.0 {
         return Ok(());
     }
@@ -80,7 +115,13 @@ pub(super) fn show(ui: &mut Ui, theme: &Theme, draft: &mut Draft, timing: Option
     );
     let painter = ui.painter_at(rect);
     painter.rect_filled(rect, 2.0, theme.bg);
-    let rows = pitches(draft);
+    let rows = pitches_compared(draft, layers);
+    let shared = !layers.is_empty();
+    let ruler_origin = if shared {
+        draft.region.start - focus_offset
+    } else {
+        0.0
+    };
     let pointer = ui.input(|i| i.pointer.interact_pos());
     let shift = ui.input(|i| i.modifiers.shift);
     let mut note_hit = false;
@@ -116,43 +157,78 @@ pub(super) fn show(ui: &mut Ui, theme: &Theme, draft: &mut Draft, timing: Option
     };
     // Ruler work is bounded by visible pixels, independent of a 65536-bar clip.
     let grid_step = step * (4.0 / (step as f32 * draft.beat_pixels)).ceil().max(1.0) as f64;
-    let first = (draft.view_beat / grid_step).ceil() * grid_step;
+    let first = ((draft.view_beat - ruler_origin) / grid_step).ceil() * grid_step + ruler_origin;
     let visible_end = draft.view_beat + body.width() as f64 / draft.beat_pixels as f64;
-    let cursor = body.left() + (draft.cursor.start as f64 - draft.view_beat) as f32 * draft.beat_pixels;
+    let cursor =
+        body.left() + (draft.cursor.start as f64 - draft.view_beat) as f32 * draft.beat_pixels;
     if (body.left()..=body.right()).contains(&cursor) {
-        painter.line_segment([Pos2::new(cursor, body.top()), Pos2::new(cursor, body.bottom())], Stroke::new(2.0_f32, theme.yellow));
-        painter.text(Pos2::new(cursor + 3.0, body.top()), egui::Align2::LEFT_TOP, "Step", FontId::monospace(theme.text_size(10.0)), theme.yellow);
+        painter.line_segment(
+            [
+                Pos2::new(cursor, body.top()),
+                Pos2::new(cursor, body.bottom()),
+            ],
+            Stroke::new(2.0_f32, theme.yellow),
+        );
+        painter.text(
+            Pos2::new(cursor + 3.0, body.top()),
+            egui::Align2::LEFT_TOP,
+            "Step",
+            FontId::monospace(theme.text_size(10.0)),
+            theme.yellow,
+        );
     }
     let count = ((visible_end - first) / grid_step).ceil().max(0.0) as usize;
     for index in 0..=count.min(1024) {
         let beat = first + index as f64 * grid_step;
         let x = body.left() + (beat - draft.view_beat) as f32 * draft.beat_pixels;
-        let (bar_number, within) = timing.map_or(((beat / 4.0).floor() as u32 + 1, beat.rem_euclid(4.0) as f32), |map| { let (bar, within, _) = map.position(beat); (bar, within) });
+        let ruler_beat = beat - ruler_origin;
+        let (bar_number, within) = timing.map_or(
+            (
+                (ruler_beat / 4.0).floor() as u32 + 1,
+                ruler_beat.rem_euclid(4.0) as f32,
+            ),
+            |map| {
+                let (bar, within, _) = map.position(ruler_beat);
+                (bar, within)
+            },
+        );
         let bar = within.abs() < 1e-6;
         painter.line_segment(
             [Pos2::new(x, body.top()), Pos2::new(x, body.bottom())],
             Stroke::new(if bar { 1.0_f32 } else { 0.5_f32 }, theme.fg_dim),
         );
-        if bar || grid_step * draft.beat_pixels as f64 >= (45.0_f64).max(f64::from(theme.text_size(10.0) * 7.0)) {
+        if bar
+            || grid_step * draft.beat_pixels as f64
+                >= (45.0_f64).max(f64::from(theme.text_size(10.0) * 7.0))
+        {
             painter.text(
                 Pos2::new(x + 2.0, rect.top() + 7.0),
                 egui::Align2::LEFT_TOP,
-                format!(
-                    "{}:{:.2}",
-                    bar_number,
-                    within + 1.0
-                ),
+                if shared {
+                    format!("Shared {ruler_beat:.3}")
+                } else {
+                    format!("{}:{:.2}", bar_number, within + 1.0)
+                },
                 FontId::monospace(theme.text_size(10.0)),
                 theme.fg,
             );
         }
     }
     // Distinct marker lanes keep clip and loop bounds independently draggable.
-    if let Some(map) = timing {
+    if let Some(map) = timing.filter(|_| !shared) {
         for (beat, bar) in map.bar_boundaries(draft.view_beat, visible_end, 1024) {
             let x = body.left() + (beat - draft.view_beat) as f32 * draft.beat_pixels;
-            painter.line_segment([Pos2::new(x, body.top()), Pos2::new(x, body.bottom())], Stroke::new(1.0_f32, theme.fg_dim));
-            painter.text(Pos2::new(x + 2.0, rect.top() + 7.0), egui::Align2::LEFT_TOP, format!("{bar}:1"), FontId::monospace(theme.text_size(10.0)), theme.fg);
+            painter.line_segment(
+                [Pos2::new(x, body.top()), Pos2::new(x, body.bottom())],
+                Stroke::new(1.0_f32, theme.fg_dim),
+            );
+            painter.text(
+                Pos2::new(x + 2.0, rect.top() + 7.0),
+                egui::Align2::LEFT_TOP,
+                format!("{bar}:1"),
+                FontId::monospace(theme.text_size(10.0)),
+                theme.fg,
+            );
         }
     }
     for (index, label, value) in [
@@ -165,7 +241,10 @@ pub(super) fn show(ui: &mut Ui, theme: &Theme, draft: &mut Draft, timing: Option
         if x < body.left() || x > body.right() {
             continue;
         }
-        let y = rect.top() + theme.text_size(10.0) + 8.0 + marker_size * if index < 2 { 0.5 } else { 1.5 };
+        let y = rect.top()
+            + theme.text_size(10.0)
+            + 8.0
+            + marker_size * if index < 2 { 0.5 } else { 1.5 };
         let marker_rect = Rect::from_center_size(Pos2::new(x, y), Vec2::splat(marker_size));
         let marker = ui.interact(
             marker_rect,
@@ -210,12 +289,28 @@ pub(super) fn show(ui: &mut Ui, theme: &Theme, draft: &mut Draft, timing: Option
             2.0,
             if index < 2 { theme.yellow } else { theme.cyan },
         );
-        marker.on_hover_text(crate::localization::format("{label}: {value:.6} beats", &[format!("{}", label), format!("{:.6}", value)]));
+        marker.on_hover_text(crate::localization::format(
+            "{label}: {value:.6} beats",
+            &[format!("{}", label), format!("{:.6}", value)],
+        ));
     }
+    let (ghost_hit, ghost_origin_hit) = comparison::overlay(
+        ui,
+        &painter,
+        body,
+        &rows,
+        draft,
+        focus_offset,
+        layers,
+        pointer,
+        row_pixels,
+    );
+    note_hit |= ghost_hit;
     for index in 0..draft.notes.len() {
         let note = &draft.notes[index];
         let id = note.id;
-        let Some(note_rect) = note_rect(note, body, &rows, draft, row_pixels).filter(|r| r.intersects(body))
+        let Some(note_rect) =
+            note_rect(note, body, &rows, draft, row_pixels).filter(|r| r.intersects(body))
         else {
             continue;
         };
@@ -244,8 +339,20 @@ pub(super) fn show(ui: &mut Ui, theme: &Theme, draft: &mut Draft, timing: Option
         painter
             .with_clip_rect(body)
             .rect_filled(note_rect, 2.0, color);
-        if selected { painter.with_clip_rect(body).rect_stroke(note_rect.shrink(1.0), 2.0, Stroke::new(2.0_f32, theme.bg), egui::StrokeKind::Inside); }
-        if note.muted { painter.with_clip_rect(body).line_segment([note_rect.left_bottom(),note_rect.right_top()],Stroke::new(1.5_f32,theme.bg)); }
+        if selected {
+            painter.with_clip_rect(body).rect_stroke(
+                note_rect.shrink(1.0),
+                2.0,
+                Stroke::new(2.0_f32, theme.bg),
+                egui::StrokeKind::Inside,
+            );
+        }
+        if note.muted {
+            painter.with_clip_rect(body).line_segment(
+                [note_rect.left_bottom(), note_rect.right_top()],
+                Stroke::new(1.5_f32, theme.bg),
+            );
+        }
         if note_rect.width() > 36.0 {
             painter.with_clip_rect(body).text(
                 note_rect.left_center() + Vec2::new(3.0, 0.0),
@@ -273,13 +380,23 @@ pub(super) fn show(ui: &mut Ui, theme: &Theme, draft: &mut Draft, timing: Option
                 });
             }
         }
-        note_response.on_hover_text(crate::localization::format("{label}. Drag body to move; drag right edge to resize. Shift-click extends selection.", &[format!("{}", label)]));
+        note_response.on_hover_text(crate::localization::format(
+            "{label}. Drag body to move; drag right edge to resize. Shift-click extends selection.",
+            &[format!("{}", label)],
+        ));
     }
     if !ui.is_enabled() {
         draft.drag = None;
         return Ok(());
     }
-    if response.clicked() && !note_hit && pointer.is_some_and(|p| body.contains(p)) {
+    if response.clicked()
+        && !note_hit
+        && pointer.is_some_and(|p| {
+            body.contains(p)
+                && draft.view_beat + (p.x - body.left()) as f64 / f64::from(draft.beat_pixels)
+                    >= 0.0
+        })
+    {
         let pos = pointer.unwrap();
         response.request_focus();
         draft.cursor.pitch = pitch_at(pos, body, &rows, row_pixels);
@@ -291,7 +408,7 @@ pub(super) fn show(ui: &mut Ui, theme: &Theme, draft: &mut Draft, timing: Option
             draft.selected.clear();
         }
     }
-    if response.drag_started() && !draft.draw {
+    if response.drag_started() && !draft.draw && !ghost_origin_hit {
         if let Some(origin) = ui
             .input(|i| i.pointer.press_origin())
             .filter(|p| body.contains(*p))

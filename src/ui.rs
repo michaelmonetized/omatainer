@@ -1547,7 +1547,7 @@ impl App {
             let performance=self.engine.cmd.performance().clone();
             let artwork_allowed=!self.engine.safe_mode();
             #[cfg(test)] { self.library_view.stats.rendered = 0; self.library_view.stats.formatted = 0; }
-            let mut scroll = egui::ScrollArea::both().id_salt("crate-rows").scroll_source(egui::scroll_area::ScrollSource { drag: ui.input(|input| input.any_touches()), ..Default::default() }).animated(!t.reduced_motion).auto_shrink([false, false]).horizontal_scroll_offset(self.library_view.horizontal_offset);
+            let mut scroll = egui::ScrollArea::both().id_salt("crate-rows").scroll_source(egui::scroll_area::ScrollSource { drag: ui.input(|input| input.any_touches()), ..Default::default() }).animated(!t.reduced_motion).min_scrolled_height(0.0).auto_shrink([false, false]).horizontal_scroll_offset(self.library_view.horizontal_offset);
             if let Some(offset) = self.library_view.pending_offset.take() {
                 scroll = scroll.vertical_scroll_offset(offset);
             }

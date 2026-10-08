@@ -6,7 +6,7 @@ Michael resumed physical checks on 2026-10-06. All MPD A/B/C controls were captu
 
 Each issue appears once, after its dependencies. The Code column checks off implemented code, including the existing stack, and does not claim complete acceptance. Accepted requires complete recorded acceptance. The eight provider integrations previously excluded by Michael stay outside this release. No open issue is automatically closed by this checklist.
 
-127 existing stack · 56 implemented · 9 partial · 156 planned · 0 accepted · 8 outside release
+127 existing stack · 59 implemented · 9 partial · 153 planned · 0 accepted · 8 outside release
 
 - [x] High-resolution stereo source peaks with measured rainbow frequency bands, native-rate validation, project reopen and pixel-scaled rendering. [Receipt](../validation/rainbow-waveforms.md)
 
@@ -173,9 +173,9 @@ Each issue appears once, after its dependencies. The Code column checks off impl
 | [ ] | [#160](https://github.com/michaelmonetized/omatainer/issues/160) | Integrate an authorized TIDAL DJ account and catalog | outside release | #120 |  |
 | [ ] | [#161](https://github.com/michaelmonetized/omatainer/issues/161) | Implement Link-compatible tempo, phase and start/stop synchronization | planned | #114 |  |
 | [ ] | [#162](https://github.com/michaelmonetized/omatainer/issues/162) | Recover recent MIDI performances with retrospective capture | planned | #110, #112 |  |
-| [ ] | [#163](https://github.com/michaelmonetized/omatainer/issues/163) | Recombine note properties and shape velocity using editable transformation tools | planned | #110 |  |
-| [ ] | [#164](https://github.com/michaelmonetized/omatainer/issues/164) | Add quantize, stretch, reverse and tempo-curve MIDI transformations | planned | #110, #83 |  |
-| [ ] | [#165](https://github.com/michaelmonetized/omatainer/issues/165) | Edit multiple MIDI clips together with explicit focus and ghost notes | planned | #110 |  |
+| [x] | [#163](https://github.com/michaelmonetized/omatainer/issues/163) | Recombine note properties and shape velocity using editable transformation tools | implemented | #110 | [receipt](../../docs/validation/midi-transformations.md), [receipt](../../docs/validation/midi-transformations-receipt.json) |
+| [x] | [#164](https://github.com/michaelmonetized/omatainer/issues/164) | Add quantize, stretch, reverse and tempo-curve MIDI transformations | implemented | #110, #83 | [receipt](../../docs/validation/midi-transformations.md), [receipt](../../docs/validation/midi-transformations-receipt.json) |
+| [x] | [#165](https://github.com/michaelmonetized/omatainer/issues/165) | Edit multiple MIDI clips together with explicit focus and ghost notes | implemented | #110 | [receipt](../../docs/validation/midi-clip-comparison.md), [receipt](../../docs/validation/midi-clip-comparison-receipt.json) |
 | [ ] | [#166](https://github.com/michaelmonetized/omatainer/issues/166) | Add per-note chance, velocity ranges and expressive note properties | planned | #110 |  |
 | [x] | [#167](https://github.com/michaelmonetized/omatainer/issues/167) | Generate editable rhythmic and Euclidean MIDI patterns | implemented | #110 | [receipt](../../docs/validation/midi-step-rhythm.md), [#510](https://github.com/michaelmonetized/omatainer/pull/510) |
 | [ ] | [#168](https://github.com/michaelmonetized/omatainer/issues/168) | Make keys and scales shared musical context for editing and devices | planned | #110 |  |
@@ -188,12 +188,12 @@ Each issue appears once, after its dependencies. The Code column checks off impl
 | [ ] | [#175](https://github.com/michaelmonetized/omatainer/issues/175) | Offer optional cross-device project transfer with explicit conflict handling | planned | #116, #124 |  |
 | [x] | [#176](https://github.com/michaelmonetized/omatainer/issues/176) | Provide isolated cue/master headphone mixing and split cue | implemented | #130 | [receipt](../../docs/validation/headphone-monitoring.md), [receipt](../../docs/validation/headphone-monitoring-receipt.json) |
 | [x] | [#177](https://github.com/michaelmonetized/omatainer/issues/177) | Monitor live inputs with explicit In, Auto and Off modes | implemented | #130 | [receipt](../../docs/validation/input-monitoring.md), [receipt](../../docs/validation/input-monitoring-receipt.json) |
-| [ ] | [#178](https://github.com/michaelmonetized/omatainer/issues/178) | Compensate device and routing latency across the complete graph | partial | #130 | [receipt](../../docs/validation/graph-latency.md), [receipt](../../docs/validation/graph-latency-receipt.json) |
+| [ ] | [#178](https://github.com/michaelmonetized/omatainer/issues/178) | Compensate device and routing latency across the complete graph | partial | #130 | [receipt](../../docs/validation/graph-latency.md), [receipt](../../docs/validation/graph-latency-receipt.json), [receipt](../../docs/validation/vst3-graph.md), [receipt](../../docs/validation/vst3-graph-receipt.json) |
 | [x] | [#179](https://github.com/michaelmonetized/omatainer/issues/179) | Export offline and real-time master audio with professional format controls | implemented | #82, #130 | [receipt](../../docs/validation/audio-delivery.md), [receipt](../../docs/validation/audio-delivery-receipt.json) |
 | [x] | [#180](https://github.com/michaelmonetized/omatainer/issues/180) | Add live microphone and auxiliary DJ input channels | implemented | #130 | [receipt](../../docs/validation/mic-aux.md), [receipt](../../docs/validation/mic-aux-receipt.json) |
 | [x] | [#181](https://github.com/michaelmonetized/omatainer/issues/181) | Record live DJ performances to reliable audio files | implemented | #130 | [receipt](../../docs/validation/audio-delivery.md), [receipt](../../docs/validation/audio-delivery-receipt.json) |
 | [x] | [#182](https://github.com/michaelmonetized/omatainer/issues/182) | Make audio a first-class Session and Arrangement clip type | implemented | #82, #130 | [receipt](../../docs/validation/audio-clips.md), [receipt](../../docs/validation/audio-clips-receipt.json), [receipt](../../docs/validation/arrangement.md), [receipt](../../docs/validation/arrangement-receipt.json) |
-| [ ] | [#183](https://github.com/michaelmonetized/omatainer/issues/183) | Host native VST3 instruments and audio effects | partial | #130 | [receipt](../../docs/validation/vst3-core.md), [receipt](../../docs/validation/vst3-core-receipt.json) |
+| [ ] | [#183](https://github.com/michaelmonetized/omatainer/issues/183) | Host native VST3 instruments and audio effects | partial | #130 | [receipt](../../docs/validation/vst3-core.md), [receipt](../../docs/validation/vst3-core-receipt.json), [receipt](../../docs/validation/vst3-graph.md), [receipt](../../docs/validation/vst3-graph-receipt.json) |
 | [ ] | [#184](https://github.com/michaelmonetized/omatainer/issues/184) | Stream long recordings and deck media with bounded caches | planned | #132 |  |
 | [x] | [#185](https://github.com/michaelmonetized/omatainer/issues/185) | Add beat-jump transport and controller pad controls | implemented | #134 | [receipt](../../docs/validation/beat-jump.md) |
 | [x] | [#186](https://github.com/michaelmonetized/omatainer/issues/186) | Implement hold-to-audition and stutter behavior for temporary cues | implemented | #148 | [receipt](../../docs/validation/cue-audition.md) |
@@ -226,7 +226,7 @@ Each issue appears once, after its dependencies. The Code column checks off impl
 | [ ] | [#213](https://github.com/michaelmonetized/omatainer/issues/213) | Add deck-isolated output mode for external mixers | planned | #130, #189 |  |
 | [ ] | [#214](https://github.com/michaelmonetized/omatainer/issues/214) | Implement transient detection and editable audio warp markers | planned | #182, #114 |  |
 | [ ] | [#215](https://github.com/michaelmonetized/omatainer/issues/215) | Manage plugin presets, A/B states and reusable device chains | planned | #183, #82 |  |
-| [ ] | [#216](https://github.com/michaelmonetized/omatainer/issues/216) | Scan, catalog and quarantine plugins outside the application process | partial | #183 | [receipt](../../docs/validation/vst3-core.md), [receipt](../../docs/validation/vst3-core-receipt.json) |
+| [ ] | [#216](https://github.com/michaelmonetized/omatainer/issues/216) | Scan, catalog and quarantine plugins outside the application process | partial | #183 | [receipt](../../docs/validation/vst3-core.md), [receipt](../../docs/validation/vst3-core-receipt.json), [receipt](../../docs/validation/vst3-graph.md), [receipt](../../docs/validation/vst3-graph-receipt.json) |
 | [ ] | [#217](https://github.com/michaelmonetized/omatainer/issues/217) | Add configurable crossfader assignments, curves and scratch cut-in | planned | #189 |  |
 | [ ] | [#218](https://github.com/michaelmonetized/omatainer/issues/218) | Add selectable DJ waveform and library layouts | planned | #189 |  |
 | [x] | [#219](https://github.com/michaelmonetized/omatainer/issues/219) | Add safe pitch-fader pickup and temporary pitch bend | implemented | #193 | [receipt](../../docs/validation/pitch-pickup.md), [receipt](../../docs/validation/pitch-pickup-receipt.json) |

@@ -137,14 +137,16 @@ impl Gui {
             }
             assert!(
                 Instant::now() < deadline,
-                "timeout: {} {:?}; store={:?}",
+                "timeout: {} {:?}; store={:?}; performance={:?}; background={:?}",
                 self.app.sampler_editor.message,
                 self.app.sampler_editor.error,
                 self.app.sampler_editor.store.as_ref().map(|s| (
                     &s.error,
                     s.busy,
                     s.saved.is_some()
-                ))
+                )),
+                self.app.engine.cmd.performance().status(),
+                self.app.engine.cmd.performance().jobs().snapshot()
             );
             std::thread::sleep(Duration::from_millis(2));
         }
@@ -208,10 +210,12 @@ impl Gui {
         self.click("Sampler: Edit sampler banks");
         self.wait(|g| g.app.sampler_editor.store.as_ref().is_some_and(|s| !s.busy));
     }
+    #[track_caller]
     fn create(&mut self) {
         self.click("Sampler editor: Create empty bank");
         self.ready();
     }
+    #[track_caller]
     fn ready(&mut self) {
         self.wait(|g| g.app.sampler_editor.loading.is_none());
         assert!(
@@ -255,6 +259,7 @@ impl Gui {
         self.wait(|g| !g.app.library_metadata.active());
         self.frame(vec![]);
     }
+    #[track_caller]
     fn assign(&mut self) {
         self.click("Sampler editor: Assign selected local source");
         self.ready();

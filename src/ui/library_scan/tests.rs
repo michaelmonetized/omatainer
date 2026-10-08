@@ -36,6 +36,7 @@ impl Drop for Directory {
     }
 }
 
+#[track_caller]
 fn wait_for(mut check: impl FnMut() -> bool) {
     let deadline = Instant::now() + Duration::from_secs(3);
     while !check() {
@@ -47,11 +48,16 @@ fn wait_for(mut check: impl FnMut() -> bool) {
     }
 }
 
+#[track_caller]
 fn finish(app: &mut App) {
-    wait_for(|| {
+    let deadline = Instant::now() + Duration::from_secs(3);
+    loop {
         app.poll_library_scan();
-        !app.library_scan.active() && !app.library_metadata.active()
-    });
+        if !app.library_scan.active() && !app.library_metadata.active() { return; }
+        assert!(Instant::now() < deadline, "scan publication did not finish: {}; metadata: {}",
+            app.library_scan.pending_description(), app.library_metadata.pending_description());
+        std::thread::sleep(Duration::from_millis(2));
+    }
 }
 
 fn start(app: &mut App, roots: Vec<PathBuf>) {
@@ -168,7 +174,7 @@ fn atomic_merge_preserves_filtered_selection_cached_metadata_and_inflight_histor
         fixture
             .decoder_jobs
             .recv_timeout(Duration::from_secs(3))
-            .unwrap()
+            .unwrap_or_else(|error| panic!("decoder did not enter: {error}; {}", fixture.app.library_scan.pending_description()))
             .1,
         selected
     );
@@ -399,7 +405,7 @@ fn dropping_scanner_never_joins_a_blocked_filesystem_hook_on_the_ui_thread() {
             })),
         },
     );
-    ready.recv_timeout(Duration::from_secs(2)).unwrap();
+    ready.recv_timeout(Duration::from_secs(2)).unwrap_or_else(|error| panic!("filesystem hook did not enter: {error}; {}", scanner.pending_description()));
     let began = Instant::now();
     drop(scanner);
     assert!(began.elapsed() < Duration::from_millis(100));

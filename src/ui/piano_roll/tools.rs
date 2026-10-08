@@ -57,6 +57,18 @@ impl Tools {
         self.preview = None;
         self.worker = None;
     }
+    /// Read the current shared transformation parameters.
+    /// Takes the tool panel state; returns validated repeatable seed parameters or a visible input error.
+    pub(super) fn parameters(&self) -> Result<Parameters, String> {
+        let mut params = self.params.clone();
+        if params.kind == Kind::Recombine {
+            params.seed = self
+                .seed
+                .parse::<u64>()
+                .map_err(|_| "Seed must be a whole number from 0 through 18446744073709551615")?;
+        }
+        Ok(params)
+    }
     fn preview(&mut self, draft: &Draft) -> Result<(), String> {
         if self.busy() {
             return Err("Wait for the current MIDI preview to finish".into());

@@ -1,4 +1,6 @@
 use super::{InputKey, session::MAX_TRACKS};
+#[cfg(test)]
+mod tests;
 
 const EVENTS: usize = 512;
 #[derive(Clone, Copy)]
@@ -6,14 +8,14 @@ struct Held { key: InputKey, track: usize, channel: u8, note: u8 }
 
 pub(crate) struct Routing {
     pub mask: u128,
-    frames: [[[u8; 3]; EVENTS]; MAX_TRACKS],
+    frames: Box<[[[u8; 3]; EVENTS]]>,
     lengths: [usize; MAX_TRACKS],
     held: [Option<Held>; 256],
     refused: [bool; MAX_TRACKS],
     clips: Vec<[[u32;128];16]>,
 }
 impl Default for Routing {
-    fn default() -> Self { Self { mask: 0, frames: [[[0;3];EVENTS];MAX_TRACKS], lengths:[0;MAX_TRACKS],held:[None;256],refused:[false;MAX_TRACKS], clips: (0..MAX_TRACKS).map(|_| [[0;128];16]).collect() } }
+    fn default() -> Self { Self { mask: 0, frames: vec![[[0;3];EVENTS];MAX_TRACKS].into_boxed_slice(), lengths:[0;MAX_TRACKS],held:[None;256],refused:[false;MAX_TRACKS], clips: (0..MAX_TRACKS).map(|_| [[0;128];16]).collect() } }
 }
 impl Routing {
     /// Retain one channel message for every processor using this track.

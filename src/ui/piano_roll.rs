@@ -11,9 +11,10 @@ use std::sync::{
     mpsc,
 };
 mod canvas;
-mod step;
-mod rhythm;
+mod comparison;
 mod control;
+mod rhythm;
+mod step;
 mod tools;
 
 pub(super) struct Editor {
@@ -29,9 +30,10 @@ pub(super) struct Editor {
     stop_requested: bool,
     next_audition: u64,
     keyboard: step::Keyboard,
+    comparison: comparison::Comparison,
 }
 struct Loading {
-    receiver: mpsc::Receiver<Result<Arc<Document>, String>>,
+    receiver: mpsc::Receiver<Result<(Arc<Document>, f32), String>>,
     cancel: Arc<AtomicBool>,
 }
 impl Drop for Loading {
@@ -49,7 +51,9 @@ struct Preparing {
     cancel: Arc<AtomicBool>,
 }
 impl Drop for Preparing {
-    fn drop(&mut self) { self.cancel.store(true, Ordering::Release); }
+    fn drop(&mut self) {
+        self.cancel.store(true, Ordering::Release);
+    }
 }
 struct Draft {
     baseline: Arc<Document>,
@@ -109,6 +113,7 @@ impl Default for Editor {
             stop_requested: false,
             next_audition: 1,
             keyboard: step::Keyboard::default(),
+            comparison: comparison::Comparison::default(),
         }
     }
 }
@@ -193,7 +198,9 @@ impl Draft {
         }
         let value = self.cursor;
         self.notes.push(MidiNote {
-            channel:0,release_vel:64,source_timing:None,
+            channel: 0,
+            release_vel: 64,
+            source_timing: None,
             id,
             pitch: value.pitch,
             start: value.start,
@@ -322,7 +329,11 @@ fn pitch_name(pitch: u8) -> String {
 }
 impl Editor {
     fn busy(&self) -> bool {
-        self.loading.is_some() || self.preparing.is_some() || self.pending.is_some() || self.draft.as_ref().is_some_and(|draft|draft.tools.busy())
+        self.comparison.busy()
+            || self.loading.is_some()
+            || self.preparing.is_some()
+            || self.pending.is_some()
+            || self.draft.as_ref().is_some_and(|draft| draft.tools.busy())
     }
     fn stop(&mut self, engine: &Engine) {
         if let Some(id) = self.audition {
@@ -360,18 +371,22 @@ impl Editor {
         }
     }
     pub(super) fn blocks_close(&self) -> bool {
-        self.busy() || self.stop_requested || self.draft.as_ref().is_some_and(|d| d.dirty)
+        self.busy()
+            || self.stop_requested
+            || self.comparison.dirty()
+            || self.draft.as_ref().is_some_and(|d| d.dirty)
     }
     fn discard(&mut self, engine: &Engine) {
         self.stop(engine);
         self.loading = None;
         self.preparing = None;
         self.draft = None;
+        self.comparison.discard();
         self.confirm_discard = false;
         if let Some(pending) = &self.pending {
             pending.ack.cancel();
         }
-        self.open = self.pending.is_some();
+        self.open = self.pending.is_some() || self.comparison.busy();
         self.message =
             "Unapplied draft discarded. Completed renderer edits remain in History.".into();
     }
@@ -393,7 +408,16 @@ impl Editor {
                 let result = project
                     .capture(&worker_cancel)
                     .map_err(|e| e.to_string())
-                    .and_then(|captured| Document::capture(captured, track, scene));
+                    .and_then(|captured| {
+                        let tuning = captured
+                            .state
+                            .tracks
+                            .get(track as usize)
+                            .ok_or("Unknown focused track")?
+                            .synth
+                            .tuning_hz;
+                        Document::capture(captured, track, scene).map(|document| (document, tuning))
+                    });
                 let _ = sender.send(result);
             }) {
             Ok(_) => {
@@ -406,13 +430,27 @@ impl Editor {
         }
     }
     fn poll(&mut self, engine: &Engine) {
-        if let Some(draft)=&mut self.draft {let mut tools=std::mem::take(&mut draft.tools);if let Err(error)=tools.poll(draft){self.error=Some(error);}draft.tools=tools;}
+        match self.comparison.poll(engine, self.draft.as_mut()) {
+            Ok(Some(message)) => self.message = message.into(),
+            Err(error) => self.error = Some(error),
+            _ => {}
+        }
+        if let Some(draft) = &mut self.draft {
+            let mut tools = std::mem::take(&mut draft.tools);
+            if let Err(error) = tools.poll(draft) {
+                self.error = Some(error);
+            }
+            draft.tools = tools;
+        }
         if self.stop_requested {
             self.stop(engine);
         }
         if let Some(loading) = &self.loading {
             match loading.receiver.try_recv() {
-                Ok(Ok(document)) => {
+                Ok(Ok((document, tuning))) => {
+                    self.comparison = comparison::Comparison::default();
+                    self.comparison.offset = document.playback_region().start;
+                    self.comparison.tuning_hz = tuning;
                     self.draft = Some(Draft::new(document));
                     self.loading = None;
                     self.message = "Editing a draft. Apply MIDI edit commits it; Cancel / close preserves the current clip.".into();
@@ -468,12 +506,27 @@ impl Editor {
                 Ok(Ok((request, ack, next))) => {
                     self.preparing = None;
                     match engine.send(Command::MidiEdit(request)) {
-                        Ok(_) => { self.pending = Some(Pending { ack, next }); self.message = "Apply queued; waiting for the renderer’s actual outcome.".into(); }
-                        Err(error) => self.error = Some(format!("MIDI edit was not accepted: {error}. Draft retained.")),
+                        Ok(_) => {
+                            self.pending = Some(Pending { ack, next });
+                            self.message =
+                                "Apply queued; waiting for the renderer’s actual outcome.".into();
+                        }
+                        Err(error) => {
+                            self.error = Some(format!(
+                                "MIDI edit was not accepted: {error}. Draft retained."
+                            ))
+                        }
                     }
                 }
-                Ok(Err(error)) => { self.preparing = None; self.error = Some(error); }
-                Err(mpsc::TryRecvError::Disconnected) => { self.preparing = None; self.error = Some("MIDI preparation worker disconnected; draft retained.".into()); }
+                Ok(Err(error)) => {
+                    self.preparing = None;
+                    self.error = Some(error);
+                }
+                Err(mpsc::TryRecvError::Disconnected) => {
+                    self.preparing = None;
+                    self.error =
+                        Some("MIDI preparation worker disconnected; draft retained.".into());
+                }
                 Err(mpsc::TryRecvError::Empty) => {}
             }
         }
@@ -483,10 +536,23 @@ impl Editor {
             return;
         }
         self.stop(engine);
-        if self.stop_requested { return; }
+        if self.stop_requested {
+            return;
+        }
         let Some(draft) = &self.draft else {
             return;
         };
+        if !self.comparison.clips.is_empty() {
+            match self.comparison.apply(engine, draft) {
+                Ok(()) => {
+                    self.error = None;
+                    self.message =
+                        "Preparing all changed captured MIDI clips for one Apply…".into();
+                }
+                Err(error) => self.error = Some(error),
+            }
+            return;
+        }
         if draft.controls.dirty {
             let baseline = draft.baseline.clone();
             let name = draft.name.clone();
@@ -497,17 +563,31 @@ impl Editor {
             let cancel = Arc::new(AtomicBool::new(false));
             let worker_cancel = cancel.clone();
             let (sender, receiver) = mpsc::sync_channel(1);
-            match std::thread::Builder::new().name("midi-controller-prepare".into()).spawn(move || {
-                let result = controls.prepared(&notes, region.end, &worker_cancel).and_then(|lanes| {
-                    if worker_cancel.load(Ordering::Acquire) { return Err("MIDI edit cancelled during preparation".into()); }
-                    let captured = project.capture(&worker_cancel).map_err(|e| e.to_string())?;
-                    let (request, ack, next) = Request::with_lanes(baseline, name, region, notes, lanes)?;
-                    Ok((request.guard_metadata(captured, &worker_cancel)?, ack, next))
-                });
-                let _ = sender.send(result);
-            }) {
-                Ok(_) => { self.preparing = Some(Preparing { receiver, cancel }); self.error = None; self.message = "Preparing controller lanes for Apply…".into(); }
-                Err(error) => self.error = Some(format!("MIDI preparation worker unavailable: {error}")),
+            match std::thread::Builder::new()
+                .name("midi-controller-prepare".into())
+                .spawn(move || {
+                    let result = controls
+                        .prepared(&notes, region.end, &worker_cancel)
+                        .and_then(|lanes| {
+                            if worker_cancel.load(Ordering::Acquire) {
+                                return Err("MIDI edit cancelled during preparation".into());
+                            }
+                            let captured =
+                                project.capture(&worker_cancel).map_err(|e| e.to_string())?;
+                            let (request, ack, next) =
+                                Request::with_lanes(baseline, name, region, notes, lanes)?;
+                            Ok((request.guard_metadata(captured, &worker_cancel)?, ack, next))
+                        });
+                    let _ = sender.send(result);
+                }) {
+                Ok(_) => {
+                    self.preparing = Some(Preparing { receiver, cancel });
+                    self.error = None;
+                    self.message = "Preparing controller lanes for Apply…".into();
+                }
+                Err(error) => {
+                    self.error = Some(format!("MIDI preparation worker unavailable: {error}"))
+                }
             }
             return;
         }
@@ -561,7 +641,7 @@ impl Editor {
 }
 impl App {
     pub(super) fn open_piano_roll(&mut self) {
-        if self.piano_roll.draft.as_ref().is_some_and(|d| d.dirty) || self.piano_roll.busy() {
+        if self.piano_roll.blocks_close() {
             self.piano_roll.open = true;
             self.piano_roll.message =
                 "Finish or discard this captured draft before choosing another clip.".into();
@@ -598,6 +678,7 @@ impl App {
         let mut refresh = false;
         let mut keyboard_focus = false;
         let mut step_action = None;
+        let mut comparison_action = None;
         let keyboard_was_enabled = editor.keyboard.enabled;
         let mut keyboard_enabled = editor.keyboard.enabled;
         let mut octave = editor.keyboard.octave;
@@ -620,7 +701,7 @@ impl App {
                         }
                         let scroll = egui::ScrollArea::vertical().id_salt("piano-roll-body")
                             .max_height((available.height() - 160.0).max(100.0)).show(ui, |ui| {
-                            ui.add_enabled_ui(!busy && !self.project.committing() && draft.tools.editing(), |ui| {
+                            ui.add_enabled_ui(!busy && !self.project.committing() && editor.comparison.editing(draft), |ui| {
                                 ui.horizontal_wrapped(|ui| {
                                     ui.label(tr!("Clip name")); let name = ui.add(egui::TextEdit::singleline(&mut draft.name).char_limit(4096));
                                     name.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::TextEdit, true, "MIDI clip name"));
@@ -648,7 +729,7 @@ impl App {
                                         .show_ui(ui, |ui| { for (i, name) in ["All pitches", "Used pitches", "Major scale", "Minor scale"].iter().enumerate() { ui.selectable_value(&mut draft.fold, i, *name); } });
                                     help::annotate(ui, &fold.response, HelpControl::MidiView);
                                     let mut root = draft.root as f64; if number(ui, "Scale root", &mut root, 0.0, 11.0) { draft.root = root.round() as u8; }
-                                    number(ui, "Time scroll", &mut draft.view_beat, 0.0, 262_144.0);
+                                    number(ui, "Time scroll", &mut draft.view_beat, if editor.comparison.clips.is_empty(){0.0}else{-524_288.0}, 524_288.0);
                                     let mut pitch = draft.view_high as f64; if number(ui, "Top pitch", &mut pitch, 0.0, 127.0) { draft.view_high = pitch.round() as u8; }
                                     let mut zoom = draft.beat_pixels as f64; if number(ui, "Time zoom", &mut zoom, 8.0, 200.0) { draft.beat_pixels = zoom as f32; }
                                     let mut height = draft.row_pixels as f64; if number(ui, "Pitch zoom", &mut height, 12.0, 32.0) { draft.row_pixels = height as f32; }
@@ -681,7 +762,8 @@ impl App {
                                 ui.label("Focus musical keyboard: A W S E D F T G Y H U J K play C through C. Z/X change octave; C/V change velocity. Space inserts held notes or a rest; Shift+Space ties; Backspace removes the last step. With Record steps enabled, releasing a chord inserts it and advances. Tab away releases all notes.");
                                 match rhythm::show(ui, draft) { Ok(true) => editor.error = None, Err(error) => editor.error = Some(error), _ => {} }
                                 match control::show(ui, draft, &self.theme) { Ok(true) => editor.error = None, Err(error) => editor.error = Some(error), _ => {} }
-                                if let Err(error) = canvas::show(ui, &self.theme, draft, self.snap.timing.as_deref()) { editor.error = Some(error); }
+                                let layers=editor.comparison.layers();
+                                if let Err(error) = canvas::show_compared(ui, &self.theme, draft, self.snap.timing.as_deref(),editor.comparison.offset,&layers) { editor.error = Some(error); }
                                 let selected = ui.label(draft.selected_label());
                                 accessibility::status(ui, &selected, &draft.selected_label());
                                 ui.label(tr!("Focus the roll: arrows move / transpose; Shift+Left/Right resize; Ctrl+A selects all; Ctrl+D duplicates; M mutes; Delete removes. Draw on empty space; drag note bodies to move and right edges to resize. All values use quarter-note beats."));
@@ -725,9 +807,11 @@ impl App {
                                     });
                                 accessibility::scrollbars(ui, "MIDI note list", &rows);
                             });
-                            ui.add_enabled_ui(!busy && !self.project.committing(), |ui| {
+                            ui.add_enabled_ui(!busy && !self.project.committing() && !editor.comparison.group.previewed(), |ui| {
                                 match tools::show(ui,draft,&self.theme){Ok(true)=>{editor.error=None;stop=true;},Err(error)=>editor.error=Some(error),_=>{}}
                             });
+                            comparison_action = comparison::view::show(ui,&mut editor.comparison,draft,
+                                (self.snap.selected_track as u8,self.snap.selected_scene as u16),self.snap.session.as_ref().map_or(1,|s|s.tracks.len()),self.snap.session.as_ref().map_or(1,|s|s.scenes.len()));
                         });
                         accessibility::scrollbars(ui, "MIDI editor controls", &scroll);
                     }
@@ -739,7 +823,7 @@ impl App {
                         help::annotate(ui, &response, HelpControl::MidiAudition);
                         accessibility::button(ui, &response, "Audition note", None); audition = response.clicked();
                         stop = button(ui, "Stop note audition").clicked();
-                        let response = ui.add_enabled(!busy && !editor.draft.as_ref().is_some_and(|d| d.dirty), egui::Button::new(tr!("Refresh current clip")));
+                        let response = ui.add_enabled(!busy && !editor.comparison.dirty() && !editor.draft.as_ref().is_some_and(|d| d.dirty), egui::Button::new(tr!("Refresh current clip")));
                         help::annotate(ui, &response, HelpControl::PianoRoll);
                         accessibility::button(ui, &response, "Refresh current clip", None); refresh = response.clicked();
                         close |= button(ui, "Cancel / close MIDI editor").clicked();
@@ -766,14 +850,41 @@ impl App {
                 editor.stop(&self.engine);
             }
         }
-        if keyboard_was_enabled != keyboard_enabled || editor.keyboard.octave != octave || editor.keyboard.velocity != velocity {
+        if keyboard_was_enabled != keyboard_enabled
+            || editor.keyboard.octave != octave
+            || editor.keyboard.velocity != velocity
+        {
             editor.stop(&self.engine);
         }
         editor.keyboard.enabled = keyboard_enabled;
         editor.keyboard.octave = octave;
         editor.keyboard.velocity = velocity;
-        if let Some(action) = step_action { editor.step_action(action); }
-        editor.keyboard_input(&self.engine, ctx, keyboard_focus && !busy && !self.project.committing() && editor.draft.as_ref().is_none_or(|draft|draft.tools.editing()), musical_events);
+        if let Some(action) = step_action {
+            editor.step_action(action);
+        }
+        editor.keyboard_input(
+            &self.engine,
+            ctx,
+            keyboard_focus
+                && !busy
+                && !self.project.committing()
+                && editor
+                    .draft
+                    .as_ref()
+                    .is_none_or(|draft| editor.comparison.editing(draft)),
+            musical_events,
+        );
+        if let Some(action) = comparison_action {
+            editor.stop(&self.engine);
+            if !editor.stop_requested {
+                if let Some(draft) = &mut editor.draft {
+                    match editor.comparison.action(&self.engine, draft, action) {
+                        Ok(()) => editor.error = None,
+                        Err(error) => editor.error = Some(error),
+                    }
+                }
+            }
+        }
         if apply {
             editor.apply(&self.engine);
         }
@@ -809,7 +920,10 @@ fn button(ui: &mut Ui, label: &str) -> egui::Response {
         &response,
         if label.contains("audition") {
             HelpControl::MidiAudition
-        } else if label.contains("step") || label.contains("held chord") || label.contains("cursor pitch") {
+        } else if label.contains("step")
+            || label.contains("held chord")
+            || label.contains("cursor pitch")
+        {
             HelpControl::MidiStep
         } else if label.contains("rhythm") {
             HelpControl::MidiRhythm
@@ -826,10 +940,19 @@ fn number(ui: &mut Ui, label: &str, value: &mut f64, min: f64, max: f64) -> bool
         ui.label(label);
         let integer = matches!(
             label,
-            "Note pitch" | "Note velocity" | "Top pitch" | "Scale root"
-                | "Keyboard octave" | "Keyboard velocity"
-                | "Rhythm steps" | "Rhythm pulses" | "Rhythm rotation" | "Accent every"
-                | "Rhythm pitch" | "Rhythm velocity" | "Rhythm accent"
+            "Note pitch"
+                | "Note velocity"
+                | "Top pitch"
+                | "Scale root"
+                | "Keyboard octave"
+                | "Keyboard velocity"
+                | "Rhythm steps"
+                | "Rhythm pulses"
+                | "Rhythm rotation"
+                | "Accent every"
+                | "Rhythm pitch"
+                | "Rhythm velocity"
+                | "Rhythm accent"
         );
         let step = if integer { 1.0 } else { 0.01 };
         let response = ui.add(
@@ -841,7 +964,13 @@ fn number(ui: &mut Ui, label: &str, value: &mut f64, min: f64, max: f64) -> bool
         help::annotate(
             ui,
             &response,
-            if label.starts_with("Transform") || label.starts_with("Velocity") || label.starts_with("Warp") || label.starts_with("Property") || label.starts_with("MPE") || label.starts_with("Stretch") {
+            if label.starts_with("Transform")
+                || label.starts_with("Velocity")
+                || label.starts_with("Warp")
+                || label.starts_with("Property")
+                || label.starts_with("MPE")
+                || label.starts_with("Stretch")
+            {
                 HelpControl::MidiTransform
             } else if label.starts_with("Clip") || label.starts_with("Loop") {
                 HelpControl::MidiRegion
