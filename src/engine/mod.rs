@@ -38,6 +38,7 @@ pub(crate) mod sampler;
 pub(crate) mod sampler_identity_tests;
 pub use instrument::{SamplerInstrument, SynthInstrument};
 mod recording;
+pub(crate) mod retrospective;
 #[cfg(test)]
 mod arp_tests;
 #[cfg(test)]
@@ -3808,6 +3809,7 @@ impl Engine {
         let sampler_assets = rt.sampler_assets.clone();
         let performance_history = rt.history_measurement.as_ref().map(|history| history.handle());
         let audible = rt.audible.handle();
+        tx.retrospective().configure(settings.retrospective, Instant::now()).map_err(anyhow::Error::msg)?;
         let audio = audio::start_with_settings(rt, &settings.audio)?;
         let midi = midi::MidiHub::start_with_clock(tx.clone(), snap.clone(), settings.midi_inputs.clone(),settings.midi_routing.clone(),settings.midi_clock.clone())?;
         Ok(Self {

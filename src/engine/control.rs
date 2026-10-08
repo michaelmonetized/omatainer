@@ -92,6 +92,7 @@ struct AdmissionShared {
     midi_routing: std::sync::Arc<super::midi::routing::Shared>,
     clock_output: std::sync::Arc<super::midi::clock::Shared>,
     clock_input: std::sync::Arc<super::midi::clock_input::Shared>,
+    retrospective: std::sync::Arc<super::retrospective::Shared>,
     performance: super::performance::Handle,
     project_writers: std::sync::atomic::AtomicU64,
     audio_offline: std::sync::atomic::AtomicBool,
@@ -470,6 +471,9 @@ impl CommandPort {
     pub(crate) fn clock_output(&self) -> &std::sync::Arc<super::midi::clock::Shared> {&self.shared.clock_output}
     pub(crate) fn clock_input(&self) -> &std::sync::Arc<super::midi::clock_input::Shared> {&self.shared.clock_input}
     pub(crate) fn midi_routing(&self) -> &std::sync::Arc<super::midi::routing::Shared> { &self.shared.midi_routing }
+    /// Access opt-in recent MIDI history outside the audio renderer.
+    /// Takes this producer; returns the bounded memory owner used by monitored input and native review.
+    pub(crate) fn retrospective(&self) -> &std::sync::Arc<super::retrospective::Shared> { &self.shared.retrospective }
     pub(crate) fn attach_support(&mut self,port:crate::support::worker::Port) {self.support=Some(port);}
     /// IPC/GUI producer use only, never from a renderer or raw MIDI callback.
     pub(crate) fn support_event(&self,code:crate::support::Code,failure:Option<crate::support::FailureClass>) {
@@ -534,6 +538,7 @@ impl CommandPort {
             midi_routing: std::sync::Arc::new(super::midi::routing::Shared::default()),
             clock_output: std::sync::Arc::new(super::midi::clock::Shared::default()),
             clock_input: std::sync::Arc::new(super::midi::clock_input::Shared::default()),
+            retrospective: std::sync::Arc::new(super::retrospective::Shared::default()),
             performance: super::performance::Handle::default(),
             project_writers: std::sync::atomic::AtomicU64::new(0),
             audio_offline: std::sync::atomic::AtomicBool::new(false),

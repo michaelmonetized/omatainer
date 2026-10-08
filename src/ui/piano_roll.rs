@@ -18,6 +18,7 @@ mod step;
 mod tools;
 mod scale;
 mod variation;
+mod retrospective;
 
 pub(super) struct Editor {
     open: bool,
@@ -33,6 +34,7 @@ pub(super) struct Editor {
     next_audition: u64,
     keyboard: step::Keyboard,
     comparison: comparison::Comparison,
+    recent: retrospective::State,
 }
 struct Loading {
     receiver: mpsc::Receiver<Result<(Arc<Document>, f32), String>>,
@@ -119,6 +121,7 @@ impl Default for Editor {
             next_audition: 1,
             keyboard: step::Keyboard::default(),
             comparison: comparison::Comparison::default(),
+            recent: retrospective::State::default(),
         }
     }
 }

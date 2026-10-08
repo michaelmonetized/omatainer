@@ -2256,9 +2256,12 @@
         110,
         112
       ],
-      "state": "planned",
+      "state": "implemented",
       "prs": [],
-      "evidence": []
+      "evidence": [
+        "docs/validation/retrospective-midi.md",
+        "docs/validation/retrospective-midi-receipt.json"
+      ]
     },
     {
       "issue": 163,
