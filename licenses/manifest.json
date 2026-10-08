@@ -13152,7 +13152,7 @@
     "src/engine/audio_clip/tests.rs": "14d264fbedab8ca9f60e9e00a40ede125f9a5ce609ed31baf6060a9fdcbe0695",
     "src/engine/audio_export.rs": "e3c2150522d6d2c1dd7b4f6d070ff002f3ab9a392846235ad208b2a1c8242393",
     "src/engine/audio_live_set_tests.rs": "ed306002cadaaf362dfe75f588d8096f4642c51c0f5b59b12a45fd225aaf8dde",
-    "src/engine/audio_live_set_tests/native.rs": "69cc31648faa460bb2ab82e3fc124a85e7c859a87cd80def792bf62791e7716b",
+    "src/engine/audio_live_set_tests/native.rs": "411db78d523ecd47cb853b1b4a2d0209fea19e58b4eaededd5142e276255d063",
     "src/engine/audio_metrics.rs": "4872ecea08c1836c68fee503d97eb6beaac586535598a2cebf65feda839949e2",
     "src/engine/audio_metrics_tests.rs": "9daee2a6bfa6b69bf556ee3a97160439bc6619acafd46252ad142fb8702bcae8",
     "src/engine/audio_tests.rs": "3a6cf51a8d6ca7a91c779727fa0b608a8a19af7962194543b33bca2e4dfa72a3",

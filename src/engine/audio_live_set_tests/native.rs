@@ -1,5 +1,6 @@
 use super::*;
 use cpal::traits::{DeviceTrait, StreamTrait};
+use std::sync::atomic::AtomicU64;
 
 struct Capture {
     samples: Vec<f32>,
@@ -25,7 +26,7 @@ fn wait(engine: &crate::engine::Engine, output: &AudioOut, directory: &std::path
         let status = output.handle.status();
         if status.phase == owner::Phase::Offline || Instant::now() >= deadline {
             let receipt = serde_json::json!({"status":"failed","waiting_for":phase,"output_phase":format!("{:?}",status.phase),
-                "message":status.message,"audio":engine.cmd.audio_metrics(),"playing":engine.snapshot().playing});
+                "message":status.message,"audio":engine.cmd.audio_metrics(),"playing":engine.snapshot().playing,"decks":engine.snapshot().decks});
             std::fs::write(directory.join(format!("failure-{phase}.json")), serde_json::to_vec_pretty(&receipt).unwrap()).unwrap();
             panic!("Native transition acknowledgment failed: {receipt}");
         }
@@ -48,6 +49,14 @@ fn tone(samples: &[f32], channel: usize, frequency: f64) -> f64 {
 fn windows(samples: &[f32]) -> Vec<f64> {
     samples.chunks_exact(882 * 2).map(|window|
         (window.iter().map(|sample| f64::from(*sample).powi(2)).sum::<f64>() / window.len() as f64).sqrt()).collect()
+}
+
+/// Measure the known carriers in each captured stereo window.
+/// Takes interleaved PCM; returns one maximum carrier amplitude per channel for each complete 20 ms window.
+fn carrier_windows(samples: &[f32]) -> Vec<[f64; 2]> {
+    samples.chunks_exact(882 * 2).map(|window| std::array::from_fn(|channel|
+        if channel == 0 { [381.0, 473.0] } else { [583.0, 689.0] }
+            .into_iter().map(|frequency| tone(window, channel, frequency)).fold(0.0, f64::max))).collect()
 }
 
 fn workers() -> Vec<serde_json::Value> {
@@ -74,6 +83,38 @@ fn continuous_capture_check_refuses_a_missing_block_and_requires_each_carrier_ch
     let mut broken = samples;
     broken[22050..22050 + 3528].fill(0.0);
     assert!(windows(&broken).iter().any(|rms| *rms < 0.001));
+    assert!(carrier_windows(&broken).iter().any(|window| window.iter().any(|value| *value < 0.00003)));
+    for (index, value) in broken.iter_mut().enumerate().skip(22050).take(3528) {
+        *value = if index % 2 == 0 { 0.00006 } else { -0.00006 };
+    }
+    assert!(carrier_windows(&broken).iter().any(|window| window.iter().any(|value| *value < 0.00003)));
+    let wrong: Vec<f32> = (0..44100).flat_map(|frame| [149.0, 179.0].map(|frequency|
+        (std::f64::consts::TAU * frequency * frame as f64 / 44100.0).sin() as f32 * 0.0003)).collect();
+    assert!(windows(&wrong).iter().all(|value| *value > 0.0001));
+    assert!(carrier_windows(&wrong).iter().all(|window| window.iter().all(|value| *value < 0.00003)));
+}
+
+#[test]
+fn native_fixture_outgoing_graph_has_both_carriers_before_any_preload() {
+    let mut state = large_state();
+    state.master = 0.5;
+    state.xfader = 0.0;
+    for track in &mut state.tracks { track.gain = 0.002; }
+    let mut first = Prepared::from_state(state, vec![carrier([381.0, 583.0])], 44100).unwrap();
+    first.rt.playing = true;
+    first.rt.resume_project_clips();
+    for deck in &mut first.rt.decks { deck.playing = true; }
+    let (engine, mut rt) = crate::engine::Engine::headless_for_test(44100, 256);
+    first.swap_into(&mut rt);
+    let mut callback = OutputCallback::new(rt, 4);
+    let mut samples = Vec::with_capacity(128 * 256 * 2);
+    for _ in 0..128 {
+        let mut output = [0.0_f32; 256 * 4];
+        callback.render(&mut output);
+        samples.extend(output.chunks_exact(4).flat_map(|frame| [frame[0], frame[1]]));
+    }
+    let observed = [tone(&samples[8820..], 0, 381.0), tone(&samples[8820..], 1, 583.0)];
+    assert!(observed.iter().all(|value| *value > 0.002), "Outgoing carriers {observed:?}; decks {:?}", engine.snapshot().decks);
 }
 
 #[test]
@@ -117,6 +158,8 @@ fn native_transition(routed: bool) {
     let mut capture = Capture { samples: Vec::with_capacity(44100 * 2 * 40), stamps: Vec::with_capacity(20000), returned };
     let origin = Instant::now();
     let input_fault = Arc::new(AtomicBool::new(false));
+    let input_rms = Arc::new(AtomicU64::new(0));
+    let observed_rms = input_rms.clone();
     let fault = input_fault.clone();
     let input = input_device.build_input_stream(input_plan.config(), move |data: &[i16], _| {
         if data.len() % 2 != 0 || capture.stamps.len() == capture.stamps.capacity() { fault.store(true, Ordering::Release); return; }
@@ -124,6 +167,10 @@ fn native_transition(routed: bool) {
         if data.len() > remaining { fault.store(true, Ordering::Release); return; }
         capture.stamps.push((capture.samples.len() / 2, origin.elapsed().as_nanos() as u64));
         capture.samples.extend(data.iter().map(|sample| f32::from(*sample) / 32768.0));
+        let mut energy = [0.0_f64; 2];
+        for frame in data.chunks_exact(2) { for channel in 0..2 { energy[channel] += (f64::from(frame[channel]) / 32768.0).powi(2); } }
+        let rms = energy.map(|value| (value / (data.len() / 2).max(1) as f64).sqrt() as f32);
+        observed_rms.store(u64::from(rms[0].to_bits()) | u64::from(rms[1].to_bits()) << 32, Ordering::Release);
     }, {
         let fault = input_fault.clone();
         move |error| { if error.kind() != cpal::ErrorKind::RealtimeDenied { fault.store(true, Ordering::Release); } }
@@ -133,6 +180,14 @@ fn native_transition(routed: bool) {
         sample_rate: Some(44100), channels: Some(4), format: Some(crate::preferences::AudioFormat::I32), buffer_frames: Some(512), ..Default::default() };
     let output = start_with_settings(rt, &output_settings).unwrap();
     wait(&engine, &output, &directory, "warmup", || engine.cmd.audio_metrics().callbacks >= 100);
+    let mut signal_since = None;
+    wait(&engine, &output, &directory, "outgoing-stereo-return", || {
+        let packed = input_rms.load(Ordering::Acquire);
+        let rms = [f32::from_bits(packed as u32), f32::from_bits((packed >> 32) as u32)];
+        if rms.iter().all(|value| *value > 0.0001) {
+            signal_since.get_or_insert_with(Instant::now).elapsed() >= Duration::from_millis(200)
+        } else { signal_since = None; false }
+    });
     let warmed = engine.cmd.audio_metrics();
     let native_workers = workers();
     let measured_start = origin.elapsed().as_nanos() as u64;
@@ -200,13 +255,16 @@ fn native_transition(routed: bool) {
     sorted.sort_by(f64::total_cmp);
     let median = sorted[sorted.len() / 2];
     let minimum = rms.iter().copied().fold(f64::INFINITY, f64::min);
+    let carrier_amplitudes = carrier_windows(&samples[first_frame * 2..last_frame * 2]);
+    let missing_carrier_windows: [usize; 2] = std::array::from_fn(|channel|
+        carrier_amplitudes.iter().filter(|window| window[channel] < 0.00003).count());
     let final_start = frame_at(measured_end.saturating_sub(900_000_000));
     let final_samples = &samples[final_start * 2..last_frame * 2];
     let final_tones = [tone(final_samples, 0, 473.0), tone(final_samples, 1, 689.0)];
     let wrong_tones = [tone(final_samples, 1, 473.0), tone(final_samples, 0, 689.0)];
     let input_failed = input_fault.load(Ordering::Acquire);
     let gaps = rms.iter().filter(|rms| **rms < median * 0.1).count();
-    let qualified = !input_failed && gaps == 0 && median > 0.0001 && samples.iter().all(|value| value.is_finite() && value.abs() < 0.999)
+    let qualified = !input_failed && gaps == 0 && missing_carrier_windows == [0, 0] && median > 0.0001 && samples.iter().all(|value| value.is_finite() && value.abs() < 0.999)
         && final_tones.iter().all(|value| *value > 0.0001) && (0..2).all(|channel| final_tones[channel] > wrong_tones[channel] * 5.0)
         && metrics.backend_errors == warmed.backend_errors && metrics.device_lost == warmed.device_lost
         && metrics.xruns == warmed.xruns && metrics.deadline_overruns == warmed.deadline_overruns;
@@ -216,6 +274,7 @@ fn native_transition(routed: bool) {
         "baseline_memory":baseline_memory,"preloaded_memory":process_memory,"final_memory":memory(),"trials":trials,
         "warmup_audio":warmed,"final_audio":metrics,"native_workers":native_workers,"carrier_peak":0.04,"capture_frames":samples.len()/2,"input_failed":input_failed,
         "measured_ns":measured_end-measured_start,"capture_window_frames":882,"quiet_windows":gaps,"median_window_rms":median,"minimum_window_rms":minimum,
+        "outgoing_stereo_return_required":true,"minimum_carrier_amplitude":0.00003,"missing_carrier_windows":missing_carrier_windows,
         "final_expected_tone_amplitudes":final_tones,"final_opposite_tone_amplitudes":wrong_tones,
         "scope":"Actual production native output owner and three complete graph fades, independent cue admission, captured stereo master continuity in 20 ms windows. Startup metrics retained separately. No physical headphone cue capture, listening, display timing, all-track maximum-polyphony or stage-duration claim."});
     std::fs::write(directory.join("receipt.json"), serde_json::to_vec_pretty(&receipt).unwrap()).unwrap();

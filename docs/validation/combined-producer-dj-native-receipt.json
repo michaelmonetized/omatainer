@@ -214,6 +214,13 @@
         "realtime_denied": 0,
         "xruns": 0
       }
+    },
+    "continuityCorrection": {
+      "status": "withdrawn_pending_carrier_aware_requalification",
+      "originalReceiptPreserved": true,
+      "audit_private_path": "target/validation/combined-completion/carrier-audit-through-62.json",
+      "audit_sha256": "0cd1b94dd202dbe62b3a071e4f01523eeb962a338b0893a2d401d766d108209e",
+      "reason": "The relative RMS/noise-floor continuity check could count mixer noise as uninterrupted signal. Source-50 continuity qualification is withdrawn; the unchanged original receipts and raw captures are retained. The source-60/61/62 runs remain failed. Source-63 adds carrier-aware window checks, outgoing stereo preflight and an offline initial-graph audio regression; these new checks are not compiled yet."
     }
   },
   "currentInstalledSource49": {
@@ -1897,7 +1904,7 @@
     }
   },
   "pending": [
-    "Physical USB removal/reconnection and host suspend while recording/performing",
+    "Manual NS7/APC USB removal/reconnection qualified on source62; host suspend while recording/performing remains pending",
     "Hardware waveform/output timing",
     "Extended performance and additional live routing qualifications",
     "Live 10/11 authored playback reference coverage",
@@ -4241,6 +4248,1579 @@
       {
         "private_path": "target/validation/combined-completion/physical-recovery-61-hub/fixture.log",
         "sha256": "3d3050cd845bee25d5d2f104696a177928859e84ca483670ec34f7b0e91048ae"
+      }
+    ]
+  },
+  "routedQualificationThrough62": {
+    "provenance": {
+      "source_revision": "50d8395444b7d0e71b441656211e91712150016a",
+      "compiler_profile": "release tests, opt-level3, codegen-units4, debug0, test unwind",
+      "compiler_flags": [
+        "opt-level=3",
+        "embed-bitcode=no",
+        "codegen-units=4",
+        "metadata=ccce059c87a51535",
+        "extra-filename=-552c0e61ca670d04",
+        "strip=debuginfo"
+      ],
+      "test_sha256": "ebeec78b1a334a27f7c00bf5c81c2c482cd5699c870e30ae99ef49290eba6eed",
+      "inventory_sha256": "c8502e112dd69871e54008be5d5767c24deca1c614300f1d6cc6d0d0aba605ef",
+      "build_log_sha256": "2a9d8311044793ef9543cdc161845623ec4936193931533734d105da5ea35494"
+    },
+    "focusedChecks": {
+      "passed": 87,
+      "failed": 0,
+      "ignored": 1,
+      "results": [
+        {
+          "name": "native-scheduling",
+          "selector": "engine::audio::scheduling::linux::tests::",
+          "exit": 0,
+          "signal": null,
+          "passed": 2,
+          "failed": 0,
+          "ignored": 0,
+          "seconds": 0,
+          "log_sha256": "f3c9bebdf173ac00173912a8fe7541713d36f2b98e24a13366fceb8614c9220f"
+        },
+        {
+          "name": "callback-metrics",
+          "selector": "engine::audio::metrics_tests::",
+          "exit": 0,
+          "signal": null,
+          "passed": 8,
+          "failed": 0,
+          "ignored": 0,
+          "seconds": 0.97,
+          "log_sha256": "f3dd2204402aedd62ad713e6d0be723f2c7d937b969fcf1cd815193e274c97d4"
+        },
+        {
+          "name": "performance-guard",
+          "selector": "engine::performance::tests::",
+          "exit": 0,
+          "signal": null,
+          "passed": 19,
+          "failed": 0,
+          "ignored": 0,
+          "seconds": 5.23,
+          "log_sha256": "b1425f76c2066379b72105c063e029ff9830cef648bc05cf311c303c5aa8e7ca"
+        },
+        {
+          "name": "midi-policy",
+          "selector": "engine::midi::connections::policy_tests::",
+          "exit": 0,
+          "signal": null,
+          "passed": 9,
+          "failed": 0,
+          "ignored": 0,
+          "seconds": 3.71,
+          "log_sha256": "bb057e8a15bec08fd34b9b48085e24cffc746cc824481bbf62943723e50078c6"
+        },
+        {
+          "name": "routed-positions",
+          "selector": "engine::audio::routing::positions::tests::",
+          "exit": 0,
+          "signal": null,
+          "passed": 7,
+          "failed": 0,
+          "ignored": 0,
+          "seconds": 0.04,
+          "log_sha256": "7802824479fdbd0e894053a0ba71525142f9fac55e75db84c2f691d3c889ee29"
+        },
+        {
+          "name": "svf-fidelity",
+          "selector": "engine::svf_tests::",
+          "exit": 0,
+          "signal": null,
+          "passed": 4,
+          "failed": 0,
+          "ignored": 0,
+          "seconds": 1.13,
+          "log_sha256": "3adf17eee065ba270ccaf7371d17afef5e5b49652f65bb0b5f19af353e709906"
+        },
+        {
+          "name": "voice-fidelity",
+          "selector": "engine::dsp::voice_pitch_tests::",
+          "exit": 0,
+          "signal": null,
+          "passed": 5,
+          "failed": 0,
+          "ignored": 1,
+          "seconds": 0.45,
+          "log_sha256": "f6058f928716ae57a97bb903c5baca4221be7264ec57adebcd8e5aeceedf8446"
+        },
+        {
+          "name": "audible-fidelity",
+          "selector": "engine::audio::audible_tests::",
+          "exit": 0,
+          "signal": null,
+          "passed": 2,
+          "failed": 0,
+          "ignored": 0,
+          "seconds": 0.67,
+          "log_sha256": "b88156e680e8ced62d3729bdcd78d788df594a79ee8b111166eee65b296e7483"
+        },
+        {
+          "name": "latency-fidelity",
+          "selector": "engine::audio::routing::latency::tests::",
+          "exit": 0,
+          "signal": null,
+          "passed": 13,
+          "failed": 0,
+          "ignored": 0,
+          "seconds": 0.65,
+          "log_sha256": "bc23706d79cd29fbd856459c92c604acf2a0d5936cbe6ce47b4785d2ed4d13ca"
+        },
+        {
+          "name": "live-set-fidelity",
+          "selector": "engine::live_set::tests::",
+          "exit": 0,
+          "signal": null,
+          "passed": 13,
+          "failed": 0,
+          "ignored": 0,
+          "seconds": 2.71,
+          "log_sha256": "0a359f3f9f3a6fc33abd6a3509a6c7c3ea85c649e7ea2efc158ac248bcce5734"
+        },
+        {
+          "name": "waveform-ui",
+          "selector": "ui::waveform::tests::",
+          "exit": 0,
+          "signal": null,
+          "passed": 5,
+          "failed": 0,
+          "ignored": 0,
+          "seconds": 0.34,
+          "log_sha256": "91a4f7bc136d3bac36af6e9a580274d8e3b4095a0929acd2351b27594b6533e9"
+        }
+      ]
+    },
+    "manualRecovery": {
+      "status": "pass",
+      "seconds": 705.96,
+      "pid": 3635246,
+      "exit": 0,
+      "actuator": "Michael, manual USB cable removal/reconnection on the same powered hub ports",
+      "fixture": {
+        "boundary": "Actual native audio and MIDI owners; command-initiated held MIDI notes, two physical removals per owned model and native saved-document reopen. NS7 has a placeholder serial: retained identity reconnect is refused; the fixture explicitly reviews and applies the returned NS7 output. MIDI pins are topology-qualified. No unique-unit serial, physical note-button holding, native mouse confirmation, audible performance, host suspend or stage-duration claim.",
+        "physical_usb_actions": true,
+        "schema": 1,
+        "silent_master": true,
+        "status": "pass",
+        "trials": [
+          {
+            "after_input": {
+              "coalesced": 0,
+              "disconnected": 0,
+              "dispatched": 2,
+              "dropped": 0,
+              "oversized": 0,
+              "queued": 2,
+              "received": 2,
+              "resets": 1
+            },
+            "archive": {
+              "metadata_bytes": 24247,
+              "native_document_reopened": true,
+              "notes": 1,
+              "path": "/home/michael/Projects/omatainer-work/producer-dj-completion/target/validation/combined-completion/physical-recovery-62-manual/retained-0.omatainer"
+            },
+            "audio": {
+              "backend_errors": 1,
+              "callbacks": 43413,
+              "cpu_budget_exhaustions": 0,
+              "deadline_overruns": 0,
+              "device_lost": 1,
+              "dropped_buffers": null,
+              "last_callback": {
+                "budget_ns": 5804988,
+                "channels": 4,
+                "elapsed_ns": 212127,
+                "frames": 256,
+                "output_latency_ns": 5804989,
+                "overrun_ns": 0,
+                "render_cpu_ns": 191458,
+                "sample_rate": 44100
+              },
+              "max_callback": {
+                "budget_ns": 5804988,
+                "channels": 4,
+                "elapsed_ns": 621587,
+                "frames": 256,
+                "output_latency_ns": 5124717,
+                "overrun_ns": 0,
+                "render_cpu_ns": 278751,
+                "sample_rate": 44100
+              },
+              "max_elapsed_ns": 621587,
+              "max_overrun_ns": 0,
+              "realtime_denied": 0,
+              "xruns": 0
+            },
+            "automatic_playback": false,
+            "before_input": {
+              "coalesced": 0,
+              "disconnected": 0,
+              "dispatched": 2,
+              "dropped": 0,
+              "oversized": 0,
+              "queued": 2,
+              "received": 2,
+              "resets": 0
+            },
+            "explicit_reviewed_fallback": true,
+            "missing_reconnect_refused": true,
+            "model": "NS7",
+            "new_usb_connection": "1:17",
+            "old_usb_connection": "1:16",
+            "output_identity": null,
+            "physical_identity": "usb:15e4:0071:topology:1-1.2.3:0",
+            "placeholder_serial_reconnect_refused": true,
+            "release_acknowledgment_required": true,
+            "route_preserved": true,
+            "trial": 0
+          },
+          {
+            "after_input": {
+              "coalesced": 0,
+              "disconnected": 0,
+              "dispatched": 8,
+              "dropped": 0,
+              "oversized": 0,
+              "queued": 8,
+              "received": 8,
+              "resets": 2
+            },
+            "archive": {
+              "metadata_bytes": 24391,
+              "native_document_reopened": true,
+              "notes": 2,
+              "path": "/home/michael/Projects/omatainer-work/producer-dj-completion/target/validation/combined-completion/physical-recovery-62-manual/retained-1.omatainer"
+            },
+            "audio": {
+              "backend_errors": 2,
+              "callbacks": 87609,
+              "cpu_budget_exhaustions": 0,
+              "deadline_overruns": 0,
+              "device_lost": 2,
+              "dropped_buffers": null,
+              "last_callback": {
+                "budget_ns": 5804988,
+                "channels": 4,
+                "elapsed_ns": 206292,
+                "frames": 256,
+                "output_latency_ns": 5804989,
+                "overrun_ns": 0,
+                "render_cpu_ns": 196125,
+                "sample_rate": 44100
+              },
+              "max_callback": {
+                "budget_ns": 5804988,
+                "channels": 4,
+                "elapsed_ns": 621587,
+                "frames": 256,
+                "output_latency_ns": 5124717,
+                "overrun_ns": 0,
+                "render_cpu_ns": 278751,
+                "sample_rate": 44100
+              },
+              "max_elapsed_ns": 621587,
+              "max_overrun_ns": 0,
+              "realtime_denied": 0,
+              "xruns": 0
+            },
+            "automatic_playback": false,
+            "before_input": {
+              "coalesced": 0,
+              "disconnected": 0,
+              "dispatched": 2,
+              "dropped": 0,
+              "oversized": 0,
+              "queued": 2,
+              "received": 2,
+              "resets": 1
+            },
+            "explicit_reviewed_fallback": true,
+            "missing_reconnect_refused": true,
+            "model": "NS7",
+            "new_usb_connection": "1:18",
+            "old_usb_connection": "1:16",
+            "output_identity": null,
+            "physical_identity": "usb:15e4:0071:topology:1-1.2.3:0",
+            "placeholder_serial_reconnect_refused": true,
+            "release_acknowledgment_required": true,
+            "route_preserved": true,
+            "trial": 1
+          },
+          {
+            "after_input": {
+              "coalesced": 0,
+              "disconnected": 0,
+              "dispatched": 9,
+              "dropped": 0,
+              "oversized": 0,
+              "queued": 9,
+              "received": 9,
+              "resets": 3
+            },
+            "audio": {
+              "backend_errors": 2,
+              "callbacks": 102130,
+              "cpu_budget_exhaustions": 0,
+              "deadline_overruns": 0,
+              "device_lost": 2,
+              "dropped_buffers": null,
+              "last_callback": {
+                "budget_ns": 5804988,
+                "channels": 4,
+                "elapsed_ns": 247710,
+                "frames": 256,
+                "output_latency_ns": 5328798,
+                "overrun_ns": 0,
+                "render_cpu_ns": 216958,
+                "sample_rate": 44100
+              },
+              "max_callback": {
+                "budget_ns": 5804988,
+                "channels": 4,
+                "elapsed_ns": 621587,
+                "frames": 256,
+                "output_latency_ns": 5124717,
+                "overrun_ns": 0,
+                "render_cpu_ns": 278751,
+                "sample_rate": 44100
+              },
+              "max_elapsed_ns": 621587,
+              "max_overrun_ns": 0,
+              "realtime_denied": 0,
+              "xruns": 0
+            },
+            "before_input": {
+              "coalesced": 0,
+              "disconnected": 0,
+              "dispatched": 8,
+              "dropped": 0,
+              "oversized": 0,
+              "queued": 8,
+              "received": 8,
+              "resets": 2
+            },
+            "model": "APC40 MkII",
+            "new_usb_connection": "1:19",
+            "old_usb_connection": "1:8",
+            "physical_identity": "usb:09e8:0029:topology:1-1.2.4:0",
+            "playback_continued": true,
+            "trial": 0
+          },
+          {
+            "after_input": {
+              "coalesced": 0,
+              "disconnected": 0,
+              "dispatched": 10,
+              "dropped": 0,
+              "oversized": 0,
+              "queued": 10,
+              "received": 10,
+              "resets": 4
+            },
+            "audio": {
+              "backend_errors": 2,
+              "callbacks": 112869,
+              "cpu_budget_exhaustions": 0,
+              "deadline_overruns": 0,
+              "device_lost": 2,
+              "dropped_buffers": null,
+              "last_callback": {
+                "budget_ns": 5804988,
+                "channels": 4,
+                "elapsed_ns": 222293,
+                "frames": 256,
+                "output_latency_ns": 5419501,
+                "overrun_ns": 0,
+                "render_cpu_ns": 213625,
+                "sample_rate": 44100
+              },
+              "max_callback": {
+                "budget_ns": 5804988,
+                "channels": 4,
+                "elapsed_ns": 722337,
+                "frames": 256,
+                "output_latency_ns": 5578231,
+                "overrun_ns": 0,
+                "render_cpu_ns": 678374,
+                "sample_rate": 44100
+              },
+              "max_elapsed_ns": 722337,
+              "max_overrun_ns": 0,
+              "realtime_denied": 0,
+              "xruns": 0
+            },
+            "before_input": {
+              "coalesced": 0,
+              "disconnected": 0,
+              "dispatched": 9,
+              "dropped": 0,
+              "oversized": 0,
+              "queued": 9,
+              "received": 9,
+              "resets": 3
+            },
+            "model": "APC40 MkII",
+            "new_usb_connection": "1:20",
+            "old_usb_connection": "1:8",
+            "physical_identity": "usb:09e8:0029:topology:1-1.2.4:0",
+            "playback_continued": true,
+            "trial": 1
+          }
+        ]
+      },
+      "observed_usb_events": [
+        {
+          "time": "2026-10-08T21:46:35.156Z",
+          "action": null,
+          "usb": {
+            "NS7": {
+              "topology": "1-1.2.3",
+              "present": true,
+              "connection": "16"
+            },
+            "APC": {
+              "topology": "1-1.2.4",
+              "present": true,
+              "connection": "8"
+            }
+          }
+        },
+        {
+          "time": "2026-10-08T21:46:38.368Z",
+          "action": {
+            "action": "unplug",
+            "instance": "usb:15e4:0071:topology:1-1.2.3:0",
+            "model": "NS7",
+            "pid": 3635246,
+            "trial": 0
+          },
+          "usb": {
+            "NS7": {
+              "topology": "1-1.2.3",
+              "present": true,
+              "connection": "16"
+            },
+            "APC": {
+              "topology": "1-1.2.4",
+              "present": true,
+              "connection": "8"
+            }
+          }
+        },
+        {
+          "time": "2026-10-08T21:50:47.428Z",
+          "action": {
+            "action": "unplug",
+            "instance": "usb:15e4:0071:topology:1-1.2.3:0",
+            "model": "NS7",
+            "pid": 3635246,
+            "trial": 0
+          },
+          "usb": {
+            "NS7": {
+              "topology": "1-1.2.3",
+              "present": false,
+              "connection": null
+            },
+            "APC": {
+              "topology": "1-1.2.4",
+              "present": true,
+              "connection": "8"
+            }
+          }
+        },
+        {
+          "time": "2026-10-08T21:50:48.531Z",
+          "action": {
+            "action": "replug",
+            "instance": "usb:15e4:0071:topology:1-1.2.3:0",
+            "model": "NS7",
+            "pid": 3635246,
+            "trial": 0
+          },
+          "usb": {
+            "NS7": {
+              "topology": "1-1.2.3",
+              "present": false,
+              "connection": null
+            },
+            "APC": {
+              "topology": "1-1.2.4",
+              "present": true,
+              "connection": "8"
+            }
+          }
+        },
+        {
+          "time": "2026-10-08T21:51:12.709Z",
+          "action": {
+            "action": "replug",
+            "instance": "usb:15e4:0071:topology:1-1.2.3:0",
+            "model": "NS7",
+            "pid": 3635246,
+            "trial": 0
+          },
+          "usb": {
+            "NS7": {
+              "topology": "1-1.2.3",
+              "present": true,
+              "connection": "17"
+            },
+            "APC": {
+              "topology": "1-1.2.4",
+              "present": true,
+              "connection": "8"
+            }
+          }
+        },
+        {
+          "time": "2026-10-08T21:51:15.017Z",
+          "action": {
+            "action": "unplug",
+            "instance": "usb:15e4:0071:topology:1-1.2.3:0",
+            "model": "NS7",
+            "pid": 3635246,
+            "trial": 1
+          },
+          "usb": {
+            "NS7": {
+              "topology": "1-1.2.3",
+              "present": true,
+              "connection": "17"
+            },
+            "APC": {
+              "topology": "1-1.2.4",
+              "present": true,
+              "connection": "8"
+            }
+          }
+        },
+        {
+          "time": "2026-10-08T21:55:31.593Z",
+          "action": {
+            "action": "unplug",
+            "instance": "usb:15e4:0071:topology:1-1.2.3:0",
+            "model": "NS7",
+            "pid": 3635246,
+            "trial": 1
+          },
+          "usb": {
+            "NS7": {
+              "topology": "1-1.2.3",
+              "present": false,
+              "connection": null
+            },
+            "APC": {
+              "topology": "1-1.2.4",
+              "present": true,
+              "connection": "8"
+            }
+          }
+        },
+        {
+          "time": "2026-10-08T21:55:32.796Z",
+          "action": {
+            "action": "replug",
+            "instance": "usb:15e4:0071:topology:1-1.2.3:0",
+            "model": "NS7",
+            "pid": 3635246,
+            "trial": 1
+          },
+          "usb": {
+            "NS7": {
+              "topology": "1-1.2.3",
+              "present": false,
+              "connection": null
+            },
+            "APC": {
+              "topology": "1-1.2.4",
+              "present": true,
+              "connection": "8"
+            }
+          }
+        },
+        {
+          "time": "2026-10-08T21:55:51.966Z",
+          "action": {
+            "action": "replug",
+            "instance": "usb:15e4:0071:topology:1-1.2.3:0",
+            "model": "NS7",
+            "pid": 3635246,
+            "trial": 1
+          },
+          "usb": {
+            "NS7": {
+              "topology": "1-1.2.3",
+              "present": true,
+              "connection": "18"
+            },
+            "APC": {
+              "topology": "1-1.2.4",
+              "present": true,
+              "connection": "8"
+            }
+          }
+        },
+        {
+          "time": "2026-10-08T21:55:54.473Z",
+          "action": {
+            "action": "unplug",
+            "instance": "usb:09e8:0029:topology:1-1.2.4:0",
+            "model": "APC40 MkII",
+            "pid": 3635246,
+            "trial": 0
+          },
+          "usb": {
+            "NS7": {
+              "topology": "1-1.2.3",
+              "present": true,
+              "connection": "18"
+            },
+            "APC": {
+              "topology": "1-1.2.4",
+              "present": true,
+              "connection": "8"
+            }
+          }
+        },
+        {
+          "time": "2026-10-08T21:56:56.466Z",
+          "action": {
+            "action": "unplug",
+            "instance": "usb:09e8:0029:topology:1-1.2.4:0",
+            "model": "APC40 MkII",
+            "pid": 3635246,
+            "trial": 0
+          },
+          "usb": {
+            "NS7": {
+              "topology": "1-1.2.3",
+              "present": true,
+              "connection": "18"
+            },
+            "APC": {
+              "topology": "1-1.2.4",
+              "present": false,
+              "connection": null
+            }
+          }
+        },
+        {
+          "time": "2026-10-08T21:56:57.169Z",
+          "action": {
+            "action": "replug",
+            "instance": "usb:09e8:0029:topology:1-1.2.4:0",
+            "model": "APC40 MkII",
+            "pid": 3635246,
+            "trial": 0
+          },
+          "usb": {
+            "NS7": {
+              "topology": "1-1.2.3",
+              "present": true,
+              "connection": "18"
+            },
+            "APC": {
+              "topology": "1-1.2.4",
+              "present": false,
+              "connection": null
+            }
+          }
+        },
+        {
+          "time": "2026-10-08T21:57:16.924Z",
+          "action": {
+            "action": "replug",
+            "instance": "usb:09e8:0029:topology:1-1.2.4:0",
+            "model": "APC40 MkII",
+            "pid": 3635246,
+            "trial": 0
+          },
+          "usb": {
+            "NS7": {
+              "topology": "1-1.2.3",
+              "present": true,
+              "connection": "18"
+            },
+            "APC": {
+              "topology": "1-1.2.4",
+              "present": true,
+              "connection": "19"
+            }
+          }
+        },
+        {
+          "time": "2026-10-08T21:57:18.730Z",
+          "action": {
+            "action": "unplug",
+            "instance": "usb:09e8:0029:topology:1-1.2.4:0",
+            "model": "APC40 MkII",
+            "pid": 3635246,
+            "trial": 1
+          },
+          "usb": {
+            "NS7": {
+              "topology": "1-1.2.3",
+              "present": true,
+              "connection": "18"
+            },
+            "APC": {
+              "topology": "1-1.2.4",
+              "present": true,
+              "connection": "19"
+            }
+          }
+        },
+        {
+          "time": "2026-10-08T21:57:53.037Z",
+          "action": {
+            "action": "unplug",
+            "instance": "usb:09e8:0029:topology:1-1.2.4:0",
+            "model": "APC40 MkII",
+            "pid": 3635246,
+            "trial": 1
+          },
+          "usb": {
+            "NS7": {
+              "topology": "1-1.2.3",
+              "present": true,
+              "connection": "18"
+            },
+            "APC": {
+              "topology": "1-1.2.4",
+              "present": false,
+              "connection": null
+            }
+          }
+        },
+        {
+          "time": "2026-10-08T21:57:54.341Z",
+          "action": {
+            "action": "replug",
+            "instance": "usb:09e8:0029:topology:1-1.2.4:0",
+            "model": "APC40 MkII",
+            "pid": 3635246,
+            "trial": 1
+          },
+          "usb": {
+            "NS7": {
+              "topology": "1-1.2.3",
+              "present": true,
+              "connection": "18"
+            },
+            "APC": {
+              "topology": "1-1.2.4",
+              "present": false,
+              "connection": null
+            }
+          }
+        },
+        {
+          "time": "2026-10-08T21:58:18.708Z",
+          "action": {
+            "action": "replug",
+            "instance": "usb:09e8:0029:topology:1-1.2.4:0",
+            "model": "APC40 MkII",
+            "pid": 3635246,
+            "trial": 1
+          },
+          "usb": {
+            "NS7": {
+              "topology": "1-1.2.3",
+              "present": true,
+              "connection": "18"
+            },
+            "APC": {
+              "topology": "1-1.2.4",
+              "present": true,
+              "connection": "20"
+            }
+          }
+        },
+        {
+          "time": "2026-10-08T21:58:21.014Z",
+          "action": {
+            "action": "complete",
+            "instance": "",
+            "model": "NS7 and APC40 MkII",
+            "pid": 3635246,
+            "trial": 2
+          },
+          "usb": {
+            "NS7": {
+              "topology": "1-1.2.3",
+              "present": true,
+              "connection": "18"
+            },
+            "APC": {
+              "topology": "1-1.2.4",
+              "present": true,
+              "connection": "20"
+            }
+          }
+        }
+      ]
+    },
+    "nativeRouted": {
+      "provenance": {
+        "source_revision": "50d8395444b7d0e71b441656211e91712150016a",
+        "compiler_profile": "release tests, opt-level3, codegen-units4, debug0, test unwind",
+        "compiler_flags": [
+          "opt-level=3",
+          "embed-bitcode=no",
+          "codegen-units=4",
+          "metadata=ccce059c87a51535",
+          "extra-filename=-552c0e61ca670d04",
+          "strip=debuginfo"
+        ],
+        "test_sha256": "ebeec78b1a334a27f7c00bf5c81c2c482cd5699c870e30ae99ef49290eba6eed",
+        "inventory_sha256": "c8502e112dd69871e54008be5d5767c24deca1c614300f1d6cc6d0d0aba605ef",
+        "build_log_sha256": "2a9d8311044793ef9543cdc161845623ec4936193931533734d105da5ea35494"
+      },
+      "selector": "engine::audio::live_set_tests::native::native_ns7_routed_large_live_set_transition_has_captured_master_audio",
+      "exit": 101,
+      "signal": null,
+      "log_sha256": "052948a65943020bdfb71b96ef131af637a5214acc0a0cedf854ac7d77b6b394",
+      "receipt": {
+        "baseline_memory": {
+          "process_high_water_kib": 9584,
+          "resident_kib": 9584
+        },
+        "capture_frames": 463104,
+        "capture_window_frames": 882,
+        "carrier_peak": 0.04,
+        "device": "original NS7, four-channel ALSA, 44.1 kHz, 512-frame requested buffer",
+        "final_audio": {
+          "backend_errors": 0,
+          "callbacks": 1793,
+          "cpu_budget_exhaustions": 0,
+          "deadline_overruns": 0,
+          "device_lost": 0,
+          "dropped_buffers": null,
+          "last_callback": {
+            "budget_ns": 5804988,
+            "channels": 4,
+            "elapsed_ns": 1715385,
+            "frames": 256,
+            "output_latency_ns": 5736961,
+            "overrun_ns": 0,
+            "render_cpu_ns": 1683792,
+            "sample_rate": 44100
+          },
+          "max_callback": {
+            "budget_ns": 5804988,
+            "channels": 4,
+            "elapsed_ns": 3625520,
+            "frames": 256,
+            "output_latency_ns": 4897959,
+            "overrun_ns": 0,
+            "render_cpu_ns": 3423755,
+            "sample_rate": 44100
+          },
+          "max_elapsed_ns": 3625520,
+          "max_overrun_ns": 0,
+          "realtime_denied": 0,
+          "xruns": 0
+        },
+        "final_expected_tone_amplitudes": [
+          0.0018921983548166382,
+          0.00020280980062944987
+        ],
+        "final_memory": {
+          "process_high_water_kib": 376016,
+          "resident_kib": 375232
+        },
+        "final_opposite_tone_amplitudes": [
+          0.0000016156032058620472,
+          0.0000016557606616527954
+        ],
+        "input_failed": false,
+        "launched_clip_tracks_per_graph": 8,
+        "loaded_decks_per_graph": 2,
+        "measured_ns": 9823671199,
+        "median_window_rms": 0.0007124744932313395,
+        "minimum_window_rms": 0.00005185463871100088,
+        "native_workers": [
+          {
+            "allowed_cpus": "0-9",
+            "name": "cpal_alsa_in",
+            "tid": "3745902"
+          },
+          {
+            "allowed_cpus": "2-9",
+            "name": "cpal_alsa_out",
+            "tid": "3745915"
+          }
+        ],
+        "physical_return": "Master XLR L/R to owner-restored Peavey PV8 USB 7/8, stereo CODEC input",
+        "preloaded_memory": [
+          {
+            "process_high_water_kib": 358144,
+            "resident_kib": 358144
+          },
+          {
+            "process_high_water_kib": 373104,
+            "resident_kib": 373104
+          },
+          {
+            "process_high_water_kib": 379792,
+            "resident_kib": 379792
+          }
+        ],
+        "quiet_windows": 215,
+        "reported_deck_processing_micros": 20000,
+        "resident_pcm_bytes_per_graph": 33554432,
+        "routed": true,
+        "schema": 1,
+        "scope": "Actual production native output owner and three complete graph fades, independent cue admission, captured stereo master continuity in 20 ms windows. Startup metrics retained separately. No physical headphone cue capture, listening, display timing, all-track maximum-polyphony or stage-duration claim.",
+        "status": "failed",
+        "stored_notes_per_graph": 32768,
+        "stored_tracks": 64,
+        "trials": [
+          {
+            "applied": true,
+            "cue_admitted": true,
+            "cue_audio": {
+              "backend_errors": 0,
+              "callbacks": 302,
+              "cpu_budget_exhaustions": 0,
+              "deadline_overruns": 0,
+              "device_lost": 0,
+              "dropped_buffers": null,
+              "last_callback": {
+                "budget_ns": 5804988,
+                "channels": 4,
+                "elapsed_ns": 3429269,
+                "frames": 256,
+                "output_latency_ns": 5306122,
+                "overrun_ns": 0,
+                "render_cpu_ns": 3334461,
+                "sample_rate": 44100
+              },
+              "max_callback": {
+                "budget_ns": 5804988,
+                "channels": 4,
+                "elapsed_ns": 3610062,
+                "frames": 256,
+                "output_latency_ns": 5510204,
+                "overrun_ns": 0,
+                "render_cpu_ns": 3491871,
+                "sample_rate": 44100
+              },
+              "max_elapsed_ns": 3610062,
+              "max_overrun_ns": 0,
+              "realtime_denied": 0,
+              "xruns": 0
+            },
+            "fade_seconds": 1,
+            "incoming_hz": [
+              473,
+              689
+            ],
+            "initial_priming_seconds": 0.02,
+            "preload_start_ns": 682703448,
+            "ready_ns": 850815451,
+            "settled_audio": {
+              "backend_errors": 0,
+              "callbacks": 493,
+              "cpu_budget_exhaustions": 0,
+              "deadline_overruns": 0,
+              "device_lost": 0,
+              "dropped_buffers": null,
+              "last_callback": {
+                "budget_ns": 5804988,
+                "channels": 4,
+                "elapsed_ns": 2214471,
+                "frames": 256,
+                "output_latency_ns": 4965986,
+                "overrun_ns": 0,
+                "render_cpu_ns": 2150666,
+                "sample_rate": 44100
+              },
+              "max_callback": {
+                "budget_ns": 5804988,
+                "channels": 4,
+                "elapsed_ns": 3610062,
+                "frames": 256,
+                "output_latency_ns": 5510204,
+                "overrun_ns": 0,
+                "render_cpu_ns": 3491871,
+                "sample_rate": 44100
+              },
+              "max_elapsed_ns": 3610062,
+              "max_overrun_ns": 0,
+              "realtime_denied": 0,
+              "xruns": 0
+            },
+            "settled_ns": 2957804171,
+            "short_unprimed_fade_refused": true,
+            "transition_requested_ns": 1950944078,
+            "trial": 0,
+            "worker_retired": true
+          },
+          {
+            "applied": true,
+            "cue_admitted": true,
+            "cue_audio": {
+              "backend_errors": 0,
+              "callbacks": 867,
+              "cpu_budget_exhaustions": 0,
+              "deadline_overruns": 0,
+              "device_lost": 0,
+              "dropped_buffers": null,
+              "last_callback": {
+                "budget_ns": 5804988,
+                "channels": 4,
+                "elapsed_ns": 3408186,
+                "frames": 256,
+                "output_latency_ns": 5804989,
+                "overrun_ns": 0,
+                "render_cpu_ns": 3356833,
+                "sample_rate": 44100
+              },
+              "max_callback": {
+                "budget_ns": 5804988,
+                "channels": 4,
+                "elapsed_ns": 3625520,
+                "frames": 256,
+                "output_latency_ns": 4897959,
+                "overrun_ns": 0,
+                "render_cpu_ns": 3423755,
+                "sample_rate": 44100
+              },
+              "max_elapsed_ns": 3625520,
+              "max_overrun_ns": 0,
+              "realtime_denied": 0,
+              "xruns": 0
+            },
+            "fade_seconds": 1,
+            "incoming_hz": [
+              381,
+              583
+            ],
+            "initial_priming_seconds": 0.02,
+            "preload_start_ns": 3957908059,
+            "ready_ns": 4129747667,
+            "settled_audio": {
+              "backend_errors": 0,
+              "callbacks": 1058,
+              "cpu_budget_exhaustions": 0,
+              "deadline_overruns": 0,
+              "device_lost": 0,
+              "dropped_buffers": null,
+              "last_callback": {
+                "budget_ns": 5804988,
+                "channels": 4,
+                "elapsed_ns": 2198429,
+                "frames": 256,
+                "output_latency_ns": 5464853,
+                "overrun_ns": 0,
+                "render_cpu_ns": 2150208,
+                "sample_rate": 44100
+              },
+              "max_callback": {
+                "budget_ns": 5804988,
+                "channels": 4,
+                "elapsed_ns": 3625520,
+                "frames": 256,
+                "output_latency_ns": 4897959,
+                "overrun_ns": 0,
+                "render_cpu_ns": 3423755,
+                "sample_rate": 44100
+              },
+              "max_elapsed_ns": 3625520,
+              "max_overrun_ns": 0,
+              "realtime_denied": 0,
+              "xruns": 0
+            },
+            "settled_ns": 6237076181,
+            "short_unprimed_fade_refused": true,
+            "transition_requested_ns": 5229872586,
+            "trial": 1,
+            "worker_retired": true
+          },
+          {
+            "applied": true,
+            "cue_admitted": true,
+            "cue_audio": {
+              "backend_errors": 0,
+              "callbacks": 1430,
+              "cpu_budget_exhaustions": 0,
+              "deadline_overruns": 0,
+              "device_lost": 0,
+              "dropped_buffers": null,
+              "last_callback": {
+                "budget_ns": 5804988,
+                "channels": 4,
+                "elapsed_ns": 3543729,
+                "frames": 256,
+                "output_latency_ns": 5759637,
+                "overrun_ns": 0,
+                "render_cpu_ns": 3411249,
+                "sample_rate": 44100
+              },
+              "max_callback": {
+                "budget_ns": 5804988,
+                "channels": 4,
+                "elapsed_ns": 3625520,
+                "frames": 256,
+                "output_latency_ns": 4897959,
+                "overrun_ns": 0,
+                "render_cpu_ns": 3423755,
+                "sample_rate": 44100
+              },
+              "max_elapsed_ns": 3625520,
+              "max_overrun_ns": 0,
+              "realtime_denied": 0,
+              "xruns": 0
+            },
+            "fade_seconds": 1,
+            "incoming_hz": [
+              473,
+              689
+            ],
+            "initial_priming_seconds": 0.02,
+            "preload_start_ns": 7237179944,
+            "ready_ns": 7399083704,
+            "settled_audio": {
+              "backend_errors": 0,
+              "callbacks": 1621,
+              "cpu_budget_exhaustions": 0,
+              "deadline_overruns": 0,
+              "device_lost": 0,
+              "dropped_buffers": null,
+              "last_callback": {
+                "budget_ns": 5804988,
+                "channels": 4,
+                "elapsed_ns": 2188970,
+                "frames": 256,
+                "output_latency_ns": 5374150,
+                "overrun_ns": 0,
+                "render_cpu_ns": 2140122,
+                "sample_rate": 44100
+              },
+              "max_callback": {
+                "budget_ns": 5804988,
+                "channels": 4,
+                "elapsed_ns": 3625520,
+                "frames": 256,
+                "output_latency_ns": 4897959,
+                "overrun_ns": 0,
+                "render_cpu_ns": 3423755,
+                "sample_rate": 44100
+              },
+              "max_elapsed_ns": 3625520,
+              "max_overrun_ns": 0,
+              "realtime_denied": 0,
+              "xruns": 0
+            },
+            "settled_ns": 9506267925,
+            "short_unprimed_fade_refused": true,
+            "transition_requested_ns": 8499202122,
+            "trial": 2,
+            "worker_retired": true
+          }
+        ],
+        "warmup_audio": {
+          "backend_errors": 0,
+          "callbacks": 101,
+          "cpu_budget_exhaustions": 0,
+          "deadline_overruns": 0,
+          "device_lost": 0,
+          "dropped_buffers": null,
+          "last_callback": {
+            "budget_ns": 5804988,
+            "channels": 4,
+            "elapsed_ns": 1741010,
+            "frames": 256,
+            "output_latency_ns": 5510204,
+            "overrun_ns": 0,
+            "render_cpu_ns": 1681084,
+            "sample_rate": 44100
+          },
+          "max_callback": {
+            "budget_ns": 5804988,
+            "channels": 4,
+            "elapsed_ns": 1936552,
+            "frames": 256,
+            "output_latency_ns": 5555556,
+            "overrun_ns": 0,
+            "render_cpu_ns": 1779756,
+            "sample_rate": 44100
+          },
+          "max_elapsed_ns": 1936552,
+          "max_overrun_ns": 0,
+          "realtime_denied": 0,
+          "xruns": 0
+        }
+      }
+    },
+    "carrierAudit": [
+      {
+        "directory": "native-transition-50",
+        "raw_capture_sha256": "557a8ae55316ee3342a9ce73a29d776f42bf11aace9056b5dd02ba6b9f6eb04f",
+        "fixed_carrier_floor": 0.00003,
+        "first_four_seconds_missing_per_channel": [
+          160,
+          160
+        ],
+        "scope": "Post-run fixed-frequency audit of retained raw capture; first 0.8 seconds excluded from this diagnostic. This is not a replacement native run or an exact original callback-timestamp remapping."
+      },
+      {
+        "directory": "ns7-routed-native-60-release",
+        "raw_capture_sha256": "6bdbb5871cce3ec71ce0e2450c83defd7c247c2e20129fcd1d954a20930d4ed5",
+        "fixed_carrier_floor": 0.00003,
+        "first_four_seconds_missing_per_channel": [
+          160,
+          160
+        ],
+        "scope": "Post-run fixed-frequency audit of retained raw capture; first 0.8 seconds excluded from this diagnostic. This is not a replacement native run or an exact original callback-timestamp remapping."
+      },
+      {
+        "directory": "ns7-routed-native-61-release",
+        "raw_capture_sha256": "d40f05823676f8c1ec85349e3f07b5e34bd4c89568a2e0f9b3bbbde6cf548138",
+        "fixed_carrier_floor": 0.00003,
+        "first_four_seconds_missing_per_channel": [
+          160,
+          160
+        ],
+        "scope": "Post-run fixed-frequency audit of retained raw capture; first 0.8 seconds excluded from this diagnostic. This is not a replacement native run or an exact original callback-timestamp remapping."
+      },
+      {
+        "directory": "ns7-routed-native-62-release",
+        "raw_capture_sha256": "2fcbb2eb5d23a3f67d9755f6f82dbbb6ceaa9028ad363ed1250087bb0a39d6e7",
+        "fixed_carrier_floor": 0.00003,
+        "first_four_seconds_missing_per_channel": [
+          160,
+          160
+        ],
+        "scope": "Post-run fixed-frequency audit of retained raw capture; first 0.8 seconds excluded from this diagnostic. This is not a replacement native run or an exact original callback-timestamp remapping."
+      }
+    ],
+    "measurementCorrection": "The relative RMS/noise-floor continuity check could count mixer noise as uninterrupted signal. Source-50 continuity qualification is withdrawn; the unchanged original receipts and raw captures are retained. The source-60/61/62 runs remain failed. Source-63 adds carrier-aware window checks, outgoing stereo preflight and an offline initial-graph audio regression; these new checks are not compiled yet.",
+    "restoration": {
+      "backup": {
+        "path": "/home/michael/Projects/omatainer-work/producer-dj-completion/target/validation/combined-completion/native-ui/session-backup/pre-recovery-62-current.omatainer",
+        "bytes": 162883215,
+        "sha256": "120b685531fa9ed25cd8435205d673f82ef1bfb4e4b297f0199659f5b967f1f5",
+        "nativeSaveAcknowledged": true,
+        "acknowledgment": "Saved /home/michael/Projects/omatainer-work/producer-dj-completion/target/validation/combined-completion/native-ui/session-backup/pre-recovery-62-current.omatainer (copy; current project unchanged)"
+      },
+      "status": {
+        "accepted": null,
+        "active_scene_name": "",
+        "audio": {
+          "backend_errors": 0,
+          "callbacks": 27856,
+          "cpu_budget_exhaustions": 0,
+          "deadline_overruns": 0,
+          "device_lost": 0,
+          "dropped_buffers": null,
+          "last_callback": {
+            "budget_ns": 5804988,
+            "channels": 4,
+            "elapsed_ns": 290918,
+            "frames": 256,
+            "output_latency_ns": 5351474,
+            "overrun_ns": 0,
+            "render_cpu_ns": 258041,
+            "sample_rate": 44100
+          },
+          "max_elapsed_ns": 2161888,
+          "max_overrun_ns": 0,
+          "realtime_denied": 0,
+          "xruns": 0
+        },
+        "bar": 10439,
+        "beat": 2.0247156620025635,
+        "bpm": 103.96062469482422,
+        "command_status": null,
+        "commands": {
+          "applied": 1,
+          "applied_last_block": 0,
+          "backlog": 0,
+          "budget_exhaustions": 0,
+          "coalesced": 0,
+          "high_water": 1,
+          "received": 1,
+          "received_last_block": 0
+        },
+        "deckA": "What More Can I Say",
+        "deckALoadLocked": false,
+        "deckAPlaying": false,
+        "deckB": "Public Service Announcement",
+        "deckBLoadLocked": false,
+        "deckBPlaying": false,
+        "event": "state",
+        "id": "3797638-1",
+        "latency": {
+          "enabled": false,
+          "history_bytes": 0,
+          "low_latency_monitor": false,
+          "monitor_frames": 0,
+          "priming_frames": 0,
+          "program_frames": 0,
+          "rate": 0,
+          "reserve_frames": 0,
+          "transition_frames": 0
+        },
+        "master_fx": {
+          "types": [
+            "echo",
+            "reverb",
+            "filter"
+          ],
+          "wet": [
+            0.5,
+            0,
+            0
+          ]
+        },
+        "meter": [
+          4,
+          4
+        ],
+        "midi": [
+          "[connected] keyboard + mouse · built-in",
+          "[connected] MIDI input backend · discovery",
+          "[connected] Numark NS7:Numark NS7 MIDI 24:0 · Numark NS7 (original)",
+          "[connected] APC40 mkII:APC40 mkII MIDI 1 28:0 · Akai APC40 mkII",
+          "[connected] Pioneer DDJ-SP1:Pioneer DDJ-SP1 MIDI 1 32:0 · Pioneer DDJ-SP1",
+          "[connected] MPD232:MPD232 Port A 36:0 · Akai MPD232 (LiveLite)",
+          "[disabled] MPD232:MPD232 Port B 36:1 · Class-compliant MIDI",
+          "[disabled] MPD232:MPD232 MIDI 36:2 · Class-compliant MIDI"
+        ],
+        "midi_clock": {
+          "last_source": null,
+          "ticks": 0
+        },
+        "midi_clock_input": {
+          "accepted_ticks": 0,
+          "awaiting_tick": false,
+          "backend_timing": true,
+          "batched_ticks": 0,
+          "config": {
+            "follow_transport": true,
+            "loss": "freewheel",
+            "source": null,
+            "timeout_ms": 500
+          },
+          "estimated_bpm": null,
+          "ignored": 0,
+          "inferred_missing_ticks": 0,
+          "jitter_ms": 0,
+          "locked": false,
+          "lost": null,
+          "needs_transport": false,
+          "overflow": 0,
+          "phase_error_beats": 0,
+          "reacquisitions": 0,
+          "stale": 0,
+          "transport_running": false,
+          "unsupported_bpm": null
+        },
+        "midi_clock_output": {
+          "backend_timing": true,
+          "enabled": false,
+          "error": null,
+          "late": 0,
+          "max_late_ns": 0,
+          "overflow": 0,
+          "position_sixteenths": 0,
+          "running": false,
+          "scheduled": 0,
+          "sent": 0
+        },
+        "midi_feedback": {
+          "connected": 4,
+          "failed": 0,
+          "sent": 532
+        },
+        "midi_input": {
+          "coalesced": 0,
+          "disconnected": 0,
+          "dispatched": 2,
+          "dropped": 0,
+          "oversized": 0,
+          "queued": 2,
+          "received": 2,
+          "resets": 0
+        },
+        "midi_profiles": {
+          "busy": false,
+          "cached_generation": 1,
+          "control_check": null,
+          "initialization_sent": 2,
+          "input_open": 4,
+          "output_failures": 0,
+          "output_open": 4,
+          "physical_inputs": 7,
+          "physical_qualification": "pending",
+          "previous_generation": 0,
+          "profiled_inputs": 4,
+          "ready": true,
+          "schema": 1
+        },
+        "midi_routing": {
+          "enabled": false,
+          "failed": 0,
+          "generation": 1,
+          "overruns": 0,
+          "received": 2,
+          "refused_tracks": 0,
+          "refused_tracks_extended": [
+            0,
+            0
+          ],
+          "sent": 0
+        },
+        "monitor": {
+          "active": false,
+          "available": true,
+          "blend": 0,
+          "channels": [
+            2,
+            3
+          ],
+          "faders": [
+            1,
+            1
+          ],
+          "master": false,
+          "meters": [
+            0,
+            0
+          ],
+          "mix": 0.5,
+          "output_alias": null,
+          "source": "deck_mix",
+          "split": false,
+          "tone": null,
+          "volume": 0
+        },
+        "ok": true,
+        "performance": {
+          "changing": false,
+          "deck_load_locked": [
+            false,
+            false
+          ],
+          "last_rejection": null,
+          "nonfinite_tail": false,
+          "observation_complete": false,
+          "observed_frames": 0,
+          "optional_active": 1,
+          "output_muted": false,
+          "protected": false,
+          "quiet_frames": 0,
+          "recovery": false,
+          "rejected": 0,
+          "safety_applied": 0,
+          "safety_requested": 0,
+          "stopped": false
+        },
+        "pitch_pickup": [
+          {
+            "acquired": false,
+            "physical": null,
+            "sync": false,
+            "target": 0.5
+          },
+          {
+            "acquired": false,
+            "physical": null,
+            "sync": false,
+            "target": 0.5039370059967041
+          }
+        ],
+        "playing": true,
+        "queued_scene_name": "",
+        "recording": false,
+        "scenes": {
+          "active": null,
+          "active_properties": null,
+          "error": null,
+          "pending": null,
+          "timing": null
+        },
+        "state_available": true,
+        "state_truncated": true,
+        "submissions": {
+          "accepted": 1,
+          "coalesced": 0,
+          "last_error": null,
+          "rejected": 0
+        },
+        "sync_aligned": [
+          false,
+          false
+        ],
+        "sync_leader": null,
+        "sync_leader_ready": false,
+        "sync_modes": [
+          "off",
+          "off"
+        ],
+        "sync_target_bpm": [
+          124,
+          124
+        ],
+        "xfader": 0.5275590419769287
+      },
+      "source": "dd1ef555d1004803a11ae8ad67a0bd0c403e2ffb",
+      "pid": 3774544,
+      "invocation": "a158b0c69e124d3194c2b121da4a87c8"
+    },
+    "evidence": [
+      {
+        "private_path": "target/validation/combined-completion/profiles-qualified/62-release/provenance.json",
+        "sha256": "d4b5f7e8022c0d70d98ec96b085d4d1ac5f986a7a8a0a92a8f79571a670d1edf"
+      },
+      {
+        "private_path": "target/validation/combined-completion/profiles-qualified/62-release/focused-results.json",
+        "sha256": "7215914e88e4a84816746b9b40dabdfebb59654995464407ba0232079ca56bfd"
+      },
+      {
+        "private_path": "target/validation/combined-completion/physical-recovery-62-manual/manual-receipt.json",
+        "sha256": "f9a7be5824f451774ea90a315c9e73983411b1683dd37a9fafd6d7c1cd76510f"
+      },
+      {
+        "private_path": "target/validation/combined-completion/physical-recovery-62-manual/fixture.log",
+        "sha256": "a4c5e523252a1c5f68064cb98647d44513fedc6cbd301e13b70ca654115f3b1e"
+      },
+      {
+        "private_path": "target/validation/combined-completion/physical-recovery-62-manual/retained-0.omatainer",
+        "sha256": "917f3cd6ff803123d0a24495fe53c59e77f32bed1af7b24d8cdc7ff16e9e0059"
+      },
+      {
+        "private_path": "target/validation/combined-completion/physical-recovery-62-manual/retained-1.omatainer",
+        "sha256": "8d4d47a12cfa65d4d2df5d6fc8c44a9d8e9a218fad1fee5c601ae29f87209ebc"
+      },
+      {
+        "private_path": "target/validation/combined-completion/qualification-62-routed-native.json",
+        "sha256": "52d4ccf5d17e5fdfaf889839240be17506380fa970e1ed6cc07874c522881a9f"
+      },
+      {
+        "private_path": "target/validation/combined-completion/ns7-routed-native-62-release/peavey-return.f32le",
+        "sha256": "2fcbb2eb5d23a3f67d9755f6f82dbbb6ceaa9028ad363ed1250087bb0a39d6e7"
+      },
+      {
+        "private_path": "target/validation/combined-completion/carrier-audit-through-62.json",
+        "sha256": "0cd1b94dd202dbe62b3a071e4f01523eeb962a338b0893a2d401d766d108209e"
+      },
+      {
+        "private_path": "target/validation/combined-completion/native-ui/pre-recovery-62-backup-proof.json",
+        "sha256": "80e1348f280d7149ce32e4271ec6373cc1d03bf28b62addc276f6237eb673c91"
+      },
+      {
+        "private_path": "target/validation/combined-completion/native-ui/49-after-physical-62-restored-status.json",
+        "sha256": "4f861c24faf678b310e99e8827905ab6602dd70696e8e0771ca3ef0f6060008c"
       }
     ]
   }
