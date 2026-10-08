@@ -2771,6 +2771,7 @@ version = "0.1.0"
 dependencies = [
  "ab_glyph",
  "accesskit_unix",
+ "alsa",
  "anyhow",
  "arc-swap",
  "cpal",
@@ -2787,6 +2788,7 @@ dependencies = [
  "midir",
  "parking_lot",
  "quick-xml",
+ "ring",
  "rtrb",
  "serde",
  "serde_json",

@@ -145,6 +145,9 @@ impl Control {
         }
     }
     pub fn request(&self, policy: InputPolicy) -> Result<u64, PolicyError> {
+        self.request_prepared(policy,||Ok(()))
+    }
+    pub(super) fn request_prepared(&self,policy:InputPolicy,prepare:impl FnOnce()->Result<(),PolicyError>)->Result<u64,PolicyError>{
         policy.validate()?;
         let policy = Arc::new(policy);
         let mut current = self.current.lock();
@@ -159,6 +162,7 @@ impl Control {
             .generation
             .checked_add(1)
             .ok_or(PolicyError::GenerationExhausted)?;
+        prepare()?;
         let old = self.published.load();
         self.published.store(Arc::new(PolicyStatus {
             requested: generation,

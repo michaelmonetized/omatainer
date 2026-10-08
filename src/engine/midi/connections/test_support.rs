@@ -52,6 +52,7 @@ impl Control {
     }
 }
 struct Fake {
+    registry:Option<Arc<super::super::catalog::runtime::Registry>>,
     attempts: Sender<Attempt>,
     replies: Receiver<Reply>,
 }
@@ -82,6 +83,9 @@ impl Backend for Fake {
                 .collect()
         })
     }
+    fn mapping(&self,id:&str,name:&str,maps:&[MidiMap])->MidiMap{self.registry.as_ref().map_or_else(||pick_map(maps,name),|r|r.mapping(id,None))}
+    fn endpoint(&self,id:&str,name:&str,policy:&InputPolicy)->(String,String,String){self.registry.as_ref().map_or_else(||(name.into(),id.into(),name.into()),|r|r.endpoint(id,name,policy))}
+    fn registry(&self)->Option<Arc<super::super::catalog::runtime::Registry>>{self.registry.clone()}
     fn connect(
         &mut self,
         id: &String,
@@ -106,12 +110,17 @@ pub(crate) fn install(engine: &mut Engine) -> Control {
     install_with_policy(engine, InputPolicy::All)
 }
 pub(crate) fn install_with_policy(engine: &mut Engine, policy: InputPolicy) -> Control {
+    install_profiled(engine,policy,None)
+}
+pub(crate) fn install_profiled(engine:&mut Engine,policy:InputPolicy,registry:Option<Arc<super::super::catalog::runtime::Registry>>)->Control{
     let (attempt_tx, attempts) = bounded(8);
     let (replies, reply_rx) = bounded(8);
     let mut hub = MidiHub::without_devices();
+    hub.profiles=registry.clone();
     hub.connections = Some(
         Manager::start_with_policy(
             Fake {
+                registry,
                 attempts: attempt_tx,
                 replies: reply_rx,
             },

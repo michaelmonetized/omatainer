@@ -3,6 +3,7 @@ use crate::engine::midi::learn::{self, Config, Endpoint};
 use crate::engine::midi::{Action, Binding, MsgKind, RelativeSpec};
 
 pub(super) struct Panel {
+    pub(super) profiles:super::midi_profiles::Panel,
     pub(super) presets: super::midi_presets::Panel,
     binding: Binding,
     endpoint: Option<Endpoint>,
@@ -12,6 +13,7 @@ pub(super) struct Panel {
 impl Default for Panel {
     fn default() -> Self {
         Self {
+            profiles:super::midi_profiles::Panel::default(),
             presets: super::midi_presets::Panel::default(),
             binding: Binding {
                 kind: MsgKind::Note,

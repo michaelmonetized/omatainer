@@ -290,6 +290,8 @@ struct InputWorker {
     shift: Arc<Mutex<[bool; 4]>>,
     name: String,
     port_id: String,
+    profile:Option<(Arc<super::catalog::runtime::Registry>,String)>,
+    guide_revision:u64,
 }
 impl InputWorker {
     fn reset(&mut self) {
@@ -301,6 +303,7 @@ impl InputWorker {
         self.shared.counters.resets.fetch_add(1, Relaxed);
     }
     fn step(&mut self) -> bool {
+        if let Some((registry,_))=&self.profile {let revision=registry.guide_revision();if revision!=self.guide_revision{self.reset();self.guide_revision=revision;}}
         let learning = self.shared.learning.revision.load(Acquire);
         if learning != self.learning_revision { self.reset(); self.learning_revision = learning; }
         let routing = self.shared.routing.generation.load(Acquire);
@@ -321,6 +324,7 @@ impl InputWorker {
         };
         if event.epoch == self.shared.epoch.load(Acquire) && event.epoch == self.epoch && event.safety == safety && event.learning == learning {
             let cmd=self.cmd.for_input_epoch(event.safety).for_midi_context([event.epoch,learning,routing]);
+            if self.profile.as_ref().is_some_and(|(registry,id)|registry.observe(id,event.bytes())) {self.shared.counters.dispatched.fetch_add(1, Relaxed);return true;}
             let packet_ticks=super::routing::packet::frames(event.bytes()).filter(|frame|matches!(frame,super::routing::packet::Frame::Realtime(0xf8))).count() as u16;
             for frame in super::routing::packet::frames(event.bytes()) {
                 let mut paired = super::controls::PairValues::default();
@@ -497,6 +501,7 @@ fn channel(
             shift: Arc::new(Mutex::new([false; 4])),
             port_id,
             name,
+            profile:None,guide_revision:0,
         },
     ))
 }
@@ -543,7 +548,14 @@ pub(super) fn start_on_port(
     source:u64,map:MidiMap,cmd:CommandPort,log:Arc<Mutex<Vec<String>>>,
     name:String,id:String,counters:Arc<InputCounters>,enabled:bool,completed:impl FnOnce()+Send+'static,
 ) -> std::io::Result<(InputSink,InputGuard)> {
-    let (sink, worker) = channel(EVENTS, source, map, cmd, log,  name, id, counters)?;
+    start_profile(source,map,cmd,log,name,id,None,counters,enabled,completed)
+}
+pub(super) fn start_profile(
+    source:u64,map:MidiMap,cmd:CommandPort,log:Arc<Mutex<Vec<String>>>,name:String,id:String,
+    profile:Option<(Arc<super::catalog::runtime::Registry>,String)>,counters:Arc<InputCounters>,enabled:bool,completed:impl FnOnce()+Send+'static,
+)->std::io::Result<(InputSink,InputGuard)> {
+    let (sink, mut worker) = channel(EVENTS, source, map, cmd, log, name, id, counters)?;
+    worker.profile=profile;
     sink.shared.enabled.store(enabled, Release);
     let shared = sink.shared.clone();
     let worker = std::thread::Builder::new()

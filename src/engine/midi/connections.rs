@@ -122,11 +122,12 @@ impl Manager {
             worker: Some(worker),
         })
     }
-    pub(super) fn configure(&self, policy: InputPolicy) -> Result<u64, PolicyError> {
+    pub(super) fn configure(&self,policy:InputPolicy)->Result<u64,PolicyError>{self.configure_prepared(policy,||Ok(()))}
+    pub(super) fn configure_prepared(&self, policy: InputPolicy,prepare:impl FnOnce()->Result<(),PolicyError>) -> Result<u64, PolicyError> {
         if !self.available() {
             return Err(PolicyError::Unavailable);
         }
-        let generation = self.activity.policy.request(policy)?;
+        let generation = self.activity.policy.request_prepared(policy,prepare)?;
         match self
             .requests
             .as_ref()
@@ -206,6 +207,10 @@ pub(super) trait Backend: Send + 'static {
     type Port;
     type Connection;
     fn discover(&mut self) -> Result<Vec<Port<Self::Port>>, String>;
+    fn mapping(&self, id: &str, name: &str, maps: &[MidiMap]) -> MidiMap { let _=id; pick_map(maps,name) }
+    fn endpoint(&self,id:&str,name:&str,_policy:&InputPolicy)->(String,String,String){(name.into(),id.into(),name.into())}
+    fn allows(&self,id:&str,name:&str,policy:&InputPolicy)->bool{policy.allows(&self.endpoint(id,name,policy).2)}
+    fn registry(&self)->Option<Arc<super::catalog::runtime::Registry>>{None}
     fn connect(
         &mut self,
         port: &Self::Port,
@@ -216,12 +221,18 @@ pub(super) trait Backend: Send + 'static {
 struct Active<C> {
     _connection: C, // Field order is intentional: stop callbacks before joining.
     _worker: handoff::InputGuard,
+    _receipt: Option<InputReceipt>,
 }
+struct InputReceipt {registry: Arc<super::catalog::runtime::Registry>,id:String}
+impl Drop for InputReceipt {fn drop(&mut self){self.registry.input_open(&self.id,false);}}
 struct Entry<P, C> {
     id: String,
     name: String,
     port: P,
     map: MidiMap,
+    endpoint_name: String,
+    endpoint_id: String,
+    policy_name: String,
     status: Status,
     active: Option<Active<C>>,
     present: bool,
@@ -242,7 +253,7 @@ impl<B: Backend> Worker<B> {
         // Apply exclusions before any new discovery/connect OS call. Allowed
         // sources keep their connection and source ID across preference edits.
         for entry in &mut self.entries {
-            if !request.policy.allows(&entry.name) {
+            if !self.backend.allows(&entry.id,&entry.name,&request.policy) {
                 entry.active.take();
                 entry.status.disabled();
             }
@@ -293,16 +304,24 @@ impl<B: Backend> Worker<B> {
                 .iter_mut()
                 .find(|entry| entry.id == port.id && entry.name == port.name)
             {
+                let map=self.backend.mapping(&port.id,&port.name,&self.maps);
+                let (endpoint_name,endpoint_id,policy_name)=self.backend.endpoint(&port.id,&port.name,&request.policy);
+                if map.name!=entry.map.name || map.bindings!=entry.map.bindings || map.unmapped_notes!=entry.map.unmapped_notes || endpoint_name!=entry.endpoint_name || endpoint_id!=entry.endpoint_id {
+                    entry.active.take();entry.map=map;entry.endpoint_name=endpoint_name;entry.endpoint_id=endpoint_id;
+                }
+                entry.policy_name=policy_name;
                 entry.port = port.port;
                 entry.present = true;
             } else if let Some(snapshot) = self.snapshot.upgrade() {
-                let map = pick_map(&self.maps, &port.name);
+                let map = self.backend.mapping(&port.id, &port.name, &self.maps);
+                let (endpoint_name,endpoint_id,policy_name)=self.backend.endpoint(&port.id,&port.name,&request.policy);
                 let status = Status::discovered(&snapshot, &port.name, &map.name);
                 self.entries.push(Entry {
                     id: port.id,
                     name: port.name,
                     port: port.port,
                     map,
+                    endpoint_name,endpoint_id,policy_name,
                     status,
                     active: None,
                     present: true,
@@ -335,13 +354,14 @@ impl<B: Backend> Worker<B> {
             entry.active.take();
             entry.status.connecting();
             let completed = entry.status.clone();
-            let pair = handoff::start_on_port(
+            let pair = handoff::start_profile(
                 next_source_id(),
                 entry.map.clone(),
                 self.cmd.clone(),
                 self.log.clone(),
-                entry.name.clone(),
-                entry.id.clone(),
+                entry.endpoint_name.clone(),
+                entry.endpoint_id.clone(),
+                self.backend.registry().map(|registry|(registry,entry.id.clone())),
                 self.counters.clone(),
                 false,
                 move || completed.disconnected(),
@@ -359,7 +379,7 @@ impl<B: Backend> Worker<B> {
                     if !self
                         .activity
                         .policy
-                        .activate(&entry.name, || worker.enable())
+                        .activate(&entry.policy_name, || worker.enable())
                     {
                         drop(connection);
                         drop(worker);
@@ -370,10 +390,12 @@ impl<B: Backend> Worker<B> {
                         }
                         continue;
                     }
+                    let receipt=self.backend.registry().map(|registry|{registry.input_open(&entry.id,true);InputReceipt{registry,id:entry.id.clone()}});
                     entry.status.connected();
                     entry.active = Some(Active {
                         _connection: connection,
                         _worker: worker,
+                        _receipt: receipt,
                     });
                 }
                 Err(failure) => {
@@ -407,7 +429,7 @@ impl<B: Backend> Worker<B> {
                     !self
                         .entries
                         .iter()
-                        .any(|entry| entry.present && &entry.name == *name)
+                        .any(|entry| entry.present && (&entry.name == *name || &entry.policy_name == *name))
                 })
                 .cloned()
                 .collect(),
@@ -419,7 +441,8 @@ impl<B: Backend> Worker<B> {
     }
 }
 
-pub(super) struct MidirBackend;
+pub(super) struct MidirBackend {pub registry:Arc<super::catalog::runtime::Registry>,pub snapshot:Weak<Mutex<Snapshot>>,pub cmd:CommandPort,fetch_requested:bool,mpd_override:Option<MidiMap>}
+impl MidirBackend {pub fn new(registry:Arc<super::catalog::runtime::Registry>,snapshot:Weak<Mutex<Snapshot>>,cmd:CommandPort,mpd_override:Option<MidiMap>)->Self{Self{registry,snapshot,cmd,fetch_requested:false,mpd_override}}}
 pub(super) fn application_port(name: &str) -> bool { name.to_ascii_lowercase().starts_with("omatainer") }
 impl Backend for MidirBackend {
     type Port = midir::MidiInputPort;
@@ -438,8 +461,24 @@ impl Backend for MidirBackend {
                 })
             })
             .collect::<Result<Vec<_>, String>>()?;
-        Ok(ports.into_iter().filter(|port| !application_port(&port.name)).collect())
+        let ports:Vec<_>=ports.into_iter().filter(|port| !application_port(&port.name)).collect();
+        let output=midir::MidiOutput::new("omatainer-pair-discover").map_err(|e|e.to_string())?;
+        let outputs=output.ports().iter().map(|p|(p.id(),super::catalog::identity::Device::discover(&p.id()))).collect();
+        let inputs=ports.iter().map(|p|(p.id.clone(),p.name.clone(),super::catalog::identity::Device::discover(&p.id))).collect();
+        if !self.registry.loaded(){return Err("Controller cache recovery is still pending".into());}
+        if let Some(snapshot)=self.snapshot.upgrade(){let snapshot=snapshot.lock().clone();self.registry.refresh(inputs,outputs,&snapshot);}
+        if !self.fetch_requested && self.registry.view().ready && !ports.is_empty() && self.registry.acquire(self.cmd.performance()).is_ok(){self.fetch_requested=true;}
+        Ok(ports)
     }
+    fn mapping(&self,id:&str,_name:&str,_maps:&[MidiMap])->MidiMap{self.registry.mapping(id,self.mpd_override.as_ref())}
+    fn endpoint(&self,id:&str,name:&str,policy:&InputPolicy)->(String,String,String){self.registry.endpoint(id,name,policy)}
+    fn allows(&self,id:&str,name:&str,policy:&InputPolicy)->bool{
+        if let Some(d)=self.registry.view().devices.iter().find(|d|d.id==id){
+            if d.device.port!=0 && super::catalog::bundled().is_ok_and(|ps|ps.iter().any(|p|p.usb.iter().any(|u|u.vendor==d.device.vendor&&u.product==d.device.product))){return matches!(policy,InputPolicy::Selected(names) if names.iter().any(|n|n==name));}
+        }
+        policy.allows(&self.endpoint(id,name,policy).2)
+    }
+    fn registry(&self)->Option<Arc<super::catalog::runtime::Registry>>{Some(self.registry.clone())}
     fn connect(
         &mut self,
         port: &Self::Port,
