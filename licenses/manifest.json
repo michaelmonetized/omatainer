@@ -13111,7 +13111,7 @@
     "src/engine/audio/calibration/native.rs": "7409f9b542d83352dc25d9dc518ef7a479a6aabca7f8fc58467bf98081fc4f9d",
     "src/engine/audio/config.rs": "dbec72a88fcf3481365040e2dfe2077918e1bc91981132f5b8132337589eb4cb",
     "src/engine/audio/cpu_budget.rs": "51447242cfbb4d3b74e2719a3ad93118dc34fb2c6a5e6345fb13ddd6f174a676",
-    "src/engine/audio/cpu_budget/tests.rs": "c71c29d4569a33c3aaa8faaa61311ab0ca58bba31f8a53fa8f11cefba69454f6",
+    "src/engine/audio/cpu_budget/tests.rs": "5ffab24efe959a65c12cfb7b84215f45b0329f0b9a5914df2844bb72344d099e",
     "src/engine/audio/graph.rs": "319d76e7b948249481c6a2f2d4b109ef7ee19b7369b22c33c1e4d302a02ea3fd",
     "src/engine/audio/jack.rs": "4303ba59074d63661a162b1bf33073c0c5af045d0ad311a57bf59798d467fd9d",
     "src/engine/audio/jack/native_tests.rs": "af5b37c3c4d690c22476db389753dde54b7bbfd0efaeee849d051dea7c868aa9",

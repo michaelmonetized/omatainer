@@ -426,7 +426,7 @@ fn native_ns7_cpu_limit_retains_recording_and_reconnects_only_explicitly() {
         ).is_err());
     let settings = super::super::recovery::settings(&offline.recovery.as_ref().unwrap().plan);
     let (_, reviewed) = super::super::config::select(&settings).unwrap();
-    let restored = handle.apply_preview(settings, reviewed, Arc::new(AtomicBool::new(false))).unwrap();
+    let restored = handle.apply_preview(settings, reviewed, std::sync::Arc::new(AtomicBool::new(false))).unwrap();
     assert_eq!(restored.phase, Phase::Running);
     assert!(engine.cmd.send(Command::Play).is_err());
     engine
