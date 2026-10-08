@@ -2,7 +2,7 @@
 //! physical key ownership, worker handles and device connections.
 use super::super::*;
 
-pub const STATE_VERSION: u32 = 29;
+pub const STATE_VERSION: u32 = 32;
 pub const MAX_BANKS: usize = 16;
 pub const MAX_FX_PER_RACK: usize = 128;
 pub const MAX_NOTES_PER_CLIP: usize = 8192;
@@ -22,6 +22,8 @@ pub struct State {
     pub(crate) arrangement: Option<Arc<arrangement::Model>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub routing: Option<Arc<audio::routing::model::Model>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub(crate) migration: Option<Arc<crate::ableton::Migration>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub mic_aux: Option<audio::routing::mic_aux::Configuration>,
     #[serde(default)]
@@ -71,6 +73,8 @@ struct StateWire {
     #[serde(default)]
     routing: Option<Arc<audio::routing::model::Model>>,
     #[serde(default)]
+    migration: Option<Arc<crate::ableton::Migration>>,
+    #[serde(default)]
     mic_aux: Option<audio::routing::mic_aux::Configuration>,
     #[serde(default)]
     session: Option<session::Layout>,
@@ -111,6 +115,22 @@ impl<'de> Deserialize<'de> for State {
         let raw = serde_json::Value::deserialize(deserializer)?;
         midi_edit::reject_legacy_fields(&raw).map_err(serde::de::Error::custom)?;
         let version = raw["version"].as_u64().unwrap_or(0);
+        if version < 31
+            && raw
+                .get("arrangement")
+                .and_then(|a| a.get("sources"))
+                .and_then(serde_json::Value::as_array)
+                .is_some_and(|sources| sources.iter().any(|s| s.get("audio_clock").is_some()))
+        {
+            return Err(serde::de::Error::custom(
+                "Aligned render clocks require project state version 31",
+            ));
+        }
+        if version < 30 && raw.get("migration").is_some() {
+            return Err(serde::de::Error::custom(
+                "Ableton migration requires project state version 30",
+            ));
+        }
         if version < 29 && raw.get("routing").is_some_and(|r| r.get("plugins").is_some()) { return Err(serde::de::Error::custom("Native plugins require project state version 29")); }
         if version < 28 && raw.get("decks").and_then(serde_json::Value::as_array).is_some_and(|decks| decks.iter().any(|deck| deck.get("key_shift").is_some())) { return Err(serde::de::Error::custom("Independent key shift requires project state version 28")); }
         if version < 26 && (raw.get("tracks").and_then(serde_json::Value::as_array).into_iter().flatten().flat_map(|t|t.get("clips").and_then(serde_json::Value::as_array).into_iter().flatten()).chain(raw.get("arrangement").and_then(|a|a.get("sources")).and_then(serde_json::Value::as_array).into_iter().flatten().filter_map(|s|s.get("clip"))).any(|c|c.get("audio_region").is_some_and(|r|r.get("fades").is_some())) || raw.get("arrangement").and_then(|a|a.get("instances")).and_then(serde_json::Value::as_array).into_iter().flatten().any(|i|["fades","fade_link","crossfade"].into_iter().any(|f|i.get(f).is_some()))) { return Err(serde::de::Error::custom("Audio fades and crossfade links require project state version 26")); }
@@ -180,6 +200,7 @@ impl<'de> Deserialize<'de> for State {
             navigation: wire.navigation,
             arrangement: wire.arrangement,
             routing: wire.routing,
+            migration: wire.migration,
             mic_aux: wire.mic_aux,
             session: wire.session,
             scene_timing: wire.scene_timing,
@@ -426,7 +447,31 @@ impl State {
             }
         }
     }
-    pub(super) fn blank() -> Self {
+    /// Create a stopped empty native session with valid unused drum bindings.
+    /// Takes no source content; returns editable state and a silent attachment for unused legacy drum slots.
+    pub(crate) fn empty() -> Result<(Self, Vec<Arc<Sample>>), String> {
+        let mut state = Self::blank();
+        state.banks = vec![Bank {
+            name: "Empty bank".into(),
+            media: [None; 16],
+            instance: Some(crate::sampler_bank::BankId::new()?),
+            settings: Some(Arc::new(crate::sampler_bank::resident::Settings::empty(
+                "Empty bank".into(),
+            )?)),
+        }];
+        let media = vec![Arc::new(Sample {
+            name: "Unused drum silence".into(),
+            peaks: Arc::new(vec![]),
+            spectrum: None,
+            bpm: 120.,
+            data: vec![0.; 64],
+            sr: 48000,
+            ch: 1,
+            path: "native-unused-drum-silence".into(),
+        })];
+        Ok((state, media))
+    }
+    pub(crate) fn blank() -> Self {
         Self {
             version: STATE_VERSION,
             sync_leader: None,
@@ -434,6 +479,7 @@ impl State {
             scene_timing: None,
             arrangement: None,
             routing: None,
+            migration: None,
             mic_aux: None,
             session: Some(session::Layout::legacy((0..TRACKS).map(|_| String::new()), SCENES)),
             conductor: None,
@@ -547,6 +593,13 @@ impl State {
     }
     pub fn validate(&self, media: &[Arc<Sample>]) -> Result<(), String> {
         let fail = |name: &str| Err(format!("invalid project {name}"));
+        if let Some(migration) = &self.migration {
+            if self.version < 30 {
+                return fail("migration in legacy state");
+            }
+            if self.version<32 && migration.schema>=2 {return fail("Pack metadata in legacy migration state");}
+            migration.validate(media.len())?;
+        }
         if self.version < 17 && self.mic_aux.is_some() {return fail("mic/aux controls in a legacy state");}
         if let Some(cfg)=self.mic_aux {cfg.validate(self.routing.as_deref()).map_err(str::to_owned)?;}
         if self.version < 16 && self.tracks.iter().any(|track| track.input_monitor.is_some()) { return fail("input monitoring in a legacy state"); }
@@ -890,6 +943,23 @@ fn routing_schema_requires_native_identity_and_rejects_legacy_injection() {
 }
 
 impl SavedClip{
+    /// Create an unused clip slot.
+    /// Takes no content; returns neutral editable metadata with no note, audio or launch attachments.
+    pub(crate) fn empty() -> Self {
+        Self {
+            properties: Default::default(),
+            audio_region: None,
+            lanes: None,
+            region: None,
+            kind: ClipKind::Empty,
+            name: String::new(),
+            bars: 1.,
+            notes: Vec::new(),
+            gain: 1.,
+            audio: None,
+        }
+    }
+
     /// Validate one retained clip without constructing a project graph.
     /// Takes the schema and shared media; returns its note and lane budgets or the same native source refusal used by project validation.
     pub(crate) fn validate(&self,version:u32,media:&[Arc<Sample>])->Result<(usize,usize),String>{
@@ -905,7 +975,7 @@ impl SavedClip{
                 if let Some(region)=clip.audio_region {if version<26 && !region.fades.is_default(){return fail("audio fades in a legacy clip");}if version<18||clip.kind!=ClipKind::Audio{return fail("audio source region in a legacy or non-audio clip");}let source=clip.audio.and_then(|i|media.get(i)).ok_or_else(||"Audio clip region has no embedded source".to_owned())?;let plan=region.prepare(source).map_err(str::to_owned)?;if clip.bars!=(plan.duration_beats/4.0)as f32{return fail("audio clip duration disagrees with its source region");}}
                 note_ids.clear();
                 if !text_ok(&clip.name)
-                    || !finite_range(clip.bars as f64, if clip.audio_region.is_some(){0.0000001}else if clip.region.is_some() { 1.0 / 4096.0 } else { 0.25 }, 65536.0)
+                    || !finite_range(clip.bars as f64, if clip.audio_region.is_some() || version >= 30 && clip.kind == ClipKind::Audio && clip.audio.is_none() && clip.properties.disabled {0.0000001}else if clip.region.is_some() { 1.0 / 4096.0 } else { 0.25 }, 65536.0)
                     || !finite_range(clip.gain as f64, 0.0, 1.5)
                     || !optional(clip.audio)
                     || clip.notes.len() > MAX_NOTES_PER_CLIP

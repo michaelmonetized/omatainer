@@ -344,7 +344,7 @@ impl super::RtEngine {
 static NAMESPACE: OnceLock<u64> = OnceLock::new();
 static SEQUENCE: AtomicU64 = AtomicU64::new(1);
 
-pub(super) fn initialize() -> Result<(), String> {
+pub(crate) fn initialize() -> Result<(), String> {
     if NAMESPACE.get().is_some() {
         return Ok(());
     }

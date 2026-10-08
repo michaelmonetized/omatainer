@@ -2777,6 +2777,7 @@ dependencies = [
  "crossbeam-channel",
  "eframe",
  "egui",
+ "flate2",
  "icu_casemap",
  "icu_normalizer",
  "image",

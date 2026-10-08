@@ -8,12 +8,15 @@ mod recovery;
 mod support;
 mod startup;
 mod licenses;
+mod ableton;
+mod filesystem_worker;
 mod engine;
 mod background;
 mod library;
 mod playlist_import;
 mod interchange_xml;
 mod dj_library;
+mod producer_library;
 mod plugin_host;
 mod music_provider;
 mod video;
@@ -67,6 +70,14 @@ const APPLICATION_ID: &str = "org.omarchy.omatainer";
 fn main() -> anyhow::Result<()> {
     let _audio_shutdown = engine::audio::owner::Shutdown;
     let mut args = std::env::args().skip(1).collect::<Vec<_>>();
+    if args.first().map(String::as_str) == Some("producer-library-worker") {
+        anyhow::ensure!(args.len()==1,"usage: omatainer producer-library-worker (JSON request on stdin)");
+        return producer_library::worker().map_err(anyhow::Error::msg);
+    }
+    if args.first().map(String::as_str) == Some("ableton-worker") {
+        anyhow::ensure!(args.len() == 1,"usage: omatainer ableton-worker (private inherited descriptors)");
+        return ableton::process::worker().map_err(anyhow::Error::msg);
+    }
     if args.first().map(String::as_str)==Some("vst3-worker") {
         anyhow::ensure!(args.len()==1,"usage: omatainer vst3-worker (private inherited socket)");
         return plugin_host::worker::run().map_err(anyhow::Error::msg);

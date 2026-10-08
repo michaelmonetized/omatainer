@@ -381,7 +381,11 @@ impl App {
                                 let clip =
                                     preview.captured.state.tracks[*track].clips[*scene].clone();
                                 let id = editor.model.identity()?;
-                                editor.model.sources.push(Source { id, clip });
+                                editor.model.sources.push(Source {
+                                    id,
+                                    clip,
+                                    audio_clock: None,
+                                });
                                 editor.source_choice = Some(id);
                                 Ok(())
                             })();

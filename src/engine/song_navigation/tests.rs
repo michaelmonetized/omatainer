@@ -574,7 +574,11 @@ fn quantized_audio_jump_changes_to_the_destination_on_the_exact_rendered_sample(
         let song = arrangement::Model {
             enabled: true,
             next_id: 3,
-            sources: vec![Source { id: 1, clip }],
+            sources: vec![Source {
+                id: 1,
+                clip,
+                audio_clock: None,
+            }],
             instances: vec![Instance {
                 id: 2,
                 source: 1,

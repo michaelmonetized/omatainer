@@ -63,21 +63,217 @@ fn fixture(rate: u32) -> (Engine, RtEngine) {
 }
 
 #[test]
-fn arrangement_song_export_matches_realtime_overlaps_midi_and_five_minute_clock(){
-    use crate::engine::{arrangement::{Model,Instance,Source as SongSource},audio_clip::Region,midi_edit::NoteId,MidiNote,ClipKind};
-    let files=Files::new();
-    for fading in [false,true] { for rate in [12000,44100,48000,96000]{
-        let(engine,rt)=fixture(rate);let mut rt=Box::new(rt);rt.apply(Command::Stop);rt.bpm=120.0;
-        if rate==48000 {use crate::engine::midi_data::{Conductor,Meter,Tempo,TimingSettings};rt.conductor=Some(Conductor::native(960,vec![Tempo::new(0,120.0,true).unwrap(),Tempo::new(1920,180.0,false).unwrap()],vec![Meter{tick:0,numerator:4,denominator_power:2,clocks:24,thirty_seconds:8}],TimingSettings::default()).unwrap());}
-        let mut captured=capture(&engine,&mut rt);let audio=source(rate);let index=captured.media.len();captured.media.push(audio.clone());
-        let mut clip=captured.state.tracks[0].clips[7].clone();clip.kind=ClipKind::Audio;clip.notes.clear();clip.region=None;clip.lanes=None;clip.audio=Some(index);let region=Region{start:64,end:u64::from(rate),loop_start:128,loop_end:u64::from(rate)-64,loop_enabled:true,reverse:true,transpose:3.0,tempo:120.0,fades:if fading {crate::engine::audio_clip::Fades{fade_in:0.1,fade_out:0.1,in_curve:-0.5,out_curve:0.5,automatic:true}}else{Default::default()}};clip.audio_region=Some(region);clip.bars=(region.prepare(&audio).unwrap().duration_beats/4.0)as f32;clip.gain=0.7;
-        let mut midi=captured.state.tracks[1].clips[7].clone();midi.kind=ClipKind::Midi;midi.bars=1.0;midi.notes=vec![MidiNote{id:NoteId::new(),muted:false,pitch:64,vel:90,channel:3,release_vel:9,source_timing:None,start:0.0,len:1.75}];
-        let layout=captured.state.session.as_ref().unwrap();let t0=layout.reference(crate::engine::session::Axis::Track,0).unwrap();let t1=layout.reference(crate::engine::session::Axis::Track,1).unwrap();let duration=if rate==12000{600.0}else{2.0};
-        let model=Model{enabled:true,next_id:6,sources:vec![SongSource{id:1,clip},SongSource{id:2,clip:midi}],instances:vec![Instance{id:3,source:1,track:t0,start:0.0,offset:0.0,duration,repeating:true,gain:0.8,fades:None,fade_link:0,crossfade:None},Instance{id:4,source:1,track:t0,start:0.25,offset:0.75,duration:duration-0.25,repeating:true,gain:0.4,fades:if fading {Some(crate::engine::audio_clip::Fades{fade_in:0.2,fade_out:0.2,in_curve:0.5,out_curve:-0.5,automatic:true})}else{None},fade_link:0,crossfade:None},Instance{id:5,source:2,track:t1,start:0.0,offset:0.0,duration,repeating:true,gain:0.35,fades:None,fade_link:0,crossfade:None}]};
-        let(request,ack)=crate::engine::arrangement::edit::Request::prepare(captured,model,&AtomicBool::new(false)).unwrap();assert_eq!(crate::engine::test_alloc::measure(||rt.apply(crate::engine::Command::ArrangementEdit(request))),Default::default());assert_eq!(ack.state(),crate::engine::midi_edit::Outcome::Applied);
-        let captured=capture(&engine,&mut rt);let request=Export{source:Source::Arrangement,decks:false,start:0.0,end:duration/2.0,repeats:1,tail:0.0,options:Options{rate,..Options::default()},..Export::default()};let bounds=request.frames().unwrap();let mut actual=vec![0.0;(bounds.1*2)as usize];rt.apply(Command::Play);assert_eq!(crate::engine::test_alloc::measure(||rt.process(&mut actual)),Default::default());assert!((rt.timeline_seconds()-duration/2.0).abs()<1e-9);
-        let folder=files.0.join(format!("arrangement-{rate}-{fading}"));let outcome=run(captured,&request,&folder,&engine.cmd.performance().optional_work().unwrap(),&crate::background::Reporter::default()).unwrap();let decoded=crate::engine::decode::decode_audio(&folder.join("master.wav")).unwrap();assert_eq!(outcome.frames,bounds.1);assert_eq!(decoded.sample.data,actual,"Arrangement realtime/export differs at {rate}");assert!(actual.iter().any(|v|v.abs()>0.001));
-    } }
+fn arrangement_song_export_matches_realtime_overlaps_midi_and_five_minute_clock() {
+    use crate::engine::{
+        arrangement::{Instance, Model, Source as SongSource},
+        audio_clip::Region,
+        midi_edit::NoteId,
+        ClipKind, MidiNote,
+    };
+    let files = Files::new();
+    for fading in [false, true] {
+        for rate in [12000, 44100, 48000, 96000] {
+            let (engine, rt) = fixture(rate);
+            let mut rt = Box::new(rt);
+            rt.apply(Command::Stop);
+            rt.bpm = 120.0;
+            if rate == 48000 {
+                use crate::engine::midi_data::{Conductor, Meter, Tempo, TimingSettings};
+                rt.conductor = Some(
+                    Conductor::native(
+                        960,
+                        vec![
+                            Tempo::new(0, 120.0, true).unwrap(),
+                            Tempo::new(1920, 180.0, false).unwrap(),
+                        ],
+                        vec![Meter {
+                            tick: 0,
+                            numerator: 4,
+                            denominator_power: 2,
+                            clocks: 24,
+                            thirty_seconds: 8,
+                        }],
+                        TimingSettings::default(),
+                    )
+                    .unwrap(),
+                );
+            }
+            let mut captured = capture(&engine, &mut rt);
+            let audio = source(rate);
+            let index = captured.media.len();
+            captured.media.push(audio.clone());
+            let mut clip = captured.state.tracks[0].clips[7].clone();
+            clip.kind = ClipKind::Audio;
+            clip.notes.clear();
+            clip.region = None;
+            clip.lanes = None;
+            clip.audio = Some(index);
+            let region = Region {
+                start: 64,
+                end: u64::from(rate),
+                loop_start: 128,
+                loop_end: u64::from(rate) - 64,
+                loop_enabled: true,
+                reverse: true,
+                transpose: 3.0,
+                tempo: 120.0,
+                fades: if fading {
+                    crate::engine::audio_clip::Fades {
+                        fade_in: 0.1,
+                        fade_out: 0.1,
+                        in_curve: -0.5,
+                        out_curve: 0.5,
+                        automatic: true,
+                    }
+                } else {
+                    Default::default()
+                },
+            };
+            clip.audio_region = Some(region);
+            clip.bars = (region.prepare(&audio).unwrap().duration_beats / 4.0) as f32;
+            clip.gain = 0.7;
+            let mut midi = captured.state.tracks[1].clips[7].clone();
+            midi.kind = ClipKind::Midi;
+            midi.bars = 1.0;
+            midi.notes = vec![MidiNote {
+                id: NoteId::new(),
+                muted: false,
+                pitch: 64,
+                vel: 90,
+                channel: 3,
+                release_vel: 9,
+                source_timing: None,
+                start: 0.0,
+                len: 1.75,
+            }];
+            let layout = captured.state.session.as_ref().unwrap();
+            let t0 = layout
+                .reference(crate::engine::session::Axis::Track, 0)
+                .unwrap();
+            let t1 = layout
+                .reference(crate::engine::session::Axis::Track, 1)
+                .unwrap();
+            let duration = if rate == 12000 { 600.0 } else { 2.0 };
+            let model = Model {
+                enabled: true,
+                next_id: 6,
+                sources: vec![
+                    SongSource {
+                        id: 1,
+                        clip,
+                        audio_clock: None,
+                    },
+                    SongSource {
+                        id: 2,
+                        clip: midi,
+                        audio_clock: None,
+                    },
+                ],
+                instances: vec![
+                    Instance {
+                        id: 3,
+                        source: 1,
+                        track: t0,
+                        start: 0.0,
+                        offset: 0.0,
+                        duration,
+                        repeating: true,
+                        gain: 0.8,
+                        fades: None,
+                        fade_link: 0,
+                        crossfade: None,
+                    },
+                    Instance {
+                        id: 4,
+                        source: 1,
+                        track: t0,
+                        start: 0.25,
+                        offset: 0.75,
+                        duration: duration - 0.25,
+                        repeating: true,
+                        gain: 0.4,
+                        fades: if fading {
+                            Some(crate::engine::audio_clip::Fades {
+                                fade_in: 0.2,
+                                fade_out: 0.2,
+                                in_curve: 0.5,
+                                out_curve: -0.5,
+                                automatic: true,
+                            })
+                        } else {
+                            None
+                        },
+                        fade_link: 0,
+                        crossfade: None,
+                    },
+                    Instance {
+                        id: 5,
+                        source: 2,
+                        track: t1,
+                        start: 0.0,
+                        offset: 0.0,
+                        duration,
+                        repeating: true,
+                        gain: 0.35,
+                        fades: None,
+                        fade_link: 0,
+                        crossfade: None,
+                    },
+                ],
+            };
+            let (request, ack) = crate::engine::arrangement::edit::Request::prepare(
+                captured,
+                model,
+                &AtomicBool::new(false),
+            )
+            .unwrap();
+            assert_eq!(
+                crate::engine::test_alloc::measure(
+                    || rt.apply(crate::engine::Command::ArrangementEdit(request))
+                ),
+                Default::default()
+            );
+            assert_eq!(ack.state(), crate::engine::midi_edit::Outcome::Applied);
+            let captured = capture(&engine, &mut rt);
+            let request = Export {
+                source: Source::Arrangement,
+                decks: false,
+                start: 0.0,
+                end: duration / 2.0,
+                repeats: 1,
+                tail: 0.0,
+                options: Options {
+                    rate,
+                    ..Options::default()
+                },
+                ..Export::default()
+            };
+            let bounds = request.frames().unwrap();
+            let mut actual = vec![0.0; (bounds.1 * 2) as usize];
+            rt.apply(Command::Play);
+            assert_eq!(
+                crate::engine::test_alloc::measure(|| rt.process(&mut actual)),
+                Default::default()
+            );
+            assert!((rt.timeline_seconds() - duration / 2.0).abs() < 1e-9);
+            let folder = files.0.join(format!("arrangement-{rate}-{fading}"));
+            let outcome = run(
+                captured,
+                &request,
+                &folder,
+                &engine.cmd.performance().optional_work().unwrap(),
+                &crate::background::Reporter::default(),
+            )
+            .unwrap();
+            let decoded = crate::engine::decode::decode_audio(&folder.join("master.wav")).unwrap();
+            assert_eq!(outcome.frames, bounds.1);
+            assert_eq!(
+                decoded.sample.data, actual,
+                "Arrangement realtime/export differs at {rate}"
+            );
+            assert!(actual.iter().any(|v| v.abs() > 0.001));
+        }
+    }
 }
 
 #[test]

@@ -7,11 +7,12 @@ use std::collections::BTreeMap;
 const MAX_NODES: usize = 250_000;
 const MAX_TEXT: usize = 16 * 1024 * 1024;
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub(crate) struct Element {
     pub name: String,
     pub attributes: BTreeMap<String, String>,
     pub children: Vec<Element>,
+    pub text: String,
 }
 impl Element {
     /// Read an optional attribute. Takes its exact XML name; returns an empty string when absent.
@@ -52,7 +53,7 @@ impl Budget {
         let name = std::str::from_utf8(start.name().as_ref())
             .map_err(|_| "XML names must be UTF-8")?
             .to_owned();
-        if name.len() > 128 || name.contains(':') {
+        if name.len() > 128 || !valid_name(&name) {
             return Err("Unsupported oversized or namespaced XML element".into());
         }
         let mut attributes = BTreeMap::new();
@@ -71,6 +72,7 @@ impl Budget {
                 .ok_or("XML text budget exceeded")?;
             if attributes.len() >= 64
                 || key.len() > 128
+                || !valid_name(&key)
                 || value.len() > 4096
                 || self.text > MAX_TEXT
                 || value
@@ -89,6 +91,7 @@ impl Budget {
             name,
             attributes,
             children: Vec::new(),
+            text: String::new(),
         })
     }
 }
@@ -96,6 +99,19 @@ impl Budget {
 /// Parse attribute-based interchange XML without external resources.
 /// Takes UTF-8 bytes and a cancellation predicate; returns a bounded ordered tree or rejects DTDs, text, truncation and invalid nesting.
 pub(crate) fn parse(bytes: &[u8], active: &impl Fn() -> bool) -> Result<Element, String> {
+    parse_mode(bytes, active, false)
+}
+
+/// Read XML with bounded inline state.
+/// Takes UTF-8 bytes and cancellation; returns text and structural children without loading entities or external resources.
+pub(crate) fn parse_text(bytes: &[u8], active: &impl Fn() -> bool) -> Result<Element, String> {
+    parse_mode(bytes, active, true)
+}
+fn parse_mode(
+    bytes: &[u8],
+    active: &impl Fn() -> bool,
+    allow_text: bool,
+) -> Result<Element, String> {
     if bytes.len() > 32 * 1024 * 1024 {
         return Err("XML exceeds 32 MiB".into());
     }
@@ -141,6 +157,9 @@ pub(crate) fn parse(bytes: &[u8], active: &impl Fn() -> bool) -> Result<Element,
                 continue;
             }
             Event::Empty(start) => {
+                if stack.len() >= 64 {
+                    return Err("XML exceeds 64 levels".into());
+                }
                 if root.is_some() {
                     return Err("XML has multiple roots".into());
                 }
@@ -163,6 +182,29 @@ pub(crate) fn parse(bytes: &[u8], active: &impl Fn() -> bool) -> Result<Element,
             Event::Text(text) if text.decode().map_err(|e| e.to_string())?.trim().is_empty() => {
                 continue
             }
+            Event::Text(text) if allow_text => {
+                append_text(
+                    &mut stack,
+                    &mut budget,
+                    &text.xml10_content().map_err(|e| e.to_string())?,
+                )?;
+                continue;
+            }
+            Event::CData(text) if allow_text => {
+                append_text(
+                    &mut stack,
+                    &mut budget,
+                    &text.xml10_content().map_err(|e| e.to_string())?,
+                )?;
+                continue;
+            }
+            Event::GeneralRef(reference) if allow_text => {
+                let reference = reference.decode().map_err(|e| e.to_string())?;
+                let escaped = format!("&{reference};");
+                let text = quick_xml::escape::unescape(&escaped).map_err(|e| e.to_string())?;
+                append_text(&mut stack, &mut budget, &text)?;
+                continue;
+            }
             Event::Eof => {
                 if !stack.is_empty() {
                     return Err("Truncated XML".into());
@@ -180,6 +222,28 @@ pub(crate) fn parse(bytes: &[u8], active: &impl Fn() -> bool) -> Result<Element,
             return Err("XML has multiple roots".into());
         }
     }
+}
+
+fn valid_name(name: &str) -> bool {
+    let mut chars = name.chars();
+    chars.next().is_some_and(|c| c == '_' || c.is_alphabetic())
+        && chars.all(|c| c.is_alphanumeric() || matches!(c, '_' | '-' | '.'))
+}
+fn append_text(stack: &mut [Element], budget: &mut Budget, text: &str) -> Result<(), String> {
+    let element = stack.last_mut().ok_or("XML text must be inside its root")?;
+    budget.text = budget
+        .text
+        .checked_add(text.len())
+        .ok_or("XML text budget exceeded")?;
+    if budget.text > MAX_TEXT
+        || text
+            .chars()
+            .any(|c| matches!(c as u32,0..=8|11..=12|14..=31|0xfffe|0xffff))
+    {
+        return Err("XML exceeds its inline state budget or contains invalid characters".into());
+    }
+    element.text.push_str(text);
+    Ok(())
 }
 
 #[cfg(test)]

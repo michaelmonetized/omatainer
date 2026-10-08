@@ -2,6 +2,8 @@ use super::{audio_clip, midi_data, midi_edit, project, session, ClipKind, MidiNo
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
+#[cfg(test)]
+mod clock_tests;
 pub(crate) mod edit;
 mod fades;
 mod playback;
@@ -42,6 +44,17 @@ impl Default for Model {
 pub(crate) struct Source {
     pub id: u64,
     pub clip: project::SavedClip,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub audio_clock: Option<AudioClock>,
+}
+
+/// Keep an aligned render on its original time map.
+/// Stores its source start beat and immutable conductor so tempo ramps retain the rendered sample positions.
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub(crate) struct AudioClock {
+    pub origin: f64,
+    pub conductor: Arc<midi_data::Conductor>,
 }
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -102,6 +115,23 @@ impl Model {
             let (n, b) = source.clip.validate(project::STATE_VERSION, media)?;
             notes += n;
             bytes += b;
+            if let Some(clock) = &source.audio_clock {
+                clock.conductor.validate()?;
+                if !clock.origin.is_finite()
+                    || !(0.0..=MAX_BEATS).contains(&clock.origin)
+                    || source.clip.kind != ClipKind::Audio
+                    || source.clip.audio.is_none()
+                    || source
+                        .clip
+                        .audio_region
+                        .is_none_or(|r| r.loop_enabled || r.reverse || r.transpose != 0.)
+                {
+                    return Err("An aligned render needs audio, a finite source start, and an unreversed, untransposed one-shot region".into());
+                }
+                bytes = bytes
+                    .checked_add(clock.conductor.bytes())
+                    .ok_or("Aligned render clock storage overflow")?;
+            }
         }
         if notes > project::MAX_TOTAL_NOTES || bytes > midi_data::MAX_LANE_BYTES {
             return Err("Arrangement shared MIDI sources exceed native project budgets".into());
@@ -117,6 +147,12 @@ impl Model {
                     .into_iter()
                     .all(|n| n.is_finite() && (0.0..=MAX_BEATS).contains(&n))
                 || instance.duration < 0.000001
+                || instance.repeating
+                    && self
+                        .sources
+                        .iter()
+                        .find(|s| s.id == instance.source)
+                        .is_some_and(|s| s.audio_clock.is_some())
                 || instance.start + instance.duration > MAX_BEATS
                 || !instance.gain.is_finite()
                 || !(0.0..=1.5).contains(&instance.gain)
@@ -146,6 +182,7 @@ struct PreparedSource {
     audio: Option<Arc<Sample>>,
     audio_region: Option<audio_clip::Plan>,
     length: f64,
+    audio_clock: Option<AudioClock>,
 }
 #[derive(Clone, Copy, Debug)]
 struct AudioSpan {

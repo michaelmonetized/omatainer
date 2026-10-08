@@ -1,12 +1,12 @@
 use super::*;
 
 fn audio_length(model: &Model, instance: Instance, media: &[Arc<Sample>]) -> Result<f64, String> {
-    let clip = &model
+    let source = model
         .sources
         .iter()
         .find(|s| s.id == instance.source)
-        .ok_or("Missing fade source")?
-        .clip;
+        .ok_or("Missing fade source")?;
+    let clip = &source.clip;
     if clip.kind != ClipKind::Audio {
         return Err("Fades require audio placements".into());
     }
@@ -14,6 +14,16 @@ fn audio_length(model: &Model, instance: Instance, media: &[Arc<Sample>]) -> Res
         .audio
         .and_then(|i| media.get(i))
         .ok_or("Missing fade audio")?;
+    if let Some(clock) = &source.audio_clock {
+        let conductor = clock.conductor.prepare()?;
+        let region = clip
+            .audio_region
+            .ok_or("Aligned fade source has no audio region")?;
+        let seconds = (region.end - region.start) as f64 / f64::from(audio.sr);
+        return Ok(
+            conductor.beat_at_seconds(conductor.seconds_at(clock.origin) + seconds) - clock.origin,
+        );
+    }
     clip.audio_region
         .map_or(Ok(f64::from(clip.bars) * 4.0), |r| {
             r.prepare(audio)

@@ -29,9 +29,14 @@ const PAGE_ENTRIES: usize = 10_000;
 const MAX_PENDING: usize = 4096;
 const MAX_CANDIDATES: usize = 1024;
 
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub(crate) enum Purpose { #[default] Dj, Producer }
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub(crate) struct Request {
+    #[serde(default)]
+    pub purpose: Purpose,
     pub roots: Vec<PathBuf>,
     pub all_mounts: bool,
     pub cursor: Option<Cursor>,
@@ -47,6 +52,8 @@ pub(crate) struct Directory {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub(crate) struct Cursor {
+    #[serde(default)]
+    purpose: Purpose,
     mount_digest: [u8; 32],
     pending: VecDeque<Directory>,
     seen: HashSet<(u64, u64)>,
@@ -154,7 +161,8 @@ impl Request {
     }
 }
 
-fn probe(path: &Path, snapshot: &Snapshot) -> Result<Option<Candidate>, String> {
+fn probe(path: &Path, snapshot: &Snapshot, purpose: Purpose) -> Result<Option<Candidate>, String> {
+    if purpose == Purpose::Producer { return crate::producer_library::probe(path, snapshot); }
     let extension = path
         .extension()
         .and_then(|v| v.to_str())
@@ -251,6 +259,7 @@ fn scan_with_watch(
     }
     let mounts = mount_bytes()?;
     let digest = Sha256::digest(&mounts).into();
+    let purpose = request.purpose;
     let explicit = request.roots.clone();
     let excluded = |path: &Path| {
         let virtual_tree = ["/proc", "/sys", "/dev", "/run", "/tmp", "/var/tmp"]
@@ -270,7 +279,7 @@ fn scan_with_watch(
     let snapshot = Snapshot::discover().map_err(|e| e.to_string())?;
     let mut notices = Vec::new();
     let mut cursor = if let Some(cursor) = request.cursor {
-        if cursor.mount_digest != digest {
+        if cursor.mount_digest != digest || cursor.purpose != purpose {
             return Err(
                 "Mounts changed during discovery; restart with the current volume inventory".into(),
             );
@@ -326,6 +335,7 @@ fn scan_with_watch(
             });
         }
         Cursor {
+            purpose,
             mount_digest: digest,
             pending,
             seen: HashSet::new(),
@@ -440,7 +450,7 @@ fn scan_with_watch(
                             });
                         }
                     }
-                    Ok(kind) if kind.is_file() => match probe(&path, &snapshot) {
+                    Ok(kind) if kind.is_file() => match probe(&path, &snapshot, purpose) {
                         Ok(Some(candidate)) => {
                             if let Some(fd) = watch {
                                 let parent = candidate.path.parent().unwrap_or(Path::new("/"));
@@ -682,6 +692,7 @@ fn isolated_executable(
                 return Err("Discovery worker returned an invalid inventory".into());
             }
             Request {
+                purpose: request.purpose,
                 roots: vec![],
                 all_mounts: false,
                 cursor: page.cursor.clone(),
@@ -815,10 +826,16 @@ impl Discovery {
         continuation: bool,
         performance: &crate::engine::performance::Handle,
     ) -> Result<(), String> {
+        self.start_for(Purpose::Dj, roots, all_mounts, continuation, performance)
+    }
+    /// Discover libraries with the same bounded mount-aware worker.
+    /// Takes the library purpose, roots, resume choice and performance policy; returns after admitting one page without changing source files.
+    pub fn start_for(&mut self, purpose: Purpose, roots: Vec<PathBuf>, all_mounts: bool, continuation: bool, performance: &crate::engine::performance::Handle) -> Result<(), String> {
         if self.pending.is_some() {
-            return Err("DJ discovery is already running".into());
+            return Err("Library discovery is already running".into());
         }
         let request = Request {
+            purpose,
             roots,
             all_mounts,
             cursor: if continuation {
@@ -979,6 +996,7 @@ mod tests {
         let before = FileFingerprint::read(&nested.join("export.unusual")).unwrap();
         let result = scan(
             Request {
+                purpose: Purpose::Dj,
                 roots: vec![files.0.clone()],
                 all_mounts: false,
                 cursor: None,
@@ -1005,6 +1023,7 @@ mod tests {
         );
         assert!(scan(
             Request {
+                purpose: Purpose::Dj,
                 roots: vec![files.0.clone()],
                 all_mounts: false,
                 cursor: None
@@ -1021,6 +1040,7 @@ mod tests {
         }
         let first = scan(
             Request {
+                purpose: Purpose::Dj,
                 roots: vec![files.0.clone()],
                 all_mounts: false,
                 cursor: None,
@@ -1032,6 +1052,7 @@ mod tests {
         assert_eq!(first.visited, 10000);
         let next = scan(
             Request {
+                purpose: Purpose::Dj,
                 roots: vec![files.0.clone()],
                 all_mounts: false,
                 cursor: first.cursor.clone(),
@@ -1045,6 +1066,7 @@ mod tests {
         wrong.mount_digest = [0; 32];
         assert!(scan(
             Request {
+                purpose: Purpose::Dj,
                 roots: vec![],
                 all_mounts: false,
                 cursor: Some(wrong)
@@ -1056,6 +1078,7 @@ mod tests {
         std::fs::write(files.0.join("new.bin"), b"").unwrap();
         assert!(scan(
             Request {
+                purpose: Purpose::Dj,
                 roots: vec![],
                 all_mounts: false,
                 cursor: first.cursor
@@ -1068,6 +1091,7 @@ mod tests {
     #[test]
     fn request_bounds_and_virtual_roots_are_explicit() {
         assert!(Request {
+            purpose: Purpose::Dj,
             roots: vec!["relative".into()],
             all_mounts: false,
             cursor: None
@@ -1075,6 +1099,7 @@ mod tests {
         .validate()
         .is_err());
         assert!(Request {
+            purpose: Purpose::Dj,
             roots: vec!["/home/../proc".into()],
             all_mounts: false,
             cursor: None
@@ -1082,6 +1107,7 @@ mod tests {
         .validate()
         .is_err());
         assert!(Request {
+            purpose: Purpose::Dj,
             roots: vec!["/home".into(); 65],
             all_mounts: false,
             cursor: None
@@ -1090,6 +1116,7 @@ mod tests {
         .is_err());
         let result = scan(
             Request {
+                purpose: Purpose::Dj,
                 roots: vec!["/proc".into()],
                 all_mounts: false,
                 cursor: None,
@@ -1129,6 +1156,7 @@ mod tests {
         let files = Files::new();
         std::fs::write(files.0.join("library.m3u8"), b"#EXTM3U\nmissing.flac\n").unwrap();
         let request = Request {
+            purpose: Purpose::Dj,
             roots: vec![files.0.clone()],
             all_mounts: false,
             cursor: None,
