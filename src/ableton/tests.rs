@@ -41,7 +41,13 @@ fn clip(id: u32) -> String {
 fn live_10_11_and_12_structure_timing_unicode_devices_and_native_round_trip() {
     for version in [10, 11, 12] {
         let fixture = Fixture::new();
-        let text = document(version);
+        let text = if version == 12 {
+            document(version)
+                .replace("MasterTrack", "MainTrack")
+                .replace("</GroupTrack>", "<DeviceChain><AudioOutputRouting><Target Value=\"AudioOut/Main\"/></AudioOutputRouting></DeviceChain></GroupTrack>")
+        } else {
+            document(version)
+        };
         let path = fixture.set(&text);
         let imported = load(&path, &Default::default(), &AtomicBool::new(false)).unwrap();
         assert_eq!(imported.state.bpm, 128.);
@@ -79,6 +85,12 @@ fn live_10_11_and_12_structure_timing_unicode_devices_and_native_round_trip() {
             version == 12
         );
         assert!(imported.state.tracks[0].synth.offline.is_some());
+        let graph = imported.state.routing.as_ref().unwrap();
+        let parent = source.tracks[1].native.id;
+        assert!(graph.connections.iter().any(|route| {
+            route.source.group == crate::engine::audio::routing::model::Group::Track(parent)
+                && route.destination == crate::engine::audio::routing::model::Group::Main
+        }));
         let native = fixture.root.join("import.omatainer");
         let bundle = crate::project_file::Bundle {
             state: imported.state,
@@ -111,6 +123,22 @@ fn live_10_11_and_12_structure_timing_unicode_devices_and_native_round_trip() {
                 .len(),
             2
         );
+    }
+}
+#[test]
+fn live_12_main_track_alias_requires_one_authoritative_record() {
+    let fixture = Fixture::new();
+    let early = document(12);
+    assert!(load(&fixture.set(&early), &Default::default(), &AtomicBool::new(false)).is_ok());
+    let current = early.replace("MasterTrack", "MainTrack");
+    assert!(load(&fixture.set(&current), &Default::default(), &AtomicBool::new(false)).is_ok());
+    for invalid in [
+        current.replace("<LiveSet>", "<LiveSet><MainTrack/>"),
+        current.replace("<LiveSet>", "<LiveSet><MasterTrack/>"),
+        current.replace("12.0_1", "11.0_1"),
+        early.replace("<LiveSet>", "<LiveSet><MasterTrack/>"),
+    ] {
+        assert!(load(&fixture.set(&invalid), &Default::default(), &AtomicBool::new(false)).is_err());
     }
 }
 #[test]

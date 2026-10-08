@@ -1198,6 +1198,81 @@ mod tests {
     }
 
     #[test]
+    #[ignore = "Requires a private read-only block-volume remount driver, OMATAINER_VOLUME_DIR and OMATAINER_TEST_BIN"]
+    fn native_read_only_volume_remount_retains_uuid_and_discovers_new_mount_path() {
+        use crate::media_location::{Failure, Snapshot};
+        let directory = PathBuf::from(std::env::var_os("OMATAINER_VOLUME_DIR").unwrap());
+        assert!(directory.starts_with(Path::new(env!("CARGO_MANIFEST_DIR")).join("t")));
+        let binary = PathBuf::from(std::env::var_os("OMATAINER_TEST_BIN").unwrap());
+        let first = directory.join("first");
+        let second = directory.join("second");
+        let wave = first.join("music/track.wav");
+        let bytes = std::fs::read(&wave).unwrap();
+        let enrolled = Snapshot::fixture_local_volume(&wave).unwrap();
+        let original = enrolled.identify(&wave).unwrap();
+        assert!(matches!(original.source, LibSource::Removable { .. }));
+        let source = original.source.clone();
+        let fingerprint = FileFingerprint::read(&original.path).unwrap();
+        let production = Snapshot::discover().unwrap();
+        assert_eq!(production.resolve(&source).unwrap().path, original.path);
+        let first_page = isolated_executable(&Request {
+            purpose: Purpose::Dj,
+            roots: vec![first.clone()],
+            all_mounts: false,
+            cursor: None,
+        }, &|| true, None, &binary).unwrap();
+        assert!(first_page.complete);
+        assert_eq!(first_page.candidates.len(), 1);
+        assert_eq!(first_page.candidates[0].path, first.join("owned.m3u8"));
+        assert!(first_page.candidates[0].reviewable);
+        let request = serde_json::to_vec(&source).unwrap();
+        std::fs::write(directory.join("source.json"), &request).unwrap();
+        std::fs::write(directory.join("first.ready"), b"Enrolled real filesystem UUID; no physical USB classification claim").unwrap();
+        let wait = |name: &str| {
+            let deadline = Instant::now() + Duration::from_secs(20);
+            while !directory.join(name).exists() {
+                assert!(Instant::now() < deadline, "Volume driver did not acknowledge {name}");
+                std::thread::sleep(Duration::from_millis(5));
+            }
+        };
+        wait("offline.ready");
+        let offline = Snapshot::discover().unwrap();
+        assert_eq!(offline.resolve(&source).unwrap_err(), Failure::Offline);
+        assert_eq!(offline.inspect(&original).unwrap_err(), Failure::Changed);
+        let absent = isolated_executable(&Request {
+            purpose: Purpose::Dj,
+            roots: vec![first.clone()],
+            all_mounts: false,
+            cursor: None,
+        }, &|| true, None, &binary).unwrap();
+        assert!(absent.candidates.is_empty());
+        std::fs::write(directory.join("offline.checked"), b"Offline is distinct from deleted").unwrap();
+        wait("remounted.ready");
+        let reloaded: LibSource = serde_json::from_slice(&std::fs::read(directory.join("source.json")).unwrap()).unwrap();
+        assert_eq!(reloaded, source);
+        let mounted = Snapshot::discover().unwrap();
+        let resolved = mounted.resolve(&reloaded).unwrap();
+        assert_eq!(resolved.path, second.join("music/track.wav"));
+        assert_eq!(resolved.source, source);
+        assert_eq!(FileFingerprint::read(&resolved.path).unwrap(), fingerprint);
+        assert_eq!(std::fs::read(&resolved.path).unwrap(), bytes);
+        resolved.recheck().unwrap();
+        assert_eq!(mounted.inspect(&original).unwrap_err(), Failure::Changed);
+        let page = isolated_executable(&Request {
+            purpose: Purpose::Dj,
+            roots: vec![second.clone()],
+            all_mounts: false,
+            cursor: None,
+        }, &|| true, None, &binary).unwrap();
+        assert!(page.complete);
+        assert_eq!(page.candidates.len(), 1);
+        assert_eq!(page.candidates[0].path, second.join("owned.m3u8"));
+        assert!(page.candidates[0].reviewable);
+        let report = serde_json::json!({"status":"pass","persisted_source":source,"before_path":original.path,"after_path":resolved.path,"fingerprint_retained":true,"original_location_refused":true,"offline_distinct_from_missing":true,"native_worker_before":first_page,"native_worker_offline":absent,"native_worker_after":page,"scope":"Real Linux filesystem UUID, read-only mounts, offline/remount and native disposable DJ workers. Initial local loop-volume removable classification is injected only for enrollment. No physical USB removal, catalog publication, audio-load impact or listening claim."});
+        std::fs::write(directory.join("volume-remount.json"), serde_json::to_vec_pretty(&report).unwrap()).unwrap();
+    }
+
+    #[test]
     #[ignore = "Requires OMATAINER_TEST_BIN pointing at the native app built from this checkout"]
     fn native_worker_ipc_cancellation_and_crash_keep_previous_sources() {
         let binary = PathBuf::from(

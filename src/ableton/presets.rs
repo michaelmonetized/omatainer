@@ -41,7 +41,7 @@ pub(super) fn normalize(mut root: Element) -> Result<Element, String> {
     };
     if matches!(
         device.name.as_str(),
-        "Device" | "Clip" | "Tracks" | "Scenes" | "MasterTrack" | "FolderConfigData"
+        "Device" | "Clip" | "Tracks" | "Scenes" | "MasterTrack" | "MainTrack" | "FolderConfigData"
     ) {
         return Err("Unsupported device preset root".into());
     }

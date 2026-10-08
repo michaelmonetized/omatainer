@@ -34,7 +34,11 @@ pub(super) fn convert(
     state: &mut project::State,
     source: &mut Source,
 ) -> Result<(), String> {
-    let master = set.one("MasterTrack")?;
+    let master = match (child(set, "MasterTrack")?, child(set, "MainTrack")?) {
+        (Some(master), None) => master,
+        (None, Some(main)) if source.format.starts_with("12.") => main,
+        _ => return Err("Live Set needs exactly one supported main-track record".into()),
+    };
     let bpm = number(master, &["DeviceChain", "Mixer", "Tempo", "Manual"], 120.)?;
     let initial = meter(number(
         master,

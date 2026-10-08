@@ -43,7 +43,9 @@ pub(super) fn convert(
     for (index, (node, track)) in nodes.children.iter().zip(tracks).enumerate() {
         let group = Group::Track(track.native.id);
         let target = value(node, &["DeviceChain", "AudioOutputRouting", "Target"])?;
-        let destination = if target == "AudioOut/Master" || target.is_empty() && track.parent == -1
+        let destination = if target == "AudioOut/Master"
+            || target == "AudioOut/Main" && source.format.starts_with("12.")
+            || target.is_empty() && track.parent == -1
         {
             Some(Group::Main)
         } else if target == "AudioOut/GroupTrack" || target.is_empty() && track.parent != -1 {
