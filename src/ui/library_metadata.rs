@@ -12,6 +12,7 @@ mod collections;
 mod collection_rows;
 pub(super) use collection_rows::CollectionRows;
 pub(super) use collections::{Action as CollectionAction, Admission as CollectionAdmission, Token as CollectionToken, Receipt as CollectionReceipt, Outcome as CollectionOutcome};
+pub(super) use collections::files;
 pub(super) use analysis::{Receipt as AnalysisReceipt, Inspect as AnalysisInspect, Inspected as AnalysisInspected, Cached as AnalysisCached};
 
 #[cfg(test)]
@@ -91,6 +92,7 @@ struct Job {
     restricted: bool,
     _retired_candidates: Vec<Arc<Vec<LibItem>>>,
     _retired_roots:Vec<Arc<library_scan::ScanRoots>>,
+    _retired_file_reviews: Vec<Arc<crate::library::Catalog>>,
     revision: u64,
     updates: Vec<Patch>,
     captures: Vec<super::library_store::Capture>,
@@ -172,6 +174,7 @@ pub(super) struct Metadata {
     staged: Option<Staged>,
     retired_candidates: Vec<Arc<Vec<LibItem>>>,
     retired_roots:Vec<Arc<library_scan::ScanRoots>>,
+    retired_file_reviews: Vec<Arc<crate::library::Catalog>>,
     revision: u64,
     dirty: bool,
     in_flight: bool,
@@ -356,7 +359,7 @@ impl Metadata {
                                     analysis_result = Some(receipt);
                                 }
                                 if let Some(request) = job.collection.take() {
-                                    let playlist_import=matches!(&request.action,collections::Action::ImportPlaylist{..});
+                                    let changed_rows=matches!(&request.action,collections::Action::ImportPlaylist{..}|collections::Action::Files(_));
                                     let receipt = if durable { collections::apply(store, request) }
                                         else { CollectionReceipt::refused(request, store.catalog.crates.revision(),
                                             collections::Failure::Storage("Crate edit requires confirmed essential catalog persistence".into())) };
@@ -371,7 +374,7 @@ impl Metadata {
                                         _ => {}
                                     }
                                     collection_result = Some(receipt);
-                                    if playlist_import && matches!(&collection_result.as_ref().unwrap().outcome,CollectionOutcome::Durable{changed:true}|CollectionOutcome::CommittedUnconfirmed(_)) {
+                                    if changed_rows && matches!(&collection_result.as_ref().unwrap().outcome,CollectionOutcome::Durable{changed:true}|CollectionOutcome::CommittedUnconfirmed(_)|CollectionOutcome::Unknown(_)) {
                                         items=store.catalog.tracks.iter().map(|track|LibItem::from_stored(track.source.clone(),&track.versions[track.current])).collect();
                                     }
                                 }
@@ -515,6 +518,7 @@ impl Metadata {
             staged: None,
             retired_candidates: Vec::new(),
             retired_roots:Vec::new(),
+            retired_file_reviews: Vec::new(),
             revision: 0,
             dirty: persistent,
             in_flight: false,
@@ -523,6 +527,13 @@ impl Metadata {
 }
 
 impl Metadata {
+    /// Return a captured file review to its catalog worker.
+    /// Takes one immutable catalog view; queues bounded worker retirement or returns ownership for a later retry.
+    pub fn retire_file_review(&mut self, review: Arc<crate::library::Catalog>) -> std::result::Result<(), Arc<crate::library::Catalog>> {
+        if self.worker_closed || self.retired_file_reviews.len() >= 2 { return Err(review); }
+        self.retired_file_reviews.push(review);
+        self.revision=self.revision.wrapping_add(1);self.dirty=true;Ok(())
+    }
     /// The table is prepared and pinned by the owner. Borrow it instead of
     /// retaining an Arc whose eventual destruction could move to the GUI.
     pub fn collection_rows(&self) -> &CollectionRows { &self.collection_rows }
@@ -906,6 +917,7 @@ impl Metadata {
                 restricted: self.deferred || self.performance.protected(),
                 _retired_candidates: std::mem::take(&mut self.retired_candidates),
                 _retired_roots:std::mem::take(&mut self.retired_roots),
+                _retired_file_reviews:std::mem::take(&mut self.retired_file_reviews),
                 revision: self.revision,
                 updates: std::mem::take(&mut self.pending),
                 captures: std::mem::take(&mut self.captures),
@@ -937,6 +949,7 @@ impl Metadata {
                     self.relocation = job.relocation;
                     self.retired_candidates = job._retired_candidates;
                     self.retired_roots=job._retired_roots;
+                    self.retired_file_reviews=job._retired_file_reviews;
                     if self.storage.is_some() {
                         self.durable = false;
                         self.storage_error =

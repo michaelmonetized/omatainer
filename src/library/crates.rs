@@ -43,7 +43,9 @@ pub(crate) struct Node<K> {
 impl<K> Node<K> {
     /// Identify automatic membership.
     /// Takes this crate; returns whether manual member edits must be refused.
-    pub fn is_smart(&self) -> bool { self.annotation_rule.is_some() || self.smart_rule.is_some() }
+    pub fn is_smart(&self) -> bool {
+        self.annotation_rule.is_some() || self.smart_rule.is_some()
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -72,9 +74,18 @@ pub(crate) enum Edit<K> {
         parent: Option<CrateId>,
         before: Option<CrateId>,
     },
-    SetAnnotationRule { id: CrateId, rule: Option<crate::library::annotations::Rule> },
-    SetSmartRule { id: CrateId, rule: Option<crate::library::smart_crates::Rule> },
-    SetFavorite { id: CrateId, favorite: bool },
+    SetAnnotationRule {
+        id: CrateId,
+        rule: Option<crate::library::annotations::Rule>,
+    },
+    SetSmartRule {
+        id: CrateId,
+        rule: Option<crate::library::smart_crates::Rule>,
+    },
+    SetFavorite {
+        id: CrateId,
+        favorite: bool,
+    },
     Rename {
         id: CrateId,
         name: String,
@@ -153,7 +164,15 @@ impl<K: Clone + Eq + Hash> CrateForest<K> {
         if self.nodes.len() > MAX_CRATES || self.roots.len() > MAX_CRATES {
             return Err(Error::Limit("4096 crates"));
         }
-        if self.nodes.iter().filter(|node|node.smart_rule.is_some()).count() > crate::library::smart_crates::MAX_SMART_CRATES { return Err(Error::Limit("64 typed smart crates")); }
+        if self
+            .nodes
+            .iter()
+            .filter(|node| node.smart_rule.is_some())
+            .count()
+            > crate::library::smart_crates::MAX_SMART_CRATES
+        {
+            return Err(Error::Limit("64 typed smart crates"));
+        }
         let mut index = HashMap::with_capacity(self.nodes.len());
         let mut total = 0usize;
         let mut edges = self.roots.len();
@@ -169,12 +188,22 @@ impl<K: Clone + Eq + Hash> CrateForest<K> {
             }
             validate_name(&node.name)?;
             if let Some(rule) = &node.annotation_rule {
-                rule.validate().map_err(|_| Error::Invalid("invalid annotation rule"))?;
-                if !node.members.is_empty() { return Err(Error::Invalid("smart annotation crates have no manual members")); }
+                rule.validate()
+                    .map_err(|_| Error::Invalid("invalid annotation rule"))?;
+                if !node.members.is_empty() {
+                    return Err(Error::Invalid(
+                        "smart annotation crates have no manual members",
+                    ));
+                }
             }
             if let Some(rule) = &node.smart_rule {
-                rule.validate().map_err(|_|Error::Invalid("invalid typed smart crate rule"))?;
-                if node.annotation_rule.is_some() || !node.members.is_empty() { return Err(Error::Invalid("typed smart crates cannot also have manual members or an annotation rule")); }
+                rule.validate()
+                    .map_err(|_| Error::Invalid("invalid typed smart crate rule"))?;
+                if node.annotation_rule.is_some() || !node.members.is_empty() {
+                    return Err(Error::Invalid(
+                        "typed smart crates cannot also have manual members or an annotation rule",
+                    ));
+                }
             }
             if node.children.len() > MAX_CRATES || node.members.len() > MAX_MEMBERS {
                 return Err(Error::Limit("crate children or 100000 members"));
@@ -241,11 +270,23 @@ impl<K: Clone + Eq + Hash> CrateForest<K> {
         edit.validate_payload()?;
         let mut next = self.clone();
         let member_target = match edit {
-            Edit::AddMembers { id, .. } | Edit::RemoveMembers { id, .. } => self.node(id).is_some_and(|node|node.is_smart()),
-            Edit::MoveMembers { source, destination, .. } => [source, destination].into_iter().any(|id|self.node(id).is_some_and(|node|node.is_smart())),
+            Edit::AddMembers { id, .. } | Edit::RemoveMembers { id, .. } => {
+                self.node(id).is_some_and(|node| node.is_smart())
+            }
+            Edit::MoveMembers {
+                source,
+                destination,
+                ..
+            } => [source, destination]
+                .into_iter()
+                .any(|id| self.node(id).is_some_and(|node| node.is_smart())),
             _ => false,
         };
-        if member_target { return Err(Error::Invalid("Smart crate membership comes from its saved rule")); }
+        if member_target {
+            return Err(Error::Invalid(
+                "Smart crate membership comes from its saved rule",
+            ));
+        }
         next.apply_inner(edit)?;
         next.validate(known)?;
         self.commit(next)
@@ -328,6 +369,37 @@ impl<K: Clone + Eq + Hash> CrateForest<K> {
         self.commit(next)
     }
 
+    /// Replace reviewed stable memberships without changing crate order or rules.
+    /// Takes the crate revision, explicit old-to-new mapping and before/after known-track predicates; returns one revision change with duplicates collapsed at their first position.
+    pub(crate) fn rewrite_members(
+        &mut self,
+        expected: u64,
+        replacements: &HashMap<K, Option<K>>,
+        known_before: impl Fn(&K) -> bool,
+        known_after: impl Fn(&K) -> bool,
+    ) -> Result<bool, Error> {
+        if expected != self.revision {
+            return Err(Error::Conflict);
+        }
+        self.validate(known_before)?;
+        let mut next = self.clone();
+        for node in &mut next.nodes {
+            let mut seen = HashSet::new();
+            node.members = node
+                .members
+                .iter()
+                .filter_map(|member| {
+                    let replacement = replacements
+                        .get(member)
+                        .map_or_else(|| Some(member.clone()), Clone::clone)?;
+                    seen.insert(replacement.clone()).then_some(replacement)
+                })
+                .collect();
+        }
+        next.validate(known_after)?;
+        self.commit(next)
+    }
+
     fn commit(&mut self, mut next: Self) -> Result<bool, Error> {
         if self.roots == next.roots && self.nodes == next.nodes {
             return Ok(false);
@@ -382,15 +454,23 @@ impl<K: Clone + Eq + Hash> CrateForest<K> {
             }
             Edit::SetAnnotationRule { id, rule } => {
                 let node = self.node_mut(id)?;
-                if rule.is_some() && !node.members.is_empty() { return Err(Error::Invalid("Create an empty crate before enabling an annotation rule; manual members were preserved")); }
-                if rule.is_some() && node.smart_rule.is_some() { return Err(Error::Invalid("Remove the typed smart rule before adding an annotation rule")); }
+                if rule.is_some() && !node.members.is_empty() {
+                    return Err(Error::Invalid("Create an empty crate before enabling an annotation rule; manual members were preserved"));
+                }
+                if rule.is_some() && node.smart_rule.is_some() {
+                    return Err(Error::Invalid(
+                        "Remove the typed smart rule before adding an annotation rule",
+                    ));
+                }
                 node.annotation_rule = rule.clone();
-            },
+            }
             Edit::SetSmartRule { id, rule } => {
                 let node = self.node_mut(id)?;
-                if rule.is_some() && (!node.members.is_empty() || node.annotation_rule.is_some()) { return Err(Error::Invalid("Select an empty manual crate before saving a typed smart rule; existing membership and rules were preserved")); }
+                if rule.is_some() && (!node.members.is_empty() || node.annotation_rule.is_some()) {
+                    return Err(Error::Invalid("Select an empty manual crate before saving a typed smart rule; existing membership and rules were preserved"));
+                }
                 node.smart_rule = rule.clone();
-            },
+            }
             Edit::SetFavorite { id, favorite } => self.node_mut(id)?.favorite = *favorite,
             Edit::Rename { id, name } => self.node_mut(id)?.name.clone_from(name),
             Edit::MoveCrate { id, parent, before } => {
@@ -494,8 +574,14 @@ impl<K: Eq + Hash> Edit<K> {
                 }
                 validate_name(name)
             }
-            Self::SetAnnotationRule { rule, .. } => rule.as_ref().map_or(Ok(()), |rule| rule.validate().map_err(|_| Error::Invalid("invalid annotation rule"))),
-            Self::SetSmartRule { rule, .. } => rule.as_ref().map_or(Ok(()), |rule|rule.validate().map_err(|_|Error::Invalid("invalid typed smart crate rule"))),
+            Self::SetAnnotationRule { rule, .. } => rule.as_ref().map_or(Ok(()), |rule| {
+                rule.validate()
+                    .map_err(|_| Error::Invalid("invalid annotation rule"))
+            }),
+            Self::SetSmartRule { rule, .. } => rule.as_ref().map_or(Ok(()), |rule| {
+                rule.validate()
+                    .map_err(|_| Error::Invalid("invalid typed smart crate rule"))
+            }),
             Self::Rename { name, .. } => validate_name(name),
             Self::AddMembers { members, .. }
             | Self::RemoveMembers { members, .. }
@@ -515,7 +601,9 @@ impl<K: Eq + Hash> Edit<K> {
 }
 /// Omit unpinned crates from compatible records.
 /// Takes the saved flag; returns whether it is false.
-fn is_false(value: &bool) -> bool { !value }
+fn is_false(value: &bool) -> bool {
+    !value
+}
 
 fn validate_name(name: &str) -> Result<(), Error> {
     if name.is_empty()

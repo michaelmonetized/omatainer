@@ -6,7 +6,7 @@ Michael resumed physical checks on 2026-10-06. All MPD A/B/C controls were captu
 
 Each issue appears once, after its dependencies. The Code column checks off implemented code, including the existing stack, and does not claim complete acceptance. Accepted requires complete recorded acceptance. The eight provider integrations previously excluded by Michael stay outside this release. No open issue is automatically closed by this checklist.
 
-127 existing stack · 65 implemented · 9 partial · 147 planned · 0 accepted · 8 outside release
+127 existing stack · 66 implemented · 9 partial · 146 planned · 0 accepted · 8 outside release
 
 - [x] High-resolution stereo source peaks with measured rainbow frequency bands, native-rate validation, project reopen and pixel-scaled rendering. [Receipt](../validation/rainbow-waveforms.md)
 
@@ -165,7 +165,7 @@ Each issue appears once, after its dependencies. The Code column checks off impl
 | [x] | [#152](https://github.com/michaelmonetized/omatainer/issues/152) | Add editable Session clip management and reusable clip presets | implemented | #113, #82, #83 | [receipt](../../docs/validation/session-clip-management.md), [receipt](../../docs/validation/session-clip-management-receipt.json) |
 | [x] | [#153](https://github.com/michaelmonetized/omatainer/issues/153) | Add trigger, hold and toggle sample playback modes | implemented | #101 | [receipt](../../docs/validation/issue-153-sampler-playback.md) |
 | [x] | [#154](https://github.com/michaelmonetized/omatainer/issues/154) | Add crate favorites, search and membership discovery | implemented | #105 | [receipt](../../docs/validation/issue-154-crate-discovery.md) |
-| [ ] | [#155](https://github.com/michaelmonetized/omatainer/issues/155) | Manage music files and duplicates safely from the library | planned | #108 |  |
+| [x] | [#155](https://github.com/michaelmonetized/omatainer/issues/155) | Manage music files and duplicates safely from the library | implemented | #108 | [receipt](../../docs/validation/music-file-management.md), [receipt](../../docs/validation/music-file-management-receipt.json) |
 | [x] | [#156](https://github.com/michaelmonetized/omatainer/issues/156) | Import standard playlists and existing local music-library exports | implemented | #105 | [receipt](../../docs/validation/playlist-import.md), [receipt](../../docs/validation/dj-library-migration.md) |
 | [x] | [#157](https://github.com/michaelmonetized/omatainer/issues/157) | Export and optionally publish performed setlists | implemented | #106 | [receipt](../../docs/validation/setlist-exports.md) |
 | [ ] | [#158](https://github.com/michaelmonetized/omatainer/issues/158) | Integrate an authorized Beatport streaming workflow | outside release | #120 |  |

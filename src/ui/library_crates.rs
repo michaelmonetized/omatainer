@@ -107,10 +107,13 @@ impl App {
                 let annotation = matches!(&action, CollectionAction::Annotate { .. });
                 let protection=matches!(&action,CollectionAction::Protect { .. });
                 let playlist=matches!(&action,CollectionAction::ImportPlaylist {..});
+                let files=matches!(&action,CollectionAction::Files(_));
+                if let Some(report)=receipt.files {self.library_files.accept(report,&receipt.outcome);}
                 let imported=playlist && matches!(&receipt.outcome,CollectionOutcome::Durable{changed:true}|CollectionOutcome::CommittedUnconfirmed(_));
                 let review_error=receipt.review.and_then(|review|self.library_playlist.accept_review(receipt.revision,review).err());
                 self.library_crates.message = if let Some(error)=review_error {error} else {match receipt.outcome {
                     CollectionOutcome::Read if matches!(&action,CollectionAction::ReviewPlaylist(_))=>"Playlist review ready; select playlists and inspect excluded entries before importing.".into(),
+                    CollectionOutcome::Read | CollectionOutcome::Durable{..} if files=>self.library_files.message.clone(),
                     CollectionOutcome::Read => "Crates refreshed from the catalog owner.".into(),
                     CollectionOutcome::Durable{changed} if playlist=>if changed {"Reviewed playlists and local references saved.".into()}else{"No playlist changes were needed.".into()},
                     CollectionOutcome::Durable { changed } if protection => if changed {"Preparation locks saved.".into()} else {"Preparation locks already match.".into()},

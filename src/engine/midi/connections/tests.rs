@@ -268,8 +268,14 @@ fn protected_presence_retirement_releases_only_lost_sources_and_defers_new_conne
     until(|| engine.midi.input_stats().dispatched == 2);
     rt.process(&mut [0.0; 128]);
     engine.cmd.performance().set_enabled(true).unwrap();
-    *control.presence.lock() = Some(vec![("2".into(), "2".into()), ("3".into(), "3".into())]);
-    until(|| a.is_closed());
+    engine.cmd.with_admission_held_for_test(|| {
+        *control.presence.lock() = Some(vec![("2".into(), "2".into()), ("3".into(), "3".into())]);
+        until(|| a.is_closed());
+        assert!(!b.is_closed());
+        assert!(engine.snap.lock().midi[1].contains("connected"));
+        assert!(!engine.snap.lock().midi[1].contains("disconnected"));
+    });
+    until(|| a.is_closed() && engine.snap.lock().midi[1].contains("disconnected"));
     assert!(!b.is_closed());
     assert!(control.attempts.try_recv().is_err());
     rt.process(&mut [0.0; 128]);

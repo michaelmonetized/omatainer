@@ -2159,9 +2159,12 @@
       "dependencies": [
         108
       ],
-      "state": "planned",
+      "state": "implemented",
       "prs": [],
-      "evidence": []
+      "evidence": [
+        "docs/validation/music-file-management.md",
+        "docs/validation/music-file-management-receipt.json"
+      ]
     },
     {
       "issue": 156,

@@ -283,6 +283,18 @@ Source 31a7a36 passes all 1517 ordinary checks and the private 32-channel native
 
 Focused software checks include 4096 nested crates, native keyboard and synthetic controller navigation, restart, conflicts, cache reuse and selection/scroll restoration. Complete merged optimized qualification and physical controller navigation remain pending. Direct membership requires the exact catalog/row publication.
 
+### Issue #155: implemented
+
+- reviewed reference and duplicate management: [src/library/file_management.rs](../src/library/file_management.rs) — Exact rows, independent duplicate byte verification, stable IDs and both preparation histories
+- recoverable byte-verified transfers: [src/library/file_management/transfer/journal.rs](../src/library/file_management/transfer/journal.rs) — No-overwrite copies, durable move/keep/reopen/restore and ownership-bound rollback
+- single catalog owner: [src/ui/library_metadata/collections/files.rs](../src/ui/library_metadata/collections/files.rs) — Existing serialized save owner, publication certainty and cancellation ownership
+- native music files review: [src/ui/library_files.rs](../src/ui/library_files.rs) — Accessible review/Apply, selected rows, duplicates, pending and saved move recovery
+- Acceptance fixtures: `library::file_management::tests`, `ui::library_metadata::collections::files::tests`, `ui::library_files::tests`.
+- Evidence: [docs/validation/music-file-management.md](../docs/validation/music-file-management.md).
+- Evidence: [docs/validation/music-file-management-receipt.json](../docs/validation/music-file-management-receipt.json).
+
+Software qualification uses actual local files, the existing single catalog owner, real native save/reopen, actual egui/AccessKit widgets and an independent PCM comparison while the private headless engine plays. No physical audio or MIDI ports and no new OS GUI were opened. Selection is bounded to 128 tracks; copies require an existing absolute destination, at most 8 GiB per source and 64 GiB per batch. Duplicate candidates are only likely matches until independently verified byte-identical; the retained identity and preparation are explicit. Moves keep original bytes in sibling recovery paths until explicit restoration; Keep archives the private recovery record and allows another batch. Restoring a saved move requires unchanged reviewed catalog rows and owned files, refuses changed preparation or occupied paths, and retains the last copy on uncertainty. At most 128 saved move records are inspected. Removing a reference never deletes audio. This does not implement project-wide storage cleanup (#170), complete the remaining backlog or qualify physical controller behavior. The active app/session are preserved and installation remains deferred while the independent GUI is open.
+
 ### Issue #156: implemented
 
 - native UI: [src/ui/library_playlist.rs](../src/ui/library_playlist.rs) — Named crates → Import playlists → exact review, selected playlists and explicit exclusion consent
@@ -890,7 +902,7 @@ Music source: FreeToUse public keyless API. Michael excludes other third-party p
 | [#152](https://github.com/michaelmonetized/omatainer/issues/152) | Add editable Session clip management and reusable clip presets | implemented |
 | [#153](https://github.com/michaelmonetized/omatainer/issues/153) | Add trigger, hold and toggle sample playback modes | implemented |
 | [#154](https://github.com/michaelmonetized/omatainer/issues/154) | Add crate favorites, search and membership discovery | implemented |
-| [#155](https://github.com/michaelmonetized/omatainer/issues/155) | Manage music files and duplicates safely from the library | planned |
+| [#155](https://github.com/michaelmonetized/omatainer/issues/155) | Manage music files and duplicates safely from the library | implemented |
 | [#156](https://github.com/michaelmonetized/omatainer/issues/156) | Import standard playlists and existing local music-library exports | implemented |
 | [#157](https://github.com/michaelmonetized/omatainer/issues/157) | Export and optionally publish performed setlists | implemented |
 | [#158](https://github.com/michaelmonetized/omatainer/issues/158) | Integrate an authorized Beatport streaming workflow | excluded from release |

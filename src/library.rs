@@ -16,6 +16,7 @@ use std::{
 };
 
 mod content;
+pub(crate) mod file_management;
 pub(crate) mod backup;
 pub(crate) mod tags;
 pub(crate) mod annotations;
@@ -682,6 +683,9 @@ impl Store {
         })
     }
     pub(crate) fn last_save_replaced(&self) -> bool { self.last_save_replaced }
+    /// Locate this locked catalog's private operation records.
+    /// Takes the catalog owner; returns its immutable store pathname without filesystem work.
+    pub(crate) fn path(&self) -> &Path { &self.path }
     #[cfg(test)]
     pub(crate) fn save_for_test(&mut self, checkpoint: impl FnMut(u8) -> Result<(), String>) -> Result<(), String> {
         self.save_with(checkpoint)

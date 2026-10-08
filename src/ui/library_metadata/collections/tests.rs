@@ -41,6 +41,7 @@ fn request(handle: &Handle, id: u64, expected: u64, action: Action) -> Request {
         token: Token {
             id,
             state: Arc::new(AtomicU8::new(PENDING)),
+            cancel: work.as_ref().map(WorkPermit::cancel),
         },
         expected,
         action,

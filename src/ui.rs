@@ -19,6 +19,7 @@ mod library_prepare;
 mod library_tags;
 mod library_annotations;
 mod library_protection;
+mod library_files;
 mod library_smart_crates;
 mod library_crates;
 mod library_playlist;
@@ -201,6 +202,7 @@ pub struct App {
     library_tags: library_tags::Panel,
     library_annotations: library_annotations::Panel,
     library_protection: library_protection::Panel,
+    library_files: library_files::Panel,
     smart_crates: library_smart_crates::Panel,
     library_crates: library_crates::Crates,
     library_playlist: library_playlist::Import,
@@ -363,6 +365,7 @@ impl App {
             library_tags: library_tags::Panel::default(),
             library_annotations: library_annotations::Panel::default(),
             library_protection: library_protection::Panel::default(),
+            library_files: library_files::Panel::default(),
             smart_crates: library_smart_crates::Panel::default(),
             library_crates: library_crates::Crates::default(),
             library_playlist: library_playlist::Import::default(),
@@ -981,6 +984,7 @@ impl App {
         self.library_tags_ui(ctx);
         self.library_annotations_ui(ctx);
         self.library_protection_ui(ctx);
+        self.library_files_ui(ctx);
         self.named_crates_ui(ctx);
         self.continuous_playback_ui(ctx);
         self.key_shift_ui(ctx);
@@ -1508,6 +1512,7 @@ impl App {
                 if ui.button(tr!("analyze…")).help(ui, HelpControl::LibraryAnalysis).clicked() { self.library_analysis.open = true; }
                 if ui.button(tr!("annotations…")).help(ui, HelpControl::TrackAnnotations).clicked() { self.library_annotations.open = true; }
                 if ui.button(tr!("locks…")).help(ui,HelpControl::PreparationLocks).clicked() {self.library_protection.open=true;}
+                if ui.button("files…").clicked() {self.library_files.open=true;}
                 if ui.button(tr!("tags…")).help(ui, HelpControl::TagEditor).clicked() { self.library_tags.open = true; }
                 self.deck_selectors(ui);
                 if ui.button(tr!("library…")).help(ui, HelpControl::Library).clicked() { self.library_import_open = true; }
