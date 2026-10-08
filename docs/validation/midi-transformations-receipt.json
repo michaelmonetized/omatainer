@@ -4079,5 +4079,82 @@
       ]
     }
   },
-  "limits": "Linux ARM64 software qualification of native MIDI transformations. Quantize straight/triplet starts and/or ends at partial strength; seeded independent pitch/position/length/velocity Shuffle, Mirror and Rotation; drawable/cyclic velocity; anchored Stretch, Reverse and integrated three-point time-speed curve. Preview retains an exact original, compares timing summaries, stores 32 transient parameter settings and commits once through existing worker preparation and Undo. Imported PPQN, event orders, stable note identity, channels, release velocity, metadata and labels survive; poly-pressure follows its unique note, with explicitly chosen lower/upper MPE member-channel range for pitch bend/pressure/CC74. Ambiguous, orphaned or newly overlapping expression refuses publication. Bounds are 8192 notes and existing lane/SMF limits; timing rounding is displayed. Parameters/history are live editor state, not saved presets. Automatic MPE-zone inference and a per-note expression editor remain separate work. No physical port, capture, OS GUI or listening test was opened."
+  "limits": "Linux ARM64 software qualification of native MIDI transformations. Quantize straight/triplet starts and/or ends at partial strength; seeded independent pitch/position/length/velocity Shuffle, Mirror and Rotation; drawable/cyclic velocity; anchored Stretch, Reverse and integrated three-point time-speed curve. Preview retains an exact original, compares timing summaries, stores 32 transient parameter settings and commits once through existing worker preparation and Undo. Imported PPQN, event orders, stable note identity, channels, release velocity, metadata and labels survive; poly-pressure follows its unique note, with explicitly chosen lower/upper MPE member-channel range for pitch bend/pressure/CC74. Ambiguous, orphaned or newly overlapping expression refuses publication. Bounds are 8192 notes and existing lane/SMF limits; timing rounding is displayed. Parameters/history are live editor state, not saved presets. Automatic MPE-zone inference and a per-note expression editor remain separate work. No physical port, capture, OS GUI or listening test was opened.",
+  "releaseDeployment": {
+    "schema": 1,
+    "integratedQualification": {
+      "receipt": "docs/validation/saved-musical-context-receipt.json",
+      "compiledInventory": {
+        "path": "target/app-backlog/scale-context-fifth-source.json",
+        "sha256": "e118fb517d454e8143b9a0a807e199c6957899ca7aa7a2edc5adc46c866cbf09",
+        "baseRevision": "b81460cea09a6891024dd821c403bfb02189cfaf",
+        "files": 918
+      },
+      "testBinary": {
+        "path": "target/app-backlog/qualification-bin/scale-context-tests-fifth",
+        "sha256": "dd7264bbc7bcf8db66d13c85b2b8750678e7690f7b2df02b701eb6c02d2663e2"
+      },
+      "full": {
+        "path": "target/app-backlog/scale-context-fifth-full.log",
+        "sha256": "4eae84f64e548c0e7e4906e034630ec2c94e867820f93680d3dab95004948c3b",
+        "outcome": "ok",
+        "passed": 2193,
+        "failed": 0,
+        "ignored": 71,
+        "filtered": 0,
+        "seconds": 737.76
+      },
+      "nativeWorker": {
+        "path": "target/app-backlog/qualification-bin/scale-context-native-worker-fifth",
+        "sha256": "541541c469378261e9736c3e6f5f88a854bebf992042ed2bc1085f569eeea472",
+        "bytes": 437788832
+      },
+      "nativeImportWorkflows": 12
+    },
+    "status": "ready_installation_deferred_active_app",
+    "package": {
+      "path": "/home/michael/Projects/omatainer-work/hardware-resurrection/target/app-backlog/release-midi-tools-shared-qualified",
+      "manifestSha256": "f56190da9341bc15a11ff4e66b24dd26017f410cba0bc73315c66002115a5f94",
+      "revision": "b58e85009155d1b125a0b5f35a50cdd2104330af",
+      "version": "0.1.0+b58e85009155",
+      "executableSha256": "326def2b573ed7bbecaebf90af9f20c1d7a384a6d86e4e2ca8f02663674359c3"
+    },
+    "installed": false,
+    "previousInstalledSha256": "3217e4bfce388cac60e0ad7bea4caf83ec0d323f6eb620d4bf3a04d2c09ed69d",
+    "installedExecutableSha256": "3217e4bfce388cac60e0ad7bea4caf83ec0d323f6eb620d4bf3a04d2c09ed69d",
+    "buildInfo": {
+      "arch": "aarch64",
+      "debug_assertions": false,
+      "os": "linux",
+      "pkg_version": "0.1.0",
+      "schema": 1
+    },
+    "applicationProcessesPreserved": [
+      {
+        "pid": 2045140,
+        "executable": "/home/michael/.local/bin/omatainer",
+        "arguments": [
+          "/home/michael/.local/bin/omatainer",
+          "--empty-once"
+        ],
+        "sha256": "3217e4bfce388cac60e0ad7bea4caf83ec0d323f6eb620d4bf3a04d2c09ed69d"
+      },
+      {
+        "pid": 2273135,
+        "executable": "/home/michael/.local/bin/omatainer",
+        "arguments": [
+          "/home/michael/.local/bin/omatainer",
+          "ctl",
+          "follow"
+        ],
+        "sha256": "3217e4bfce388cac60e0ad7bea4caf83ec0d323f6eb620d4bf3a04d2c09ed69d"
+      }
+    ],
+    "protectedSessionPreserved": {
+      "path": "/home/michael/Projects/omatainer-work/hardware-resurrection/target/hardware/apc-restart-20261006/session.omat",
+      "bytes": 162882871,
+      "sha256": "96e0b2495cdbdc549c324ecf8337fdef5590bdcbfe8916e4f014eb05d1ee827d"
+    },
+    "reason": "The default GUI is active. Replacement is deferred before changing any file; the verified package is ready for installation after the active app closes. No GUI, follower, capture, audio or MIDI connection was restarted or opened."
+  }
 }
