@@ -10,6 +10,14 @@ impl Plan {
         layout: &session::Layout,
         cancel: &std::sync::atomic::AtomicBool,
     ) -> Result<Arc<Self>, String> {
+        Self::prepare_with_seed(model, media, layout, super::super::note_variation::DEFAULT_SEED, cancel)
+    }
+    /// Prepare a song with its saved note-variation seed.
+    /// Takes immutable sources, media, layout, seed and cancellation; returns one bounded schedule shared by real-time playback and export.
+    pub(crate) fn prepare_with_seed(
+        model: Arc<Model>, media: &[Arc<Sample>], layout: &session::Layout, seed: u64,
+        cancel: &std::sync::atomic::AtomicBool,
+    ) -> Result<Arc<Self>, String> {
         model.validate(media, layout)?;
         let mut sources = Vec::with_capacity(model.sources.len());
         let mut checked = std::collections::HashSet::new();
@@ -73,7 +81,10 @@ impl Plan {
             {
                 return Err("Arrangement audio source is empty or unsupported".into());
             }
+            let lanes = source.clip.lanes.as_ref().map(|lanes| lanes.prepare()).transpose()?;
+            let variation = super::super::note_variation::Plan::prepare(&source.clip.notes, lanes.as_deref(), cancel)?;
             sources.push(PreparedSource {
+                variation,
                 audio,
                 audio_region,
                 length,
@@ -145,7 +156,7 @@ impl Plan {
                     region.end - region.start
                 };
                 let limit = instance.offset + instance.duration;
-                for note in &clip.notes {
+                for (note_index, note) in clip.notes.iter().enumerate() {
                     active(cancel)?;
                     if note.muted || note.vel == 0 || note.source_duration() <= 0.0 {
                         continue;
@@ -161,15 +172,19 @@ impl Plan {
                         position + note.source_duration()
                     };
                     if position < region.start + intro && end > region.start {
+                        let velocity = source.variation.as_ref().map_or(Some(note.vel), |plan| plan.velocity(note_index, seed, 0, note.vel));
+                        if let Some(velocity) = velocity {
+                        let mut varied = note.clone(); varied.vel = velocity;
                         add_note(
                             track,
                             instance,
-                            note,
+                            &varied,
                             position.max(region.start) - region.start,
                             end - region.start,
                             gain,
                             &mut event_count,
                         )?;
+                        }
                     }
                     if repeating && position >= region.loop_start && position < region.loop_end {
                         let duration = if clip.region.is_some() {
@@ -188,10 +203,12 @@ impl Plan {
                         for cycle in earliest..last {
                             active(cancel)?;
                             let start = first + cycle as f64 * region.period();
+                            let Some(velocity) = source.variation.as_ref().map_or(Some(note.vel), |plan| plan.velocity(note_index, seed, cycle as i64 + 1, note.vel)) else { continue };
+                            let mut varied = note.clone(); varied.vel = velocity;
                             add_note(
                                 track,
                                 instance,
-                                note,
+                                &varied,
                                 start,
                                 start + duration,
                                 gain,
@@ -223,7 +240,17 @@ impl Plan {
                                 .before(region.loop_end * f64::from(lanes.ppqn))
                                 .or(point);
                         }
-                        point
+                        let point = point?;
+                        if let Some(plan) = &source.variation {
+                            let message = point.message;
+                            let index = lanes.messages.binary_search_by_key(&(message.tick, message.order), |m| (m.tick, m.order)).ok()?;
+                            if let Some(owner) = plan.expression_owner(index) {
+                                let cycle = if cycling { 1 + ((instance.offset - intro) / region.period()).floor() as i64 } else { 0 };
+                                let cycle = cycle - i64::from(cycling && message.tick as f64 >= at);
+                                if plan.velocity(owner, seed, cycle, clip.notes[owner].vel).is_none() { return None }
+                            }
+                        }
+                        Some(point)
                     };
                     let mut error = None;
                     midi_data::chase(point, |bytes, length, order| {
@@ -242,9 +269,10 @@ impl Plan {
                     if let Some(error) = error {
                         return Err(error);
                     }
-                    for message in &lanes.messages {
+                    for (message_index, message) in lanes.messages.iter().enumerate() {
+                        let allowed = |cycle| source.variation.as_ref().and_then(|plan| plan.expression_owner(message_index)).is_none_or(|owner| source.variation.as_ref().unwrap().velocity(owner, seed, cycle, clip.notes[owner].vel).is_some());
                         let position = message.tick as f64 / f64::from(lanes.ppqn);
-                        if (region.start..region.start + intro).contains(&position) {
+                        if (region.start..region.start + intro).contains(&position) && allowed(0) {
                             add_instance_control(
                                 track,
                                 instance,
@@ -267,6 +295,7 @@ impl Plan {
                             }
                             for cycle in earliest..last {
                                 active(cancel)?;
+                                if !allowed(cycle as i64 + 1) { continue }
                                 add_instance_control(
                                     track,
                                     instance,
@@ -280,7 +309,7 @@ impl Plan {
                 }
             }
         }
-        let mut bytes = std::mem::size_of::<Self>()
+        let mut bytes = sources.iter().filter_map(|source| source.variation.as_ref()).map(|plan| plan.bytes()).sum::<usize>() + std::mem::size_of::<Self>()
             + serde_json::to_vec(model.as_ref())
                 .map_err(|e| e.to_string())?
                 .len();

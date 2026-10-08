@@ -95,7 +95,7 @@ fn fixture(gui: &mut Gui, files: &Files) -> Arc<crate::engine::dsp::Sample> {
     let clip = &mut gui.rt.tracks[2].clips[7];
     clip.kind = crate::engine::ClipKind::Midi;
     clip.audio = Some(sample.clone());
-    clip.notes = vec![crate::engine::MidiNote {
+    clip.notes = vec![crate::engine::MidiNote { variation: None,
         channel: 0,
         release_vel: 64,
         source_timing: None,

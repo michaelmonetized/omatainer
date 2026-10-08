@@ -132,7 +132,7 @@ impl RtEngine {
         let minimum = self.bpm as f64 / (60.0 * self.sr as f64);
         self.project.edited();
         let index = clip.notes.len();
-        clip.notes.push(MidiNote {
+        clip.notes.push(MidiNote { variation: None,
             channel:match input {InputKey::Midi {ch,..}=>ch,_=>0},release_vel:64,source_timing:None,
             id, muted: false,
             pitch,

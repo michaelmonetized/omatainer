@@ -12,6 +12,7 @@ pub(super) struct ChordCache {
     next_change: f64,
     clip_beats: f64,
     visibility: u8,
+    cycle: i64,
     dirty: bool,
     #[cfg(test)]
     pub rebuilds: usize,
@@ -26,6 +27,7 @@ impl Default for ChordCache {
             next_change: 0.0,
             clip_beats: 0.0,
             visibility: 0,
+            cycle: 0,
             dirty: true,
             #[cfg(test)]
             rebuilds: 0,
@@ -57,12 +59,21 @@ impl ChordCache {
         &mut self, notes: &[MidiNote], local: f64, prev: f64, clip_beats: f64,
         visibility: u8, visible: impl Fn(usize) -> bool,
     ) {
+        self.refresh_varied(notes, local, prev, clip_beats, visibility, 0, visible, |index| Some(notes[index].vel));
+    }
+    /// Refresh audible arpeggiator notes at a musical boundary.
+    /// Takes source notes, position, visibility, cycle and prepared velocity decisions; retains fixed pitch storage and performs no callback allocation.
+    pub fn refresh_varied(
+        &mut self, notes: &[MidiNote], local: f64, prev: f64, clip_beats: f64,
+        visibility: u8, cycle: i64, visible: impl Fn(usize) -> bool, velocity: impl Fn(usize) -> Option<u8>,
+    ) {
         if !self.dirty
             && prev >= 0.0
             && local >= prev
             && local < self.next_change
             && clip_beats == self.clip_beats
             && visibility == self.visibility
+            && cycle == self.cycle
         {
             return;
         }
@@ -74,14 +85,15 @@ impl ChordCache {
             if note.muted || !visible(index) {
                 continue;
             }
+            let Some(velocity) = velocity(index) else { continue };
             let start = note.source_start();
             let end = if note.source_timing.is_some() {start+note.source_duration()} else {(note.start + note.len) as f64};
             if local >= start && local < end {
                 present[note.pitch as usize] = true;
                 // One arp step represents a deduplicated pitch. The loudest
                 // currently active visible note supplies its drum velocity.
-                let velocity = &mut self.velocities[note.pitch as usize];
-                *velocity = (*velocity).max(note.vel.min(127));
+                let stored = &mut self.velocities[note.pitch as usize];
+                *stored = (*stored).max(velocity.min(127));
             }
             if start > local {
                 self.next_change = self.next_change.min(start);
@@ -99,6 +111,7 @@ impl ChordCache {
         }
         self.clip_beats = clip_beats;
         self.visibility = visibility;
+        self.cycle = cycle;
         self.dirty = false;
         #[cfg(test)]
         {

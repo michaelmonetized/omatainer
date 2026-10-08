@@ -35,17 +35,21 @@ impl RtEngine {
             self.history_reject(Command::ArrangementEdit(request), reason);
             return;
         }
-        self.undo.begin(Name::Arrangement, 0, self.frames_done);
+        self.undo.begin(if request.seed_only { Name::NoteSeed } else { Name::Arrangement }, 0, self.frames_done);
         for (slot, track) in self.tracks.iter_mut().enumerate() {
             track.release_clip_notes();
             self.midi_routing.clear_clip(slot as u8);
         }
+        let original_seed = self.note_seed;
+        self.note_seed = request.note_seed;
+        for track in &mut self.tracks { track.note_seed = self.note_seed; }
         let mut replacement = request.replacement.take().unwrap();
         std::mem::swap(&mut self.arrangement, &mut replacement);
         self.arrangement.reset(self.precise_midi_beat());
         let bytes = retained_bytes;
         let original = replacement.plan.clone();
         self.undo.append(Patch::Arrangement {
+            seed: original_seed,
             value: replacement,
             reserved: [original, request.reserved.take()],
             bytes,

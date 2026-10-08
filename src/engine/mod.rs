@@ -8,6 +8,7 @@ pub(crate) mod live_set;
 pub(crate) mod midi_edit;
 pub(crate) mod midi_tools;
 pub(crate) mod musical_context;
+pub(crate) mod note_variation;
 pub(crate) mod audio_clip;
 pub(crate) mod arrangement;
 pub(crate) mod song_navigation;
@@ -167,6 +168,8 @@ pub enum ClipKind {
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct MidiNote {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub(crate) variation: Option<note_variation::Properties>,
     #[serde(default)]
     pub channel:u8,
     #[serde(default="midi_data::release_velocity")]
@@ -185,6 +188,8 @@ pub struct MidiNote {
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Clip {
+    #[serde(skip)]
+    pub(crate) variation: Option<Arc<note_variation::Plan>>,
     #[serde(default)]
     pub(crate) properties: clip_management::Properties,
     #[serde(skip)]
@@ -206,10 +211,12 @@ impl Clip {
     pub(super) fn retained_bytes(&self) -> usize {
         self.name.capacity() + self.notes.capacity() * std::mem::size_of::<MidiNote>()
             + self.lanes.as_ref().map_or(0, |lanes| lanes.bytes())
+            + self.variation.as_ref().map_or(0, |plan| plan.bytes())
     }
 
     pub fn empty() -> Self {
         Self {
+            variation: None,
             properties: Default::default(),
             audio_region: None,
             lanes: None,
@@ -276,6 +283,7 @@ pub struct TrackRt {
     pub arp_note: Option<u8>,
     arp_cache: arp::ChordCache,
     midi_schedule: midi_schedule::MidiSchedule,
+    note_seed: u64,
     midi_output: midi::routing::playback::Playback,
     // Capture playback policy belongs only to the current launch.
     recorded_playback: Vec<Option<recording::RecordedPlayback>>,
@@ -295,7 +303,7 @@ impl TrackRt {
             eq: ThreeBand::new(sr), eq_right: ThreeBand::new(sr), meter: 0.0,
             drum_samples: drums, drum_pos: [None; 16], fx: fx::FxChain::new(sr),
             arp_note: None, arp_cache: arp::ChordCache::default(),
-            midi_schedule: midi_schedule::MidiSchedule::default(),
+            midi_schedule: midi_schedule::MidiSchedule::default(), note_seed: note_variation::DEFAULT_SEED,
             midi_output: midi::routing::playback::Playback::default(),
             recorded_playback: Vec::new(),
         }
@@ -326,6 +334,7 @@ impl TrackRt {
             let clip = &self.clips[playing.scene as usize];
             let elapsed = (self.project_resume.is_some() || playing.last_beat >= 0.0)
                 .then_some(if clip.region.is_some() { midi_beat - playing.midi_start_beat } else { beat - playing.start_beat });
+            self.midi_schedule.set_variation(clip.variation.clone(), self.note_seed);
             self.midi_schedule.rebuild_region(
                 &clip.notes,
                 clip.bars.max(0.25) as f64 * 4.0,
@@ -699,6 +708,7 @@ pub struct RtEngine {
     #[cfg(test)]
     current_sample_frame: u64,
     pub(crate) conductor: Option<Arc<midi_data::Conductor>>,
+    pub(crate) note_seed: u64,
     pub(crate) musical_context: Option<musical_context::Context>,
     pub(crate) sampler_scale: bool,
     mapped_clock: Option<midi_data::ConductorClock>,
@@ -939,6 +949,7 @@ pub struct Snapshot {
     pub meter_numerator: u8,
     pub meter_denominator: u16,
     pub file_conductor: bool,
+    pub(crate) note_seed: u64,
     pub(crate) musical_context: Option<musical_context::Context>,
     pub(crate) active_scale: musical_context::Active,
     pub(crate) sampler_scale: bool,
@@ -1024,7 +1035,7 @@ impl Default for Snapshot {
             meter_numerator: 4,
             meter_denominator: 4,
             file_conductor: false,
-            musical_context: None, active_scale: musical_context::Active::default(),
+            musical_context: None, note_seed: note_variation::DEFAULT_SEED, active_scale: musical_context::Active::default(),
             sampler_scale: false, sampler_context: None,
             timing: None,
             master: 0.85,
@@ -1325,7 +1336,7 @@ impl RtEngine {
             #[cfg(test)]
             current_sample_frame: 0,
             conductor: None,
-            musical_context: None, sampler_scale: false,
+            musical_context: None, note_seed: note_variation::DEFAULT_SEED, sampler_scale: false,
             mapped_clock: None,
             last_midi_step: 0.0,
             quant: 1.0,
@@ -1495,21 +1506,21 @@ impl RtEngine {
         // House drums: kick every beat, snare 2/4, hats 8ths.
         let mut drums = Vec::new();
         for b in 0..4 {
-            drums.push(MidiNote {
+            drums.push(MidiNote { variation: None,
                 channel:0,release_vel:64,source_timing:None, id: crate::engine::midi_edit::NoteId::new(), muted: false,
                 pitch: 36,
                 start: b as f32,
                 len: 0.25,
                 vel: if b % 2 == 0 { 110 } else { 96 },
             });
-            drums.push(MidiNote {
+            drums.push(MidiNote { variation: None,
                 channel:0,release_vel:64,source_timing:None, id: crate::engine::midi_edit::NoteId::new(), muted: false,
                 pitch: 42,
                 start: b as f32,
                 len: 0.12,
                 vel: 70,
             });
-            drums.push(MidiNote {
+            drums.push(MidiNote { variation: None,
                 channel:0,release_vel:64,source_timing:None, id: crate::engine::midi_edit::NoteId::new(), muted: false,
                 pitch: 42,
                 start: b as f32 + 0.5,
@@ -1517,28 +1528,28 @@ impl RtEngine {
                 vel: 88,
             });
         }
-        drums.push(MidiNote {
+        drums.push(MidiNote { variation: None,
             channel:0,release_vel:64,source_timing:None, id: crate::engine::midi_edit::NoteId::new(), muted: false,
             pitch: 38,
             start: 1.0,
             len: 0.25,
             vel: 108,
         });
-        drums.push(MidiNote {
+        drums.push(MidiNote { variation: None,
             channel:0,release_vel:64,source_timing:None, id: crate::engine::midi_edit::NoteId::new(), muted: false,
             pitch: 38,
             start: 3.0,
             len: 0.25,
             vel: 108,
         });
-        drums.push(MidiNote {
+        drums.push(MidiNote { variation: None,
             channel:0,release_vel:64,source_timing:None, id: crate::engine::midi_edit::NoteId::new(), muted: false,
             pitch: 39,
             start: 3.5,
             len: 0.2,
             vel: 90,
         });
-        self.tracks[0].clips[0] = Clip {
+        self.tracks[0].clips[0] = Clip { variation: None,
             properties: Default::default(),
             audio_region: None, lanes: None,
             region: None,
@@ -1549,7 +1560,7 @@ impl RtEngine {
             gain: 1.0,
             audio: None,
         };
-        self.tracks[1].clips[0] = Clip {
+        self.tracks[1].clips[0] = Clip { variation: None,
             properties: Default::default(),
             audio_region: None, lanes: None,
             region: None,
@@ -1557,17 +1568,17 @@ impl RtEngine {
             name: "Bassline".into(),
             bars: 1.0,
             notes: vec![
-                MidiNote { channel:0,release_vel:64,source_timing:None, id: crate::engine::midi_edit::NoteId::new(), muted: false, pitch: 36, start: 0.0, len: 0.7, vel: 100 },
-                MidiNote { channel:0,release_vel:64,source_timing:None, id: crate::engine::midi_edit::NoteId::new(), muted: false, pitch: 36, start: 0.75, len: 0.2, vel: 80 },
-                MidiNote { channel:0,release_vel:64,source_timing:None, id: crate::engine::midi_edit::NoteId::new(), muted: false, pitch: 43, start: 1.5, len: 0.45, vel: 96 },
-                MidiNote { channel:0,release_vel:64,source_timing:None, id: crate::engine::midi_edit::NoteId::new(), muted: false, pitch: 41, start: 2.5, len: 0.45, vel: 90 },
-                MidiNote { channel:0,release_vel:64,source_timing:None, id: crate::engine::midi_edit::NoteId::new(), muted: false, pitch: 36, start: 3.0, len: 0.4, vel: 100 },
-                MidiNote { channel:0,release_vel:64,source_timing:None, id: crate::engine::midi_edit::NoteId::new(), muted: false, pitch: 38, start: 3.5, len: 0.4, vel: 86 },
+                MidiNote { variation: None, channel:0,release_vel:64,source_timing:None, id: crate::engine::midi_edit::NoteId::new(), muted: false, pitch: 36, start: 0.0, len: 0.7, vel: 100 },
+                MidiNote { variation: None, channel:0,release_vel:64,source_timing:None, id: crate::engine::midi_edit::NoteId::new(), muted: false, pitch: 36, start: 0.75, len: 0.2, vel: 80 },
+                MidiNote { variation: None, channel:0,release_vel:64,source_timing:None, id: crate::engine::midi_edit::NoteId::new(), muted: false, pitch: 43, start: 1.5, len: 0.45, vel: 96 },
+                MidiNote { variation: None, channel:0,release_vel:64,source_timing:None, id: crate::engine::midi_edit::NoteId::new(), muted: false, pitch: 41, start: 2.5, len: 0.45, vel: 90 },
+                MidiNote { variation: None, channel:0,release_vel:64,source_timing:None, id: crate::engine::midi_edit::NoteId::new(), muted: false, pitch: 36, start: 3.0, len: 0.4, vel: 100 },
+                MidiNote { variation: None, channel:0,release_vel:64,source_timing:None, id: crate::engine::midi_edit::NoteId::new(), muted: false, pitch: 38, start: 3.5, len: 0.4, vel: 86 },
             ],
             gain: 0.95,
             audio: None,
         };
-        self.tracks[2].clips[0] = Clip {
+        self.tracks[2].clips[0] = Clip { variation: None,
             properties: Default::default(),
             audio_region: None, lanes: None,
             region: None,
@@ -1575,17 +1586,17 @@ impl RtEngine {
             name: "Stab".into(),
             bars: 2.0,
             notes: vec![
-                MidiNote { channel:0,release_vel:64,source_timing:None, id: crate::engine::midi_edit::NoteId::new(), muted: false, pitch: 60, start: 0.0, len: 0.45, vel: 78 },
-                MidiNote { channel:0,release_vel:64,source_timing:None, id: crate::engine::midi_edit::NoteId::new(), muted: false, pitch: 64, start: 0.0, len: 0.45, vel: 70 },
-                MidiNote { channel:0,release_vel:64,source_timing:None, id: crate::engine::midi_edit::NoteId::new(), muted: false, pitch: 67, start: 0.0, len: 0.45, vel: 70 },
-                MidiNote { channel:0,release_vel:64,source_timing:None, id: crate::engine::midi_edit::NoteId::new(), muted: false, pitch: 62, start: 4.0, len: 0.45, vel: 74 },
-                MidiNote { channel:0,release_vel:64,source_timing:None, id: crate::engine::midi_edit::NoteId::new(), muted: false, pitch: 65, start: 4.0, len: 0.45, vel: 68 },
-                MidiNote { channel:0,release_vel:64,source_timing:None, id: crate::engine::midi_edit::NoteId::new(), muted: false, pitch: 69, start: 4.0, len: 0.45, vel: 68 },
+                MidiNote { variation: None, channel:0,release_vel:64,source_timing:None, id: crate::engine::midi_edit::NoteId::new(), muted: false, pitch: 60, start: 0.0, len: 0.45, vel: 78 },
+                MidiNote { variation: None, channel:0,release_vel:64,source_timing:None, id: crate::engine::midi_edit::NoteId::new(), muted: false, pitch: 64, start: 0.0, len: 0.45, vel: 70 },
+                MidiNote { variation: None, channel:0,release_vel:64,source_timing:None, id: crate::engine::midi_edit::NoteId::new(), muted: false, pitch: 67, start: 0.0, len: 0.45, vel: 70 },
+                MidiNote { variation: None, channel:0,release_vel:64,source_timing:None, id: crate::engine::midi_edit::NoteId::new(), muted: false, pitch: 62, start: 4.0, len: 0.45, vel: 74 },
+                MidiNote { variation: None, channel:0,release_vel:64,source_timing:None, id: crate::engine::midi_edit::NoteId::new(), muted: false, pitch: 65, start: 4.0, len: 0.45, vel: 68 },
+                MidiNote { variation: None, channel:0,release_vel:64,source_timing:None, id: crate::engine::midi_edit::NoteId::new(), muted: false, pitch: 69, start: 4.0, len: 0.45, vel: 68 },
             ],
             gain: 0.7,
             audio: None,
         };
-        self.tracks[3].clips[0] = Clip {
+        self.tracks[3].clips[0] = Clip { variation: None,
             properties: Default::default(),
             audio_region: None, lanes: None,
             region: None,
@@ -1593,23 +1604,23 @@ impl RtEngine {
             name: "Pad".into(),
             bars: 2.0,
             notes: vec![
-                MidiNote { channel:0,release_vel:64,source_timing:None, id: crate::engine::midi_edit::NoteId::new(), muted: false, pitch: 48, start: 0.0, len: 7.5, vel: 64 },
-                MidiNote { channel:0,release_vel:64,source_timing:None, id: crate::engine::midi_edit::NoteId::new(), muted: false, pitch: 55, start: 0.0, len: 7.5, vel: 52 },
-                MidiNote { channel:0,release_vel:64,source_timing:None, id: crate::engine::midi_edit::NoteId::new(), muted: false, pitch: 60, start: 0.0, len: 7.5, vel: 48 },
+                MidiNote { variation: None, channel:0,release_vel:64,source_timing:None, id: crate::engine::midi_edit::NoteId::new(), muted: false, pitch: 48, start: 0.0, len: 7.5, vel: 64 },
+                MidiNote { variation: None, channel:0,release_vel:64,source_timing:None, id: crate::engine::midi_edit::NoteId::new(), muted: false, pitch: 55, start: 0.0, len: 7.5, vel: 52 },
+                MidiNote { variation: None, channel:0,release_vel:64,source_timing:None, id: crate::engine::midi_edit::NoteId::new(), muted: false, pitch: 60, start: 0.0, len: 7.5, vel: 48 },
             ],
             gain: 0.55,
             audio: None,
         };
         // scene 2 variation
         let mut d2 = self.tracks[0].clips[0].notes.clone();
-        d2.push(MidiNote {
+        d2.push(MidiNote { variation: None,
             channel:0,release_vel:64,source_timing:None, id: crate::engine::midi_edit::NoteId::new(), muted: false,
             pitch: 46,
             start: 1.75,
             len: 0.3,
             vel: 80,
         });
-        self.tracks[0].clips[1] = Clip {
+        self.tracks[0].clips[1] = Clip { variation: None,
             properties: Default::default(),
             audio_region: None, lanes: None,
             region: None,
@@ -2009,7 +2020,9 @@ impl RtEngine {
                             });
                         let visibility = if ending { 2 } else if repeating
                             && region.is_some_and(|region| sample_elapsed >= region.loop_end - region.start) { 1 } else { 0 };
-                        track.arp_cache.refresh_region_visible(notes, local, prev, clip_beats, visibility, |index| {
+                        let variation = &track.clips[scene].variation;
+                        let cycle = if variation.is_some() && repeating { region.map_or((sample_elapsed / clip_beats).floor() as i64, |region| { let first = region.loop_end - region.start; if sample_elapsed < first { 0 } else { 1 + ((sample_elapsed - first) / period).floor() as i64 } }) } else { 0 };
+                        track.arp_cache.refresh_varied(notes, local, prev, clip_beats, visibility, cycle, |index| {
                             !ending && region.is_none_or(|region| !repeating
                                 || sample_elapsed < region.loop_end - region.start
                                 || notes[index].source_start() >= region.loop_start)
@@ -2022,7 +2035,7 @@ impl RtEngine {
                                     .is_some_and(|first| loop_origin + notes[index].source_start()
                                         >= first - midi_schedule::BEAT_EPSILON)
                             })
-                        });
+                        }, |index| variation.as_ref().map_or(Some(notes[index].vel), |plan| plan.velocity(index, self.note_seed, cycle, notes[index].vel)));
                         let step = (local * 4.0).floor() as i64;
                         let prev_step = (prev * 4.0).floor() as i64;
                         let advance = step != prev_step || local < prev;
@@ -2039,7 +2052,8 @@ impl RtEngine {
                                 let velocity = track.arp_cache.velocity(pitch) as f32 / 127.0;
                                 self.trig_drum_with_gain(ti, pitch, velocity, gain);
                             } else {
-                                self.tracks[ti].poly.note_on_clip_with_gain(pitch, 0.9, gain);
+                                let velocity = if self.tracks[ti].clips[scene].variation.is_some() { self.tracks[ti].arp_cache.velocity(pitch) as f32 / 127.0 } else { 0.9 };
+                                self.tracks[ti].poly.note_on_clip_with_gain(pitch, velocity, gain);
                             }
                             self.tracks[ti].arp_note = Some(pitch);
                         }
@@ -3207,6 +3221,7 @@ impl RtEngine {
                         self.tracks[t].clips[s].bars = 1.0;
                     }
                     self.tracks[t].clips[s].notes = notes;
+                    self.tracks[t].clips[s].variation = None;
                     let midi_beat = self.precise_midi_beat();
                     self.tracks[t].clip_notes_changed(s, self.beat, midi_beat);
                 }

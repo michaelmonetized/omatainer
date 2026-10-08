@@ -32,7 +32,7 @@ fn fixture() -> Box<Gui> {
     clip.bars = 4.0;
     clip.region = Some(Region::full(4.0));
     for (index, pitch) in [60, 61, 63, 66].into_iter().enumerate() {
-        clip.notes.push(MidiNote {
+        clip.notes.push(MidiNote { variation: None,
             pitch,
             vel: 90,
             start: index as f32 * 0.5,

@@ -135,7 +135,7 @@ fn arrangement_song_export_matches_realtime_overlaps_midi_and_five_minute_clock(
             let mut midi = captured.state.tracks[1].clips[7].clone();
             midi.kind = ClipKind::Midi;
             midi.bars = 1.0;
-            midi.notes = vec![MidiNote {
+            midi.notes = vec![MidiNote { variation: None,
                 id: NoteId::new(),
                 muted: false,
                 pitch: 64,

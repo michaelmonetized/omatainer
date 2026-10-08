@@ -161,6 +161,7 @@ impl Request {
                 for note in &mut clip.notes {
                     note.id = NoteId::new();
                 }
+                crate::engine::note_variation::remap_copied_groups(&mut clip.notes)?;
                 vec![(destination, clip)]
             }
             Action::Move {

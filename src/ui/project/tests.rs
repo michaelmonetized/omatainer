@@ -409,7 +409,7 @@ impl Gui {
         self.app.send(Command::SetNotes {
             track: 0,
             scene: 0,
-            notes: vec![MidiNote {
+            notes: vec![MidiNote { variation: None,
                 channel:0,release_vel:64,source_timing:None, id: crate::engine::midi_edit::NoteId::new(), muted: false,
                 pitch: 61,
                 start: 0.25,

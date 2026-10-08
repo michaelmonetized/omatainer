@@ -249,7 +249,7 @@ fn midi_same_pitch_holds_and_seek_chase_keep_independent_instance_owners() {
     let mut clip = captured.state.tracks[1].clips[7].clone();
     clip.kind = ClipKind::Midi;
     clip.bars = 1.0;
-    clip.notes = vec![MidiNote {
+    clip.notes = vec![MidiNote { variation: None,
         id: midi_edit::NoteId::new(),
         muted: false,
         pitch: 64,

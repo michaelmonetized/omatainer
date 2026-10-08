@@ -27,7 +27,7 @@ fn large_state() -> project::State {
         track.launch = (index < 8).then_some(project::Launch { scene: 0, start_beat: 0.0, looping: true });
         track.clips[0].kind = ClipKind::Midi;
         track.clips[0].bars = 32.0;
-        track.clips[0].notes = (0..512).map(|note| MidiNote { id: crate::engine::midi_edit::NoteId::new(),
+        track.clips[0].notes = (0..512).map(|note| MidiNote { variation: None, id: crate::engine::midi_edit::NoteId::new(),
             muted: false, pitch: 48 + (note % 24) as u8, start: 0.0, len: 64.0, vel: 40,
             channel: 0, release_vel: 64, source_timing: None }).collect();
         track

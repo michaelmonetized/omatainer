@@ -181,7 +181,7 @@ impl Request {
             cancel,
         )
         .map_err(|e| e.to_string())?;
-        let replacement = Clip {
+        let replacement = Clip { variation: None,
             properties: baseline.clip.properties,
             audio_region: Some(plan),
             region: None,

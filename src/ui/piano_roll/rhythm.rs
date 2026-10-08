@@ -165,7 +165,7 @@ impl Generator {
                 if !id.valid() {
                     return Err("Rhythm note identities are unavailable".into());
                 }
-                notes.push(MidiNote {
+                notes.push(MidiNote { variation: None,
                     id,
                     channel: 0,
                     release_vel: 64,

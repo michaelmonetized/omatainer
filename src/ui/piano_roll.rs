@@ -17,6 +17,7 @@ mod rhythm;
 mod step;
 mod tools;
 mod scale;
+mod variation;
 
 pub(super) struct Editor {
     open: bool,
@@ -82,6 +83,7 @@ struct Draft {
     rhythm: rhythm::Generator,
     controls: control::Controls,
     tools: tools::Tools,
+    variation: variation::Controls,
 }
 #[derive(Clone, Copy)]
 struct Values {
@@ -163,6 +165,7 @@ impl Draft {
             step_chord: BTreeSet::new(),
             rhythm: rhythm::Generator::default(),
             tools: tools::Tools::default(),
+            variation: variation::Controls::default(),
         }
     }
     fn resolved_context(&self) -> crate::engine::musical_context::Resolved {
@@ -205,7 +208,7 @@ impl Draft {
             return Err("A stable note identity could not be created".into());
         }
         let value = self.cursor;
-        self.notes.push(MidiNote {
+        self.notes.push(MidiNote { variation: None,
             channel: 0,
             release_vel: 64,
             source_timing: None,
@@ -286,6 +289,7 @@ impl Draft {
             n.reconcile_timing();
             copies.push(n);
         }
+        crate::engine::note_variation::remap_copied_groups(&mut copies)?;
         self.selected = copies.iter().map(|n| n.id).collect();
         self.dirty |= !copies.is_empty();
         self.notes.extend(copies);
@@ -341,7 +345,7 @@ impl Editor {
             || self.loading.is_some()
             || self.preparing.is_some()
             || self.pending.is_some()
-            || self.draft.as_ref().is_some_and(|draft| draft.tools.busy())
+            || self.draft.as_ref().is_some_and(|draft| draft.tools.busy() || draft.variation.busy())
     }
     fn stop(&mut self, engine: &Engine) {
         if let Some(id) = self.audition {
@@ -444,6 +448,7 @@ impl Editor {
             _ => {}
         }
         if let Some(draft) = &mut self.draft {
+            if let Err(error) = variation::poll(draft, engine) { self.error = Some(error); }
             let mut tools = std::mem::take(&mut draft.tools);
             if let Err(error) = tools.poll(draft) {
                 self.error = Some(error);
@@ -561,7 +566,7 @@ impl Editor {
             }
             return;
         }
-        if draft.controls.dirty || draft.context != draft.baseline.context {
+        if draft.controls.dirty || draft.context != draft.baseline.context || draft.notes.iter().any(|note|note.variation.is_some()) {
             let baseline = draft.baseline.clone();
             let name = draft.name.clone();
             let notes = draft.notes.clone();
@@ -815,6 +820,7 @@ impl App {
                                         }
                                     });
                                 accessibility::scrollbars(ui, "MIDI note list", &rows);
+                                match variation::show(ui, draft, &self.theme) { Ok(true) => editor.error = None, Err(error) => editor.error = Some(error), _ => {} }
                             });
                             ui.add_enabled_ui(!busy && !self.project.committing() && !editor.comparison.group.previewed(), |ui| {
                                 match tools::show(ui,draft,&self.theme){Ok(true)=>{editor.error=None;stop=true;},Err(error)=>editor.error=Some(error),_=>{}}
@@ -823,6 +829,7 @@ impl App {
                                 (self.snap.selected_track as u8,self.snap.selected_scene as u16),self.snap.session.as_ref().map_or(1,|s|s.tracks.len()),self.snap.session.as_ref().map_or(1,|s|s.scenes.len()));
                             let scale_editing = !busy && !self.project.committing() && editor.comparison.editing(draft);
                             scale::show(ui, draft, &self.engine, &self.snap, scale_editing);
+                            if let Err(error) = variation::show_seed(ui, draft, &self.engine, &self.snap) { editor.error = Some(error); }
                         });
                         accessibility::scrollbars(ui, "MIDI editor controls", &scroll);
                     }

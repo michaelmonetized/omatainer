@@ -132,8 +132,8 @@ fn explicit_region_clock_cursor_survives_capture_install_and_output_rate_change(
     // must capture its own clock origin, while saved state uses transport beat.
     live.midi_beat += 0.125;
     live.apply(Command::SetNotes {track:2, scene:7, notes:vec![
-        MidiNote { channel:0,release_vel:64,source_timing:None, id:midi_edit::NoteId::new(), muted:false, pitch:60, start:0.0, len:2.0, vel:80 },
-        MidiNote { channel:0,release_vel:64,source_timing:None, id:midi_edit::NoteId::new(), muted:false, pitch:62, start:4.0, len:1.0, vel:90 },
+        MidiNote { variation: None, channel:0,release_vel:64,source_timing:None, id:midi_edit::NoteId::new(), muted:false, pitch:60, start:0.0, len:2.0, vel:80 },
+        MidiNote { variation: None, channel:0,release_vel:64,source_timing:None, id:midi_edit::NoteId::new(), muted:false, pitch:62, start:4.0, len:1.0, vel:90 },
     ]});
     live.tracks[2].clips[7].bars = 16.0;
     live.tracks[2].clips[7].region = Some(midi_edit::Region::full(16.0));
@@ -236,7 +236,7 @@ fn populated() -> RtEngine {
             })
             .collect();
         for s in 0..SCENES {
-            rt.tracks[t].clips[s] = Clip {
+            rt.tracks[t].clips[s] = Clip { variation: None,
                 properties: Default::default(),
                 audio_region: None, lanes: None,
                 region: None,
@@ -248,7 +248,7 @@ fn populated() -> RtEngine {
                 name: format!("clip {t}:{s}"),
                 bars: 2.0,
                 gain: 0.7,
-                notes: vec![MidiNote {
+                notes: vec![MidiNote { variation: None,
                     channel:0,release_vel:64,source_timing:None, id: crate::engine::midi_edit::NoteId::new(), muted: false,
                     pitch: (30 + t + s) as u8,
                     start: 1.125,
@@ -583,7 +583,7 @@ fn dirty_revision_ignores_performance_gates_but_tracks_note_recording_and_contro
 fn stopped_resume_edits_replace_scheduled_notes_and_first_arp_step_chases() {
     for arp in [false, true] {
         let mut source = rt();
-        source.tracks[2].clips[0].notes = vec![MidiNote {
+        source.tracks[2].clips[0].notes = vec![MidiNote { variation: None,
             channel:0,release_vel:64,source_timing:None, id: crate::engine::midi_edit::NoteId::new(), muted: false,
             pitch: 60,
             start: 0.0,
@@ -602,7 +602,7 @@ fn stopped_resume_edits_replace_scheduled_notes_and_first_arp_step_chases() {
         opened.rt.apply(Command::SetNotes {
             track: 2,
             scene: 0,
-            notes: vec![MidiNote {
+            notes: vec![MidiNote { variation: None,
                 channel:0,release_vel:64,source_timing:None, id: crate::engine::midi_edit::NoteId::new(), muted: false,
                 pitch: 72,
                 start: 0.0,
@@ -725,7 +725,7 @@ fn largest_supported_capture_is_bounded_and_has_no_callback_heap_traffic() {
             clip.notes.clear();
         }
         track.clips[0].notes = vec![
-            MidiNote {
+            MidiNote { variation: None,
                 channel:0,release_vel:64,source_timing:None, id: crate::engine::midi_edit::NoteId::new(), muted: false,
                 pitch: 60,
                 start: 0.0,
@@ -771,7 +771,7 @@ fn largest_supported_capture_is_bounded_and_has_no_callback_heap_traffic() {
     micros.sort();
     eprintln!("maximum project capture: {} notes, {} rack slots, 16 banks, 4096-byte names; wall us median={} max={}; zero allocation/free (local copy cost, not stream deadline proof)",
         MAX_TOTAL_NOTES, MAX_FX_PER_RACK * (TRACKS + SCENES), micros[4], micros[8]);
-    live.tracks[0].clips[1].notes.push(MidiNote {
+    live.tracks[0].clips[1].notes.push(MidiNote { variation: None,
         channel:0,release_vel:64,source_timing:None, id: crate::engine::midi_edit::NoteId::new(), muted: false,
         pitch: 60,
         start: 0.0,

@@ -381,6 +381,14 @@ impl Held {
         }
     }
 }
+/// Capture uniquely owned note expression for a prepared clip.
+/// Takes validated content, changed-note flags, explicit expression mode and cancellation; returns one owner per source message or a refusal for ambiguous voices.
+pub(crate) fn expression_owners(
+    content: &Content, changed: &[bool], mode: Expression, cancel: &AtomicBool,
+) -> Result<Vec<Option<usize>>, String> {
+    if changed.len() != content.notes.len() { return Err("Expression ownership flags do not match the clip notes".into()); }
+    owners(content, changed, mode, cancel)
+}
 fn owners(
     content: &Content,
     changed: &[bool],

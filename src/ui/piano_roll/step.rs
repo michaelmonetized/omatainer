@@ -62,7 +62,7 @@ impl Draft {
             if !id.valid() {
                 return Err("A stable step note identity could not be created".into());
             }
-            notes.push(MidiNote {
+            notes.push(MidiNote { variation: None,
                 id,
                 channel: 0,
                 release_vel: 64,

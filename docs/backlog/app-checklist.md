@@ -6,7 +6,7 @@ Michael resumed physical checks on 2026-10-06. All MPD A/B/C controls were captu
 
 Each issue appears once, after its dependencies. The Code column checks off implemented code, including the existing stack, and does not claim complete acceptance. Accepted requires complete recorded acceptance. The eight provider integrations previously excluded by Michael stay outside this release. No open issue is automatically closed by this checklist.
 
-127 existing stack · 60 implemented · 9 partial · 152 planned · 0 accepted · 8 outside release
+127 existing stack · 61 implemented · 9 partial · 151 planned · 0 accepted · 8 outside release
 
 - [x] High-resolution stereo source peaks with measured rainbow frequency bands, native-rate validation, project reopen and pixel-scaled rendering. [Receipt](../validation/rainbow-waveforms.md)
 
@@ -176,7 +176,7 @@ Each issue appears once, after its dependencies. The Code column checks off impl
 | [x] | [#163](https://github.com/michaelmonetized/omatainer/issues/163) | Recombine note properties and shape velocity using editable transformation tools | implemented | #110 | [receipt](../../docs/validation/midi-transformations.md), [receipt](../../docs/validation/midi-transformations-receipt.json) |
 | [x] | [#164](https://github.com/michaelmonetized/omatainer/issues/164) | Add quantize, stretch, reverse and tempo-curve MIDI transformations | implemented | #110, #83 | [receipt](../../docs/validation/midi-transformations.md), [receipt](../../docs/validation/midi-transformations-receipt.json) |
 | [x] | [#165](https://github.com/michaelmonetized/omatainer/issues/165) | Edit multiple MIDI clips together with explicit focus and ghost notes | implemented | #110 | [receipt](../../docs/validation/midi-clip-comparison.md), [receipt](../../docs/validation/midi-clip-comparison-receipt.json) |
-| [ ] | [#166](https://github.com/michaelmonetized/omatainer/issues/166) | Add per-note chance, velocity ranges and expressive note properties | planned | #110 |  |
+| [x] | [#166](https://github.com/michaelmonetized/omatainer/issues/166) | Add per-note chance, velocity ranges and expressive note properties | implemented | #110 | [receipt](../../docs/validation/note-variation.md), [receipt](../../docs/validation/note-variation-receipt.json) |
 | [x] | [#167](https://github.com/michaelmonetized/omatainer/issues/167) | Generate editable rhythmic and Euclidean MIDI patterns | implemented | #110 | [receipt](../../docs/validation/midi-step-rhythm.md), [#510](https://github.com/michaelmonetized/omatainer/pull/510) |
 | [x] | [#168](https://github.com/michaelmonetized/omatainer/issues/168) | Make keys and scales shared musical context for editing and devices | implemented | #110 | [receipt](../../docs/validation/saved-musical-context.md), [receipt](../../docs/validation/saved-musical-context-receipt.json) |
 | [ ] | [#169](https://github.com/michaelmonetized/omatainer/issues/169) | Exchange editable sessions using an open DAW interchange format | planned | #116 |  |

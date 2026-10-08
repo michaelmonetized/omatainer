@@ -336,6 +336,17 @@ Linux ARM64 software qualification of native MIDI transformations. Quantize stra
 
 Linux ARM64 native software qualification. Compare at most 64 captured empty/MIDI clips and at most 65536 notes, with the existing 8192-note and lane limits per clip. Ghost notes are read-only until their owner is focused; shared tools additionally require group enablement and explicit permission per companion. Criteria combine pitch, shared time and velocity, optional overlap and inversion. Each owner retains its source region, loop, shared display offset, track tuning, stable identities and controller/expression content. Worker preparation validates every owner before one guarded atomic Apply and one Undo step; any stale/cancelled target refuses the whole edit. Comparison membership, offsets and permission are current editor state, while applied notes and native musical regions persist. This does not claim saved scale context or per-note expression editing. No physical ports, capture, OS GUI or listening check was opened.
 
+### Issue #166: implemented
+
+- seeded per-note choices: [src/engine/note_variation.rs](../src/engine/note_variation.rs) — Worker-prepared same-onset linked/exclusive rules, expression ownership and allocation-free cycle decisions
+- native velocity and chance lanes: [src/ui/piano_roll/variation.rs](../src/ui/piano_roll/variation.rs) — Explicit base/range/chance controls and a guarded full-width saved seed with exact Undo
+- paired actual playback: [src/engine/midi/routing/playback.rs](../src/engine/midi/routing/playback.rs) — Built-in, routed and arrangement note/owned-expression cycle coherence
+- Acceptance fixtures: `engine::note_variation::tests`, `ui::piano_roll::variation::tests`, `engine::midi::routing::playback::tests::actual_rendered_two_thousand_loops_share_seed_choices_with_routed_expression_and_independent_blocks`.
+- Evidence: [docs/validation/note-variation.md](../docs/validation/note-variation.md).
+- Evidence: [docs/validation/note-variation-receipt.json](../docs/validation/note-variation-receipt.json).
+
+Linux ARM64 software qualification without physical ports, capture, OS GUI or listening. Native state version 34 stores optional note chance, inclusive velocity range, explicit same-onset Linked/Exclusive groups and a full-width project seed. Group weights above 100%, inconsistent linked probabilities, invalid ranges, mixed expression ownership modes and ambiguous voices refuse the complete edit. The immutable worker-prepared plan evaluates musical cycles without callback allocation, using separate random domains for independent, grouped and velocity decisions. Built-in note gates, routed paired releases and uniquely owned expression share the same cycle decision; unrelated automation remains unchanged. Explicit MPE ownership is required for member-channel expression; automatic MPE negotiation and independent expression curve editing remain #150. Copied clip/preset groups receive new stable identities. Applying a saved seed requires stopped playback and unchanged captured state, with cancellation, one Undo and exact retained notes/PCM. Ordinary notes and legacy projects retain their prior behavior, and old containers refuse future fields including null rather than discarding them. Twelve native import workflows remain separately qualified against a fresh worker; the private saved Live Set is a read-only format smoke check.
+
 ### Issue #167: implemented
 
 - native UI: [src/ui/piano_roll.rs](../src/ui/piano_roll.rs) — Independent rhythmic voices, seeded density, bounded common periods and guarded preview/restore
@@ -846,7 +857,7 @@ Music source: FreeToUse public keyless API. Michael excludes other third-party p
 | [#163](https://github.com/michaelmonetized/omatainer/issues/163) | Recombine note properties and shape velocity using editable transformation tools | implemented |
 | [#164](https://github.com/michaelmonetized/omatainer/issues/164) | Add quantize, stretch, reverse and tempo-curve MIDI transformations | implemented |
 | [#165](https://github.com/michaelmonetized/omatainer/issues/165) | Edit multiple MIDI clips together with explicit focus and ghost notes | implemented |
-| [#166](https://github.com/michaelmonetized/omatainer/issues/166) | Add per-note chance, velocity ranges and expressive note properties | planned |
+| [#166](https://github.com/michaelmonetized/omatainer/issues/166) | Add per-note chance, velocity ranges and expressive note properties | implemented |
 | [#167](https://github.com/michaelmonetized/omatainer/issues/167) | Generate editable rhythmic and Euclidean MIDI patterns | implemented |
 | [#168](https://github.com/michaelmonetized/omatainer/issues/168) | Make keys and scales shared musical context for editing and devices | implemented |
 | [#169](https://github.com/michaelmonetized/omatainer/issues/169) | Exchange editable sessions using an open DAW interchange format | planned |

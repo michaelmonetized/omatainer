@@ -185,7 +185,7 @@ fn native_plugin_export_trims_bridge_delay_refuses_missing_processing_and_keeps_
     let (class,saved)=fixture(true); let (engine,mut rt)=Engine::headless_for_test(48000,256);
     let track=rt.session.tracks[0].id; rt.tracks[0].kind=1; rt.tracks[0].gain=1.;rt.master=0.5;
     for other in rt.tracks.iter_mut().skip(1) {other.mute=true;}
-    let clip=&mut rt.tracks[0].clips[0];clip.kind=engine::ClipKind::Midi;clip.bars=1.;clip.notes=vec![engine::MidiNote {id:engine::midi_edit::NoteId::new(),pitch:60,start:0.,len:1.,vel:127,channel:4,release_vel:0,source_timing:None,muted:false}];
+    let clip=&mut rt.tracks[0].clips[0];clip.kind=engine::ClipKind::Midi;clip.bars=1.;clip.notes=vec![engine::MidiNote { variation: None,id:engine::midi_edit::NoteId::new(),pitch:60,start:0.,len:1.,vel:127,channel:4,release_vel:0,source_timing:None,muted:false}];
     let mut model=Model::default();model.version=3;model.next_id=3;model.plugins.push(instance(&class,saved,Some(track)));model.connections.push(link(Group::Plugin(2),Group::Track(track),&[(0,0,1.),(1,1,1.)]));
     rt.routing=Some(Box::new(Prepared::at_rate(Arc::new(model),&rt.session,48000).unwrap()));
     let root=PathBuf::from(std::env::var_os("OMATAINER_VST3_FIXTURES").unwrap()).join(format!("plugin-exports-{}",std::process::id()));std::fs::create_dir_all(&root).unwrap();

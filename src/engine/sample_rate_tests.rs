@@ -418,7 +418,7 @@ fn sample_rate_reset_policy_and_equal_rate_noop_are_explicit() {
     rt.apply(Command::SetNotes {
         track: 2,
         scene: 0,
-        notes: vec![MidiNote {
+        notes: vec![MidiNote { variation: None,
             channel:0,release_vel:64,source_timing:None, id: crate::engine::midi_edit::NoteId::new(), muted: false,
             pitch: 60,
             start: 0.0,

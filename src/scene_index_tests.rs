@@ -155,7 +155,7 @@ pub(super) fn check_valid_scene_operations() {
         rt.apply(Command::SetNotes {
             track: 0,
             scene,
-            notes: vec![MidiNote {
+            notes: vec![MidiNote { variation: None,
                 channel:0,release_vel:64,source_timing:None, id: crate::engine::midi_edit::NoteId::new(), muted: false,
                 pitch: 60,
                 start: 0.0,

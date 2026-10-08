@@ -71,7 +71,7 @@ fn protected_loads_are_checked_again_on_renderer_without_dropping_payloads() {
 #[test]
 fn safe_stop_finalizes_capture_releases_all_owners_and_rejects_queued_onsets() {
     let (engine, mut rt) = fixture();
-    rt.tracks[2].clips[7].notes = vec![MidiNote {
+    rt.tracks[2].clips[7].notes = vec![MidiNote { variation: None,
         channel:0,release_vel:64,source_timing:None, id: crate::engine::midi_edit::NoteId::new(), muted: false,
         pitch: 50,
         start: 0.0,
@@ -219,7 +219,7 @@ fn safety_mailbox_bypasses_full_owned_queue_and_retires_rejected_payloads_off_au
             track: 2,
             scene: 7,
             notes: vec![
-                MidiNote {
+                MidiNote { variation: None,
                     channel:0,release_vel:64,source_timing:None, id: crate::engine::midi_edit::NoteId::new(), muted: false,
                     pitch: 62,
                     start: 0.0,

@@ -54,7 +54,8 @@ impl super::MidiNote {
             .map_or(self.len as f64, TickTiming::duration_beats)
     }
     pub(crate) fn interchange_valid(&self) -> bool {
-        self.channel < 16
+        self.variation.is_none_or(super::note_variation::Properties::valid)
+            && self.channel < 16
             && self.release_vel <= 127
             && self
                 .source_timing
@@ -92,6 +93,7 @@ impl super::MidiNote {
             return Err("MIDI note identity is unavailable".into());
         }
         Ok(Self {
+            variation: None,
             id,
             muted: false,
             pitch: note.pitch,

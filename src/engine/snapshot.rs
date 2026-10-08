@@ -372,6 +372,7 @@ impl Frame {
         target.navigation_error = rt.navigation.error;
         target.file_conductor = rt.conductor.is_some();
         target.musical_context = rt.musical_context;
+        target.note_seed = rt.note_seed;
         target.active_scale = musical_context::active(rt.musical_context, rt.tracks.iter().filter(|_| rt.playing).filter_map(|track| track.playing.map(|launch| track.clips[launch.scene as usize].properties.context)));
         target.sampler_scale = rt.sampler_scale;
         let owner = rt.compose_target.unwrap_or(ComposeTarget { track: rt.selected_track, scene: rt.selected_scene });

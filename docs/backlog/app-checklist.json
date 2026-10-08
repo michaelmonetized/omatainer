@@ -2318,9 +2318,12 @@
       "dependencies": [
         110
       ],
-      "state": "planned",
+      "state": "implemented",
       "prs": [],
-      "evidence": []
+      "evidence": [
+        "docs/validation/note-variation.md",
+        "docs/validation/note-variation-receipt.json"
+      ]
     },
     {
       "issue": 167,

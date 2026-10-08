@@ -49,7 +49,7 @@ fn pcm() -> Arc<Sample> {
     })
 }
 fn midi(t: usize, s: usize) -> crate::engine::Clip {
-    crate::engine::Clip {
+    crate::engine::Clip { variation: None,
         properties: Properties {
             color: Some([20 + t as u8, 40 + s as u8, 210]),
             disabled: false,
@@ -79,7 +79,7 @@ fn midi(t: usize, s: usize) -> crate::engine::Clip {
         kind: ClipKind::Midi,
         name: format!("phrase {t}/{s}"),
         bars: 1.0,
-        notes: vec![MidiNote {
+        notes: vec![MidiNote { variation: None,
             id: NoteId::new(),
             pitch: 60,
             vel: 90,
@@ -115,7 +115,7 @@ fn eight_contrasting_clips_copy_move_metadata_delete_undo_and_native_reopen_reta
                 region.reverse = t % 2 == 0;
                 region.transpose = t as f32;
                 let plan = region.prepare(&audio).unwrap();
-                crate::engine::Clip {
+                crate::engine::Clip { variation: None,
                     properties: Properties {
                         color: Some([200, t as u8 * 40, 80]),
                         disabled: t == 3,

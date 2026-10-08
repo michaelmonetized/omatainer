@@ -995,6 +995,36 @@
       ],
       "limits": "Linux ARM64 native software qualification. Compare at most 64 captured empty/MIDI clips and at most 65536 notes, with the existing 8192-note and lane limits per clip. Ghost notes are read-only until their owner is focused; shared tools additionally require group enablement and explicit permission per companion. Criteria combine pitch, shared time and velocity, optional overlap and inversion. Each owner retains its source region, loop, shared display offset, track tuning, stable identities and controller/expression content. Worker preparation validates every owner before one guarded atomic Apply and one Undo step; any stale/cancelled target refuses the whole edit. Comparison membership, offsets and permission are current editor state, while applied notes and native musical regions persist. This does not claim saved scale context or per-note expression editing. No physical ports, capture, OS GUI or listening check was opened."
     },
+    "166": {
+      "status": "implemented",
+      "paths": [
+        {
+          "kind": "seeded per-note choices",
+          "file": "src/engine/note_variation.rs",
+          "entry": "Worker-prepared same-onset linked/exclusive rules, expression ownership and allocation-free cycle decisions"
+        },
+        {
+          "kind": "native velocity and chance lanes",
+          "file": "src/ui/piano_roll/variation.rs",
+          "entry": "Explicit base/range/chance controls and a guarded full-width saved seed with exact Undo"
+        },
+        {
+          "kind": "paired actual playback",
+          "file": "src/engine/midi/routing/playback.rs",
+          "entry": "Built-in, routed and arrangement note/owned-expression cycle coherence"
+        }
+      ],
+      "fixtures": [
+        "engine::note_variation::tests",
+        "ui::piano_roll::variation::tests",
+        "engine::midi::routing::playback::tests::actual_rendered_two_thousand_loops_share_seed_choices_with_routed_expression_and_independent_blocks"
+      ],
+      "evidence": [
+        "docs/validation/note-variation.md",
+        "docs/validation/note-variation-receipt.json"
+      ],
+      "limits": "Linux ARM64 software qualification without physical ports, capture, OS GUI or listening. Native state version 34 stores optional note chance, inclusive velocity range, explicit same-onset Linked/Exclusive groups and a full-width project seed. Group weights above 100%, inconsistent linked probabilities, invalid ranges, mixed expression ownership modes and ambiguous voices refuse the complete edit. The immutable worker-prepared plan evaluates musical cycles without callback allocation, using separate random domains for independent, grouped and velocity decisions. Built-in note gates, routed paired releases and uniquely owned expression share the same cycle decision; unrelated automation remains unchanged. Explicit MPE ownership is required for member-channel expression; automatic MPE negotiation and independent expression curve editing remain #150. Copied clip/preset groups receive new stable identities. Applying a saved seed requires stopped playback and unchanged captured state, with cancellation, one Undo and exact retained notes/PCM. Ordinary notes and legacy projects retain their prior behavior, and old containers refuse future fields including null rather than discarding them. Twelve native import workflows remain separately qualified against a fresh worker; the private saved Live Set is a read-only format smoke check."
+    },
     "167": {
       "status": "implemented",
       "paths": [

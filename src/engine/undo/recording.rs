@@ -53,7 +53,7 @@ impl RtEngine {
         let patch = Patch::Clip {
             track: track as u8,
             scene: scene as u16,
-            value: Clip {
+            value: Clip { variation: None,
                 properties: clip.properties,
                 audio_region: clip.audio_region, lanes: clip.lanes.clone(),
                         region: clip.region,
