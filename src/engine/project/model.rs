@@ -455,6 +455,17 @@ pub struct Deck {
 }
 
 impl State {
+    /// Check whether a track needs its retained processing.
+    /// Takes a saved track slot; returns true for an unmuted track or a nonzero send before its mute.
+    pub(crate) fn track_processing_required(&self, slot: usize) -> bool {
+        if !self.tracks[slot].mute { return true; }
+        let Some(id) = self.session.as_ref().and_then(|layout| layout.tracks.get(slot)).map(|track| track.id) else { return false; };
+        self.routing.as_ref().is_some_and(|model| model.connections.iter().any(|route|
+            route.source.group == audio::routing::model::Group::Track(id)
+                && route.source.tap != audio::routing::model::Tap::PostMixer
+                && route.map.iter().any(|channel| channel.gain != 0.0)))
+    }
+
     /// Keep space for transport metadata that can grow without an edit revision.
     /// Takes this validated import destination; returns native limits with room for
     /// every launch, clock/deck scalar and up to 256 held-note duration changes.

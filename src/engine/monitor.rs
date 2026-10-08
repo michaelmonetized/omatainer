@@ -83,6 +83,7 @@ impl Default for Status {
     }
 }
 
+#[derive(Clone)]
 pub(super) struct Monitor {
     pub status: Status,
     fader_ramp: GainPair,

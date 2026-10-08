@@ -68,9 +68,13 @@ impl super::super::App {
                 let bundle = crate::project_file::load::<Document>(&path, &limits, &child_cancel).map_err(|error| error.to_string())?;
                 bundle.state.validate()?;
                 let state = &bundle.state.engine;
-                if state.routing.is_some() { return Err("Next-set preflight requires the standard stereo master route".into()); }
-                if state.sampler_synth.offline.is_some() || state.tracks.iter().any(|track| track.synth.offline.is_some())
-                    || state.tracks.iter().flat_map(|track| &track.fx).chain(state.scene_fx.iter().flatten()).any(|effect| effect.offline.is_some()) {
+                if state.routing.as_ref().is_some_and(|model| model.input.is_some() || model.ports.iter().any(|port|
+                    port.direction == crate::engine::audio::routing::model::Direction::Input)) {
+                    return Err("Next-set fades require physical input routes to be disabled; current performance and saved aliases are retained".into());
+                }
+                if state.sampler_synth.offline.is_some() || state.tracks.iter().enumerate().any(|(slot, track)| state.track_processing_required(slot)
+                    && (track.synth.offline.is_some() || track.fx.iter().any(|effect| effect.offline.is_some())))
+                    || state.scene_fx.iter().flatten().any(|effect| effect.offline.is_some()) {
                     return Err("Next-set preflight refused an unavailable instrument or effect".into());
                 }
                 if state.banks.iter().any(|bank| bank.settings.as_ref().is_some_and(|settings|
@@ -169,7 +173,7 @@ impl super::super::App {
         let mut preload = false;
         let mut transition = false;
         egui::Window::new(tr!("Next live set")).open(&mut open).resizable(true).show(ctx, |ui| {
-            ui.label(tr!("Standard stereo master: outputs 1/2. Next-set cue: outputs 3/4 on the same output device."));
+            ui.label(tr!("Fades retain each set's output routes. Next-set cue uses free outputs 3/4 and an unambiguous stereo main route."));
             ui.label(tr!("Preload retains one next project, up to 256 MiB of embedded audio and 256 MiB of processors. Unavailable devices and missing sampler audio are refused."));
             ui.add_enabled_ui(!self.project.live.busy, |ui| {
                 let path = ui.text_edit_singleline(&mut self.project.live.path);
@@ -184,7 +188,7 @@ impl super::super::App {
                 if ui.add_enabled(ready && cue, egui::Checkbox::new(&mut preview, tr!("Cue next set on outputs 3/4"))).help(ui, help::Control::LiveSetCue).changed() {
                     control.preview.store(preview, Ordering::Release);
                 }
-                if !cue { ui.label(tr!("Cue requires four output channels; the stereo master remains available for transition.")); }
+                if !cue { ui.label(tr!("Cue needs four output channels, free outputs 3/4 and one stereo main route. Transition retains the saved outputs.")); }
                 let fade = ui.add(egui::DragValue::new(&mut self.project.live.fade).range(0.01..=30.0).suffix(" s"));
                 fade.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::DragValue, ready, "Live-set fade seconds"));
                 help::annotate(ui, &fade, help::Control::LiveSetFade);

@@ -1,562 +1,2056 @@
 {
-  "schema": 1,
-  "status": "combined_source_installed_full_acceptance_in_progress",
-  "source": "b028ca05bc9f0172bf16e484d03f343501d510b7",
-  "testsSha256": "7277ecd53044063973ac378a651ca857e46a41ff9138c4b6c749f846e9784092",
-  "releaseSha256": "6be372c54d43f1bf9368acd8b5a4d5822da92de91069151d83a100dc39aaad5a",
-  "packageManifestSha256": "e74def3eba50aca909295525a3e84a02cdbe1d5c699bb3ecb0853b0bc3cedacc",
-  "fullOrdinarySuite": {
-    "passed": 2290,
-    "failed": 0,
-    "ignored": 79,
-    "filtered": 0,
-    "seconds": 816.13,
-    "threads": 1,
-    "stackBytes": 67108864
-  },
-  "retainedFailedFullRun": {
-    "passed": 2288,
-    "failed": 2,
-    "ignored": 79,
-    "filtered": 0,
-    "seconds": 755.43,
-    "failedTests": [
-      "engine::keylock_showload_tests::showload_fixture_uses_two_locked_decks_and_preserves_exact_recording",
-      "media_tags::tests::real_unicode_tags_are_read_from_mp3_flac_wav_aiff_without_changing_files"
-    ],
-    "repeat": "Both focused repeats and the full isolated repeat passed without source or budget changes.",
-    "boundary": "The failed run overlapped native migration, desktop and volume fixtures. The recording rejection cause was not captured; overlap alone is not proof of its cause."
-  },
-  "nodeTests": {
-    "passed": 17,
-    "failed": 0
-  },
-  "nativeFocusedTests": {
-    "migrationAndNativeWidgets": 8,
-    "producerLibrary": 3,
-    "vst3Graph": 8,
-    "djWorker": 1,
-    "live12InstalledTemplate": 1
-  },
-  "nativeAudio": [
-    {
-      "mode": "server-restart",
-      "links": 2,
-      "capture": {
-        "callbacks": 116,
-        "explicit_fallback": true,
-        "explicit_input_acknowledgment": true,
-        "explicit_play": true,
-        "recorded_notes_retained": true,
-        "scope": "real CPAL/ALSA plus private PipeWire null sink; no physical devices"
-      },
-      "scope": "Real CPAL/ALSA and isolated private PipeWire null sink. No physical converter, USB removal or system suspend."
+  "schema": 2,
+  "source50": {
+    "provenance": {
+      "source_revision": "b6f2df6f2b4adec8507de4d268ad1d6d786947da",
+      "test_sha256": "e2b85a35bf26af857454125995de68f393c797e3aa7b2c35a4db5be934a1060c",
+      "inventory_sha256": "671d05696f5e228d79b42c2881cb18e4acc05b20165220161437996b7f734898",
+      "source_files": 990
     },
-    {
-      "mode": "stream-removal",
-      "links": 2,
-      "capture": {
-        "callbacks": 127,
-        "explicit_fallback": true,
-        "explicit_input_acknowledgment": true,
-        "explicit_play": true,
-        "recorded_notes_retained": true,
-        "scope": "real CPAL/ALSA plus private PipeWire null sink; no physical devices"
-      },
-      "scope": "Real CPAL/ALSA and isolated private PipeWire null sink. No physical converter, USB removal or system suspend."
+    "fullSuite": {
+      "passed": 2297,
+      "failed": 0,
+      "ignored": 82,
+      "filtered": 0,
+      "seconds": 761.92,
+      "threads": 1,
+      "stackBytes": 67108864
     },
-    {
-      "mode": "routing",
-      "links": 64,
-      "capture": {
-        "callbacks": 492,
-        "captures": [
-          {
-            "cross_channel_overlap_frames": 0,
-            "energy": [
-              0.5801742287738123,
-              0.5552773645074159,
-              0.571950260190999,
-              0.6063018661460201,
-              0.6063018661460201,
-              0.6063018661460201,
-              0.6022246542251452,
-              0.5588946469621109,
-              0.5821765543888473,
-              0.5805565424227305,
-              0.6063018661460201,
-              0.5994176225700554,
-              0.6063018661460201,
-              0.5598951843341473,
-              0.5552773645074159,
-              0.5698270595162218,
-              0.5805594542048632,
-              0.595080026429328,
-              0.5991226106849459,
-              0.6063018661460201,
-              0.6034227087070237,
-              0.5552773645074159,
-              0.5564874820193195,
-              0.6118729171965165,
-              0.5937993418638531,
-              0.6063018661460201,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0
-            ],
-            "frames": 360448,
-            "input_overflow_frames": 0,
-            "input_underrun_frames": 0,
-            "peak": [
-              0.009999999776482582,
-              0.009999999776482582,
-              0.009999999776482582,
-              0.009999999776482582,
-              0.009999999776482582,
-              0.009999999776482582,
-              0.009999999776482582,
-              0.009999999776482582,
-              0.009999999776482582,
-              0.009999999776482582,
-              0.009999999776482582,
-              0.009999999776482582,
-              0.009999999776482582,
-              0.009999999776482582,
-              0.009999999776482582,
-              0.009999999776482582,
-              0.009999999776482582,
-              0.009999999776482582,
-              0.009999999776482582,
-              0.009999999776482582,
-              0.009999999776482582,
-              0.009999999776482582,
-              0.009999999776482582,
-              0.009999999776482582,
-              0.009999999776482582,
-              0.009999999776482582,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0
-            ],
-            "physical_channels": [
-              1,
-              26
-            ],
-            "wav": "/home/michael/Projects/omatainer-work/producer-dj-completion/t/a42c/loopback-0.wav"
-          },
-          {
-            "cross_channel_overlap_frames": 0,
-            "energy": [
-              0.6063018661460201,
-              0.6063018661460201,
-              0.6063018661460201,
-              0.6063018661460201,
-              0.6063018661460201,
-              0.5768979947599954,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0
-            ],
-            "frames": 90588,
-            "input_overflow_frames": 0,
-            "input_underrun_frames": 0,
-            "peak": [
-              0.009999999776482582,
-              0.009999999776482582,
-              0.009999999776482582,
-              0.009999999776482582,
-              0.009999999776482582,
-              0.009999999776482582,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0
-            ],
-            "physical_channels": [
-              27,
-              32
-            ],
-            "wav": "/home/michael/Projects/omatainer-work/producer-dj-completion/t/a42c/loopback-1.wav"
-          }
-        ],
-        "channels": 32,
-        "input_counter_unit": "frames",
-        "input_cushion_frames": 2048,
-        "input_discontinuities": 0,
-        "input_overflow": 0,
-        "input_priming_frames": 2048,
-        "input_underruns": 0,
-        "rate": 48000
+    "midiRecoveryRepeats": {
+      "passed": 32,
+      "failed": 0,
+      "exactSelector": "engine::midi::routing::output::tests::cancel_after_publication_claim_reports_applied_and_recovery_resets_output"
+    },
+    "nativeTransition": {
+      "baseline_memory": {
+        "process_high_water_kib": 10272,
+        "resident_kib": 10272
       },
-      "scope": "Real CPAL/ALSA and isolated private PipeWire null sink. No physical converter, USB removal or system suspend."
+      "capture_frames": 467968,
+      "capture_window_frames": 882,
+      "device": "original NS7, four-channel ALSA, 44.1 kHz, 512-frame requested buffer",
+      "final_audio": {
+        "backend_errors": 0,
+        "callbacks": 1812,
+        "cpu_budget_exhaustions": 0,
+        "deadline_overruns": 0,
+        "device_lost": 0,
+        "dropped_buffers": null,
+        "last_callback": {
+          "budget_ns": 5804988,
+          "channels": 4,
+          "elapsed_ns": 1800094,
+          "frames": 256,
+          "output_latency_ns": 5011338,
+          "overrun_ns": 0,
+          "render_cpu_ns": 1724961,
+          "sample_rate": 44100
+        },
+        "max_elapsed_ns": 5666909,
+        "max_overrun_ns": 0,
+        "realtime_denied": 0,
+        "xruns": 0
+      },
+      "final_expected_tone_amplitudes": [
+        0.0009433328689924322,
+        0.0005561974387381698
+      ],
+      "final_memory": {
+        "process_high_water_kib": 372864,
+        "resident_kib": 372688
+      },
+      "final_opposite_tone_amplitudes": [
+        0.0000015311487568859512,
+        0.0000010840640298180015
+      ],
+      "input_failed": false,
+      "launched_clip_tracks_per_graph": 8,
+      "loaded_decks_per_graph": 2,
+      "measured_ns": 9942069967,
+      "median_window_rms": 0.00041297735330004566,
+      "minimum_window_rms": 0.00005701450412149238,
+      "physical_return": "Master XLR L/R to owner-restored Peavey PV8 USB 7/8, stereo CODEC input",
+      "preloaded_memory": [
+        {
+          "process_high_water_kib": 344544,
+          "resident_kib": 344544
+        },
+        {
+          "process_high_water_kib": 361840,
+          "resident_kib": 361840
+        },
+        {
+          "process_high_water_kib": 375536,
+          "resident_kib": 375536
+        }
+      ],
+      "quiet_windows": 0,
+      "resident_pcm_bytes_per_graph": 33554432,
+      "schema": 1,
+      "scope": "Actual production native output owner and three complete graph fades, independent cue admission, captured stereo master continuity in 20 ms windows. Startup metrics retained separately. No physical headphone cue capture, listening, display timing, all-track maximum-polyphony or stage-duration claim.",
+      "status": "pass",
+      "stored_notes_per_graph": 32768,
+      "stored_tracks": 64,
+      "trials": [
+        {
+          "applied": true,
+          "cue_admitted": true,
+          "fade_seconds": 1,
+          "incoming_hz": [
+            473,
+            689
+          ],
+          "preload_start_ns": 674229866,
+          "ready_ns": 893943555,
+          "settled_ns": 3000447237,
+          "transition_requested_ns": 1994054843,
+          "trial": 0,
+          "worker_retired": true
+        },
+        {
+          "applied": true,
+          "cue_admitted": true,
+          "fade_seconds": 1,
+          "incoming_hz": [
+            381,
+            583
+          ],
+          "preload_start_ns": 4000521719,
+          "ready_ns": 4202127841,
+          "settled_ns": 6309657280,
+          "transition_requested_ns": 5302240463,
+          "trial": 1,
+          "worker_retired": true
+        },
+        {
+          "applied": true,
+          "cue_admitted": true,
+          "fade_seconds": 1,
+          "incoming_hz": [
+            473,
+            689
+          ],
+          "preload_start_ns": 7309727012,
+          "ready_ns": 7510138794,
+          "settled_ns": 9616232351,
+          "transition_requested_ns": 8610249958,
+          "trial": 2,
+          "worker_retired": true
+        }
+      ],
+      "warmup_audio": {
+        "backend_errors": 0,
+        "callbacks": 100,
+        "cpu_budget_exhaustions": 0,
+        "deadline_overruns": 0,
+        "device_lost": 0,
+        "dropped_buffers": null,
+        "last_callback": {
+          "budget_ns": 5804988,
+          "channels": 4,
+          "elapsed_ns": 1770135,
+          "frames": 256,
+          "output_latency_ns": 5691610,
+          "overrun_ns": 0,
+          "render_cpu_ns": 1732373,
+          "sample_rate": 44100
+        },
+        "max_elapsed_ns": 1856803,
+        "max_overrun_ns": 0,
+        "realtime_denied": 0,
+        "xruns": 0
+      }
     }
-  ],
-  "nativeAtspi": {
-    "nodes": 350,
-    "frames": 734,
-    "scope": "Private D-Bus bridge and actual native actions; no window, physical devices or screen-reader listening proof."
   },
-  "readonlyVolume": {
-    "mediaFingerprintRetained": true,
-    "scope": "Actual read-only ext4 mount, unmount and remount at another path in a private namespace. Initial removable classification is a test-only enrollment; later UUID resolution uses production discovery. Not physical USB removal."
-  },
-  "nativeCpuRecovery": {
-    "testSource": "44bd5f9c2bf33ddf967d83a328a97bbff6509476",
-    "testsSha256": "2bd54dfc490bfbdf8d33e4a6166a58937a373be0b808f3c63995eacd529b92b5",
-    "analog_listening": false,
-    "audio": {
-      "backend_errors": 0,
-      "callbacks": 35,
-      "cpu_budget_exhaustions": 1,
-      "deadline_overruns": 1,
-      "device_lost": 0,
-      "dropped_buffers": null,
-      "last_callback": {
-        "budget_ns": 5804988,
-        "channels": 4,
-        "elapsed_ns": 283625,
-        "frames": 256,
-        "output_latency_ns": 5804989,
-        "overrun_ns": 0,
-        "render_cpu_ns": 272957,
-        "sample_rate": 44100
-      },
-      "max_elapsed_ns": 31250261,
-      "max_overrun_ns": 25445273,
-      "realtime_denied": 0,
-      "xruns": 1
+  "currentInstalledSource49": {
+    "package": {
+      "source": "dd1ef555d1004803a11ae8ad67a0bd0c403e2ffb",
+      "binarySha256": "40b0b290d0fafade8bd193b8cb27a01cfb0245d512e2c9cab80e021e1ff3b68d",
+      "manifestSha256": "633265a18276a6a33a7e287d99e233e559b03bfc72e8f08f459b139209f7bef7",
+      "manifest": {
+        "schema": 1,
+        "application": "omatainer",
+        "version": "0.1.0+dd1ef555d100",
+        "revision": "dd1ef555d1004803a11ae8ad67a0bd0c403e2ffb",
+        "platform": {
+          "os": "linux",
+          "architecture": "arm64",
+          "glibc": "2.43",
+          "installer": "Node.js 22 or newer"
+        },
+        "migration": {
+          "preferences": 26,
+          "project": 36,
+          "policy": "Installation preserves preferences, projects, libraries and plugins. Opening documents may migrate their format; retain document backups when rolling back.",
+          "automatic": false
+        },
+        "files": {
+          "omatainer": {
+            "sha256": "40b0b290d0fafade8bd193b8cb27a01cfb0245d512e2c9cab80e021e1ff3b68d",
+            "bytes": 46968464
+          },
+          "update.mjs": {
+            "sha256": "47bb5696ceb1f317bcdca4de8b05a6394fb50592113b52b947f23e33fb7c7aea",
+            "bytes": 16582
+          },
+          "LICENSE": {
+            "sha256": "63b79db05f159e96dc02773307e5911c95bb851fd3adceda0d977e1adf79aa1e",
+            "bytes": 1066
+          },
+          "licenses.json": {
+            "sha256": "b06d7d9ff4f2cef53a868de9eb5dfbff97ab7d0f89c8d17ad21dd695fa9672e8",
+            "bytes": 672577
+          },
+          "notices.json": {
+            "sha256": "dd7498b28934a242c10d680d4210331d5251dc1b3f75a576f6b0b380324febc6",
+            "bytes": 2387811
+          },
+          "source/vendor/egui-winit/.cargo_vcs_info.json": {
+            "sha256": "7494c24c1baaec2d440e20d7541946734696d6baaf49ae498bd45a9127473928",
+            "bytes": 111
+          },
+          "source/vendor/egui-winit/Cargo.lock": {
+            "sha256": "92c309f835ffbf6c529c53836ddf05d14ab554eccba57b32f06aa7032d9c9b99",
+            "bytes": 80185
+          },
+          "source/vendor/egui-winit/Cargo.toml": {
+            "sha256": "33b510b0fe4cc4cb80835cc36f16b920c22300d86cc24de0a969098a3f043f28",
+            "bytes": 8536
+          },
+          "source/vendor/egui-winit/Cargo.toml.orig": {
+            "sha256": "9d000872d4087c68562632ff9d8d2adcf16c502b73b9cbf8ed1769e16ecd10e0",
+            "bytes": 3601
+          },
+          "source/vendor/egui-winit/LICENSE": {
+            "sha256": "0c8aa20063e510da7be18f434655a4fe76c72054c7f936d4b06267603557e9af",
+            "bytes": 11944
+          },
+          "source/vendor/egui-winit/PATCHES.md": {
+            "sha256": "7ab275f9cab4521890bf57aadbbf239e79e8fc4cf06116ef535ff4e5cbfe074e",
+            "bytes": 1079
+          },
+          "source/vendor/egui-winit/README.md": {
+            "sha256": "7a8ccbb9fbddf24243446291b8e5a4e6bddcb6b565602c9561581926d5ae362b",
+            "bytes": 571
+          },
+          "source/vendor/egui-winit/UPSTREAM.json": {
+            "sha256": "68dac19356ffd93234fd97a608517272a9a40907ceef820c2951ca2315f178ad",
+            "bytes": 987
+          },
+          "source/vendor/egui-winit/src/clipboard.rs": {
+            "sha256": "d3b33a29a741bf4fdedb6bdc2d394b3cfb6f129da35cf9a3deaa247530098cef",
+            "bytes": 5496
+          },
+          "source/vendor/egui-winit/src/lib.rs": {
+            "sha256": "d8d3a6054d1884ca519c45fa7437700a04b207fed4589115dac30bfc4bee89ba",
+            "bytes": 79585
+          },
+          "source/vendor/egui-winit/src/window_settings.rs": {
+            "sha256": "dd932be8e17a69b222015ec1a25cb4e163aa44a204a41760c7b0f53418ef63de",
+            "bytes": 7817
+          },
+          "source/vendor/symphonia-format-riff/.cargo_vcs_info.json": {
+            "sha256": "f0cbb62e0173cc0cb6051169ac939dc7840696b1a142d50ebfa0dc41b51a81e6",
+            "bytes": 115
+          },
+          "source/vendor/symphonia-format-riff/Cargo.toml": {
+            "sha256": "1f2201173493afd34d67c336bf36f8a438004bb141bd4576ca2491c0626e6610",
+            "bytes": 1472
+          },
+          "source/vendor/symphonia-format-riff/Cargo.toml.orig": {
+            "sha256": "e938331d1178b7ca22fc894e9265ca14652bb5c392c07dc2edcf5ac47e55e05b",
+            "bytes": 789
+          },
+          "source/vendor/symphonia-format-riff/LICENSE": {
+            "sha256": "c76f740d1521b9bed9ca7a04ad526c310493c62621b1341d623b431736533b30",
+            "bytes": 16725
+          },
+          "source/vendor/symphonia-format-riff/PATCHES.md": {
+            "sha256": "397a7979db699eab591faa2b142f6f68c51ddb1a8020ac09bdf6f1c120219954",
+            "bytes": 1425
+          },
+          "source/vendor/symphonia-format-riff/README.md": {
+            "sha256": "6de8ce7c4832e7a33036a22449bb965f4d9fe78e93a963fbd188f365129d7232",
+            "bytes": 1042
+          },
+          "source/vendor/symphonia-format-riff/UPSTREAM.json": {
+            "sha256": "1c8f6e9e9ccc29d217afdb0ce5238133b467ed061281aaf084dbbf2c28c78b84",
+            "bytes": 1232
+          },
+          "source/vendor/symphonia-format-riff/src/aiff/chunks.rs": {
+            "sha256": "43518ce7448268f924a986861f834982a597c15e768b553a3288f59671a1d7a5",
+            "bytes": 11941
+          },
+          "source/vendor/symphonia-format-riff/src/aiff/mod.rs": {
+            "sha256": "3275aeaa4dac1adda742d23817804d773ae7348d64b66b047cce9c8b8b0ecd06",
+            "bytes": 9809
+          },
+          "source/vendor/symphonia-format-riff/src/common.rs": {
+            "sha256": "0f4ca3494b225e604acad3df8f5c1c55f70e3fc1b4e8d056121d4daf81f2da38",
+            "bytes": 13612
+          },
+          "source/vendor/symphonia-format-riff/src/lib.rs": {
+            "sha256": "229f2ec28d7d020a7d1e1ad9cfa0a3c8145127a14d33b39028e5cfcd5f96bfb8",
+            "bytes": 774
+          },
+          "source/vendor/symphonia-format-riff/src/wave/chunks.rs": {
+            "sha256": "45f6db6456300e02b35e5cc3cb44eedcb5c44f38db1f2b9723c48aebcb963b7d",
+            "bytes": 23947
+          },
+          "source/vendor/symphonia-format-riff/src/wave/mod.rs": {
+            "sha256": "abdfe224d9c30e9b73fd088dcc640f1dee07aa60c7c828fa79ac5107653916fd",
+            "bytes": 9334
+          },
+          "source/vendor/vst3-host/.cargo_vcs_info.json": {
+            "sha256": "737b52ce29e201e3cc14bab20bc449c6e4a3238c78320391a14d8bc1cf8a9657",
+            "bytes": 103
+          },
+          "source/vendor/vst3-host/CHANGELOG.md": {
+            "sha256": "5375dbfae069330fef7d9229b57e53b7d9f86a1eecee8dd9432e5cec5f5bc667",
+            "bytes": 4450
+          },
+          "source/vendor/vst3-host/Cargo.lock": {
+            "sha256": "8fff93ae955c9d77db19aa19dc677a91cf1fe5aa0be8ed2b933dcb1af7bc7cbc",
+            "bytes": 124905
+          },
+          "source/vendor/vst3-host/Cargo.toml": {
+            "sha256": "9d58457c3a05e1331fb76692fcb599b9c71b5e250a8f643047bfc33837b226a2",
+            "bytes": 3433
+          },
+          "source/vendor/vst3-host/Cargo.toml.orig": {
+            "sha256": "ba68c845370574dd9d90c92046788d7cd9a2409c77040d63d72bb0c8dd76b25e",
+            "bytes": 4291
+          },
+          "source/vendor/vst3-host/LICENSE": {
+            "sha256": "a65a537295910b776a8b2edb2e7410c3b0e975ca6388994e032c4d1842b4952d",
+            "bytes": 1069
+          },
+          "source/vendor/vst3-host/PATCHES.md": {
+            "sha256": "2ce7ba4b3320915e1e957a18ab325a39b6b9e49c1f90906d80df1f2ce5158141",
+            "bytes": 896
+          },
+          "source/vendor/vst3-host/README.md": {
+            "sha256": "a3b3f383c9b7af8d2a64c3c0d7ff7d4759722e751c77488daec3a89d9dddffcc",
+            "bytes": 9849
+          },
+          "source/vendor/vst3-host/UPSTREAM.json": {
+            "sha256": "097189bbc87141d7b2e2dd105eb86446778661d72264f273bf88467554558df5",
+            "bytes": 4248
+          },
+          "source/vendor/vst3-host/run_plugin_gui.sh": {
+            "sha256": "f59d98fd5d4e954d37352d23a1872aa6fe37954b64968734c4c3a8462a76cdcf",
+            "bytes": 136
+          },
+          "source/vendor/vst3-host/src/audio.rs": {
+            "sha256": "a3f78a9d6190aca7f93c898270665c569b87ce05d2f47c6a1c20f58b461e826c",
+            "bytes": 40415
+          },
+          "source/vendor/vst3-host/src/backends/cpal_backend.rs": {
+            "sha256": "81ac2fb61dc337957e168c0927bd382ebb937b4d83ba33b18e1aca49b798361e",
+            "bytes": 12734
+          },
+          "source/vendor/vst3-host/src/backends/mod.rs": {
+            "sha256": "5d0bbb62d5bfeb1ec8fe4e097fed6ae1de62fb2f394092a1107978830f1c419f",
+            "bytes": 159
+          },
+          "source/vendor/vst3-host/src/bin/vst3-host-helper.rs": {
+            "sha256": "04e7ce1c38187857d1f813fa07f1b6fa5fca599acf310118db63d8af59ca1481",
+            "bytes": 33889
+          },
+          "source/vendor/vst3-host/src/bin/vst3-host-probe.rs": {
+            "sha256": "9e2cc17f41aabbd8302fe171e2211c18bba4e0698de6aaee48abcfb101d1b110",
+            "bytes": 2118
+          },
+          "source/vendor/vst3-host/src/discovery.rs": {
+            "sha256": "568bab9374fd746e3ff983bd3364c1a64a3ec19cc5c77967c6bfcf01df51efec",
+            "bytes": 52766
+          },
+          "source/vendor/vst3-host/src/embed.rs": {
+            "sha256": "00cf4880ff976ad7ebe4491cf48e944986cc27a23148017922dc9b04390150f6",
+            "bytes": 25333
+          },
+          "source/vendor/vst3-host/src/error.rs": {
+            "sha256": "eeb7ac5dba88dce6743f7df46e3076511112f5107ed72305ee022c6f8ebe2596",
+            "bytes": 1931
+          },
+          "source/vendor/vst3-host/src/host.rs": {
+            "sha256": "872989605bfe462453a6928ce807078034f2692268754c177060c816b3fbf00a",
+            "bytes": 33171
+          },
+          "source/vendor/vst3-host/src/internal/com_implementations.rs": {
+            "sha256": "aa97b36cd66f95eb858b0bc68afbabdcaa6b3da411776c39acf180c0be592c9f",
+            "bytes": 145180
+          },
+          "source/vendor/vst3-host/src/internal/data_exchange.rs": {
+            "sha256": "a3312da17e69533edcbe8cf28c1df55d4f93e5fc31cddd1d4ebea95d59bf1423",
+            "bytes": 20897
+          },
+          "source/vendor/vst3-host/src/internal/denormal.rs": {
+            "sha256": "3a30c5e0067d32dab0ef8e5f49f9bac195e635c86cd83e265b3ccbdc4e397ab2",
+            "bytes": 4595
+          },
+          "source/vendor/vst3-host/src/internal/isolated_plugin_impl.rs": {
+            "sha256": "1faf76aff93a109c08479c9a0d81c56b7c89cc9978596b49cc9830a1acee66e8",
+            "bytes": 49281
+          },
+          "source/vendor/vst3-host/src/internal/mod.rs": {
+            "sha256": "0304738316f40839b650a1751a9882fb2e0b68de879d61a79326883935d244b5",
+            "bytes": 299
+          },
+          "source/vendor/vst3-host/src/internal/module_info.rs": {
+            "sha256": "2c837fb62c8582f45f72aafa0d54a20848008e871a72d004f1e640d0e91d4ef3",
+            "bytes": 37650
+          },
+          "source/vendor/vst3-host/src/internal/module_loader/linux.rs": {
+            "sha256": "97a1f7e293f39fa61cebc38fb07df3ab3477f542b04303a4c01109a621bb1eab",
+            "bytes": 7488
+          },
+          "source/vendor/vst3-host/src/internal/module_loader/macos.rs": {
+            "sha256": "72eb4dbd44ba420dff1fa8197d6538415794b9a598cb05dff1a7f2cf033ca16b",
+            "bytes": 15324
+          },
+          "source/vendor/vst3-host/src/internal/module_loader/mod.rs": {
+            "sha256": "d7f0924f20602757c0e546ed6ac375819358c6ed4fecd6b52f38c4a92d80dd07",
+            "bytes": 10741
+          },
+          "source/vendor/vst3-host/src/internal/module_loader/private_namespace.rs": {
+            "sha256": "8eeda22b33aa1cca2aac3a361786572079371dd9252ddd8c2720fc991d47b0a0",
+            "bytes": 17828
+          },
+          "source/vendor/vst3-host/src/internal/module_loader/windows.rs": {
+            "sha256": "1bc518762553ae6c012d4f38f9b864d9105515d15c208635d7c72556580a9844",
+            "bytes": 7877
+          },
+          "source/vendor/vst3-host/src/internal/plugin_impl.rs": {
+            "sha256": "60add58bdd26914acb3da94ae4d7e1af625c0ee07a5ae22a0593114739eab3b5",
+            "bytes": 226653
+          },
+          "source/vendor/vst3-host/src/internal/utils.rs": {
+            "sha256": "3619b511f1a2ac5d48a7f954bdd4d721627008a831130720f7d058b883cd2e19",
+            "bytes": 7399
+          },
+          "source/vendor/vst3-host/src/lib.rs": {
+            "sha256": "5ce1016d14ccdccf3d92d05999a270ca8531f996b2e4ff77bbad415911b9755c",
+            "bytes": 6346
+          },
+          "source/vendor/vst3-host/src/midi.rs": {
+            "sha256": "13bf1e7e6dbed088adbc742a6c36366bac1c9b116c9881be76cda692a1a7a06e",
+            "bytes": 34220
+          },
+          "source/vendor/vst3-host/src/midi_input.rs": {
+            "sha256": "00eb0c1be43c99bae187951991f0ebba1ee5d34eeae00a6d3588c4b244fe4c56",
+            "bytes": 7867
+          },
+          "source/vendor/vst3-host/src/parameters.rs": {
+            "sha256": "b48bc7daa017470411370d0d540d3dde10c0bb2aea22efd32e910706e95817ef",
+            "bytes": 17698
+          },
+          "source/vendor/vst3-host/src/playback.rs": {
+            "sha256": "8fa44b9d3f425630bb2061dc20d624f5d121356eacbb218cac815f2662670e33",
+            "bytes": 42435
+          },
+          "source/vendor/vst3-host/src/plugin.rs": {
+            "sha256": "4c47ea11a7d89160e56f00b3eb21c7cd94dade41bfb6c5896b7c4aedb129ca9a",
+            "bytes": 138448
+          },
+          "source/vendor/vst3-host/src/process_isolation.rs": {
+            "sha256": "a72ddbfffc1b6b873286fd5903e9983c92772a55fdfa17ed9fe818a94e962e42",
+            "bytes": 113549
+          },
+          "source/vendor/vst3-host/src/realtime.rs": {
+            "sha256": "538129d630954d15e1cb0b5469d99da202350370552fa0f985102f56b62ea7d6",
+            "bytes": 28169
+          },
+          "source/vendor/vst3-host/src/simple.rs": {
+            "sha256": "fe3879f15c2b3c9283c671d537b69436abf553935b6778f4726ae85e1f4f5978",
+            "bytes": 18130
+          },
+          "source/vendor/vst3-host/src/transport.rs": {
+            "sha256": "46285c2b3405cde078c15c49799f7a0d51fd4a719badbb9ecd5174fe64208d79",
+            "bytes": 14480
+          },
+          "source/vendor/vst3-host/src/window.rs": {
+            "sha256": "5f38ebba09c39c783ee13711281dedc5f4655e33a30007b4df4c0f057a5b5f74",
+            "bytes": 27710
+          }
+        }
+      }
     },
-    "device": "hw:CARD=NS7,DEV=0",
-    "held_note_finalized_after_fault": true,
-    "injected_after_callbacks": 32,
-    "injected_callback_cpu_ms": 30,
-    "input_acknowledgment_required": true,
-    "master": 0,
-    "native_recording_and_playback_observed_before_fault": true,
-    "playing_after_reconnect": false,
-    "reconnect_required": true,
-    "recorded_notes": 1,
-    "recovery_message": "Audio output exceeded its real-time CPU limit and was stopped. Your project and recorded notes are retained. Reconnect the previous output or preview and confirm another output. Release keys, pads and platters before resuming. Save and Close remain available.",
-    "reopened_notes": 1
+    "install": {
+      "schema": 1,
+      "before": "64a852575ddbdd0ac5d0e3158644fb02fcf51819ea9c86853d6ddbc45e7ac6e0",
+      "after": "40b0b290d0fafade8bd193b8cb27a01cfb0245d512e2c9cab80e021e1ff3b68d",
+      "installedAt": "2026-10-08T17:43:21.771Z",
+      "source": "dd1ef555d1004803a11ae8ad67a0bd0c403e2ffb",
+      "manifestSha256": "633265a18276a6a33a7e287d99e233e559b03bfc72e8f08f459b139209f7bef7"
+    },
+    "nativeSavedCopyReopen": true,
+    "savedCopy": {
+      "path": "target/validation/combined-completion/native-ui/session-backup/pre-transition-50-current.omatainer",
+      "bytes": 162883215,
+      "sha256": "075eb1562b05c43542386c2e7e0fe8f2a97514bb4bd807b78bcc0ba7e36f85f7",
+      "savedAt": "2026-10-08T17:40:09.101Z"
+    },
+    "ownerStatus": {
+      "accepted": null,
+      "active_scene_name": "",
+      "audio": {
+        "backend_errors": 0,
+        "callbacks": 14179,
+        "cpu_budget_exhaustions": 0,
+        "deadline_overruns": 0,
+        "device_lost": 0,
+        "dropped_buffers": null,
+        "last_callback": {
+          "budget_ns": 5804988,
+          "channels": 4,
+          "elapsed_ns": 264335,
+          "frames": 256,
+          "output_latency_ns": 5691610,
+          "overrun_ns": 0,
+          "render_cpu_ns": 250501,
+          "sample_rate": 44100
+        },
+        "max_elapsed_ns": 1485759,
+        "max_overrun_ns": 0,
+        "realtime_denied": 0,
+        "xruns": 0
+      },
+      "bar": 6189,
+      "beat": 0.6486198902130127,
+      "bpm": 103.96062469482422,
+      "command_status": null,
+      "commands": {
+        "applied": 1,
+        "applied_last_block": 0,
+        "backlog": 0,
+        "budget_exhaustions": 0,
+        "coalesced": 0,
+        "high_water": 1,
+        "received": 1,
+        "received_last_block": 0
+      },
+      "deckA": "What More Can I Say",
+      "deckALoadLocked": false,
+      "deckAPlaying": false,
+      "deckB": "Public Service Announcement",
+      "deckBLoadLocked": false,
+      "deckBPlaying": false,
+      "event": "state",
+      "id": "1728061-1",
+      "latency": {
+        "enabled": false,
+        "history_bytes": 0,
+        "low_latency_monitor": false,
+        "monitor_frames": 0,
+        "priming_frames": 0,
+        "program_frames": 0,
+        "rate": 0,
+        "reserve_frames": 0,
+        "transition_frames": 0
+      },
+      "master_fx": {
+        "types": [
+          "echo",
+          "reverb",
+          "filter"
+        ],
+        "wet": [
+          0.5,
+          0,
+          0
+        ]
+      },
+      "meter": [
+        4,
+        4
+      ],
+      "midi": [
+        "[connected] keyboard + mouse · built-in",
+        "[connected] MIDI input backend · discovery",
+        "[connected] Numark NS7:Numark NS7 MIDI 24:0 · Numark NS7 (original)",
+        "[connected] APC40 mkII:APC40 mkII MIDI 1 28:0 · Akai APC40 mkII",
+        "[connected] Pioneer DDJ-SP1:Pioneer DDJ-SP1 MIDI 1 32:0 · Pioneer DDJ-SP1",
+        "[connected] MPD232:MPD232 Port A 36:0 · Akai MPD232 (LiveLite)",
+        "[disabled] MPD232:MPD232 Port B 36:1 · Class-compliant MIDI",
+        "[disabled] MPD232:MPD232 MIDI 36:2 · Class-compliant MIDI"
+      ],
+      "midi_clock": {
+        "last_source": null,
+        "ticks": 0
+      },
+      "midi_clock_input": {
+        "accepted_ticks": 0,
+        "awaiting_tick": false,
+        "backend_timing": true,
+        "batched_ticks": 0,
+        "config": {
+          "follow_transport": true,
+          "loss": "freewheel",
+          "source": null,
+          "timeout_ms": 500
+        },
+        "estimated_bpm": null,
+        "ignored": 0,
+        "inferred_missing_ticks": 0,
+        "jitter_ms": 0,
+        "locked": false,
+        "lost": null,
+        "needs_transport": false,
+        "overflow": 0,
+        "phase_error_beats": 0,
+        "reacquisitions": 0,
+        "stale": 0,
+        "transport_running": false,
+        "unsupported_bpm": null
+      },
+      "midi_clock_output": {
+        "backend_timing": true,
+        "enabled": false,
+        "error": null,
+        "late": 0,
+        "max_late_ns": 0,
+        "overflow": 0,
+        "position_sixteenths": 0,
+        "running": false,
+        "scheduled": 0,
+        "sent": 0
+      },
+      "midi_feedback": {
+        "connected": 4,
+        "failed": 0,
+        "sent": 532
+      },
+      "midi_input": {
+        "coalesced": 0,
+        "disconnected": 0,
+        "dispatched": 2,
+        "dropped": 0,
+        "oversized": 0,
+        "queued": 2,
+        "received": 2,
+        "resets": 0
+      },
+      "midi_profiles": {
+        "busy": false,
+        "cached_generation": 1,
+        "control_check": null,
+        "initialization_sent": 2,
+        "input_open": 4,
+        "output_failures": 0,
+        "output_open": 4,
+        "physical_inputs": 7,
+        "physical_qualification": "pending",
+        "previous_generation": 0,
+        "profiled_inputs": 4,
+        "ready": true,
+        "schema": 1
+      },
+      "midi_routing": {
+        "enabled": false,
+        "failed": 0,
+        "generation": 1,
+        "overruns": 0,
+        "received": 2,
+        "refused_tracks": 0,
+        "refused_tracks_extended": [
+          0,
+          0
+        ],
+        "sent": 0
+      },
+      "monitor": {
+        "active": false,
+        "available": true,
+        "blend": 0,
+        "channels": [
+          2,
+          3
+        ],
+        "faders": [
+          1,
+          1
+        ],
+        "master": false,
+        "meters": [
+          0,
+          0
+        ],
+        "mix": 0.5,
+        "output_alias": null,
+        "source": "deck_mix",
+        "split": false,
+        "tone": null,
+        "volume": 0
+      },
+      "ok": true,
+      "performance": {
+        "changing": false,
+        "deck_load_locked": [
+          false,
+          false
+        ],
+        "last_rejection": null,
+        "nonfinite_tail": false,
+        "observation_complete": false,
+        "observed_frames": 0,
+        "optional_active": 1,
+        "output_muted": false,
+        "protected": false,
+        "quiet_frames": 0,
+        "recovery": false,
+        "rejected": 0,
+        "safety_applied": 0,
+        "safety_requested": 0,
+        "stopped": false
+      },
+      "pitch_pickup": [
+        {
+          "acquired": false,
+          "physical": null,
+          "sync": false,
+          "target": 0.5
+        },
+        {
+          "acquired": false,
+          "physical": null,
+          "sync": false,
+          "target": 0.5039370059967041
+        }
+      ],
+      "playing": true,
+      "queued_scene_name": "",
+      "recording": false,
+      "scenes": {
+        "active": null,
+        "active_properties": null,
+        "error": null,
+        "pending": null,
+        "timing": null
+      },
+      "state_available": true,
+      "state_truncated": true,
+      "submissions": {
+        "accepted": 1,
+        "coalesced": 0,
+        "last_error": null,
+        "rejected": 0
+      },
+      "sync_aligned": [
+        false,
+        false
+      ],
+      "sync_leader": null,
+      "sync_leader_ready": false,
+      "sync_modes": [
+        "off",
+        "off"
+      ],
+      "sync_target_bpm": [
+        124,
+        124
+      ],
+      "xfader": 0.5275590419769287
+    }
   },
-  "physicalLoopback": {
-    "headphone_jack_captured": false,
-    "input_device": "hw:CARD=CODEC,DEV=0",
-    "nominal_rate": 44100,
-    "output_detected_on_wired_master_return": [
-      false,
-      true,
-      false,
-      false
-    ],
-    "output_device": "hw:CARD=NS7,DEV=0",
-    "owner_reported_wiring": "NS7 XLR outputs to Peavey 8 channel 6; mixer USB return to m1pro16",
-    "pairs": [
+  "status": "implementation_and_full_release_qualification_in_progress",
+  "priorCheckpoint": {
+    "schema": 1,
+    "status": "combined_source_installed_full_acceptance_in_progress",
+    "source": "b028ca05bc9f0172bf16e484d03f343501d510b7",
+    "testsSha256": "7277ecd53044063973ac378a651ca857e46a41ff9138c4b6c749f846e9784092",
+    "releaseSha256": "6be372c54d43f1bf9368acd8b5a4d5822da92de91069151d83a100dc39aaad5a",
+    "packageManifestSha256": "e74def3eba50aca909295525a3e84a02cdbe1d5c699bb3ecb0853b0bc3cedacc",
+    "fullOrdinarySuite": {
+      "passed": 2290,
+      "failed": 0,
+      "ignored": 79,
+      "filtered": 0,
+      "seconds": 816.13,
+      "threads": 1,
+      "stackBytes": 67108864
+    },
+    "retainedFailedFullRun": {
+      "passed": 2288,
+      "failed": 2,
+      "ignored": 79,
+      "filtered": 0,
+      "seconds": 755.43,
+      "failedTests": [
+        "engine::keylock_showload_tests::showload_fixture_uses_two_locked_decks_and_preserves_exact_recording",
+        "media_tags::tests::real_unicode_tags_are_read_from_mp3_flac_wav_aiff_without_changing_files"
+      ],
+      "repeat": "Both focused repeats and the full isolated repeat passed without source or budget changes.",
+      "boundary": "The failed run overlapped native migration, desktop and volume fixtures. The recording rejection cause was not captured; overlap alone is not proof of its cause."
+    },
+    "nodeTests": {
+      "passed": 17,
+      "failed": 0
+    },
+    "nativeFocusedTests": {
+      "migrationAndNativeWidgets": 8,
+      "producerLibrary": 3,
+      "vst3Graph": 8,
+      "djWorker": 1,
+      "live12InstalledTemplate": 1
+    },
+    "nativeAudio": [
       {
-        "error": "No measurement: a reliable loopback probe was not found. Captured return peak -65.7 dBFS, RMS -78.7 dBFS; check the selected return and its levels.",
-        "input_channel": 0,
-        "output_channel": 0,
-        "status": "refused"
+        "mode": "server-restart",
+        "links": 2,
+        "capture": {
+          "callbacks": 116,
+          "explicit_fallback": true,
+          "explicit_input_acknowledgment": true,
+          "explicit_play": true,
+          "recorded_notes_retained": true,
+          "scope": "real CPAL/ALSA plus private PipeWire null sink; no physical devices"
+        },
+        "scope": "Real CPAL/ALSA and isolated private PipeWire null sink. No physical converter, USB removal or system suspend."
       },
       {
-        "error": "No measurement: a reliable loopback probe was not found. Captured return peak -64.3 dBFS, RMS -75.0 dBFS; check the selected return and its levels.",
-        "input_channel": 1,
-        "output_channel": 0,
-        "status": "refused"
+        "mode": "stream-removal",
+        "links": 2,
+        "capture": {
+          "callbacks": 127,
+          "explicit_fallback": true,
+          "explicit_input_acknowledgment": true,
+          "explicit_play": true,
+          "recorded_notes_retained": true,
+          "scope": "real CPAL/ALSA plus private PipeWire null sink; no physical devices"
+        },
+        "scope": "Real CPAL/ALSA and isolated private PipeWire null sink. No physical converter, USB removal or system suspend."
       },
       {
-        "error": "No measurement: a reliable loopback probe was not found. Captured return peak -65.7 dBFS, RMS -78.7 dBFS; check the selected return and its levels.",
-        "input_channel": 0,
-        "output_channel": 1,
-        "status": "refused"
-      },
-      {
-        "callback_resolution_ns": 5804988,
-        "correlations": [
-          0.9938580733733047,
-          0.9938567184477566,
-          0.9947936122773131
-        ],
-        "host_return_ns": 13118115,
-        "input_channel": 1,
-        "input_frames": [
-          12027,
-          34075,
-          56123
-        ],
-        "maximum_ns": 14112868,
-        "minimum_ns": 8116020,
-        "output_channel": 1,
-        "status": "matched"
-      },
-      {
-        "error": "No measurement: a reliable loopback probe was not found. Captured return peak -65.7 dBFS, RMS -78.7 dBFS; check the selected return and its levels.",
-        "input_channel": 0,
-        "output_channel": 2,
-        "status": "refused"
-      },
-      {
-        "error": "No measurement: a reliable loopback probe was not found. Captured return peak -64.7 dBFS, RMS -75.0 dBFS; check the selected return and its levels.",
-        "input_channel": 1,
-        "output_channel": 2,
-        "status": "refused"
-      },
-      {
-        "error": "No measurement: a reliable loopback probe was not found. Captured return peak -66.8 dBFS, RMS -78.7 dBFS; check the selected return and its levels.",
-        "input_channel": 0,
-        "output_channel": 3,
-        "status": "refused"
-      },
-      {
-        "error": "No measurement: a reliable loopback probe was not found. Captured return peak -63.9 dBFS, RMS -75.0 dBFS; check the selected return and its levels.",
-        "input_channel": 1,
-        "output_channel": 3,
-        "status": "refused"
+        "mode": "routing",
+        "links": 64,
+        "capture": {
+          "callbacks": 492,
+          "captures": [
+            {
+              "cross_channel_overlap_frames": 0,
+              "energy": [
+                0.5801742287738123,
+                0.5552773645074159,
+                0.571950260190999,
+                0.6063018661460201,
+                0.6063018661460201,
+                0.6063018661460201,
+                0.6022246542251452,
+                0.5588946469621109,
+                0.5821765543888473,
+                0.5805565424227305,
+                0.6063018661460201,
+                0.5994176225700554,
+                0.6063018661460201,
+                0.5598951843341473,
+                0.5552773645074159,
+                0.5698270595162218,
+                0.5805594542048632,
+                0.595080026429328,
+                0.5991226106849459,
+                0.6063018661460201,
+                0.6034227087070237,
+                0.5552773645074159,
+                0.5564874820193195,
+                0.6118729171965165,
+                0.5937993418638531,
+                0.6063018661460201,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0
+              ],
+              "frames": 360448,
+              "input_overflow_frames": 0,
+              "input_underrun_frames": 0,
+              "peak": [
+                0.009999999776482582,
+                0.009999999776482582,
+                0.009999999776482582,
+                0.009999999776482582,
+                0.009999999776482582,
+                0.009999999776482582,
+                0.009999999776482582,
+                0.009999999776482582,
+                0.009999999776482582,
+                0.009999999776482582,
+                0.009999999776482582,
+                0.009999999776482582,
+                0.009999999776482582,
+                0.009999999776482582,
+                0.009999999776482582,
+                0.009999999776482582,
+                0.009999999776482582,
+                0.009999999776482582,
+                0.009999999776482582,
+                0.009999999776482582,
+                0.009999999776482582,
+                0.009999999776482582,
+                0.009999999776482582,
+                0.009999999776482582,
+                0.009999999776482582,
+                0.009999999776482582,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0
+              ],
+              "physical_channels": [
+                1,
+                26
+              ],
+              "wav": "/home/michael/Projects/omatainer-work/producer-dj-completion/t/a42c/loopback-0.wav"
+            },
+            {
+              "cross_channel_overlap_frames": 0,
+              "energy": [
+                0.6063018661460201,
+                0.6063018661460201,
+                0.6063018661460201,
+                0.6063018661460201,
+                0.6063018661460201,
+                0.5768979947599954,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0
+              ],
+              "frames": 90588,
+              "input_overflow_frames": 0,
+              "input_underrun_frames": 0,
+              "peak": [
+                0.009999999776482582,
+                0.009999999776482582,
+                0.009999999776482582,
+                0.009999999776482582,
+                0.009999999776482582,
+                0.009999999776482582,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0
+              ],
+              "physical_channels": [
+                27,
+                32
+              ],
+              "wav": "/home/michael/Projects/omatainer-work/producer-dj-completion/t/a42c/loopback-1.wav"
+            }
+          ],
+          "channels": 32,
+          "input_counter_unit": "frames",
+          "input_cushion_frames": 2048,
+          "input_discontinuities": 0,
+          "input_overflow": 0,
+          "input_priming_frames": 2048,
+          "input_underruns": 0,
+          "rate": 48000
+        },
+        "scope": "Real CPAL/ALSA and isolated private PipeWire null sink. No physical converter, USB removal or system suspend."
       }
     ],
-    "probe_level_dbfs": -36,
-    "scope": "Three distinct probe matches per successful output/input pair. Common host callback-entry timing includes converter, mixer and callback batching; this is not isolated analog converter latency or an independent-channel claim. Outputs 1/2 are the expected master pair; optional outputs 3/4 are a channel-assignment diagnostic."
-  },
-  "install": {
-    "pid": 3194371,
-    "invocation": "404cdde06a5449d8810d44b0b35d38a2",
-    "preferencesSchema": 26,
-    "projectSchema": 35,
-    "previousBinarySha256": "f54fe26efd2b4e67664cf9a2bbfe5615b1b9e11a767eeb0244fceac5efc802d1",
-    "nativeSavedProjectReopened": true,
-    "projectFileSha256": "000168ee86d4dc2923288fb546a1ec565df0347384238a11949baa87e053a090",
-    "configurationChangedFiles": [],
-    "globalClockRestored": true,
-    "decksStopped": true,
-    "midiInput": {
-      "coalesced": 0,
-      "disconnected": 0,
-      "dispatched": 6,
-      "dropped": 0,
-      "oversized": 0,
-      "queued": 6,
-      "received": 6,
-      "resets": 0
+    "nativeAtspi": {
+      "nodes": 350,
+      "frames": 734,
+      "scope": "Private D-Bus bridge and actual native actions; no window, physical devices or screen-reader listening proof."
     },
-    "midiFeedback": {
-      "connected": 4,
-      "failed": 0,
-      "sent": 532
+    "readonlyVolume": {
+      "mediaFingerprintRetained": true,
+      "scope": "Actual read-only ext4 mount, unmount and remount at another path in a private namespace. Initial removable classification is a test-only enrollment; later UUID resolution uses production discovery. Not physical USB removal."
     },
-    "audio": {
-      "backend_errors": 0,
-      "callbacks": 90432,
-      "cpu_budget_exhaustions": 0,
-      "deadline_overruns": 8,
-      "device_lost": 0,
-      "dropped_buffers": null,
-      "last_callback": {
-        "budget_ns": 5804988,
-        "channels": 4,
-        "elapsed_ns": 276213,
-        "frames": 256,
-        "output_latency_ns": 5238095,
-        "overrun_ns": 0,
-        "render_cpu_ns": 259333,
-        "sample_rate": 44100
+    "nativeCpuRecovery": {
+      "testSource": "44bd5f9c2bf33ddf967d83a328a97bbff6509476",
+      "testsSha256": "2bd54dfc490bfbdf8d33e4a6166a58937a373be0b808f3c63995eacd529b92b5",
+      "analog_listening": false,
+      "audio": {
+        "backend_errors": 0,
+        "callbacks": 35,
+        "cpu_budget_exhaustions": 1,
+        "deadline_overruns": 1,
+        "device_lost": 0,
+        "dropped_buffers": null,
+        "last_callback": {
+          "budget_ns": 5804988,
+          "channels": 4,
+          "elapsed_ns": 283625,
+          "frames": 256,
+          "output_latency_ns": 5804989,
+          "overrun_ns": 0,
+          "render_cpu_ns": 272957,
+          "sample_rate": 44100
+        },
+        "max_elapsed_ns": 31250261,
+        "max_overrun_ns": 25445273,
+        "realtime_denied": 0,
+        "xruns": 1
       },
-      "max_elapsed_ns": 64207346,
-      "max_overrun_ns": 58402358,
-      "realtime_denied": 0,
-      "xruns": 8
+      "device": "hw:CARD=NS7,DEV=0",
+      "held_note_finalized_after_fault": true,
+      "injected_after_callbacks": 32,
+      "injected_callback_cpu_ms": 30,
+      "input_acknowledgment_required": true,
+      "master": 0,
+      "native_recording_and_playback_observed_before_fault": true,
+      "playing_after_reconnect": false,
+      "reconnect_required": true,
+      "recorded_notes": 1,
+      "recovery_message": "Audio output exceeded its real-time CPU limit and was stopped. Your project and recorded notes are retained. Reconnect the previous output or preview and confirm another output. Release keys, pads and platters before resuming. Save and Close remain available.",
+      "reopened_notes": 1
     },
-    "boundary": "Existing recovery-storage warning retained. Eight startup deadline misses and eight XRUNs were observed; this is not a stage-quality pass."
+    "physicalLoopback": {
+      "headphone_jack_captured": false,
+      "input_device": "hw:CARD=CODEC,DEV=0",
+      "nominal_rate": 44100,
+      "output_detected_on_wired_master_return": [
+        false,
+        true,
+        false,
+        false
+      ],
+      "output_device": "hw:CARD=NS7,DEV=0",
+      "owner_reported_wiring": "NS7 XLR outputs to Peavey 8 channel 6; mixer USB return to m1pro16",
+      "pairs": [
+        {
+          "error": "No measurement: a reliable loopback probe was not found. Captured return peak -65.7 dBFS, RMS -78.7 dBFS; check the selected return and its levels.",
+          "input_channel": 0,
+          "output_channel": 0,
+          "status": "refused"
+        },
+        {
+          "error": "No measurement: a reliable loopback probe was not found. Captured return peak -64.3 dBFS, RMS -75.0 dBFS; check the selected return and its levels.",
+          "input_channel": 1,
+          "output_channel": 0,
+          "status": "refused"
+        },
+        {
+          "error": "No measurement: a reliable loopback probe was not found. Captured return peak -65.7 dBFS, RMS -78.7 dBFS; check the selected return and its levels.",
+          "input_channel": 0,
+          "output_channel": 1,
+          "status": "refused"
+        },
+        {
+          "callback_resolution_ns": 5804988,
+          "correlations": [
+            0.9938580733733047,
+            0.9938567184477566,
+            0.9947936122773131
+          ],
+          "host_return_ns": 13118115,
+          "input_channel": 1,
+          "input_frames": [
+            12027,
+            34075,
+            56123
+          ],
+          "maximum_ns": 14112868,
+          "minimum_ns": 8116020,
+          "output_channel": 1,
+          "status": "matched"
+        },
+        {
+          "error": "No measurement: a reliable loopback probe was not found. Captured return peak -65.7 dBFS, RMS -78.7 dBFS; check the selected return and its levels.",
+          "input_channel": 0,
+          "output_channel": 2,
+          "status": "refused"
+        },
+        {
+          "error": "No measurement: a reliable loopback probe was not found. Captured return peak -64.7 dBFS, RMS -75.0 dBFS; check the selected return and its levels.",
+          "input_channel": 1,
+          "output_channel": 2,
+          "status": "refused"
+        },
+        {
+          "error": "No measurement: a reliable loopback probe was not found. Captured return peak -66.8 dBFS, RMS -78.7 dBFS; check the selected return and its levels.",
+          "input_channel": 0,
+          "output_channel": 3,
+          "status": "refused"
+        },
+        {
+          "error": "No measurement: a reliable loopback probe was not found. Captured return peak -63.9 dBFS, RMS -75.0 dBFS; check the selected return and its levels.",
+          "input_channel": 1,
+          "output_channel": 3,
+          "status": "refused"
+        }
+      ],
+      "probe_level_dbfs": -36,
+      "scope": "Three distinct probe matches per successful output/input pair. Common host callback-entry timing includes converter, mixer and callback batching; this is not isolated analog converter latency or an independent-channel claim. Outputs 1/2 are the expected master pair; optional outputs 3/4 are a channel-assignment diagnostic."
+    },
+    "install": {
+      "pid": 3194371,
+      "invocation": "404cdde06a5449d8810d44b0b35d38a2",
+      "preferencesSchema": 26,
+      "projectSchema": 35,
+      "previousBinarySha256": "f54fe26efd2b4e67664cf9a2bbfe5615b1b9e11a767eeb0244fceac5efc802d1",
+      "nativeSavedProjectReopened": true,
+      "projectFileSha256": "000168ee86d4dc2923288fb546a1ec565df0347384238a11949baa87e053a090",
+      "configurationChangedFiles": [],
+      "globalClockRestored": true,
+      "decksStopped": true,
+      "midiInput": {
+        "coalesced": 0,
+        "disconnected": 0,
+        "dispatched": 6,
+        "dropped": 0,
+        "oversized": 0,
+        "queued": 6,
+        "received": 6,
+        "resets": 0
+      },
+      "midiFeedback": {
+        "connected": 4,
+        "failed": 0,
+        "sent": 532
+      },
+      "audio": {
+        "backend_errors": 0,
+        "callbacks": 90432,
+        "cpu_budget_exhaustions": 0,
+        "deadline_overruns": 8,
+        "device_lost": 0,
+        "dropped_buffers": null,
+        "last_callback": {
+          "budget_ns": 5804988,
+          "channels": 4,
+          "elapsed_ns": 276213,
+          "frames": 256,
+          "output_latency_ns": 5238095,
+          "overrun_ns": 0,
+          "render_cpu_ns": 259333,
+          "sample_rate": 44100
+        },
+        "max_elapsed_ns": 64207346,
+        "max_overrun_ns": 58402358,
+        "realtime_denied": 0,
+        "xruns": 8
+      },
+      "boundary": "Existing recovery-storage warning retained. Eight startup deadline misses and eight XRUNs were observed; this is not a stage-quality pass."
+    },
+    "pending": [
+      "Authorized user-authored Live playback and render comparisons",
+      "Physical left master and headphone return capture",
+      "Physical unplug/replug and system suspend while recording/performing",
+      "Hardware large-set transition and waveform/output timing",
+      "Extended performance and per-function controller qualification"
+    ],
+    "evidence": [
+      {
+        "name": "profiles-qualified/42/source-head.txt",
+        "sha256": "ae6dc577f397593924d2015d78f95738467582b2244177126ad96964053103bd"
+      },
+      {
+        "name": "profiles-qualified/42/license-manifest.json",
+        "sha256": "9f60e17840f1a65fcfd6c1b252e93434488f0031d715bbc040dc4e3d63781172"
+      },
+      {
+        "name": "combined-42-full.log",
+        "sha256": "c4000c3a9ce33a820b370cdc94e525513b354361aad7691807a11cd42f65ac5e"
+      },
+      {
+        "name": "combined-42-full-isolated.log",
+        "sha256": "dd1dd21cc447f2c52b6549a70220aeac7e8cc7666ccc3ce89969d8450c02991c"
+      },
+      {
+        "name": "combined-42-node-tests.log",
+        "sha256": "b84785835ddb46240857f281fba2516ad9ebf3eb816d3a20b07925270beb0c33"
+      },
+      {
+        "name": "profiles-qualified/42/showload-recheck.log",
+        "sha256": "3f22064672956a4ab660923191a46a7eacb26641bb3e236e14871129d0d121c6"
+      },
+      {
+        "name": "profiles-qualified/42/media-tags-recheck.log",
+        "sha256": "73864b5f41be1218989bcf76738d9604c24dfa70dc4f1dc0ccf9d65869af5520"
+      },
+      {
+        "name": "profiles-qualified/42/ableton.log",
+        "sha256": "4f52fe331fe860916621eeab98b66d0a9bd9cc4754e2186f0fc9774d91427832"
+      },
+      {
+        "name": "profiles-qualified/42/live12-template.log",
+        "sha256": "1313166cf3110151730974fdb0ebba557bffbd70d0c24e034f17b91952ab35e7"
+      },
+      {
+        "name": "profiles-qualified/42/cpu-owner.log",
+        "sha256": "3d32bbe2d1e60ea98882cab1c52ab8f99ae606a1f621ad1e7d9291002ffb0421"
+      },
+      {
+        "name": "profiles-qualified/42/native-ableton-workflows.log",
+        "sha256": "04c8091b6d85ab705e4f4a70c81663b98cda4103aeeecf0b5e714625d39112d6"
+      },
+      {
+        "name": "profiles-qualified/42/native-producer-library.log",
+        "sha256": "bece595e91b6c4d8babad5707883f2e3578e58b026d7b56518d0fa16ddec43d8"
+      },
+      {
+        "name": "profiles-qualified/42/native-plugin-graph.log",
+        "sha256": "cb3fb96e225ead59ae21b081d8826337328be6640795c49b8b26608c47e155d1"
+      },
+      {
+        "name": "profiles-qualified/42/native-dj-worker.log",
+        "sha256": "90dcbbc3da9f1893ec7a8dd491d9ff3c70df2e1ba24341df588fa58304a2281f"
+      },
+      {
+        "name": "profiles-qualified/42/native-bridge-tests-driver.log",
+        "sha256": "fe7c17ddab89aa082ff17369b4cb5ff42faaeba1e92109b7061eebe72aa59122"
+      },
+      {
+        "name": "profiles-qualified/41/ns7-cpu.log",
+        "sha256": "a40b28a86eb0c8200931d5b49409627b3672e55571711a97329d986ebbd9d7c1"
+      },
+      {
+        "name": "profiles-qualified/41/cpu-kernel.log",
+        "sha256": "6ff962d95b75a7395437a786cfaed13ee993e3abfd7d76d87caeea43c544d31c"
+      },
+      {
+        "name": "cpu-budget/native-41/ns7-cpu-recovery.json",
+        "sha256": "b01bec025a1cd786b434c7de7d6a7c72e24c04a50ee95eb37ecf478d52b32584"
+      },
+      {
+        "name": "loopback/ns7-peavey-41/ns7-peavey-pairs.json",
+        "sha256": "945b4dbf29e22240489139c39cdfc13affbb85cac66f58c05639c22962e9c5bd"
+      },
+      {
+        "name": "native-ui/combined-42-install-restoration-receipt.json",
+        "sha256": "680749eaf469b7a68e0d78cf55e72bef39b15e84579045f7f4128abe5dbdb3f7"
+      },
+      {
+        "name": "release-qualified/10/package-proof.json",
+        "sha256": "b603f3d1e63dd2be65b66eb043cb557ffbc2508985788938ef746d61216dc73a"
+      },
+      {
+        "name": "t/v42/volume-remount.json",
+        "sha256": "fedbb1535455eaf8e4bd65c73df498bfbc26fcdc960b1a9fe5eb21fb846c7dd5"
+      },
+      {
+        "name": "t/v42/driver.json",
+        "sha256": "d4a096db8084dfffb612848b5e02aff41e31ee5e2c5672115a9f5ade8808d627"
+      },
+      {
+        "name": "t/n42bridge-tests/report.json",
+        "sha256": "1159b7f16de54bd535f61761b738624c7092232ce2d9e7f06fb042cbd980cc7b"
+      },
+      {
+        "name": "t/a42r/receipt.json",
+        "sha256": "19259888d7d7989035985e046ff49c354915fcd686393766ebb35e18b141a094"
+      },
+      {
+        "name": "t/a42r/cleanup.json",
+        "sha256": "f1a44eb7e2d55ad40e4c5f7ce9b64c27083087a80eb1e211aa2ac2c75d3f6645"
+      },
+      {
+        "name": "t/a42r/native.log",
+        "sha256": "ad806870362bc00a42c82954bd60dee84da8560d6305b65b2a5d59491e5586d6"
+      },
+      {
+        "name": "t/a42d/receipt.json",
+        "sha256": "11d0350fec03a821e2aea5db7ed0d69a940a580cc80af2f241566cd285068ab9"
+      },
+      {
+        "name": "t/a42d/cleanup.json",
+        "sha256": "b3a5e39e30006a83a505b074103c5abaa967157d443429d8e4de591c1c50a5b7"
+      },
+      {
+        "name": "t/a42d/native.log",
+        "sha256": "a6044d84112c3ecf287984a914b53e6da8e45790ec43b7ad5dea8e5cb911442f"
+      },
+      {
+        "name": "t/a42c/receipt.json",
+        "sha256": "0a611c722489dd555545293be8a1f22a41d03d984be998a515308accf782cba9"
+      },
+      {
+        "name": "t/a42c/cleanup.json",
+        "sha256": "a9d0ab8b12beae7e0551acb66a30fdd73554f7ae7090af16a2f221c45cd98348"
+      },
+      {
+        "name": "t/a42c/native.log",
+        "sha256": "b5e204cb83bce709973873458f3172648f42b29fa6684355c0da6a1970d91794"
+      }
+    ]
+  },
+  "source49": {
+    "source": "dd1ef555d1004803a11ae8ad67a0bd0c403e2ffb",
+    "testsSha256": "24c72a3c0226d0140db680fe6ed19db817ce279b7cae1565c3701d0e6d13566e",
+    "package": {
+      "source_revision": "dd1ef555d1004803a11ae8ad67a0bd0c403e2ffb",
+      "binary_sha256": "40b0b290d0fafade8bd193b8cb27a01cfb0245d512e2c9cab80e021e1ff3b68d",
+      "inventory_sha256": "b06d7d9ff4f2cef53a868de9eb5dfbff97ab7d0f89c8d17ad21dd695fa9672e8"
+    },
+    "fullSuite": {
+      "passed": 2295,
+      "failed": 1,
+      "ignored": 81,
+      "filtered": 0,
+      "seconds": 760.38,
+      "failedTest": "engine::midi::routing::output::tests::cancel_after_publication_claim_reports_applied_and_recovery_resets_output",
+      "failedAssertion": "MIDI trace was not empty while reset traffic could still be outstanding. Original failing trace was not printed; its exact packets are unknown.",
+      "unchangedFocusedRepeatPassed": true,
+      "correction": "Check complete teardown and permit only the five defined channel-reset packets, rejecting forwarded program/controller traffic."
+    },
+    "nativeFocusedTests": {
+      "vst3Graph": 8,
+      "scanner": 3,
+      "migrationWidgets": 5,
+      "abletonPluginState": 1,
+      "migrationWorker": 1,
+      "producerLibrary": 3,
+      "producerLibraryWidgets": 1,
+      "djWorker": 1,
+      "realImportedSetRecovery": 1
+    },
+    "realImportedSetRecovery": {
+      "durable": true,
+      "media_assets": 2,
+      "native_reopen": true,
+      "pcm_samples": 21168064,
+      "recovered_sequence": 1,
+      "scope": "Actual imported native Set metadata and decoded PCM, isolated private recovery store; original unchanged.",
+      "source_sha256": "39aea7a65f4b1c07d840f9f748ed4e8689f2b20cb2e90d5c32a7dcb13a5428a3",
+      "state_bytes": 12490398,
+      "state_sha256": "78a5678d0352e0971202c953d1af32efac450c1aac4b517bfc00e0a3d7cb46a6"
+    }
+  },
+  "installedSource48": {
+    "source": "9a6041a98e26e608bbb88edf8b79b1314b68b61f",
+    "testsSha256": "99456f96f702401379b129bc1a8e4bdd9188145c833196055af76b4c7c43dc31",
+    "package": {
+      "source": "9a6041a98e26e608bbb88edf8b79b1314b68b61f",
+      "binarySha256": "64a852575ddbdd0ac5d0e3158644fb02fcf51819ea9c86853d6ddbc45e7ac6e0",
+      "inventorySha256": "7ed813c633fd5c51acfa57fd3e3f09a28985f1f8c800495a3bf15cfa6f44fb0c",
+      "manifestSha256": "40b7f1caf1bfd5834bd83a6bb9283ad10badd7fbcf08e5c989152db6e3c0cd64",
+      "manifest": {
+        "schema": 1,
+        "application": "omatainer",
+        "version": "0.1.0+9a6041a98e26",
+        "revision": "9a6041a98e26e608bbb88edf8b79b1314b68b61f",
+        "platform": {
+          "os": "linux",
+          "architecture": "arm64",
+          "glibc": "2.43",
+          "installer": "Node.js 22 or newer"
+        },
+        "migration": {
+          "preferences": 26,
+          "project": 36,
+          "policy": "Installation preserves preferences, projects, libraries and plugins. Opening documents may migrate their format; retain document backups when rolling back.",
+          "automatic": false
+        },
+        "files": {
+          "omatainer": {
+            "sha256": "64a852575ddbdd0ac5d0e3158644fb02fcf51819ea9c86853d6ddbc45e7ac6e0",
+            "bytes": 46972488
+          },
+          "update.mjs": {
+            "sha256": "47bb5696ceb1f317bcdca4de8b05a6394fb50592113b52b947f23e33fb7c7aea",
+            "bytes": 16582
+          },
+          "LICENSE": {
+            "sha256": "63b79db05f159e96dc02773307e5911c95bb851fd3adceda0d977e1adf79aa1e",
+            "bytes": 1066
+          },
+          "licenses.json": {
+            "sha256": "7ed813c633fd5c51acfa57fd3e3f09a28985f1f8c800495a3bf15cfa6f44fb0c",
+            "bytes": 672577
+          },
+          "notices.json": {
+            "sha256": "dd7498b28934a242c10d680d4210331d5251dc1b3f75a576f6b0b380324febc6",
+            "bytes": 2387811
+          },
+          "source/vendor/egui-winit/.cargo_vcs_info.json": {
+            "sha256": "7494c24c1baaec2d440e20d7541946734696d6baaf49ae498bd45a9127473928",
+            "bytes": 111
+          },
+          "source/vendor/egui-winit/Cargo.lock": {
+            "sha256": "92c309f835ffbf6c529c53836ddf05d14ab554eccba57b32f06aa7032d9c9b99",
+            "bytes": 80185
+          },
+          "source/vendor/egui-winit/Cargo.toml": {
+            "sha256": "33b510b0fe4cc4cb80835cc36f16b920c22300d86cc24de0a969098a3f043f28",
+            "bytes": 8536
+          },
+          "source/vendor/egui-winit/Cargo.toml.orig": {
+            "sha256": "9d000872d4087c68562632ff9d8d2adcf16c502b73b9cbf8ed1769e16ecd10e0",
+            "bytes": 3601
+          },
+          "source/vendor/egui-winit/LICENSE": {
+            "sha256": "0c8aa20063e510da7be18f434655a4fe76c72054c7f936d4b06267603557e9af",
+            "bytes": 11944
+          },
+          "source/vendor/egui-winit/PATCHES.md": {
+            "sha256": "7ab275f9cab4521890bf57aadbbf239e79e8fc4cf06116ef535ff4e5cbfe074e",
+            "bytes": 1079
+          },
+          "source/vendor/egui-winit/README.md": {
+            "sha256": "7a8ccbb9fbddf24243446291b8e5a4e6bddcb6b565602c9561581926d5ae362b",
+            "bytes": 571
+          },
+          "source/vendor/egui-winit/UPSTREAM.json": {
+            "sha256": "68dac19356ffd93234fd97a608517272a9a40907ceef820c2951ca2315f178ad",
+            "bytes": 987
+          },
+          "source/vendor/egui-winit/src/clipboard.rs": {
+            "sha256": "d3b33a29a741bf4fdedb6bdc2d394b3cfb6f129da35cf9a3deaa247530098cef",
+            "bytes": 5496
+          },
+          "source/vendor/egui-winit/src/lib.rs": {
+            "sha256": "d8d3a6054d1884ca519c45fa7437700a04b207fed4589115dac30bfc4bee89ba",
+            "bytes": 79585
+          },
+          "source/vendor/egui-winit/src/window_settings.rs": {
+            "sha256": "dd932be8e17a69b222015ec1a25cb4e163aa44a204a41760c7b0f53418ef63de",
+            "bytes": 7817
+          },
+          "source/vendor/symphonia-format-riff/.cargo_vcs_info.json": {
+            "sha256": "f0cbb62e0173cc0cb6051169ac939dc7840696b1a142d50ebfa0dc41b51a81e6",
+            "bytes": 115
+          },
+          "source/vendor/symphonia-format-riff/Cargo.toml": {
+            "sha256": "1f2201173493afd34d67c336bf36f8a438004bb141bd4576ca2491c0626e6610",
+            "bytes": 1472
+          },
+          "source/vendor/symphonia-format-riff/Cargo.toml.orig": {
+            "sha256": "e938331d1178b7ca22fc894e9265ca14652bb5c392c07dc2edcf5ac47e55e05b",
+            "bytes": 789
+          },
+          "source/vendor/symphonia-format-riff/LICENSE": {
+            "sha256": "c76f740d1521b9bed9ca7a04ad526c310493c62621b1341d623b431736533b30",
+            "bytes": 16725
+          },
+          "source/vendor/symphonia-format-riff/PATCHES.md": {
+            "sha256": "397a7979db699eab591faa2b142f6f68c51ddb1a8020ac09bdf6f1c120219954",
+            "bytes": 1425
+          },
+          "source/vendor/symphonia-format-riff/README.md": {
+            "sha256": "6de8ce7c4832e7a33036a22449bb965f4d9fe78e93a963fbd188f365129d7232",
+            "bytes": 1042
+          },
+          "source/vendor/symphonia-format-riff/UPSTREAM.json": {
+            "sha256": "1c8f6e9e9ccc29d217afdb0ce5238133b467ed061281aaf084dbbf2c28c78b84",
+            "bytes": 1232
+          },
+          "source/vendor/symphonia-format-riff/src/aiff/chunks.rs": {
+            "sha256": "43518ce7448268f924a986861f834982a597c15e768b553a3288f59671a1d7a5",
+            "bytes": 11941
+          },
+          "source/vendor/symphonia-format-riff/src/aiff/mod.rs": {
+            "sha256": "3275aeaa4dac1adda742d23817804d773ae7348d64b66b047cce9c8b8b0ecd06",
+            "bytes": 9809
+          },
+          "source/vendor/symphonia-format-riff/src/common.rs": {
+            "sha256": "0f4ca3494b225e604acad3df8f5c1c55f70e3fc1b4e8d056121d4daf81f2da38",
+            "bytes": 13612
+          },
+          "source/vendor/symphonia-format-riff/src/lib.rs": {
+            "sha256": "229f2ec28d7d020a7d1e1ad9cfa0a3c8145127a14d33b39028e5cfcd5f96bfb8",
+            "bytes": 774
+          },
+          "source/vendor/symphonia-format-riff/src/wave/chunks.rs": {
+            "sha256": "45f6db6456300e02b35e5cc3cb44eedcb5c44f38db1f2b9723c48aebcb963b7d",
+            "bytes": 23947
+          },
+          "source/vendor/symphonia-format-riff/src/wave/mod.rs": {
+            "sha256": "abdfe224d9c30e9b73fd088dcc640f1dee07aa60c7c828fa79ac5107653916fd",
+            "bytes": 9334
+          },
+          "source/vendor/vst3-host/.cargo_vcs_info.json": {
+            "sha256": "737b52ce29e201e3cc14bab20bc449c6e4a3238c78320391a14d8bc1cf8a9657",
+            "bytes": 103
+          },
+          "source/vendor/vst3-host/CHANGELOG.md": {
+            "sha256": "5375dbfae069330fef7d9229b57e53b7d9f86a1eecee8dd9432e5cec5f5bc667",
+            "bytes": 4450
+          },
+          "source/vendor/vst3-host/Cargo.lock": {
+            "sha256": "8fff93ae955c9d77db19aa19dc677a91cf1fe5aa0be8ed2b933dcb1af7bc7cbc",
+            "bytes": 124905
+          },
+          "source/vendor/vst3-host/Cargo.toml": {
+            "sha256": "9d58457c3a05e1331fb76692fcb599b9c71b5e250a8f643047bfc33837b226a2",
+            "bytes": 3433
+          },
+          "source/vendor/vst3-host/Cargo.toml.orig": {
+            "sha256": "ba68c845370574dd9d90c92046788d7cd9a2409c77040d63d72bb0c8dd76b25e",
+            "bytes": 4291
+          },
+          "source/vendor/vst3-host/LICENSE": {
+            "sha256": "a65a537295910b776a8b2edb2e7410c3b0e975ca6388994e032c4d1842b4952d",
+            "bytes": 1069
+          },
+          "source/vendor/vst3-host/PATCHES.md": {
+            "sha256": "2ce7ba4b3320915e1e957a18ab325a39b6b9e49c1f90906d80df1f2ce5158141",
+            "bytes": 896
+          },
+          "source/vendor/vst3-host/README.md": {
+            "sha256": "a3b3f383c9b7af8d2a64c3c0d7ff7d4759722e751c77488daec3a89d9dddffcc",
+            "bytes": 9849
+          },
+          "source/vendor/vst3-host/UPSTREAM.json": {
+            "sha256": "097189bbc87141d7b2e2dd105eb86446778661d72264f273bf88467554558df5",
+            "bytes": 4248
+          },
+          "source/vendor/vst3-host/run_plugin_gui.sh": {
+            "sha256": "f59d98fd5d4e954d37352d23a1872aa6fe37954b64968734c4c3a8462a76cdcf",
+            "bytes": 136
+          },
+          "source/vendor/vst3-host/src/audio.rs": {
+            "sha256": "a3f78a9d6190aca7f93c898270665c569b87ce05d2f47c6a1c20f58b461e826c",
+            "bytes": 40415
+          },
+          "source/vendor/vst3-host/src/backends/cpal_backend.rs": {
+            "sha256": "81ac2fb61dc337957e168c0927bd382ebb937b4d83ba33b18e1aca49b798361e",
+            "bytes": 12734
+          },
+          "source/vendor/vst3-host/src/backends/mod.rs": {
+            "sha256": "5d0bbb62d5bfeb1ec8fe4e097fed6ae1de62fb2f394092a1107978830f1c419f",
+            "bytes": 159
+          },
+          "source/vendor/vst3-host/src/bin/vst3-host-helper.rs": {
+            "sha256": "04e7ce1c38187857d1f813fa07f1b6fa5fca599acf310118db63d8af59ca1481",
+            "bytes": 33889
+          },
+          "source/vendor/vst3-host/src/bin/vst3-host-probe.rs": {
+            "sha256": "9e2cc17f41aabbd8302fe171e2211c18bba4e0698de6aaee48abcfb101d1b110",
+            "bytes": 2118
+          },
+          "source/vendor/vst3-host/src/discovery.rs": {
+            "sha256": "568bab9374fd746e3ff983bd3364c1a64a3ec19cc5c77967c6bfcf01df51efec",
+            "bytes": 52766
+          },
+          "source/vendor/vst3-host/src/embed.rs": {
+            "sha256": "00cf4880ff976ad7ebe4491cf48e944986cc27a23148017922dc9b04390150f6",
+            "bytes": 25333
+          },
+          "source/vendor/vst3-host/src/error.rs": {
+            "sha256": "eeb7ac5dba88dce6743f7df46e3076511112f5107ed72305ee022c6f8ebe2596",
+            "bytes": 1931
+          },
+          "source/vendor/vst3-host/src/host.rs": {
+            "sha256": "872989605bfe462453a6928ce807078034f2692268754c177060c816b3fbf00a",
+            "bytes": 33171
+          },
+          "source/vendor/vst3-host/src/internal/com_implementations.rs": {
+            "sha256": "aa97b36cd66f95eb858b0bc68afbabdcaa6b3da411776c39acf180c0be592c9f",
+            "bytes": 145180
+          },
+          "source/vendor/vst3-host/src/internal/data_exchange.rs": {
+            "sha256": "a3312da17e69533edcbe8cf28c1df55d4f93e5fc31cddd1d4ebea95d59bf1423",
+            "bytes": 20897
+          },
+          "source/vendor/vst3-host/src/internal/denormal.rs": {
+            "sha256": "3a30c5e0067d32dab0ef8e5f49f9bac195e635c86cd83e265b3ccbdc4e397ab2",
+            "bytes": 4595
+          },
+          "source/vendor/vst3-host/src/internal/isolated_plugin_impl.rs": {
+            "sha256": "1faf76aff93a109c08479c9a0d81c56b7c89cc9978596b49cc9830a1acee66e8",
+            "bytes": 49281
+          },
+          "source/vendor/vst3-host/src/internal/mod.rs": {
+            "sha256": "0304738316f40839b650a1751a9882fb2e0b68de879d61a79326883935d244b5",
+            "bytes": 299
+          },
+          "source/vendor/vst3-host/src/internal/module_info.rs": {
+            "sha256": "2c837fb62c8582f45f72aafa0d54a20848008e871a72d004f1e640d0e91d4ef3",
+            "bytes": 37650
+          },
+          "source/vendor/vst3-host/src/internal/module_loader/linux.rs": {
+            "sha256": "97a1f7e293f39fa61cebc38fb07df3ab3477f542b04303a4c01109a621bb1eab",
+            "bytes": 7488
+          },
+          "source/vendor/vst3-host/src/internal/module_loader/macos.rs": {
+            "sha256": "72eb4dbd44ba420dff1fa8197d6538415794b9a598cb05dff1a7f2cf033ca16b",
+            "bytes": 15324
+          },
+          "source/vendor/vst3-host/src/internal/module_loader/mod.rs": {
+            "sha256": "d7f0924f20602757c0e546ed6ac375819358c6ed4fecd6b52f38c4a92d80dd07",
+            "bytes": 10741
+          },
+          "source/vendor/vst3-host/src/internal/module_loader/private_namespace.rs": {
+            "sha256": "8eeda22b33aa1cca2aac3a361786572079371dd9252ddd8c2720fc991d47b0a0",
+            "bytes": 17828
+          },
+          "source/vendor/vst3-host/src/internal/module_loader/windows.rs": {
+            "sha256": "1bc518762553ae6c012d4f38f9b864d9105515d15c208635d7c72556580a9844",
+            "bytes": 7877
+          },
+          "source/vendor/vst3-host/src/internal/plugin_impl.rs": {
+            "sha256": "60add58bdd26914acb3da94ae4d7e1af625c0ee07a5ae22a0593114739eab3b5",
+            "bytes": 226653
+          },
+          "source/vendor/vst3-host/src/internal/utils.rs": {
+            "sha256": "3619b511f1a2ac5d48a7f954bdd4d721627008a831130720f7d058b883cd2e19",
+            "bytes": 7399
+          },
+          "source/vendor/vst3-host/src/lib.rs": {
+            "sha256": "5ce1016d14ccdccf3d92d05999a270ca8531f996b2e4ff77bbad415911b9755c",
+            "bytes": 6346
+          },
+          "source/vendor/vst3-host/src/midi.rs": {
+            "sha256": "13bf1e7e6dbed088adbc742a6c36366bac1c9b116c9881be76cda692a1a7a06e",
+            "bytes": 34220
+          },
+          "source/vendor/vst3-host/src/midi_input.rs": {
+            "sha256": "00eb0c1be43c99bae187951991f0ebba1ee5d34eeae00a6d3588c4b244fe4c56",
+            "bytes": 7867
+          },
+          "source/vendor/vst3-host/src/parameters.rs": {
+            "sha256": "b48bc7daa017470411370d0d540d3dde10c0bb2aea22efd32e910706e95817ef",
+            "bytes": 17698
+          },
+          "source/vendor/vst3-host/src/playback.rs": {
+            "sha256": "8fa44b9d3f425630bb2061dc20d624f5d121356eacbb218cac815f2662670e33",
+            "bytes": 42435
+          },
+          "source/vendor/vst3-host/src/plugin.rs": {
+            "sha256": "4c47ea11a7d89160e56f00b3eb21c7cd94dade41bfb6c5896b7c4aedb129ca9a",
+            "bytes": 138448
+          },
+          "source/vendor/vst3-host/src/process_isolation.rs": {
+            "sha256": "a72ddbfffc1b6b873286fd5903e9983c92772a55fdfa17ed9fe818a94e962e42",
+            "bytes": 113549
+          },
+          "source/vendor/vst3-host/src/realtime.rs": {
+            "sha256": "538129d630954d15e1cb0b5469d99da202350370552fa0f985102f56b62ea7d6",
+            "bytes": 28169
+          },
+          "source/vendor/vst3-host/src/simple.rs": {
+            "sha256": "fe3879f15c2b3c9283c671d537b69436abf553935b6778f4726ae85e1f4f5978",
+            "bytes": 18130
+          },
+          "source/vendor/vst3-host/src/transport.rs": {
+            "sha256": "46285c2b3405cde078c15c49799f7a0d51fd4a719badbb9ecd5174fe64208d79",
+            "bytes": 14480
+          },
+          "source/vendor/vst3-host/src/window.rs": {
+            "sha256": "5f38ebba09c39c783ee13711281dedc5f4655e33a30007b4df4c0f057a5b5f74",
+            "bytes": 27710
+          }
+        }
+      }
+    },
+    "install": {
+      "schema": 1,
+      "before": "a9d1c485a84dc538c8c9a0f30ea139335de2095fc8b11faa34512b51cb0f64b4",
+      "after": "64a852575ddbdd0ac5d0e3158644fb02fcf51819ea9c86853d6ddbc45e7ac6e0",
+      "installedAt": "2026-10-08T16:54:22.266Z"
+    },
+    "owner": {
+      "savedCopySha256": "b61f32fddf051ffca1616b5baa5cdc20fae3ffd44336fb82ce63eb8405d1a51d",
+      "nativeReopen": true,
+      "playing": true,
+      "recording": false,
+      "decksStopped": true,
+      "midiConnected": 4,
+      "audio": {
+        "backend_errors": 0,
+        "callbacks": 246316,
+        "cpu_budget_exhaustions": 0,
+        "deadline_overruns": 2,
+        "device_lost": 0,
+        "dropped_buffers": null,
+        "last_callback": {
+          "budget_ns": 5804988,
+          "channels": 4,
+          "elapsed_ns": 267418,
+          "frames": 256,
+          "output_latency_ns": 5578231,
+          "overrun_ns": 0,
+          "render_cpu_ns": 251750,
+          "sample_rate": 44100
+        },
+        "max_elapsed_ns": 6020019,
+        "max_overrun_ns": 215031,
+        "realtime_denied": 0,
+        "xruns": 2
+      },
+      "boundary": "Existing full recovery-store warning retained; 2 deadline misses and 2 XRUNs observed. No stage-duration pass."
+    },
+    "referenceComparison": {
+      "schema": 1,
+      "status": "pass",
+      "reference_sha256": "3a311241cf48844803dc45eec5eaf3fa7cfaa0ff2f4a62c7de0f052d16f8e718",
+      "native_sha256": "854d6fa6e30b6a54c63804bf8b0cec2811fa5c6565683a3b49a9fc5392d2e5c1",
+      "rate": 44100,
+      "channels": 2,
+      "frames": 10584000,
+      "seconds": 240,
+      "nonzero_samples": 21168000,
+      "first_nonzero_sample": 0,
+      "last_nonzero_sample": 21167999,
+      "compared_samples": 21168000,
+      "max_error_after_documented_tanh": 3.725290298461914e-8,
+      "rms_error_after_documented_tanh": 1.345725048061825e-9,
+      "max_raw_difference": 0.03035852313041687,
+      "alignment": "Full same-index comparison, exact frame count and retained zero samples; no estimated shift",
+      "scope": "Authorized Live 12 rendered complete mix attached through native Omatainer migration and reopened/exported through native UI. Expected tanh output limiter is explicit; original unresolved device engines are retained and muted. Not identical native Ableton device emulation or listening proof.",
+      "zeroBoundaryScope": "This real reference had no exact zero samples, so separate unit fixtures establish zero-boundary handling.",
+      "originalSavedVersion": "Live 9.6.2",
+      "authorizedReferenceVersion": "Live 12.4.6 Trial",
+      "originalMusicDiskSetUnchanged": true,
+      "sourceSelection": "Private comparison copy explicitly remapped six references to an available alternate horn sample. This is not a historical-original-sound comparison."
+    },
+    "archivedEditableRestoration": {
+      "status": "pass",
+      "printed_archive_sha256": "39aea7a65f4b1c07d840f9f748ed4e8689f2b20cb2e90d5c32a7dcb13a5428a3",
+      "restored_archive_sha256": "61566aec7495f1b2c038e30f120ab7ccccdca886079b59a01c8feaff505e2feb",
+      "printed_tracks": 9,
+      "restored_tracks": 8,
+      "original_arrangement_sources": 55,
+      "original_arrangement_placements": 55,
+      "printed_pcm_removed": true,
+      "source_and_print_temporarily_offline": true,
+      "native_publish": true,
+      "native_open": true,
+      "scope": "Actual native saved-migration review, restored editable source publication and native Open, original user source unchanged; retained unresolved engines are not playback emulation."
+    },
+    "physicalHeadphoneLoopback": {
+      "headphone_jack_captured": true,
+      "input_device": "hw:CARD=CODEC,DEV=0",
+      "nominal_rate": 44100,
+      "output_detected_on_selected_return": [
+        false,
+        false,
+        true,
+        true
+      ],
+      "output_device": "hw:CARD=NS7,DEV=0",
+      "owner_reported_wiring": "NS7 headphone jack through stereo left/right breakout to Peavey PV8 USB inputs 7/8; master feed disconnected; mixer USB return to m1pro16",
+      "pairs": [
+        {
+          "error": "No measurement: a reliable loopback probe was not found. Captured return peak -69.5 dBFS, RMS -85.3 dBFS; check the selected return and its levels.",
+          "input_channel": 0,
+          "output_channel": 0,
+          "status": "refused"
+        },
+        {
+          "error": "No measurement: a reliable loopback probe was not found. Captured return peak -69.5 dBFS, RMS -86.4 dBFS; check the selected return and its levels.",
+          "input_channel": 1,
+          "output_channel": 0,
+          "status": "refused"
+        },
+        {
+          "error": "No measurement: a reliable loopback probe was not found. Captured return peak -69.5 dBFS, RMS -85.4 dBFS; check the selected return and its levels.",
+          "input_channel": 0,
+          "output_channel": 1,
+          "status": "refused"
+        },
+        {
+          "error": "No measurement: a reliable loopback probe was not found. Captured return peak -70.3 dBFS, RMS -86.3 dBFS; check the selected return and its levels.",
+          "input_channel": 1,
+          "output_channel": 1,
+          "status": "refused"
+        },
+        {
+          "callback_resolution_ns": 5804988,
+          "correlations": [
+            0.997770503520891,
+            0.9979033189197375,
+            0.9979222894163483
+          ],
+          "host_return_ns": 10729402,
+          "input_channel": 0,
+          "input_frames": [
+            11910,
+            33958,
+            56006
+          ],
+          "maximum_ns": 10733778,
+          "minimum_ns": 10729319,
+          "output_channel": 2,
+          "status": "matched"
+        },
+        {
+          "error": "No measurement: a reliable loopback probe was not found. Captured return peak -69.5 dBFS, RMS -86.4 dBFS; check the selected return and its levels.",
+          "input_channel": 1,
+          "output_channel": 2,
+          "status": "refused"
+        },
+        {
+          "error": "No measurement: a reliable loopback probe was not found. Captured return peak -68.7 dBFS, RMS -85.4 dBFS; check the selected return and its levels.",
+          "input_channel": 0,
+          "output_channel": 3,
+          "status": "refused"
+        },
+        {
+          "callback_resolution_ns": 5804988,
+          "correlations": [
+            0.9967244679588556,
+            0.9967536501294246,
+            0.9967598447610969
+          ],
+          "host_return_ns": 9755729,
+          "input_channel": 1,
+          "input_frames": [
+            11735,
+            33782,
+            55830
+          ],
+          "maximum_ns": 14747762,
+          "minimum_ns": 8752556,
+          "output_channel": 3,
+          "status": "matched"
+        }
+      ],
+      "probe_level_dbfs": -36,
+      "required_output_channels": [
+        2,
+        3
+      ],
+      "scope": "Three distinct probe matches per successful output/input pair. Common host callback-entry timing includes converter, mixer and callback batching; this is not isolated analog converter latency, simultaneous stereo playback or physical listening proof. Outputs 1/2 are the expected master pair; outputs 3/4 must reach the directly wired headphone jack for headphone qualification.",
+      "status": "qualified"
+    }
+  },
+  "physicalMasterLoopback": {
+    "provenance": {
+      "source_revision": "feda580e473f354473ba8fe8588ca461d61b0138",
+      "test_sha256": "30892d57dabd624852a8610dfca945f4da75355152bed754422ff5d26f64ab20",
+      "inventory_sha256": "3a72b8342126439c7814f867aeb82c229fba3bf8e8c9536996df7384f0e1d766",
+      "source_files": 989
+    },
+    "receipt": {
+      "headphone_jack_captured": false,
+      "input_device": "hw:CARD=CODEC,DEV=0",
+      "nominal_rate": 44100,
+      "output_detected_on_wired_master_return": [
+        true,
+        true
+      ],
+      "output_device": "hw:CARD=NS7,DEV=0",
+      "owner_reported_wiring": "NS7 XLR outputs to Peavey PV8 USB stereo strip 7/8; mixer USB return to m1pro16",
+      "pairs": [
+        {
+          "callback_resolution_ns": 5804988,
+          "correlations": [
+            0.9980871214618317,
+            0.9971977335518186,
+            0.9968328308904189
+          ],
+          "host_return_ns": 11002969,
+          "input_channel": 0,
+          "input_frames": [
+            11635,
+            33683,
+            55731
+          ],
+          "maximum_ns": 11996387,
+          "minimum_ns": 10996510,
+          "output_channel": 0,
+          "status": "matched"
+        },
+        {
+          "error": "No measurement: a reliable loopback probe was not found. Captured return peak -63.1 dBFS, RMS -72.0 dBFS; check the selected return and its levels.",
+          "input_channel": 1,
+          "output_channel": 0,
+          "status": "refused"
+        },
+        {
+          "error": "No measurement: a reliable loopback probe was not found. Captured return peak -64.3 dBFS, RMS -77.5 dBFS; check the selected return and its levels.",
+          "input_channel": 0,
+          "output_channel": 1,
+          "status": "refused"
+        },
+        {
+          "callback_resolution_ns": 5804988,
+          "correlations": [
+            0.9905937005448504,
+            0.9898360879849853,
+            0.9886005906410938
+          ],
+          "host_return_ns": 13996973,
+          "input_channel": 1,
+          "input_frames": [
+            11769,
+            33817,
+            55865
+          ],
+          "maximum_ns": 13998015,
+          "minimum_ns": 9010509,
+          "output_channel": 1,
+          "status": "matched"
+        }
+      ],
+      "probe_level_dbfs": -36,
+      "scope": "Three distinct probe matches per successful output/input pair. Common host callback-entry timing includes converter, mixer and callback batching; this is not isolated analog converter latency or an independent-channel claim. Outputs 1/2 are the expected master pair; optional outputs 3/4 are a channel-assignment diagnostic."
+    }
   },
   "pending": [
-    "Authorized user-authored Live playback and render comparisons",
-    "Physical left master and headphone return capture",
-    "Physical unplug/replug and system suspend while recording/performing",
-    "Hardware large-set transition and waveform/output timing",
-    "Extended performance and per-function controller qualification"
+    "Physical USB removal/reconnection and host suspend while recording/performing",
+    "Hardware waveform/output timing",
+    "Extended performance and additional live routing qualifications",
+    "Live 10/11 authored playback reference coverage",
+    "Complete per-function controller qualification"
   ],
   "evidence": [
     {
-      "name": "profiles-qualified/42/source-head.txt",
-      "sha256": "ae6dc577f397593924d2015d78f95738467582b2244177126ad96964053103bd"
+      "name": "combined-49-full-isolated.log",
+      "sha256": "ed3680f6ebed046af9cb266849dd978f0b372e5dba1c7d6566f4d07f71cfae67"
     },
     {
-      "name": "profiles-qualified/42/license-manifest.json",
-      "sha256": "9f60e17840f1a65fcfd6c1b252e93434488f0031d715bbc040dc4e3d63781172"
+      "name": "profiles-qualified/49/midi-recovery-recheck.log",
+      "sha256": "80707d1df20b23864e2b2fcd844a0560955b9fab0bb4b635c8d54144e1a5e4dc"
     },
     {
-      "name": "combined-42-full.log",
-      "sha256": "c4000c3a9ce33a820b370cdc94e525513b354361aad7691807a11cd42f65ac5e"
+      "name": "profiles-qualified/49/native-plugin-graph.log",
+      "sha256": "b980b5cad46f80aed9a4141be157daa508d77a666e24ee87fd2bd670966cf855"
     },
     {
-      "name": "combined-42-full-isolated.log",
-      "sha256": "dd1dd21cc447f2c52b6549a70220aeac7e8cc7666ccc3ce89969d8450c02991c"
+      "name": "profiles-qualified/49/native-plugin-scanner.log",
+      "sha256": "74829c897a745e1dee09e80cb913623b9685d19f37fecab21f14a2f096651497"
     },
     {
-      "name": "combined-42-node-tests.log",
-      "sha256": "b84785835ddb46240857f281fba2516ad9ebf3eb816d3a20b07925270beb0c33"
+      "name": "profiles-qualified/49/native-ableton-workflows.log",
+      "sha256": "bc81d886e4bf9ed37b8dc91813855dde4ca7a1da3fd23bc13a9c66a4a70d7df7"
     },
     {
-      "name": "profiles-qualified/42/showload-recheck.log",
-      "sha256": "3f22064672956a4ab660923191a46a7eacb26641bb3e236e14871129d0d121c6"
+      "name": "profiles-qualified/49/native-ableton-plugin.log",
+      "sha256": "629b9ddbe4ff69dfe3f86f3864fe3369b6d70f7e66fc7340192be42961c427d6"
     },
     {
-      "name": "profiles-qualified/42/media-tags-recheck.log",
-      "sha256": "73864b5f41be1218989bcf76738d9604c24dfa70dc4f1dc0ccf9d65869af5520"
+      "name": "profiles-qualified/49/native-ableton-worker.log",
+      "sha256": "6e78f28f167f21a6f7ded6b80521ace5dec00ce86697e709c426bbff98f92b92"
     },
     {
-      "name": "profiles-qualified/42/ableton.log",
-      "sha256": "4f52fe331fe860916621eeab98b66d0a9bd9cc4754e2186f0fc9774d91427832"
+      "name": "profiles-qualified/49/native-producer-library.log",
+      "sha256": "15be2817361ac21fdbc282b0a207201d149bd1a3f21299b18c388f85368967f2"
     },
     {
-      "name": "profiles-qualified/42/live12-template.log",
-      "sha256": "1313166cf3110151730974fdb0ebba557bffbd70d0c24e034f17b91952ab35e7"
+      "name": "profiles-qualified/49/native-library-workflow.log",
+      "sha256": "ec28cbec6f5159d2a5138f349b0486a894a865cd7da128536067b97bbdf9510a"
     },
     {
-      "name": "profiles-qualified/42/cpu-owner.log",
-      "sha256": "3d32bbe2d1e60ea98882cab1c52ab8f99ae606a1f621ad1e7d9291002ffb0421"
+      "name": "profiles-qualified/49/native-dj-worker.log",
+      "sha256": "6492c236d6dd2b8ab7cf9def341cf28f9598d4a026d4df01522f3119f8992644"
     },
     {
-      "name": "profiles-qualified/42/native-ableton-workflows.log",
-      "sha256": "04c8091b6d85ab705e4f4a70c81663b98cda4103aeeecf0b5e714625d39112d6"
+      "name": "profiles-qualified/49/native-live-set-recovery.log",
+      "sha256": "aa3b6a5fba4e8608973cbb2fd25293857ffb8a3618bdf1540907467538922762"
     },
     {
-      "name": "profiles-qualified/42/native-producer-library.log",
-      "sha256": "bece595e91b6c4d8babad5707883f2e3578e58b026d7b56518d0fa16ddec43d8"
+      "name": "recovery/private-live-set-49/receipt.json",
+      "sha256": "21a274c822af692d7adf4fe9254cad8910a15daa04081a9e4f6c73483036465d"
     },
     {
-      "name": "profiles-qualified/42/native-plugin-graph.log",
-      "sha256": "cb3fb96e225ead59ae21b081d8826337328be6640795c49b8b26608c47e155d1"
+      "name": "release-qualified/14/provenance.json",
+      "sha256": "fed0305634751a6f2e82bcb827e13561a42bc712604ebd33a82e22bb67c5e14d"
     },
     {
-      "name": "profiles-qualified/42/native-dj-worker.log",
-      "sha256": "90dcbbc3da9f1893ec7a8dd491d9ff3c70df2e1ba24341df588fa58304a2281f"
+      "name": "release-qualified/14/package-proof.json",
+      "sha256": "99d6c214e475c599a8e238d37510ce2a7cf7b7aaf5262111dfe1082e2de41f5b"
     },
     {
-      "name": "profiles-qualified/42/native-bridge-tests-driver.log",
-      "sha256": "fe7c17ddab89aa082ff17369b4cb5ff42faaeba1e92109b7061eebe72aa59122"
+      "name": "native-ui/48-package-install.json",
+      "sha256": "ab14476077fdd18d382dd6710ab69f524a7a4526ceee5b5a9bd69122130684af"
     },
     {
-      "name": "profiles-qualified/41/ns7-cpu.log",
-      "sha256": "a40b28a86eb0c8200931d5b49409627b3672e55571711a97329d986ebbd9d7c1"
+      "name": "native-ui/48-owner-clock-restored-status.json",
+      "sha256": "66cd0f17050f10f4490c92bd36bbc7344c49d788baea4f5436c68ab0adb3020d"
     },
     {
-      "name": "profiles-qualified/41/cpu-kernel.log",
-      "sha256": "6ff962d95b75a7395437a786cfaed13ee993e3abfd7d76d87caeea43c544d31c"
+      "name": "ableton-private/side-three-live12-omatainer-comparison-48.json",
+      "sha256": "54d941203e74b25cb5d66ed7396fe73661a19817d992d219f9e0c552a1031618"
     },
     {
-      "name": "cpu-budget/native-41/ns7-cpu-recovery.json",
-      "sha256": "b01bec025a1cd786b434c7de7d6a7c72e24c04a50ee95eb37ecf478d52b32584"
+      "name": "ableton-private/48-editable-archive-restoration-receipt.json",
+      "sha256": "af4e9f55075c86071b4c919b4a4fcc3fc14e6e892bb04b8baf07f94eea596782"
     },
     {
-      "name": "loopback/ns7-peavey-41/ns7-peavey-pairs.json",
-      "sha256": "945b4dbf29e22240489139c39cdfc13affbb85cac66f58c05639c22962e9c5bd"
+      "name": "profiles-qualified/48/ns7-headphones.log",
+      "sha256": "c1617a35ca02f241bc89250e0b8450c2a29b93585d3889b8de97c9a4ec60d14c"
     },
     {
-      "name": "native-ui/combined-42-install-restoration-receipt.json",
-      "sha256": "680749eaf469b7a68e0d78cf55e72bef39b15e84579045f7f4128abe5dbdb3f7"
+      "name": "loopback/ns7-headphones-48/ns7-peavey-pairs.json",
+      "sha256": "98315825b23a49ffd9dae73c4452d7ae63a7538f0f17b94a12281aa1ae4464c5"
     },
     {
-      "name": "release-qualified/10/package-proof.json",
-      "sha256": "b603f3d1e63dd2be65b66eb043cb557ffbc2508985788938ef746d61216dc73a"
+      "name": "profiles-qualified/44/ns7-peavey.log",
+      "sha256": "a3fb2c2aa8dc07de53da4ce8b62052e38464dc72baa817d19094ec67ad9a8cef"
     },
     {
-      "name": "t/v42/volume-remount.json",
-      "sha256": "fedbb1535455eaf8e4bd65c73df498bfbc26fcdc960b1a9fe5eb21fb846c7dd5"
+      "name": "loopback/ns7-peavey-44/ns7-peavey-pairs.json",
+      "sha256": "e8fb87d031272c6617661f10e61bf71e1da49455aa009f69ad03520b5bab2db0"
     },
     {
-      "name": "t/v42/driver.json",
-      "sha256": "d4a096db8084dfffb612848b5e02aff41e31ee5e2c5672115a9f5ade8808d627"
+      "name": "combined-50-source-test-build.log",
+      "sha256": "b0054b205c2177cbf07f4ee9d49acfb8f00222fc1b44f5652cdbb3797365ad25"
     },
     {
-      "name": "t/n42bridge-tests/report.json",
-      "sha256": "1159b7f16de54bd535f61761b738624c7092232ce2d9e7f06fb042cbd980cc7b"
+      "name": "combined-50-source-test-build-retry.log",
+      "sha256": "1d26177c73242e64db70075c437457a7c6973ff380880e8134151fde3047eae3"
     },
     {
-      "name": "t/a42r/receipt.json",
-      "sha256": "19259888d7d7989035985e046ff49c354915fcd686393766ebb35e18b141a094"
+      "name": "combined-50-full-isolated.log",
+      "sha256": "13aa156e123886fa34e7dfe9928ef47faefe58601302f507c5cd41b9c1210560"
     },
     {
-      "name": "t/a42r/cleanup.json",
-      "sha256": "f1a44eb7e2d55ad40e4c5f7ce9b64c27083087a80eb1e211aa2ac2c75d3f6645"
+      "name": "profiles-qualified/50/carrier-analysis.log",
+      "sha256": "ee40840309b247d68793a8e2b15e5a700b9751c48211e7848310bc1f391b68a8"
     },
     {
-      "name": "t/a42r/native.log",
-      "sha256": "ad806870362bc00a42c82954bd60dee84da8560d6305b65b2a5d59491e5586d6"
+      "name": "profiles-qualified/50/midi-recovery-repeats.json",
+      "sha256": "2155550fe37a5e99f1382397acc2ab5bb4730255baf92c6fab77dc5d85435a5e"
     },
     {
-      "name": "t/a42d/receipt.json",
-      "sha256": "11d0350fec03a821e2aea5db7ed0d69a940a580cc80af2f241566cd285068ab9"
+      "name": "profiles-qualified/50/native-ns7-transition.log",
+      "sha256": "4ee725f3ede76b52496818ff6376f4d2595c9fd62790261d6563db0021e7194b"
     },
     {
-      "name": "t/a42d/cleanup.json",
-      "sha256": "b3a5e39e30006a83a505b074103c5abaa967157d443429d8e4de591c1c50a5b7"
+      "name": "native-transition-50/receipt.json",
+      "sha256": "190d67b6798677505769086cc672427b5d68cf409a5b9f4f61488e7e03fac7f2"
     },
     {
-      "name": "t/a42d/native.log",
-      "sha256": "a6044d84112c3ecf287984a914b53e6da8e45790ec43b7ad5dea8e5cb911442f"
+      "name": "native-ui/49-package-install.json",
+      "sha256": "fd992ebebc879649aa10db2e804280bb89cb2a1a48b328a4b0c7575cbf9f7c77"
     },
     {
-      "name": "t/a42c/receipt.json",
-      "sha256": "0a611c722489dd555545293be8a1f22a41d03d984be998a515308accf782cba9"
-    },
-    {
-      "name": "t/a42c/cleanup.json",
-      "sha256": "a9d0ab8b12beae7e0551acb66a30fdd73554f7ae7090af16a2f221c45cd98348"
-    },
-    {
-      "name": "t/a42c/native.log",
-      "sha256": "b5e204cb83bce709973873458f3172648f42b29fa6684355c0da6a1970d91794"
+      "name": "native-ui/49-owner-clock-restored-status.json",
+      "sha256": "9bded04b615d3efcea6892fbbee776e51550b3637d625ef075b4c48a2fd41031"
     }
   ]
 }

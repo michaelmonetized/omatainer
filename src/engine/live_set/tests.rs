@@ -201,3 +201,88 @@ fn loading_reservation_is_exclusive_and_safety_silences_a_committed_tail() {
     assert_eq!(output, [0.0; 512]);
     assert!(matches!(handle.retire(), Some(Err(Error::Protected(performance::Error::Recovery)))));
 }
+
+fn routed(value: f32, main: [u16; 2], extra: [u16; 2]) -> Prepared {
+    use audio::routing::model::*;
+    let mut prepared = constant(value);
+    let mut model = Model::default();
+    model.ports[0].channels = main.to_vec();
+    model.next_id = 3;
+    model.ports.push(Port { id: 2, alias: "Independent deck output".into(), direction: Direction::Output, channels: extra.to_vec() });
+    model.connections.push(Connection { source: Source { group: Group::Deck(0), tap: Tap::PostFx }, destination: Group::Output(2),
+        map: vec![ChannelMap { source: 0, destination: 0, gain: 0.35 }, ChannelMap { source: 1, destination: 1, gain: 0.65 }] });
+    prepared.rt.routing = Some(Box::new(audio::routing::prepared::Prepared::new(Arc::new(model), &prepared.rt.session).unwrap()));
+    prepared
+}
+
+#[test]
+fn routed_fades_match_all_physical_outputs_and_cue_cannot_replace_a_program_alias() {
+    for (channels, main, extra, cue) in [(6, [0, 1], [4, 5], true), (6, [4, 5], [2, 3], false), (64, [60, 61], [62, 63], true)] {
+        let mut live = routed(0.2, main, extra).rt;
+        let mut outgoing = routed(0.2, main, extra).rt;
+        let incoming = routed(-0.3, main, extra);
+        let namespace = incoming.rt.session.namespace;
+        let mut next = routed(-0.3, main, extra).rt;
+        let handle = live.project.live_sets();
+        let control = handle.stage(handle.reserve().unwrap(), incoming, live.session.namespace, Arc::new(AtomicBool::new(false))).unwrap();
+        let mut output = vec![0.0; channels * 128];
+        live.process_interleaved(&mut output, channels);
+        outgoing.process_interleaved(&mut vec![0.0; channels * 128], channels);
+        assert!(control.ready());
+        assert_eq!(control.cue_available.load(Ordering::Acquire), cue);
+        control.preview.store(true, Ordering::Release);
+        for _ in 0..16 {
+            let mut old = vec![0.0; channels * 128];
+            outgoing.process_interleaved(&mut old, channels);
+            if cue { next.process_interleaved(&mut vec![0.0; channels * 128], channels); }
+            assert_eq!(test_alloc::measure(|| live.process_interleaved(&mut output, channels)), test_alloc::Counts::default());
+            for (actual, expected) in output.chunks_exact(channels).zip(old.chunks_exact(channels)) {
+                for channel in 0..channels { if !cue || ![2, 3].contains(&channel) { assert_eq!(actual[channel], expected[channel]); } }
+                if cue { assert!(actual[2].is_finite() && actual[3].is_finite()); }
+            }
+        }
+        control.transition(&live.project, live.project.revision(), 0.02).unwrap();
+        let mut elapsed = 0;
+        for _ in 0..9 {
+            let mut old = vec![0.0; channels * 128];
+            let mut expected_next = vec![0.0; channels * 128];
+            outgoing.process_interleaved(&mut old, channels);
+            next.process_interleaved(&mut expected_next, channels);
+            assert_eq!(test_alloc::measure(|| live.process_interleaved(&mut output, channels)), test_alloc::Counts::default());
+            for ((actual, old), next) in output.chunks_exact(channels).zip(old.chunks_exact(channels)).zip(expected_next.chunks_exact(channels)) {
+                let gain = (elapsed as f64 / 959.0).min(1.0) as f32;
+                for channel in 0..channels { assert!((actual[channel] - (old[channel] * (1.0 - gain) + next[channel] * gain)).abs() < 1e-6, "routed channel {channel}, frame {elapsed}"); }
+                elapsed += 1;
+            }
+        }
+        assert_eq!(live.session.namespace, namespace);
+        assert!(handle.applied().is_some());
+        assert!(matches!(handle.retire(), Some(Ok(()))));
+    }
+}
+
+#[test]
+fn physical_input_preload_refusal_and_an_active_input_preserve_the_current_routes() {
+    let with_input = || {
+        use audio::routing::model::*;
+        let mut prepared = constant(-0.3);
+        let mut model = Model::default();
+        model.next_id = 3;
+        model.ports.push(Port { id: 2, alias: "Live physical input".into(), direction: Direction::Input, channels: vec![0, 1] });
+        prepared.rt.routing = Some(Box::new(audio::routing::prepared::Prepared::new(Arc::new(model), &prepared.rt.session).unwrap()));
+        prepared
+    };
+    let mut current = constant(0.2).rt;
+    let owner = current.project.live_sets();
+    let namespace = current.session.namespace;
+    assert!(owner.stage(owner.reserve().unwrap(), with_input(), namespace, Arc::new(AtomicBool::new(false))).err().unwrap().contains("physical input"));
+    assert!(!owner.busy());
+    current = with_input().rt;
+    let namespace = current.session.namespace;
+    let owner = current.project.live_sets();
+    let _control = owner.stage(owner.reserve().unwrap(), constant(0.2), namespace, Arc::new(AtomicBool::new(false))).unwrap();
+    assert_eq!(test_alloc::measure(|| current.process(&mut [0.0; 256])), test_alloc::Counts::default());
+    assert_eq!(current.session.namespace, namespace);
+    assert!(owner.applied().is_none());
+    assert!(matches!(owner.retire(), Some(Err(Error::Invalid(reason))) if reason.contains("physical input")));
+}
