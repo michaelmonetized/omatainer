@@ -1,0 +1,561 @@
+{
+  "schema": 1,
+  "status": "physical_cpu_recovery_pass_full_qualification_in_progress",
+  "qualifiedSourceRevision": "a85ef28ef95010cae2f5b7d4b31a25f6b9d8fdb9",
+  "testExecutableSha256": "df0513cb638cc588e884f877c5dead3c91bb7d45368c80ee944431a54aeae08d",
+  "crash": {
+    "pid": 151927,
+    "tid": 151974,
+    "thread": "cpal_alsa_out",
+    "signal": 24,
+    "signalName": "XCPU",
+    "signalCode": 128,
+    "timestamp": 1791451889000000,
+    "scope": "Original coredump metadata and embedded stack were inspected. No core was extracted; the precise cause of the long callback before CPU exhaustion remains unestablished."
+  },
+  "software": {
+    "callbackRegistration": "pass; 4096 steady checks, bounded slots, no allocations or deallocations",
+    "recordingSaveReopenAndInputAcknowledgment": "pass; recorded note and routes retained",
+    "visibleCpuCounter": "pass; actual rendered audio-status labels",
+    "unrelatedSignals": [
+      {
+        "scenario": "previous",
+        "status": 0,
+        "signal": null,
+        "pass": true
+      },
+      {
+        "scenario": "default",
+        "status": null,
+        "signal": "SIGXCPU",
+        "pass": true
+      },
+      {
+        "scenario": "foreign",
+        "status": null,
+        "signal": "SIGXCPU",
+        "pass": true
+      }
+    ],
+    "kernelHarness": {
+      "status": "pass",
+      "scenarios": [
+        "native_kernel_budget",
+        "native_kernel_budget_signal_blocked_on_owned_thread",
+        "previous_handler",
+        "default_user_signal_termination",
+        "foreign_realtime_thread_termination"
+      ],
+      "measurements": [
+        {
+          "cpu_ns_after_promotion_return": 6460834,
+          "guard_exceeded": true,
+          "hard_limit_us": 200000,
+          "initial_policy": 2,
+          "kernel_raised_soft_limit_us": 1005804,
+          "physical_devices_opened": false,
+          "pid": 824421,
+          "recovered_policy": 0,
+          "reset_on_fork_preserved": true,
+          "signal_blocked_on_owned_thread": false,
+          "signal_tid": 824426,
+          "soft_limit_us": 5804,
+          "tid": 824426
+        },
+        {
+          "cpu_ns_after_promotion_return": 8457624,
+          "guard_exceeded": true,
+          "hard_limit_us": 200000,
+          "initial_policy": 2,
+          "kernel_raised_soft_limit_us": 1005804,
+          "physical_devices_opened": false,
+          "pid": 824454,
+          "recovered_policy": 0,
+          "reset_on_fork_preserved": true,
+          "signal_blocked_on_owned_thread": true,
+          "signal_tid": 824454,
+          "soft_limit_us": 5804,
+          "tid": 824456
+        }
+      ]
+    },
+    "retainedKernelHarnessFailure": "First corrected app-kernel fixture retained a failed assertion comparing post-promotion CPU nanoseconds with Linux tick-based watchdog time. Recovery completed; the fixture is being corrected to assert the actual kernel-raised limit. No full-harness pass is claimed.",
+    "fullOrdinarySuite": {
+      "passed": 2268,
+      "failed": 0,
+      "ignored": 78,
+      "filteredOut": 0,
+      "seconds": 786.03,
+      "testThreadStackBytes": 67108864,
+      "testThreads": 1,
+      "workerSourceRevision": "1f3d4a3bfb7211a65f1d2978c5743f63662d4115",
+      "logSha256": "05fe3d3ebd07a75c70c8b22fba95f056babc806b927d2eb416b0124a9f7e6779"
+    }
+  },
+  "physicalNs7": {
+    "analog_listening": false,
+    "audio": {
+      "backend_errors": 0,
+      "callbacks": 11,
+      "cpu_budget_exhaustions": 1,
+      "deadline_overruns": 1,
+      "device_lost": 0,
+      "dropped_buffers": null,
+      "last_callback": {
+        "budget_ns": 5804988,
+        "channels": 4,
+        "elapsed_ns": 271836,
+        "frames": 256,
+        "output_latency_ns": 5804989,
+        "overrun_ns": 0,
+        "render_cpu_ns": 261500,
+        "sample_rate": 44100
+      },
+      "max_elapsed_ns": 35947817,
+      "max_overrun_ns": 30142829,
+      "realtime_denied": 0,
+      "xruns": 1
+    },
+    "device": "hw:CARD=NS7,DEV=0",
+    "injected_callback_cpu_ms": 30,
+    "input_acknowledgment_required": true,
+    "master": 0,
+    "playing_after_reconnect": false,
+    "reconnect_required": true,
+    "recorded_notes": 1,
+    "recovery_message": "Audio output exceeded its real-time CPU limit and was stopped. Your project and recorded notes are retained. Reconnect the previous output or preview and confirm another output. Release keys, pads and platters before resuming. Save and Close remain available.",
+    "reopened_notes": 1
+  },
+  "loopback": {
+    "status": "refused",
+    "probeLevelDbfs": -48,
+    "masterOutputDetected": [
+      false,
+      false
+    ],
+    "errors": [
+      {
+        "error": "No measurement: a reliable loopback probe was not found",
+        "input_channel": 0,
+        "output_channel": 0,
+        "status": "refused"
+      },
+      {
+        "error": "No measurement: a reliable loopback probe was not found",
+        "input_channel": 1,
+        "output_channel": 0,
+        "status": "refused"
+      },
+      {
+        "error": "No measurement: a reliable loopback probe was not found",
+        "input_channel": 0,
+        "output_channel": 1,
+        "status": "refused"
+      },
+      {
+        "error": "No measurement: loopback is weak, noisy or ambiguous",
+        "input_channel": 1,
+        "output_channel": 1,
+        "status": "refused"
+      }
+    ]
+  },
+  "preservedSession": {
+    "bytes": 162883174,
+    "sha256": "000168ee86d4dc2923288fb546a1ec565df0347384238a11949baa87e053a090",
+    "currentGuiSourceRevision": "399ed43d3d8792cb0e4e65a0a0148270d7e0c53d",
+    "currentGuiInvocation": "853f497f3aa84348b4a21aa388857483",
+    "restored": true,
+    "deckPlayback": false,
+    "globalClockPlaying": true
+  },
+  "evidence": [
+    {
+      "name": "profiles-qualified/38/cpu-guard.log",
+      "sha256": "793ed9179ba23d7e6d1d176c0499a5df84ae46c733a7616e9030cc57ba948690"
+    },
+    {
+      "name": "profiles-qualified/38/cpu-owner.log",
+      "sha256": "ba9b14cc1240b310410d3ea46ecb08b796d5d5b705b1a07bc76c580a257cf713"
+    },
+    {
+      "name": "profiles-qualified/38/cpu-ui.log",
+      "sha256": "2cfc7199ef4daa36ac7e5eea7f311dd5fa6fb50c83b8f53a9ff879ea4e62df65"
+    },
+    {
+      "name": "profiles-qualified/38/cpu-ns7.log",
+      "sha256": "8a8414c4b878e1e96667fe20a22a9e01b89492ceb271eaadbd6af13521147829"
+    },
+    {
+      "name": "profiles-qualified/38/cpu-kernel.log",
+      "sha256": "f9c7b77da18f9134db8168206fb9b950e6049d7d88cbd348793361be220e6b45"
+    },
+    {
+      "name": "cpu-budget/ns7-38/ns7-cpu-recovery.json",
+      "sha256": "d36593f184ddaa68ea65eb149dd111fe183464bca96ccf9c3994d2a095839134"
+    },
+    {
+      "name": "cpu-budget/kernel-38/manual-unrelated-signals.json",
+      "sha256": "1a070acc3b9d3afa8862db7492d5099b404847209f1df405ff7a737b1361e00f"
+    },
+    {
+      "name": "loopback/ns7-peavey-38/ns7-peavey-pairs.json",
+      "sha256": "b03b80d3ead59181e72dc84b08183131beef3c3116d2a94e5b5b3bfc97f7780d"
+    },
+    {
+      "name": "native-ui/post-ns7-restored-status.json",
+      "sha256": "cc3ec1a9a0502d875f2488dfd642db1dd71ca326e693b6b91ace3807d0b2e8aa"
+    },
+    {
+      "name": "native-ui/post-ns7-final-status.json",
+      "sha256": "10c9e2cd5153a652bc62e7ac05f0e9520be335ceb73543109f24bda936318c2b"
+    },
+    {
+      "name": "profiles-qualified/39/cpu-kernel.log",
+      "sha256": "521d3a1ca7b8951018fa630d87ed935066184daa7e4970720bef5a90ec932275"
+    },
+    {
+      "name": "cpu-budget/kernel-39/kernel-budget.json",
+      "sha256": "6192838b9ac4a3099f738ff3e3c9b44e3bd15e748813b31e287d389130308919"
+    },
+    {
+      "name": "cpu-budget/kernel-39/kernel-budget-blocked.json",
+      "sha256": "6438ae9485f09d4fd6d5fe2ecf53b131122ba9a5a7201bae04ffe26886b98998"
+    },
+    {
+      "name": "release-qualified/8/package-proof.json",
+      "sha256": "6984b10eea10a2258881d5791d35621cd0db570bf6f5b1ca8245df880b6659da"
+    },
+    {
+      "name": "combined-release-8-node-tests.log",
+      "sha256": "1a142164ff1c4193f8695a6a4f189e458e41dc8e621cfcea6c652748a79dac4a"
+    }
+  ],
+  "boundaries": {
+    "installedCpuFix": false,
+    "completeOrdinarySuite": true,
+    "physicalHeadphoneCapture": false,
+    "positiveMasterLoopback": false,
+    "analogListening": false,
+    "extendedStagePerformance": false,
+    "sourceIssuesClosed": false
+  },
+  "correctedSourceRevision": "1f3d4a3bfb7211a65f1d2978c5743f63662d4115",
+  "correctedTestExecutableSha256": "562eff0e5dd5bdafe1aaede434dae2a2814d6d315d4130fc5c41418f6ca0a4a0",
+  "physicalNs7CoreMatchesCorrectedRelease": true,
+  "package": {
+    "manifestSha256": "32e170839f765414ef9c86e06fac0ebaa2a92591d08b9bd8d3737926620a9f02",
+    "manifest": {
+      "schema": 1,
+      "application": "omatainer",
+      "version": "0.1.0+1f3d4a3bfb72",
+      "revision": "1f3d4a3bfb7211a65f1d2978c5743f63662d4115",
+      "platform": {
+        "os": "linux",
+        "architecture": "arm64",
+        "glibc": "2.43",
+        "installer": "Node.js 22 or newer"
+      },
+      "migration": {
+        "preferences": 25,
+        "project": 34,
+        "policy": "Installation preserves preferences, projects, libraries and plugins. Opening documents may migrate their format; retain document backups when rolling back.",
+        "automatic": false
+      },
+      "files": {
+        "omatainer": {
+          "sha256": "d6e35f03bf9aa23deb291a5e2de266ecff7121e0add8b792f93f6d2eb7fe2d15",
+          "bytes": 46742328
+        },
+        "update.mjs": {
+          "sha256": "47bb5696ceb1f317bcdca4de8b05a6394fb50592113b52b947f23e33fb7c7aea",
+          "bytes": 16582
+        },
+        "LICENSE": {
+          "sha256": "63b79db05f159e96dc02773307e5911c95bb851fd3adceda0d977e1adf79aa1e",
+          "bytes": 1066
+        },
+        "licenses.json": {
+          "sha256": "4412094ca42055bc57d5a10fac0757a8c6017b4b72c5eca1637a0d9ec4989eaf",
+          "bytes": 671393
+        },
+        "notices.json": {
+          "sha256": "dd7498b28934a242c10d680d4210331d5251dc1b3f75a576f6b0b380324febc6",
+          "bytes": 2387811
+        },
+        "source/vendor/egui-winit/.cargo_vcs_info.json": {
+          "sha256": "7494c24c1baaec2d440e20d7541946734696d6baaf49ae498bd45a9127473928",
+          "bytes": 111
+        },
+        "source/vendor/egui-winit/Cargo.lock": {
+          "sha256": "92c309f835ffbf6c529c53836ddf05d14ab554eccba57b32f06aa7032d9c9b99",
+          "bytes": 80185
+        },
+        "source/vendor/egui-winit/Cargo.toml": {
+          "sha256": "33b510b0fe4cc4cb80835cc36f16b920c22300d86cc24de0a969098a3f043f28",
+          "bytes": 8536
+        },
+        "source/vendor/egui-winit/Cargo.toml.orig": {
+          "sha256": "9d000872d4087c68562632ff9d8d2adcf16c502b73b9cbf8ed1769e16ecd10e0",
+          "bytes": 3601
+        },
+        "source/vendor/egui-winit/LICENSE": {
+          "sha256": "0c8aa20063e510da7be18f434655a4fe76c72054c7f936d4b06267603557e9af",
+          "bytes": 11944
+        },
+        "source/vendor/egui-winit/PATCHES.md": {
+          "sha256": "7ab275f9cab4521890bf57aadbbf239e79e8fc4cf06116ef535ff4e5cbfe074e",
+          "bytes": 1079
+        },
+        "source/vendor/egui-winit/README.md": {
+          "sha256": "7a8ccbb9fbddf24243446291b8e5a4e6bddcb6b565602c9561581926d5ae362b",
+          "bytes": 571
+        },
+        "source/vendor/egui-winit/UPSTREAM.json": {
+          "sha256": "68dac19356ffd93234fd97a608517272a9a40907ceef820c2951ca2315f178ad",
+          "bytes": 987
+        },
+        "source/vendor/egui-winit/src/clipboard.rs": {
+          "sha256": "d3b33a29a741bf4fdedb6bdc2d394b3cfb6f129da35cf9a3deaa247530098cef",
+          "bytes": 5496
+        },
+        "source/vendor/egui-winit/src/lib.rs": {
+          "sha256": "d8d3a6054d1884ca519c45fa7437700a04b207fed4589115dac30bfc4bee89ba",
+          "bytes": 79585
+        },
+        "source/vendor/egui-winit/src/window_settings.rs": {
+          "sha256": "dd932be8e17a69b222015ec1a25cb4e163aa44a204a41760c7b0f53418ef63de",
+          "bytes": 7817
+        },
+        "source/vendor/symphonia-format-riff/.cargo_vcs_info.json": {
+          "sha256": "f0cbb62e0173cc0cb6051169ac939dc7840696b1a142d50ebfa0dc41b51a81e6",
+          "bytes": 115
+        },
+        "source/vendor/symphonia-format-riff/Cargo.toml": {
+          "sha256": "1f2201173493afd34d67c336bf36f8a438004bb141bd4576ca2491c0626e6610",
+          "bytes": 1472
+        },
+        "source/vendor/symphonia-format-riff/Cargo.toml.orig": {
+          "sha256": "e938331d1178b7ca22fc894e9265ca14652bb5c392c07dc2edcf5ac47e55e05b",
+          "bytes": 789
+        },
+        "source/vendor/symphonia-format-riff/LICENSE": {
+          "sha256": "c76f740d1521b9bed9ca7a04ad526c310493c62621b1341d623b431736533b30",
+          "bytes": 16725
+        },
+        "source/vendor/symphonia-format-riff/PATCHES.md": {
+          "sha256": "397a7979db699eab591faa2b142f6f68c51ddb1a8020ac09bdf6f1c120219954",
+          "bytes": 1425
+        },
+        "source/vendor/symphonia-format-riff/README.md": {
+          "sha256": "6de8ce7c4832e7a33036a22449bb965f4d9fe78e93a963fbd188f365129d7232",
+          "bytes": 1042
+        },
+        "source/vendor/symphonia-format-riff/UPSTREAM.json": {
+          "sha256": "1c8f6e9e9ccc29d217afdb0ce5238133b467ed061281aaf084dbbf2c28c78b84",
+          "bytes": 1232
+        },
+        "source/vendor/symphonia-format-riff/src/aiff/chunks.rs": {
+          "sha256": "43518ce7448268f924a986861f834982a597c15e768b553a3288f59671a1d7a5",
+          "bytes": 11941
+        },
+        "source/vendor/symphonia-format-riff/src/aiff/mod.rs": {
+          "sha256": "3275aeaa4dac1adda742d23817804d773ae7348d64b66b047cce9c8b8b0ecd06",
+          "bytes": 9809
+        },
+        "source/vendor/symphonia-format-riff/src/common.rs": {
+          "sha256": "0f4ca3494b225e604acad3df8f5c1c55f70e3fc1b4e8d056121d4daf81f2da38",
+          "bytes": 13612
+        },
+        "source/vendor/symphonia-format-riff/src/lib.rs": {
+          "sha256": "229f2ec28d7d020a7d1e1ad9cfa0a3c8145127a14d33b39028e5cfcd5f96bfb8",
+          "bytes": 774
+        },
+        "source/vendor/symphonia-format-riff/src/wave/chunks.rs": {
+          "sha256": "45f6db6456300e02b35e5cc3cb44eedcb5c44f38db1f2b9723c48aebcb963b7d",
+          "bytes": 23947
+        },
+        "source/vendor/symphonia-format-riff/src/wave/mod.rs": {
+          "sha256": "abdfe224d9c30e9b73fd088dcc640f1dee07aa60c7c828fa79ac5107653916fd",
+          "bytes": 9334
+        },
+        "source/vendor/vst3-host/.cargo_vcs_info.json": {
+          "sha256": "737b52ce29e201e3cc14bab20bc449c6e4a3238c78320391a14d8bc1cf8a9657",
+          "bytes": 103
+        },
+        "source/vendor/vst3-host/CHANGELOG.md": {
+          "sha256": "5375dbfae069330fef7d9229b57e53b7d9f86a1eecee8dd9432e5cec5f5bc667",
+          "bytes": 4450
+        },
+        "source/vendor/vst3-host/Cargo.lock": {
+          "sha256": "8fff93ae955c9d77db19aa19dc677a91cf1fe5aa0be8ed2b933dcb1af7bc7cbc",
+          "bytes": 124905
+        },
+        "source/vendor/vst3-host/Cargo.toml": {
+          "sha256": "9d58457c3a05e1331fb76692fcb599b9c71b5e250a8f643047bfc33837b226a2",
+          "bytes": 3433
+        },
+        "source/vendor/vst3-host/Cargo.toml.orig": {
+          "sha256": "ba68c845370574dd9d90c92046788d7cd9a2409c77040d63d72bb0c8dd76b25e",
+          "bytes": 4291
+        },
+        "source/vendor/vst3-host/LICENSE": {
+          "sha256": "a65a537295910b776a8b2edb2e7410c3b0e975ca6388994e032c4d1842b4952d",
+          "bytes": 1069
+        },
+        "source/vendor/vst3-host/PATCHES.md": {
+          "sha256": "2ce7ba4b3320915e1e957a18ab325a39b6b9e49c1f90906d80df1f2ce5158141",
+          "bytes": 896
+        },
+        "source/vendor/vst3-host/README.md": {
+          "sha256": "a3b3f383c9b7af8d2a64c3c0d7ff7d4759722e751c77488daec3a89d9dddffcc",
+          "bytes": 9849
+        },
+        "source/vendor/vst3-host/UPSTREAM.json": {
+          "sha256": "097189bbc87141d7b2e2dd105eb86446778661d72264f273bf88467554558df5",
+          "bytes": 4248
+        },
+        "source/vendor/vst3-host/run_plugin_gui.sh": {
+          "sha256": "f59d98fd5d4e954d37352d23a1872aa6fe37954b64968734c4c3a8462a76cdcf",
+          "bytes": 136
+        },
+        "source/vendor/vst3-host/src/audio.rs": {
+          "sha256": "a3f78a9d6190aca7f93c898270665c569b87ce05d2f47c6a1c20f58b461e826c",
+          "bytes": 40415
+        },
+        "source/vendor/vst3-host/src/backends/cpal_backend.rs": {
+          "sha256": "81ac2fb61dc337957e168c0927bd382ebb937b4d83ba33b18e1aca49b798361e",
+          "bytes": 12734
+        },
+        "source/vendor/vst3-host/src/backends/mod.rs": {
+          "sha256": "5d0bbb62d5bfeb1ec8fe4e097fed6ae1de62fb2f394092a1107978830f1c419f",
+          "bytes": 159
+        },
+        "source/vendor/vst3-host/src/bin/vst3-host-helper.rs": {
+          "sha256": "04e7ce1c38187857d1f813fa07f1b6fa5fca599acf310118db63d8af59ca1481",
+          "bytes": 33889
+        },
+        "source/vendor/vst3-host/src/bin/vst3-host-probe.rs": {
+          "sha256": "9e2cc17f41aabbd8302fe171e2211c18bba4e0698de6aaee48abcfb101d1b110",
+          "bytes": 2118
+        },
+        "source/vendor/vst3-host/src/discovery.rs": {
+          "sha256": "568bab9374fd746e3ff983bd3364c1a64a3ec19cc5c77967c6bfcf01df51efec",
+          "bytes": 52766
+        },
+        "source/vendor/vst3-host/src/embed.rs": {
+          "sha256": "00cf4880ff976ad7ebe4491cf48e944986cc27a23148017922dc9b04390150f6",
+          "bytes": 25333
+        },
+        "source/vendor/vst3-host/src/error.rs": {
+          "sha256": "eeb7ac5dba88dce6743f7df46e3076511112f5107ed72305ee022c6f8ebe2596",
+          "bytes": 1931
+        },
+        "source/vendor/vst3-host/src/host.rs": {
+          "sha256": "872989605bfe462453a6928ce807078034f2692268754c177060c816b3fbf00a",
+          "bytes": 33171
+        },
+        "source/vendor/vst3-host/src/internal/com_implementations.rs": {
+          "sha256": "aa97b36cd66f95eb858b0bc68afbabdcaa6b3da411776c39acf180c0be592c9f",
+          "bytes": 145180
+        },
+        "source/vendor/vst3-host/src/internal/data_exchange.rs": {
+          "sha256": "a3312da17e69533edcbe8cf28c1df55d4f93e5fc31cddd1d4ebea95d59bf1423",
+          "bytes": 20897
+        },
+        "source/vendor/vst3-host/src/internal/denormal.rs": {
+          "sha256": "3a30c5e0067d32dab0ef8e5f49f9bac195e635c86cd83e265b3ccbdc4e397ab2",
+          "bytes": 4595
+        },
+        "source/vendor/vst3-host/src/internal/isolated_plugin_impl.rs": {
+          "sha256": "1faf76aff93a109c08479c9a0d81c56b7c89cc9978596b49cc9830a1acee66e8",
+          "bytes": 49281
+        },
+        "source/vendor/vst3-host/src/internal/mod.rs": {
+          "sha256": "0304738316f40839b650a1751a9882fb2e0b68de879d61a79326883935d244b5",
+          "bytes": 299
+        },
+        "source/vendor/vst3-host/src/internal/module_info.rs": {
+          "sha256": "2c837fb62c8582f45f72aafa0d54a20848008e871a72d004f1e640d0e91d4ef3",
+          "bytes": 37650
+        },
+        "source/vendor/vst3-host/src/internal/module_loader/linux.rs": {
+          "sha256": "97a1f7e293f39fa61cebc38fb07df3ab3477f542b04303a4c01109a621bb1eab",
+          "bytes": 7488
+        },
+        "source/vendor/vst3-host/src/internal/module_loader/macos.rs": {
+          "sha256": "72eb4dbd44ba420dff1fa8197d6538415794b9a598cb05dff1a7f2cf033ca16b",
+          "bytes": 15324
+        },
+        "source/vendor/vst3-host/src/internal/module_loader/mod.rs": {
+          "sha256": "d7f0924f20602757c0e546ed6ac375819358c6ed4fecd6b52f38c4a92d80dd07",
+          "bytes": 10741
+        },
+        "source/vendor/vst3-host/src/internal/module_loader/private_namespace.rs": {
+          "sha256": "8eeda22b33aa1cca2aac3a361786572079371dd9252ddd8c2720fc991d47b0a0",
+          "bytes": 17828
+        },
+        "source/vendor/vst3-host/src/internal/module_loader/windows.rs": {
+          "sha256": "1bc518762553ae6c012d4f38f9b864d9105515d15c208635d7c72556580a9844",
+          "bytes": 7877
+        },
+        "source/vendor/vst3-host/src/internal/plugin_impl.rs": {
+          "sha256": "60add58bdd26914acb3da94ae4d7e1af625c0ee07a5ae22a0593114739eab3b5",
+          "bytes": 226653
+        },
+        "source/vendor/vst3-host/src/internal/utils.rs": {
+          "sha256": "3619b511f1a2ac5d48a7f954bdd4d721627008a831130720f7d058b883cd2e19",
+          "bytes": 7399
+        },
+        "source/vendor/vst3-host/src/lib.rs": {
+          "sha256": "5ce1016d14ccdccf3d92d05999a270ca8531f996b2e4ff77bbad415911b9755c",
+          "bytes": 6346
+        },
+        "source/vendor/vst3-host/src/midi.rs": {
+          "sha256": "13bf1e7e6dbed088adbc742a6c36366bac1c9b116c9881be76cda692a1a7a06e",
+          "bytes": 34220
+        },
+        "source/vendor/vst3-host/src/midi_input.rs": {
+          "sha256": "00eb0c1be43c99bae187951991f0ebba1ee5d34eeae00a6d3588c4b244fe4c56",
+          "bytes": 7867
+        },
+        "source/vendor/vst3-host/src/parameters.rs": {
+          "sha256": "b48bc7daa017470411370d0d540d3dde10c0bb2aea22efd32e910706e95817ef",
+          "bytes": 17698
+        },
+        "source/vendor/vst3-host/src/playback.rs": {
+          "sha256": "8fa44b9d3f425630bb2061dc20d624f5d121356eacbb218cac815f2662670e33",
+          "bytes": 42435
+        },
+        "source/vendor/vst3-host/src/plugin.rs": {
+          "sha256": "4c47ea11a7d89160e56f00b3eb21c7cd94dade41bfb6c5896b7c4aedb129ca9a",
+          "bytes": 138448
+        },
+        "source/vendor/vst3-host/src/process_isolation.rs": {
+          "sha256": "a72ddbfffc1b6b873286fd5903e9983c92772a55fdfa17ed9fe818a94e962e42",
+          "bytes": 113549
+        },
+        "source/vendor/vst3-host/src/realtime.rs": {
+          "sha256": "538129d630954d15e1cb0b5469d99da202350370552fa0f985102f56b62ea7d6",
+          "bytes": 28169
+        },
+        "source/vendor/vst3-host/src/simple.rs": {
+          "sha256": "fe3879f15c2b3c9283c671d537b69436abf553935b6778f4726ae85e1f4f5978",
+          "bytes": 18130
+        },
+        "source/vendor/vst3-host/src/transport.rs": {
+          "sha256": "46285c2b3405cde078c15c49799f7a0d51fd4a719badbb9ecd5174fe64208d79",
+          "bytes": 14480
+        },
+        "source/vendor/vst3-host/src/window.rs": {
+          "sha256": "5f38ebba09c39c783ee13711281dedc5f4655e33a30007b4df4c0f057a5b5f74",
+          "bytes": 27710
+        }
+      }
+    }
+  },
+  "nodeChecks": {
+    "passed": 17,
+    "failed": 0
+  }
+}
