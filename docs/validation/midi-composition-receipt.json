@@ -3797,5 +3797,91 @@
       "baseRevision": "82d18858585f0ffc3b931db2ff5a6eb54bade5d5",
       "files": 945
     }
+  },
+  "releaseDeployment": {
+    "schema": 1,
+    "integratedQualification": {
+      "receipt": "docs/validation/midi-composition-receipt.json",
+      "compiledInventory": {
+        "path": "target/app-backlog/note-variation-eleventh-source.json",
+        "sha256": "b38c709c28e8f8093ada087cc049591824a6c754a0486e105f89e235813419c0",
+        "baseRevision": "82d18858585f0ffc3b931db2ff5a6eb54bade5d5",
+        "files": 945
+      },
+      "testBinary": {
+        "path": "target/app-backlog/qualification-bin/note-variation-tests-eleventh",
+        "sha256": "5cb226761fa77bbd44dafa011356bf86e1610007352f8dc8f1bc9f75eeae163e"
+      },
+      "full": {
+        "path": "target/app-backlog/note-variation-eleventh-full.log",
+        "sha256": "25d3e4a321a21ac8f1220fc9e1b3d4c97d74cb20f2c9deb34c9f7cb97e63046b",
+        "outcome": "ok",
+        "passed": 2233,
+        "failed": 0,
+        "ignored": 73,
+        "filtered": 0,
+        "seconds": 751.49
+      },
+      "nativeWorker": {
+        "path": "target/app-backlog/qualification-bin/note-variation-native-worker-eleventh",
+        "sha256": "7ec56c1ea997f64ac65395b88d050997c0559a6c23a4fbe6df8fb03ccbe45a74",
+        "bytes": 438706456
+      },
+      "nativeImportWorkflows": 12
+    },
+    "status": "ready_installation_deferred_active_app",
+    "package": {
+      "path": "/home/michael/Projects/omatainer-work/hardware-resurrection/target/app-backlog/release-midi-composition-qualified",
+      "manifestSha256": "6553ae11844fc7ef8debef48556ad9c4fb172aa5ca7c316f78ea548ca9a29efb",
+      "revision": "2b1a32d4a7674e5b15d3ee0d0a4c272ba866dffc",
+      "version": "0.1.0+2b1a32d4a767",
+      "executableSha256": "7d1b5e895e8ff3aae5e521e20edf82da486bfaf1c7a585a430fd2d36e6c2da64"
+    },
+    "installed": false,
+    "previousInstalledSha256": "463d40d467101a704ffffb6e18112a6854e7350c7829e1c041e490babdb8c2c9",
+    "installedExecutableSha256": "463d40d467101a704ffffb6e18112a6854e7350c7829e1c041e490babdb8c2c9",
+    "buildInfo": {
+      "arch": "aarch64",
+      "debug_assertions": false,
+      "os": "linux",
+      "pkg_version": "0.1.0",
+      "schema": 1
+    },
+    "applicationProcessesPreserved": [
+      {
+        "pid": 151927,
+        "executable": "/home/michael/.local/bin/omatainer",
+        "arguments": [
+          "/home/michael/.local/bin/omatainer",
+          "--empty-once"
+        ],
+        "sha256": "463d40d467101a704ffffb6e18112a6854e7350c7829e1c041e490babdb8c2c9"
+      },
+      {
+        "pid": 2273135,
+        "executable": "/home/michael/.local/bin/omatainer (deleted)",
+        "arguments": [
+          "/home/michael/.local/bin/omatainer",
+          "ctl",
+          "follow"
+        ],
+        "sha256": "3217e4bfce388cac60e0ad7bea4caf83ec0d323f6eb620d4bf3a04d2c09ed69d"
+      },
+      {
+        "pid": 933966,
+        "executable": "/home/michael/Projects/omatainer-work/producer-dj-completion/target/validation/combined-completion/release-qualified/2/omatainer",
+        "arguments": [
+          "/home/michael/Projects/omatainer-work/producer-dj-completion/target/validation/combined-completion/release-qualified/2/omatainer",
+          "--empty-once"
+        ],
+        "sha256": "463d40d467101a704ffffb6e18112a6854e7350c7829e1c041e490babdb8c2c9"
+      }
+    ],
+    "protectedSessionPreserved": {
+      "path": "/home/michael/Projects/omatainer-work/hardware-resurrection/target/hardware/apc-restart-20261006/session.omat",
+      "bytes": 162882871,
+      "sha256": "96e0b2495cdbdc549c324ecf8337fdef5590bdcbfe8916e4f014eb05d1ee827d"
+    },
+    "reason": "The default GUI is active. Replacement is deferred before changing any file; the verified package is ready for installation after the active app closes. No GUI, follower, capture, audio or MIDI connection was restarted or opened."
   }
 }
