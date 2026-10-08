@@ -2,7 +2,7 @@ use crate::{engine::session::{Id, Layout}, plugin_host::{self, Saved}};
 use serde::{Deserialize, Serialize};
 
 pub(crate) const MAX_PLUGINS: usize = 32;
-pub(crate) const MAX_PARAMETERS: usize = 128;
+pub(crate) const MAX_PARAMETERS: usize = crate::plugin_host::MAX_CONTROL_PARAMETERS;
 
 /// Bound the on-disk processor portion before admitting a graph.
 /// Takes validated instances; returns refusal when JSON state expansion would consume more than half the native metadata budget.

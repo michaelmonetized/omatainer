@@ -350,7 +350,7 @@ impl App {
         let mut render = false;
         let mut restore_render = false;
         let mut publish = false;
-        egui::Window::new("Import Ableton Live Set").id(egui::Id::new("ableton-migration")).open(&mut open).default_width(680.).show(ctx,|ui|{
+        egui::Window::new("Import Ableton Live Set").id(egui::Id::new("ableton-migration")).open(&mut open).default_width(680.).vscroll(true).show(ctx,|ui|{
             let panel=&mut self.ableton;
             if ui.button("Discover producer libraries").clicked(){panel.library.open=true;}
             ui.add_enabled_ui(enabled&&!panel.busy(),|ui|{

@@ -77,7 +77,7 @@ struct Shared {
     editor: AtomicU8,
     editor_open: AtomicBool,
     editor_busy: AtomicBool,
-    values: Vec<AtomicU64>,
+    values: Vec<(u32, AtomicU64)>,
     editor_error: Mutex<Option<String>>,
 }
 struct Snapshot {
@@ -164,7 +164,7 @@ impl Control {
     }
     /// Read an isolated processor's latest normalized control value.
     /// Takes a stable writable parameter ID; returns an atomic worker observation for the bounded generic editor.
-    pub fn value(&self,id:u32) -> Option<f64> { self.class.parameters.iter().filter(|p|!p.is_read_only).take(128).position(|p|p.id==id).and_then(|index|self.shared.values.get(index)).map(|value|f64::from_bits(value.load(Ordering::Acquire))) }
+    pub fn value(&self,id:u32) -> Option<f64> { self.shared.values.iter().find(|(parameter,_)| *parameter == id).map(|(_,value)|f64::from_bits(value.load(Ordering::Acquire))) }
     pub fn editing(&self) -> bool { self.editor_open() || self.shared.editor_busy.load(Ordering::Acquire) }
     pub fn editor_open(&self) -> bool { self.shared.editor_open.load(Ordering::Acquire) }
     pub fn editor_error(&self) -> Option<String> { self.shared.editor_error.lock().unwrap_or_else(|e|e.into_inner()).clone() }
@@ -248,7 +248,7 @@ impl Endpoint {
             editor: AtomicU8::new(0),
             editor_open: AtomicBool::new(false),
             editor_busy: AtomicBool::new(false),
-            values: class.parameters.iter().filter(|p|!p.is_read_only).take(128).map(|p|AtomicU64::new(p.value.to_bits())).collect(),
+            values: class.writable_parameters().map(|p|(p.id,AtomicU64::new(p.value.to_bits()))).collect(),
             editor_error: Mutex::new(None),
         });
         let (requests, rx) = rtrb::RingBuffer::new(POOL);
@@ -355,7 +355,7 @@ impl Endpoint {
         POOL * std::mem::size_of::<Packet>() + std::mem::size_of::<Self>() + std::mem::size_of::<Class>()
             + class.info.path.as_os_str().len() + class.info.name.capacity() + class.info.vendor.capacity() + class.info.version.capacity() + class.info.category.capacity() + class.info.uid.capacity()
             + (class.layout.inputs.capacity() + class.layout.outputs.capacity()) * std::mem::size_of::<vst3_host::AudioBusConfig>()
-            + self.control.shared.values.capacity() * std::mem::size_of::<AtomicU64>()
+            + self.control.shared.values.capacity() * std::mem::size_of::<(u32,AtomicU64)>()
             + class.parameters.capacity() * std::mem::size_of::<vst3_host::Parameter>()
             + class.parameters.iter().map(|p|p.name.capacity()+p.unit.capacity()).sum::<usize>()
     }
@@ -461,8 +461,8 @@ fn executable() -> Result<PathBuf, String> {
 /// Publish bounded writable parameter observations from the isolated processor.
 /// Takes qualified class IDs, shared scalar storage and worker values; rejects reordered, missing or invalid values before touching controls.
 fn publish_parameters(class:&Class,shared:&Shared,values:&[(u32,f64)]) -> Result<(),String> {
-    if values.len() != shared.values.len() || values.iter().zip(class.parameters.iter().filter(|p|!p.is_read_only).take(128)).any(|((id,value),p)|*id!=p.id || !value.is_finite() || !(0.0..=1.0).contains(value)) { return Err("Plugin writable parameters changed or returned invalid values; review a compatible replacement".into()); }
-    for (target,(_,value)) in shared.values.iter().zip(values) { target.store(value.to_bits(),Ordering::Release); }
+    if values.len() != shared.values.len() || values.iter().zip(class.writable_parameters()).any(|((id,value),p)|*id!=p.id || !value.is_finite() || !(0.0..=1.0).contains(value)) { return Err("Plugin writable parameters changed or returned invalid values; review a compatible replacement".into()); }
+    for ((_,target),(_,value)) in shared.values.iter().zip(values) { target.store(value.to_bits(),Ordering::Release); }
     Ok(())
 }
 fn owner(
