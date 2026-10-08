@@ -3334,5 +3334,79 @@
   },
   "physicalDevicesOpened": false,
   "osGuiOpened": false,
-  "limits": "Linux aarch64 software qualification uses actual egui/AccessKit buttons, durable native file I/O and independently compared playing PCM. The version-1 .omatfx format holds two units with bounded UTF-8 names, ordered slots, routes and parameters; it contains no audio media and is limited to 64 KiB of metadata. Sampler routes use stable project identities and foreign/deleted targets require explicit rebinding or removal. The sole recall policy is Reset after fade: exactly five milliseconds to dry, atomic replacement of both units with history retirement, then exactly five milliseconds back. Tails are not carried across the reset. Reviewed settings and project routes are rechecked in the renderer; stale requests preserve current controls. Files are never overwritten by Save new layout. These portable presets are separate from native project persistence and do not depend on proprietary Serato formats. No physical controller or stage acceptance is claimed; the independent app and session remain preserved and the software checklist remains open."
+  "limits": "Linux aarch64 software qualification uses actual egui/AccessKit buttons, durable native file I/O and independently compared playing PCM. The version-1 .omatfx format holds two units with bounded UTF-8 names, ordered slots, routes and parameters; it contains no audio media and is limited to 64 KiB of metadata. Sampler routes use stable project identities and foreign/deleted targets require explicit rebinding or removal. The sole recall policy is Reset after fade: exactly five milliseconds to dry, atomic replacement of both units with history retirement, then exactly five milliseconds back. Tails are not carried across the reset. Reviewed settings and project routes are rechecked in the renderer; stale requests preserve current controls. Files are never overwritten by Save new layout. These portable presets are separate from native project persistence and do not depend on proprietary Serato formats. No physical controller or stage acceptance is claimed; the independent app and session remain preserved and the software checklist remains open.",
+  "releaseDeployment": {
+    "schema": 1,
+    "integratedQualification": {
+      "receipt": "docs/validation/dj-fx-presets-receipt.json",
+      "frozenInventory": {
+        "path": "target/app-backlog/note-variation-nineteenth-source.json",
+        "sha256": "2272685c449340c4aac2fcea77a8e87732161a09309e408027e4ba6f982fb4ce",
+        "files": 969
+      },
+      "testBinary": {
+        "path": "target/app-backlog/qualification-bin/note-variation-tests-nineteenth",
+        "sha256": "c916466719626c7385f64e1b4e248c167cdb536f9547b54918f35264b2734268"
+      },
+      "full": {
+        "path": "target/app-backlog/note-variation-nineteenth-full.log",
+        "sha256": "1fdd0a4c4fcd047bc20d3419e22fc61e9c8cca93f6dc86f222de805bf99bfedb",
+        "passed": 2286,
+        "failed": 0,
+        "ignored": 75,
+        "filtered": 0,
+        "seconds": 743.75
+      },
+      "nativeWorker": {
+        "path": "target/app-backlog/qualification-bin/note-variation-native-worker-nineteenth",
+        "sha256": "23a49fe61b5fe00597960436d8804d085c2e8503091bdf6b0aa20dab6735fb89",
+        "bytes": 68977432
+      },
+      "nativeImportWorkflows": 13
+    },
+    "status": "ready_installation_deferred_active_app",
+    "package": {
+      "path": "/home/michael/Projects/omatainer-work/hardware-resurrection/target/app-backlog/release-dj-fx-presets-qualified",
+      "manifestSha256": "5fe2805db5e9b07eb2e37c259e7f9eafefc57d1e6d4ae04ceb708810872f0bf0",
+      "revision": "af724be7b9715707de2a301efa8f770e1a407bb1",
+      "version": "0.1.0+af724be7b971",
+      "executableSha256": "e86da991901fd97d62e97b20c77aa447aacc435a1572643c8c22dfcca79a1f5b"
+    },
+    "installed": false,
+    "installedExecutableSha256": "f54fe26efd2b4e67664cf9a2bbfe5615b1b9e11a767eeb0244fceac5efc802d1",
+    "buildInfo": {
+      "arch": "aarch64",
+      "debug_assertions": false,
+      "os": "linux",
+      "pkg_version": "0.1.0",
+      "schema": 1
+    },
+    "applicationProcessesPreserved": [
+      {
+        "pid": 2273135,
+        "executable": "/home/michael/.local/bin/omatainer (deleted)",
+        "arguments": [
+          "/home/michael/.local/bin/omatainer",
+          "ctl",
+          "follow"
+        ],
+        "sha256": "3217e4bfce388cac60e0ad7bea4caf83ec0d323f6eb620d4bf3a04d2c09ed69d"
+      },
+      {
+        "pid": 472901,
+        "executable": "/home/michael/.local/bin/omatainer",
+        "arguments": [
+          "/home/michael/.local/bin/omatainer",
+          "--empty-once"
+        ],
+        "sha256": "f54fe26efd2b4e67664cf9a2bbfe5615b1b9e11a767eeb0244fceac5efc802d1"
+      }
+    ],
+    "protectedSessionPreserved": {
+      "path": "/home/michael/Projects/omatainer-work/hardware-resurrection/target/hardware/apc-restart-20261006/session.omat",
+      "bytes": 162882871,
+      "sha256": "96e0b2495cdbdc549c324ecf8337fdef5590bdcbfe8916e4f014eb05d1ee827d"
+    },
+    "reason": "The default GUI is active. The active application was preserved without attempting executable replacement. The verified package is ready; installation awaits closure of the active app. No GUI, follower, capture, audio or MIDI connection was restarted or opened."
+  }
 }
