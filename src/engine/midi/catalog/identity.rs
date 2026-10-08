@@ -23,6 +23,12 @@ fn attribute(path: PathBuf) -> Option<String> {
     (!value.is_empty() && value.len() <= 256 && !value.chars().any(char::is_control))
         .then_some(value)
 }
+fn serial(value: Option<String>, product: Option<String>) -> Option<String> {
+    value.filter(|v| {
+        !v.eq_ignore_ascii_case("no serial number")
+            && product.as_ref().is_none_or(|p| !v.eq_ignore_ascii_case(p))
+    })
+}
 impl Device {
     /// Inspect one ALSA hardware port through its owning card.
     /// Takes the exact client:port ID; returns physical USB attributes and instance topology or no identity for virtual/unknown ports.
@@ -47,7 +53,10 @@ impl Device {
                     vendor: u16::from_str_radix(&vendor, 16).ok()?,
                     product: u16::from_str_radix(&product, 16).ok()?,
                     release: u16::from_str_radix(&release, 16).ok()?,
-                    serial: attribute(path.join("serial")),
+                    serial: serial(
+                        attribute(path.join("serial")),
+                        attribute(path.join("product")),
+                    ),
                     topology: path.file_name()?.to_str()?.into(),
                     port,
                     connection: format!(
@@ -76,5 +85,20 @@ impl Device {
             ),
             self.port
         )
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn model_labels_and_missing_serial_placeholders_never_anchor_an_instance() {
+        for value in ["NO SERIAL NUMBER", "no serial number", "Pioneer DDJ-SP1"] {
+            assert!(serial(Some(value.into()), Some("Pioneer DDJ-SP1".into())).is_none());
+        }
+        assert_eq!(
+            serial(Some("unit-0123".into()), Some("Pioneer DDJ-SP1".into())),
+            Some("unit-0123".into())
+        );
     }
 }

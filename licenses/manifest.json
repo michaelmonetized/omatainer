@@ -13255,7 +13255,7 @@
     "src/engine/metronome.rs": "88c72431e39ec0aed466250187ae21f429fe45e08ff82a69c5d4ba7c054c2112",
     "src/engine/midi.rs": "7ab24ece036a134728cd8dc52e791bbd339f102eb530ddc04609d1fff1b6c07f",
     "src/engine/midi/catalog.rs": "14263d3ca7bd9c4f06890caa6ca38c7beb85bd33e005f9217c4592f8b770d3ab",
-    "src/engine/midi/catalog/identity.rs": "1eee0925f217aac18404769c7854b97f3fe5ee7ab69a947ca657ddee8e35e2cb",
+    "src/engine/midi/catalog/identity.rs": "cc0a6c8fd6e655f237754408e27ab92ed37afa7fa1a214c632c18b2ad54633c6",
     "src/engine/midi/catalog/runtime.rs": "10d2cfcf2d2f994183cd3b0a020fc4d0c6167cddc98e7a7010a87c3b94c59805",
     "src/engine/midi/catalog/storage.rs": "a902e5ead5bd2b7e739857d004e0233c4f24d6dce472ebd03eeb1ace73b1db09",
     "src/engine/midi/catalog/tests.rs": "753d5f6757efc06b53b1c48629787911a300db4e7914ae6d8cb324acd1953f21",
