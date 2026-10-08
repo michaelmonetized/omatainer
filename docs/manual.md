@@ -284,6 +284,8 @@ Workflow: Audio setup.
 
 Apply and refresh routes, choose a record alias and new WAV path, then capture on a worker. Stop keeps completed audio; Cancel removes the partial file. Missing frames, overflow, invalid samples and file failures prevent incomplete publication. Existing files are preserved. Routing, project, audio and emergency-stop changes finish the current capture.
 
+After a completed mono/stereo capture, stop transport and decks, choose its destination track and review recording placement. The review uses the original time map and captured graph delay. Place recording on song adds an editable one-shot source without changing the WAV or enabling song playback. Arrangement timeline edits its start, trim and fades. History restores the previous song; Save retains the audio and full tempo precision. Choose suitable destination effects because a print already contains its source processing. A stopped, jumped or changed recording clock refuses automatic placement and keeps the WAV for manual review. Changed files, incompatible receipts, cancellation and stale project state preserve the song.
+
 Workflow: Record a held note.
 
 ### Test a physical output

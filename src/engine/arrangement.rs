@@ -55,6 +55,20 @@ pub(crate) struct Source {
 pub(crate) struct AudioClock {
     pub origin: f64,
     pub conductor: Arc<midi_data::Conductor>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub exact_bpm: Option<f64>,
+}
+impl AudioClock {
+    /// Resolve a recording's original time without rounding constant tempo.
+    /// Takes quarter-note position; returns source seconds through its retained constant tempo or conductor.
+    pub(crate) fn seconds_at(&self, beat: f64) -> f64 {
+        self.exact_bpm.map_or_else(|| self.conductor.seconds_at(beat), |bpm| beat * 60.0 / bpm)
+    }
+    /// Resolve original musical position from recorded time.
+    /// Takes seconds; returns quarter notes through the same immutable source clock.
+    pub(crate) fn beat_at_seconds(&self, seconds: f64) -> f64 {
+        self.exact_bpm.map_or_else(|| self.conductor.beat_at_seconds(seconds), |bpm| seconds * bpm / 60.0)
+    }
 }
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -118,6 +132,7 @@ impl Model {
             if let Some(clock) = &source.audio_clock {
                 clock.conductor.validate()?;
                 if !clock.origin.is_finite()
+                    || clock.exact_bpm.is_some_and(|bpm| !bpm.is_finite() || !(40.0..=240.0).contains(&bpm))
                     || !(0.0..=MAX_BEATS).contains(&clock.origin)
                     || source.clip.kind != ClipKind::Audio
                     || source.clip.audio.is_none()

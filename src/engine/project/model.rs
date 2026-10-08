@@ -2,7 +2,7 @@
 //! physical key ownership, worker handles and device connections.
 use super::super::*;
 
-pub const STATE_VERSION: u32 = 35;
+pub const STATE_VERSION: u32 = 36;
 pub const MAX_BANKS: usize = 16;
 pub const MAX_FX_PER_RACK: usize = 128;
 pub const MAX_NOTES_PER_CLIP: usize = 8192;
@@ -127,6 +127,9 @@ impl<'de> Deserialize<'de> for State {
         let raw = serde_json::Value::deserialize(deserializer)?;
         midi_edit::reject_legacy_fields(&raw).map_err(serde::de::Error::custom)?;
         let version = raw["version"].as_u64().unwrap_or(0);
+        if version < 36 && raw.get("arrangement").and_then(|song| song.get("sources")).and_then(serde_json::Value::as_array).is_some_and(|sources| sources.iter().any(|source| source.get("audio_clock").and_then(|clock| clock.get("exact_bpm")).is_some())) {
+            return Err(serde::de::Error::custom("Exact recording clocks require project state version 36"));
+        }
         if version < 35 && raw.get("decks").and_then(serde_json::Value::as_array).is_some_and(|decks| decks.iter().any(|deck| deck.get("channel_effect").is_some())) {
             return Err(serde::de::Error::custom("Selectable channel effects require project state version 35"));
         }
@@ -716,7 +719,7 @@ impl State {
             for clip in &track.clips {let (notes,bytes)=clip.validate(self.version,media)?;note_count+=notes;midi_bytes+=bytes;}
         }
         if let Some(navigation)=&self.navigation{if self.version<22{return fail("song sections in legacy state");}navigation.validate()?;}
-        if let Some(arrangement)=&self.arrangement{if self.version<19{return fail("arrangement in legacy state");}if self.version<26 && (arrangement.instances.iter().any(|i|i.fades.is_some()||i.fade_link!=0||i.crossfade.is_some())||arrangement.sources.iter().any(|s|s.clip.audio_region.is_some_and(|r|!r.fades.is_default()))){return fail("audio fades in a legacy arrangement");}arrangement.validate(media,self.session.as_ref().ok_or("Arrangement requires track identities")?)?;let (n,b)=arrangement.midi_storage();note_count+=n;midi_bytes+=b;}
+        if let Some(arrangement)=&self.arrangement{if self.version<19{return fail("arrangement in legacy state");}if self.version<36 && arrangement.sources.iter().any(|source|source.audio_clock.as_ref().is_some_and(|clock|clock.exact_bpm.is_some())){return fail("exact recording clock in legacy state");}if self.version<26 && (arrangement.instances.iter().any(|i|i.fades.is_some()||i.fade_link!=0||i.crossfade.is_some())||arrangement.sources.iter().any(|s|s.clip.audio_region.is_some_and(|r|!r.fades.is_default()))){return fail("audio fades in a legacy arrangement");}arrangement.validate(media,self.session.as_ref().ok_or("Arrangement requires track identities")?)?;let (n,b)=arrangement.midi_storage();note_count+=n;midi_bytes+=b;}
         if midi_bytes > midi_data::MAX_LANE_BYTES { return fail("MIDI metadata exceeds 16 MiB"); }
         if note_count > MAX_TOTAL_NOTES {
             return fail("note count (maximum 65536)");

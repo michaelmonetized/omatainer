@@ -15,13 +15,13 @@ fn audio_length(model: &Model, instance: Instance, media: &[Arc<Sample>]) -> Res
         .and_then(|i| media.get(i))
         .ok_or("Missing fade audio")?;
     if let Some(clock) = &source.audio_clock {
-        let conductor = clock.conductor.prepare()?;
+        clock.conductor.validate()?;
         let region = clip
             .audio_region
             .ok_or("Aligned fade source has no audio region")?;
         let seconds = (region.end - region.start) as f64 / f64::from(audio.sr);
         return Ok(
-            conductor.beat_at_seconds(conductor.seconds_at(clock.origin) + seconds) - clock.origin,
+            clock.beat_at_seconds(clock.seconds_at(clock.origin) + seconds) - clock.origin,
         );
     }
     clip.audio_region

@@ -74,6 +74,10 @@ pub(super) struct Panel {
     record_alias: u64,
     record_seconds: u32,
     record_path: String,
+    recorded_path: Option<PathBuf>,
+    record_track: Option<crate::engine::session::Reference>,
+    recording_review: Option<Arc<crate::engine::audio::routing::record::placement::Review>>,
+    recording_pending: bool,
 }
 impl Drop for Panel {
     fn drop(&mut self) {
@@ -159,7 +163,22 @@ impl Panel {
                 Event::Recorded(result) => match result {
                     Ok(path) => {
                         self.message = format!("Record-source audio saved to {}", path.display());
+                        self.recorded_path = Some(path);
+                        self.recording_review = None;
                         self.error = None;
+                    }
+                    Err(error) => self.error = Some(error),
+                },
+                Event::RecordingReviewed(result) => match result {
+                    Ok(review) if !cancelled => { self.recording_review = Some(review); self.error = None; }
+                    Ok(_) => self.message = "Recording review cancelled".into(),
+                    Err(error) => self.error = Some(error),
+                },
+                Event::RecordingPlaced(result) => match result {
+                    Ok(ack) => {
+                        if cancelled { ack.cancel(); }
+                        self.pending = Some(ack);
+                        self.recording_pending = true;
                     }
                     Err(error) => self.error = Some(error),
                 },
@@ -171,16 +190,22 @@ impl Panel {
                 Outcome::Applied => {
                     self.pending = None;
                     self.draft = None;
-                    self.message = "Routing applied. Save stores aliases, taps and input choices; History can undo this edit.".into();
+                    self.message = if self.recording_pending {
+                        self.recording_review = None;
+                        "Recording placed on the song. Arrangement timeline edits its start, trim and fades; enable song playback there. History can undo this placement, and Save retains its audio."
+                    } else { "Routing applied. Save stores aliases, taps and input choices; History can undo this edit." }.into();
+                    self.recording_pending = false;
                     self.error = None;
                 }
                 Outcome::Cancelled => {
+                    self.message = if self.recording_pending { "Recording placement cancelled before application" } else { "Routing cancelled before application" }.into();
+                    self.recording_pending = false;
                     self.pending = None;
-                    self.message = "Routing cancelled before application".into();
                 }
                 Outcome::Rejected => {
                     self.pending = None;
-                    self.error = Some("Routing was not applied because the project, recording, protection or undo state changed. Refresh and retry.".into());
+                    self.error = Some(if self.recording_pending { "Recording placement was not applied because the project, playback, protection or undo state changed. Review again." } else { "Routing was not applied because the project, recording, protection or undo state changed. Refresh and retry." }.into());
+                    self.recording_pending = false;
                 }
             }
         }
@@ -254,6 +279,18 @@ impl Panel {
                 if self.cancel.is_some() {
                     self.cancel = Some(cancel);
                 }
+            }
+            Err(error) => self.error = Some(error.to_string()),
+        }
+    }
+    /// Submit reviewed recording work under the performance guard.
+    /// Takes the engine and a worker job; returns immediately with bounded preparation or a visible refusal.
+    fn recording_work(&mut self, engine: &Engine, job: impl FnOnce(crate::engine::performance::WorkPermit) -> Job) {
+        match engine.cmd.performance().optional_work() {
+            Ok(work) => {
+                let cancel = work.cancel();
+                self.request(engine, |_| job(work));
+                if self.cancel.is_some() { self.cancel = Some(cancel); }
             }
             Err(error) => self.error = Some(error.to_string()),
         }
@@ -651,6 +688,7 @@ impl App {
             let ready = !panel.busy() && !self.project.committing();
             let mut preview_input = None;
             let mut record = false;
+            let mut review_recording = None;
             ui.add_enabled_ui(ready, |ui| {
                 if ui.button(tr!("Refresh routes")).help(ui, HelpControl::AudioRouting).clicked() { panel.request(&self.engine, Job::Inspect); }
                 if let Some(draft) = &mut panel.draft {
@@ -729,6 +767,23 @@ impl App {
                             ui.add(egui::DragValue::new(&mut panel.record_seconds).range(1..=600).prefix("Maximum seconds "));
                             ui.label(tr!("Apply routes before capture. A worker writes up to 26 channels and 128 MiB. Stop keeps completed audio; Cancel discards the partial file. Existing files are preserved."));
                             if ui.button(tr!("Record source to WAV")).help(ui, HelpControl::AudioRoutingRecord).clicked() { record = true; }
+                            if let Some(path) = &panel.recorded_path {
+                                ui.label(format!("Completed recording: {}", path.display()));
+                                let previous = panel.record_track;
+                                egui::ComboBox::from_id_salt("recording-target-track").selected_text(panel.record_track.and_then(|r| draft.layout.resolve(crate::engine::session::Axis::Track, r.id)).map_or("Choose recording destination", |slot| draft.layout.tracks[slot].name.as_str())).show_ui(ui, |ui| {
+                                    for &slot in &draft.layout.track_order {
+                                        if let Some(reference) = draft.layout.reference(crate::engine::session::Axis::Track, usize::from(slot)) {
+                                            ui.selectable_value(&mut panel.record_track, Some(reference), &draft.layout.tracks[usize::from(slot)].name);
+                                        }
+                                    }
+                                });
+                                if panel.record_track != previous { panel.recording_review = None; }
+                                ui.label("Choose a destination whose effects suit the recorded audio; a print already contains its source processing. Stop transport and decks before reviewing placement.");
+                                let stopped = !self.snap.playing && !self.snap.recording && !self.snap.decks.iter().any(|deck| deck.playing || deck.touching);
+                                if ui.add_enabled(panel.record_track.is_some() && stopped, egui::Button::new("Review recording placement")).clicked() {
+                                    review_recording = panel.record_track.map(|track| (path.clone(), track));
+                                }
+                            }
                         });
                     }
                     if ui.button(tr!("Review routing change…")).clicked() { panel.confirm = true; }
@@ -736,6 +791,14 @@ impl App {
             });
             if let Some(saved) = preview_input { panel.request(&self.engine, |cancel| Job::PreviewInput(saved, cancel)); }
             if record { panel.record(&self.engine); }
+            if let Some((path, target)) = review_recording { panel.recording_work(&self.engine, |work| Job::ReviewRecording(path, target, work)); }
+            if let Some(review) = panel.recording_review.clone() {
+                ui.label(format!("{} → track {} · start {:.6} beats · duration {:.6} beats · captured delay {} frames · trim before song zero {} frames", review.path.display(), review.target.id.0, review.start, review.duration, review.delay_frames, review.trimmed_frames));
+                ui.label("Placement preserves the WAV and its original time map. Song playback remains at its current setting. Edit the placement in Arrangement timeline after applying.");
+                let stopped = !self.snap.playing && !self.snap.recording && !self.snap.decks.iter().any(|deck| deck.playing || deck.touching);
+                if ui.add_enabled(ready && stopped, egui::Button::new("Place recording on song")).clicked() { panel.recording_work(&self.engine, |work| Job::PlaceRecording(review, work)); }
+                if ui.button("Discard recording review").clicked() { panel.recording_review = None; }
+            }
             if self.engine.routing.recorder.alias() != 0 {
                 ui.label(format!("Record-source frames captured: {}", self.engine.routing.recorder.frames()));
                 if ui.button(tr!("Stop record-source capture")).clicked() { self.engine.routing.recorder.stop(); }

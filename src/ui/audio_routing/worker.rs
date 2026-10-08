@@ -11,6 +11,8 @@ pub(super) enum Job {
     EnableInput(InputPreview, Arc<AtomicBool>),
     DisableInput(u64, Arc<AtomicBool>),
     Record(Draft, u64, u32, std::path::PathBuf, WorkPermit),
+    ReviewRecording(std::path::PathBuf, crate::engine::session::Reference, WorkPermit),
+    PlaceRecording(Arc<crate::engine::audio::routing::record::placement::Review>, WorkPermit),
 }
 pub(super) enum Event {
     Inspected(Result<Draft, String>),
@@ -18,6 +20,8 @@ pub(super) enum Event {
     InputPreview(Result<InputPreview, String>),
     InputChanged(Result<String, String>),
     Recorded(Result<std::path::PathBuf, String>),
+    RecordingReviewed(Result<Arc<crate::engine::audio::routing::record::placement::Review>, String>),
+    RecordingPlaced(Result<Ack, String>),
 }
 pub(super) struct Worker {
     pub jobs: Sender<Job>,
@@ -39,7 +43,7 @@ impl Worker {
             while let Ok(job) = incoming.recv() {
                 let cancel = match &job {
                     Job::Inspect(cancel) | Job::Attach(_,_,cancel) | Job::PreviewInput(_, cancel) | Job::EnableInput(_, cancel) | Job::DisableInput(_, cancel) => cancel.clone(),
-                    Job::Apply(_, work) | Job::Record(_, _, _, _, work) => work.cancel(),
+                    Job::Apply(_, work) | Job::Record(_, _, _, _, work) | Job::ReviewRecording(_, _, work) | Job::PlaceRecording(_, work) => work.cancel(),
                 };
                 let event = match job {
                     Job::Inspect(cancel) => Event::Inspected((|| {
@@ -93,7 +97,22 @@ impl Worker {
                             return Err("Apply routing and refresh before capturing a record source".into());
                         }
                         let port = draft.model.port(alias, Direction::Record).ok_or("Selected record source is unavailable")?;
-                        recorder.write(alias, port.channels.len() as u16, draft.rate, seconds, &destination, &work.cancel(), epoch)
+                        recorder.write_timed(alias, port.channels.len() as u16, draft.rate, seconds, &destination, &work.cancel(), epoch, captured.state.conductor.clone(), captured.state.bpm)
+                    })()),
+                    Job::ReviewRecording(path, target, work) => Event::RecordingReviewed((|| {
+                        let ticket = work.background(crate::background::Kind::Prepare, "recording-placement".into(), crate::background::MEMORY_BYTES)?;
+                        let _running = ticket.enter(|| work.cancelled())?;
+                        let captured = project.capture(&work.cancel()).map_err(|e| e.to_string())?;
+                        crate::engine::audio::routing::record::placement::Review::inspect(captured, &path, target, &work.cancel())
+                    })()),
+                    Job::PlaceRecording(review, work) => Event::RecordingPlaced((|| {
+                        let ticket = work.background(crate::background::Kind::Prepare, "recording-placement".into(), crate::background::MEMORY_BYTES)?;
+                        let _running = ticket.enter(|| work.cancelled())?;
+                        let captured = project.capture(&work.cancel()).map_err(|e| e.to_string())?;
+                        let (request, ack) = review.prepare(captured, &work.cancel())?;
+                        if work.cancelled() { ack.cancel(); return Err("Recording placement cancelled".into()); }
+                        commands.send(Command::ArrangementEdit(request)).map_err(|e| e.to_string())?;
+                        Ok(ack)
                     })()),
                 };
                 if cancel.load(Ordering::Acquire) { let _ = project.retire_cancelled_capture(&cancel); }

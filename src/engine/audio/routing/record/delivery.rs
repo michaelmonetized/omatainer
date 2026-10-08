@@ -61,6 +61,9 @@ impl Recorder {
         if accepted {
             self.shared.generation.fetch_add(1, Ordering::AcqRel);
             self.shared.count.store(0, Ordering::Release);
+            self.shared.origin_rate.store(rate, Ordering::Relaxed);
+            self.shared.placement_valid.store(true, Ordering::Release);
+            self.shared.clock_bound.store(false, Ordering::Release);
             self.shared.fault.store(false, Ordering::Release);
             self.shared.failure.store(0, Ordering::Release);
             self.shared.limit.store(start.limit, Ordering::Release);

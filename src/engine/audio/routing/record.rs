@@ -14,6 +14,7 @@ use std::{
 const CAPACITY: usize = 32768;
 const MAX_BYTES: u64 = 128 * 1024 * 1024;
 pub(crate) mod delivery;
+pub(crate) mod placement;
 #[derive(Clone, Copy)]
 struct DeliveryStart {
     request: u64,
@@ -51,6 +52,11 @@ struct Shared {
     delay_frames: AtomicU32,
     origin_seconds: AtomicU64,
     origin_available: AtomicBool,
+    origin_rate: AtomicU32,
+    placement_valid: AtomicBool,
+    clock_bound: AtomicBool,
+    clock_pointer: AtomicU64,
+    clock_bpm: AtomicU32,
 }
 #[derive(Clone)]
 pub(crate) struct Recorder {
@@ -90,11 +96,26 @@ impl Default for Recorder {
                 delay_frames: AtomicU32::new(0),
                 origin_seconds: AtomicU64::new(0),
                 origin_available: AtomicBool::new(false),
+                origin_rate: AtomicU32::new(0),
+                placement_valid: AtomicBool::new(true),
+                clock_bound: AtomicBool::new(false),
+                clock_pointer: AtomicU64::new(0),
+                clock_bpm: AtomicU32::new(0),
             }),
         }
     }
 }
 impl Recorder {
+    /// Confirm the time map used by an active raw capture.
+    /// Takes the renderer's retained conductor and tempo; invalidates automatic placement after a clock change while keeping recorded audio.
+    pub(crate) fn mark_clock(&self, conductor: Option<&Arc<crate::engine::midi_data::Conductor>>, bpm: f32) {
+        if self.shared.clock_bound.load(Ordering::Acquire) {
+            let pointer = conductor.map_or(0, |clock| Arc::as_ptr(clock) as u64);
+            if pointer != self.shared.clock_pointer.load(Ordering::Relaxed)
+                || pointer == 0 && bpm.to_bits() != self.shared.clock_bpm.load(Ordering::Relaxed)
+            { self.shared.placement_valid.store(false, Ordering::Release); }
+        }
+    }
     /// Publish whether the current graph is still warming or changing its delay.
     /// Takes scalar timing from the audio boundary; refuses new recordings until alignment is settled without blocking existing audio.
     pub(crate) fn alignment_pending(&self, frames: u32) {
@@ -105,6 +126,14 @@ impl Recorder {
     /// Retain the first captured frame's transport origin and graph delay.
     /// Takes the selected alias, software delay and transport seconds; publishes timing before the first numbered frame without callback allocation.
     pub(crate) fn mark_origin(&self, alias: u64, delay: u32, seconds: f64) {
+        if self.alias() == alias && self.shared.origin_available.load(Ordering::Acquire) {
+            let rate = self.shared.origin_rate.load(Ordering::Relaxed);
+            let origin = f64::from_bits(self.shared.origin_seconds.load(Ordering::Relaxed));
+            let expected = origin + self.frames() as f64 / f64::from(rate);
+            if rate == 0 || !seconds.is_finite() || (seconds - expected).abs() > 0.25 / f64::from(rate) {
+                self.shared.placement_valid.store(false, Ordering::Release);
+            }
+        }
         if self.alias() == alias
             && self.frames() == 0
             && !self.shared.origin_available.load(Ordering::Acquire)
@@ -120,7 +149,9 @@ impl Recorder {
     /// Read recording placement after its first frame was accepted.
     /// Takes the source rate; returns optional transport origin, exact graph delay and aligned source time for the recording manifest.
     fn placement(&self, rate: u32) -> serde_json::Value {
-        if !self.shared.origin_available.load(Ordering::Acquire) {
+        if !self.shared.origin_available.load(Ordering::Acquire)
+            || !self.shared.placement_valid.load(Ordering::Acquire)
+        {
             return serde_json::Value::Null;
         }
         let seconds = f64::from_bits(self.shared.origin_seconds.load(Ordering::Relaxed));
@@ -243,6 +274,15 @@ impl Recorder {
         cancel: &AtomicBool,
         epoch: u64,
     ) -> Result<PathBuf, String> {
+        self.write_internal(alias, channels, rate, seconds, destination, cancel, epoch, None)
+    }
+    /// Capture audio with its retained musical time map.
+    /// Takes the selected source, file bounds, cancellation, epoch and original conductor/tempo; returns a complete WAV and guarded timing receipt without changing the project.
+    pub(crate) fn write_timed(&self, alias: u64, channels: u16, rate: u32, seconds: u32, destination: &Path, cancel: &AtomicBool, epoch: u64, conductor: Option<Arc<crate::engine::midi_data::Conductor>>, bpm: f32) -> Result<PathBuf, String> {
+        self.write_internal(alias, channels, rate, seconds, destination, cancel, epoch, Some((conductor, bpm)))
+    }
+    fn write_internal(&self, alias: u64, channels: u16, rate: u32, seconds: u32, destination: &Path, cancel: &AtomicBool, epoch: u64, clock: Option<(Option<Arc<crate::engine::midi_data::Conductor>>, f32)>) -> Result<PathBuf, String> {
+        let conductor = clock.as_ref().map(|(original, bpm)| placement::conductor(original.as_ref(), *bpm)).transpose()?;
         if alias == 0
             || !(1..=super::model::MAX_RECORD_CHANNELS as u16).contains(&channels)
             || !(8000..=384000).contains(&rate)
@@ -293,6 +333,7 @@ impl Recorder {
         let temporary_metadata = temporary.with_extension("timing.part");
         let result = (|| -> Result<PathBuf, String> {
             let file = std::fs::OpenOptions::new()
+                .read(true)
                 .write(true)
                 .create_new(true)
                 .open(&temporary)
@@ -306,6 +347,11 @@ impl Recorder {
             self.shared.request.fetch_add(1, Ordering::AcqRel);
             let generation = self.shared.generation.fetch_add(1, Ordering::AcqRel) + 1;
             self.shared.count.store(0, Ordering::Release);
+            self.shared.origin_rate.store(rate, Ordering::Relaxed);
+            self.shared.placement_valid.store(true, Ordering::Release);
+            self.shared.clock_pointer.store(clock.as_ref().and_then(|(original, _)| original.as_ref()).map_or(0, |original| Arc::as_ptr(original) as u64), Ordering::Relaxed);
+            self.shared.clock_bpm.store(clock.as_ref().map_or(0, |(_, bpm)| bpm.to_bits()), Ordering::Relaxed);
+            self.shared.clock_bound.store(clock.is_some(), Ordering::Release);
             self.shared.fault.store(false, Ordering::Release);
             self.shared.failure.store(0, Ordering::Release);
             self.shared.output_width.store(0, Ordering::Release);
@@ -372,7 +418,9 @@ impl Recorder {
             .map_err(|error| error.to_string())?;
             writer.flush().map_err(|error| error.to_string())?;
             durable.sync_all().map_err(|error| error.to_string())?;
-            let timing = serde_json::json!({"schema": 1, "source_alias": alias.to_string(), "rate": rate, "channels": channels, "frames": frames, "placement": self.placement(rate)});
+            let audio_sha256 = placement::hash_file(&durable, cancel)?;
+            let exact_bpm = clock.as_ref().filter(|(original, _)| original.is_none()).map(|(_, bpm)| f64::from(*bpm));
+            let timing = serde_json::json!({"schema": 1, "source_alias": alias.to_string(), "rate": rate, "channels": channels, "frames": frames, "audio_sha256": audio_sha256, "conductor": conductor, "exact_bpm": exact_bpm, "placement": self.placement(rate)});
             let mut metadata_file = std::fs::OpenOptions::new()
                 .write(true)
                 .create_new(true)

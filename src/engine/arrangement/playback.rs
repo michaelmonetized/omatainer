@@ -159,8 +159,8 @@ impl Playback {
                         .audio_clock
                         .as_ref()
                         .map_or((local, beats_per_second), |clock| {
-                            let seconds = clock.conductor.seconds_at(clock.origin + local)
-                                - clock.conductor.seconds_at(clock.origin);
+                            let seconds = clock.seconds_at(clock.origin + local)
+                                - clock.seconds_at(clock.origin);
                             let tempo = f64::from(region.region.tempo) / 60.;
                             (seconds * tempo, tempo)
                         });

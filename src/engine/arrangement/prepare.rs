@@ -52,22 +52,19 @@ impl Plan {
                 .audio_clock
                 .as_ref()
                 .map(|clock| -> Result<_, String> {
-                    let conductor = clock.conductor.prepare()?;
+                    let prepared_clock = AudioClock { origin: clock.origin, conductor: clock.conductor.prepare()?, exact_bpm: clock.exact_bpm };
                     let region = audio_region
                         .ok_or("Aligned render has no prepared audio region")?
                         .region;
                     let seconds =
                         (region.end - region.start) as f64 / f64::from(audio.as_ref().unwrap().sr);
-                    length = conductor
-                        .beat_at_seconds(conductor.seconds_at(clock.origin) + seconds)
+                    length = prepared_clock
+                        .beat_at_seconds(prepared_clock.seconds_at(clock.origin) + seconds)
                         - clock.origin;
                     if !length.is_finite() || length <= 0. || clock.origin + length > MAX_BEATS {
                         return Err("Aligned render exceeds the native timeline".into());
                     }
-                    Ok(AudioClock {
-                        origin: clock.origin,
-                        conductor,
-                    })
+                    Ok(prepared_clock)
                 })
                 .transpose()?;
             if source.clip.kind == ClipKind::Audio

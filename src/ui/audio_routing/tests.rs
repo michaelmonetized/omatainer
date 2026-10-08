@@ -387,6 +387,7 @@ fn native_record_source_controls_publish_complete_audio_and_cancel_partial_files
         path: String::new(),
     }));
     gui.rt.decks[0].playing = true;
+    gui.rt.apply(Command::Play);
     gui.rt.decks[0].sync = false;
     gui.rt.decks[0].keylock = false;
     gui.app.audio_routing.record_alias = 2;
@@ -441,6 +442,31 @@ fn native_record_source_controls_publish_complete_audio_and_cancel_partial_files
             let timing: serde_json::Value =
                 serde_json::from_slice(&std::fs::read(&metadata).unwrap()).unwrap();
             assert_eq!(timing["placement"]["graph_delay_frames"], 0);
+            assert!(timing["audio_sha256"].as_str().is_some_and(|hash| hash.len() == 64));
+            gui.rt.apply(Command::Stop);
+            gui.rt.decks[0].playing = false;
+            gui.app.audio_routing.record_track = gui.rt.session.reference(crate::engine::session::Axis::Track, 2);
+            gui.frame(vec![]);
+            gui.click("Review recording placement");
+            settled(&mut gui);
+            assert!(gui.app.audio_routing.error.is_none(), "{:?}", gui.app.audio_routing.error);
+            assert!(gui.app.audio_routing.recording_review.is_some());
+            gui.click("Discard recording review");
+            assert!(gui.rt.arrangement.plan.is_none());
+            gui.click("Review recording placement");
+            settled(&mut gui);
+            gui.click("Place recording on song");
+            settled(&mut gui);
+            assert!(gui.app.audio_routing.error.is_none(), "{:?}", gui.app.audio_routing.error);
+            assert!(gui.rt.arrangement.plan.is_some());
+            assert!(!gui.rt.arrangement.enabled());
+            gui.rt.apply(Command::Undo);
+            assert!(gui.rt.arrangement.plan.is_none());
+            gui.click("Refresh routes");
+            settled(&mut gui);
+            gui.click("Capture a record source");
+            gui.rt.decks[0].playing = true;
+            gui.rt.apply(Command::Play);
             std::fs::remove_file(&path).unwrap();
             std::fs::remove_file(&metadata).unwrap();
         }

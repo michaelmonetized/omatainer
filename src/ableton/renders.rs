@@ -314,6 +314,7 @@ pub(crate) fn attach(
         audio_clock: Some(arrangement::AudioClock {
             origin: options.start,
             conductor: clock,
+            exact_bpm: None,
         }),
     });
     song.instances.push(arrangement::Instance {

@@ -146,6 +146,7 @@ impl Prepared {
                         rt.mic_aux.add_aligned(group, node.width, &mut node.input, &mut node.valid, rt.master, frames, valid, duck);
                     } else { rt.mic_aux.add(group,node.width,&mut node.input,&mut node.valid,rt.master); }
                     if record_alias == id {
+                        rt.routing_pipe.recorder.mark_clock(rt.conductor.as_ref(), rt.bpm);
                         let seconds = rt.timeline_seconds() - if rt.playing { 1.0 / f64::from(rt.sr) } else { 0.0 };
                         rt.routing_pipe.recorder.mark_origin(id, self.output_delay(id), seconds);
                         rt.routing_pipe.recorder.capture(id, self.nodes[index].input, self.nodes[index].valid);
