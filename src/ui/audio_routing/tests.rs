@@ -464,7 +464,6 @@ fn native_record_source_controls_publish_complete_audio_and_cancel_partial_files
             assert!(gui.rt.arrangement.plan.is_none());
             gui.click("Refresh routes");
             settled(&mut gui);
-            gui.click("Capture a record source");
             gui.rt.decks[0].playing = true;
             gui.rt.apply(Command::Play);
             std::fs::remove_file(&path).unwrap();

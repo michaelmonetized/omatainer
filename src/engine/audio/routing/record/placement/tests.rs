@@ -27,11 +27,13 @@ fn recording(path: &Path, rate: u32, origin: f64, delay: u32, bpm: f32, fault: u
     let deadline = Instant::now() + Duration::from_secs(10);
     while recorder.alias() != 7 { assert!(Instant::now() < deadline); std::thread::sleep(Duration::from_millis(1)); }
     for frame in 0..2048 {
-        let seconds = origin + if fault == 1 { 0.0 } else { f64::from(frame) / f64::from(rate) };
+        let seconds = origin + if fault == 1 { 0.0 } else { f64::from(frame) / f64::from(rate) }
+            + if fault == 3 && frame >= 512 { 1.0 } else { 0.0 };
         let tempo = if fault == 2 && frame >= 512 { bpm + 1.0 } else { bpm };
+        let current_delay = delay + u32::from(fault == 4 && frame >= 512);
         assert_eq!(test_alloc::measure(|| {
             recorder.mark_clock(None, tempo);
-            recorder.mark_origin(7, delay, seconds);
+            recorder.mark_origin(7, current_delay, seconds);
             let mut data = [0.0; 32];
             data[0] = if frame == 1000 { 0.25 } else { 0.0 };
             data[1] = -(frame as f32) / 10000.0;
@@ -39,6 +41,8 @@ fn recording(path: &Path, rate: u32, origin: f64, delay: u32, bpm: f32, fault: u
         }), Default::default());
     }
     recorder.stop();
+    recorder.mark_clock(None, bpm + 1.0);
+    recorder.mark_origin(7, delay + 1, origin + 10.0);
     assert_eq!(writer.join().unwrap().unwrap(), path);
 }
 
@@ -100,7 +104,7 @@ fn negative_origin_trims_only_the_native_region_and_discontinuous_clock_keeps_th
     assert_eq!(reviewed.start, 0.0);
     assert_eq!(reviewed.model.sources[0].clip.audio_region.unwrap().start, 240);
     assert_eq!(crate::engine::decode::decode_audio(&negative).unwrap().sample.frames(), 2048);
-    for fault in [1, 2] {
+    for fault in [1, 2, 3, 4] {
         let path = files.0.join(format!("fault-{fault}.wav"));
         recording(&path, 48000, 4.0, 480, 120.0, fault);
         assert!(path.is_file());

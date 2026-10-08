@@ -109,6 +109,9 @@ impl Recorder {
     /// Confirm the time map used by an active raw capture.
     /// Takes the renderer's retained conductor and tempo; invalidates automatic placement after a clock change while keeping recorded audio.
     pub(crate) fn mark_clock(&self, conductor: Option<&Arc<crate::engine::midi_data::Conductor>>, bpm: f32) {
+        if self.alias() == 0 || self.shared.stop.load(Ordering::Acquire) {
+            return;
+        }
         if self.shared.clock_bound.load(Ordering::Acquire) {
             let pointer = conductor.map_or(0, |clock| Arc::as_ptr(clock) as u64);
             if pointer != self.shared.clock_pointer.load(Ordering::Relaxed)
@@ -126,11 +129,15 @@ impl Recorder {
     /// Retain the first captured frame's transport origin and graph delay.
     /// Takes the selected alias, software delay and transport seconds; publishes timing before the first numbered frame without callback allocation.
     pub(crate) fn mark_origin(&self, alias: u64, delay: u32, seconds: f64) {
+        if self.alias() != alias || self.shared.stop.load(Ordering::Acquire) {
+            return;
+        }
         if self.alias() == alias && self.shared.origin_available.load(Ordering::Acquire) {
             let rate = self.shared.origin_rate.load(Ordering::Relaxed);
             let origin = f64::from_bits(self.shared.origin_seconds.load(Ordering::Relaxed));
             let expected = origin + self.frames() as f64 / f64::from(rate);
-            if rate == 0 || !seconds.is_finite() || (seconds - expected).abs() > 0.25 / f64::from(rate) {
+            if rate == 0 || delay != self.shared.delay_frames.load(Ordering::Relaxed)
+                || !seconds.is_finite() || (seconds - expected).abs() > 0.25 / f64::from(rate) {
                 self.shared.placement_valid.store(false, Ordering::Release);
             }
         }
@@ -554,7 +561,7 @@ mod tests {
             std::thread::sleep(Duration::from_millis(1));
         }
         for frame in 0..512 {
-            recorder.mark_origin(7, 336, 4.0);
+            recorder.mark_origin(7, 336, 4.0 + f64::from(frame) / 48000.0);
             let samples =
                 std::array::from_fn(|channel| (channel + 1) as f32 / 64.0 + frame as f32 / 65536.0);
             assert_eq!(

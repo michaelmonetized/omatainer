@@ -273,7 +273,7 @@ fn native_ns7_master_to_peavey_usb_return_channels() {
     for output_channel in 0..output_channels {
         for input_channel in 0..2 {
             let request = calibration::Request {
-                profile: "NS7 XLR -> Peavey 8 channel 6 -> USB Audio CODEC".into(),
+                profile: "NS7 XLR -> Peavey PV8 USB channels 7/8 -> USB Audio CODEC".into(),
                 input: input.clone(),
                 output: output.clone(),
                 input_channel,
@@ -295,7 +295,7 @@ fn native_ns7_master_to_peavey_usb_return_channels() {
                 }
             };
             pairs.push(row);
-            std::fs::write(directory.join("ns7-peavey-pairs.json"),serde_json::to_vec_pretty(&serde_json::json!({"nominal_rate":44100,"probe_level_dbfs":level_db,"output_device":output.device,"input_device":input.device,"owner_reported_wiring":"NS7 XLR outputs to Peavey 8 channel 6; mixer USB return to m1pro16","pairs":pairs,"output_detected_on_wired_master_return":found,"headphone_jack_captured":false,"scope":"Three distinct probe matches per successful output/input pair. Common host callback-entry timing includes converter, mixer and callback batching; this is not isolated analog converter latency or an independent-channel claim. Outputs 1/2 are the expected master pair; optional outputs 3/4 are a channel-assignment diagnostic."})).unwrap()).unwrap();
+            std::fs::write(directory.join("ns7-peavey-pairs.json"),serde_json::to_vec_pretty(&serde_json::json!({"nominal_rate":44100,"probe_level_dbfs":level_db,"output_device":output.device,"input_device":input.device,"owner_reported_wiring":"NS7 XLR outputs to Peavey PV8 USB stereo strip 7/8; mixer USB return to m1pro16","pairs":pairs,"output_detected_on_wired_master_return":found,"headphone_jack_captured":false,"scope":"Three distinct probe matches per successful output/input pair. Common host callback-entry timing includes converter, mixer and callback batching; this is not isolated analog converter latency or an independent-channel claim. Outputs 1/2 are the expected master pair; optional outputs 3/4 are a channel-assignment diagnostic."})).unwrap()).unwrap();
         }
     }
     assert!(found[..2].iter().all(|v|*v),"Each expected NS7 master output must deliver all three probes to at least one Peavey USB input: {pairs:?}");
