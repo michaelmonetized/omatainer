@@ -60,11 +60,27 @@ fn continuous_capture_check_refuses_a_missing_block_and_requires_each_carrier_ch
 #[test]
 #[ignore = "Requires exclusive original NS7 master XLR outputs wired to Peavey 7/8 and OMATAINER_NATIVE_TRANSITION_DIR under the project; emits quiet continuous carriers"]
 fn native_ns7_large_live_set_transition_has_captured_master_audio() {
+    native_transition(false);
+}
+
+#[test]
+#[ignore = "Requires exclusive NS7 master XLR outputs wired to Peavey 7/8 and OMATAINER_NATIVE_TRANSITION_DIR under the project; verifies routed 20 ms graph delay and emits quiet carriers"]
+fn native_ns7_routed_large_live_set_transition_has_captured_master_audio() {
+    native_transition(true);
+}
+
+fn native_transition(routed: bool) {
     let directory = std::path::PathBuf::from(std::env::var_os("OMATAINER_NATIVE_TRANSITION_DIR").expect("Choose a private receipt directory"));
     assert!(directory.is_absolute() && directory.starts_with(env!("CARGO_MANIFEST_DIR")));
     std::fs::create_dir(&directory).unwrap();
     let baseline_memory = memory();
     let mut state = large_state();
+    if routed {
+        use crate::engine::audio::routing::model::*;
+        state.routing = Some(Arc::new(Model { latency: Some(LatencyConfiguration { reports: vec![LatencyReport {
+            group: Group::Deck(0), external_micros: 0, processing_micros: 20_000,
+        }], ..Default::default() }), ..Default::default() }));
+    }
     state.master = 0.5;
     state.xfader = 0.0;
     for track in &mut state.tracks { track.gain = 0.002; }
@@ -113,8 +129,15 @@ fn native_ns7_large_live_set_transition_has_captured_master_audio() {
         wait(|| control.ready());
         let prepared_at = origin.elapsed().as_nanos() as u64;
         assert!(control.cue_available.load(Ordering::Acquire));
+        let initial_priming_seconds = control.priming_seconds(44100);
+        if routed {
+            assert_eq!(initial_priming_seconds, 0.02);
+            assert!(control.transition(&engine.project, engine.project.revision(), 0.01).unwrap_err().contains("processing history"));
+            assert!(control.ready());
+        }
         control.preview.store(true, Ordering::Release);
         std::thread::sleep(Duration::from_secs(1));
+        assert_eq!(control.priming_seconds(44100), 0.0);
         control.preview.store(false, Ordering::Release);
         std::thread::sleep(Duration::from_millis(100));
         let transition_at = origin.elapsed().as_nanos() as u64;
@@ -131,7 +154,7 @@ fn native_ns7_large_live_set_transition_has_captured_master_audio() {
         std::thread::sleep(Duration::from_secs(1));
         trials.push(serde_json::json!({"trial":trial,"incoming_hz":frequencies,"preload_start_ns":preload_start,
             "ready_ns":prepared_at,"transition_requested_ns":transition_at,"settled_ns":settled_at,"fade_seconds":1.0,
-            "cue_admitted":true,"applied":applied,"worker_retired":true}));
+            "cue_admitted":true,"initial_priming_seconds":initial_priming_seconds,"short_unprimed_fade_refused":routed,"applied":applied,"worker_retired":true}));
     }
     let measured_end = origin.elapsed().as_nanos() as u64;
     let metrics = engine.cmd.audio_metrics();
@@ -158,7 +181,7 @@ fn native_ns7_large_live_set_transition_has_captured_master_audio() {
         && metrics.backend_errors == warmed.backend_errors && metrics.device_lost == warmed.device_lost
         && metrics.xruns == warmed.xruns && metrics.deadline_overruns == warmed.deadline_overruns;
     let receipt = serde_json::json!({"schema":1,"status":if qualified {"pass"} else {"failed"},"device":"original NS7, four-channel ALSA, 44.1 kHz, 512-frame requested buffer",
-        "physical_return":"Master XLR L/R to owner-restored Peavey PV8 USB 7/8, stereo CODEC input","stored_tracks":64,"stored_notes_per_graph":32768,
+        "physical_return":"Master XLR L/R to owner-restored Peavey PV8 USB 7/8, stereo CODEC input","routed":routed,"reported_deck_processing_micros":if routed {20000} else {0},"stored_tracks":64,"stored_notes_per_graph":32768,
         "launched_clip_tracks_per_graph":8,"loaded_decks_per_graph":2,"resident_pcm_bytes_per_graph":32*1024*1024,
         "baseline_memory":baseline_memory,"preloaded_memory":process_memory,"final_memory":memory(),"trials":trials,
         "warmup_audio":warmed,"final_audio":metrics,"capture_frames":samples.len()/2,"input_failed":input_failed,

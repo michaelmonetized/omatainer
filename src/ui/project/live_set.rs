@@ -70,7 +70,7 @@ impl super::super::App {
                 let state = &bundle.state.engine;
                 if state.routing.as_ref().is_some_and(|model| model.input.is_some() || model.ports.iter().any(|port|
                     port.direction == crate::engine::audio::routing::model::Direction::Input)) {
-                    return Err("Next-set fades require physical input routes to be disabled; current performance and saved aliases are retained".into());
+                    return Err("Sets with physical input routes must be opened while stopped; current performance and saved routes are retained".into());
                 }
                 if state.sampler_synth.offline.is_some() || state.tracks.iter().enumerate().any(|(slot, track)| state.track_processing_required(slot)
                     && (track.synth.offline.is_some() || track.fx.iter().any(|effect| effect.offline.is_some())))
@@ -189,6 +189,8 @@ impl super::super::App {
                     control.preview.store(preview, Ordering::Release);
                 }
                 if !cue { ui.label(tr!("Cue needs four output channels, free outputs 3/4 and one stereo main route. Transition retains the saved outputs.")); }
+                let priming = control.priming_seconds(self.engine.project.sample_rate());
+                if priming > 0.0 { ui.label(format!("Next set needs {priming:.4} seconds of processing history. Cue it first or choose a longer fade.")); }
                 let fade = ui.add(egui::DragValue::new(&mut self.project.live.fade).range(0.01..=30.0).suffix(" s"));
                 fade.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::DragValue, ready, "Live-set fade seconds"));
                 help::annotate(ui, &fade, help::Control::LiveSetFade);

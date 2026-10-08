@@ -286,3 +286,106 @@ fn physical_input_preload_refusal_and_an_active_input_preserve_the_current_route
     assert!(owner.applied().is_none());
     assert!(matches!(owner.retire(), Some(Err(Error::Invalid(reason))) if reason.contains("physical input")));
 }
+
+fn delayed(value: f32) -> Prepared {
+    use audio::routing::model::*;
+    let mut prepared = constant(value);
+    let model = Model { latency: Some(LatencyConfiguration { reports: vec![LatencyReport {
+        group: Group::Deck(0), external_micros: 0, processing_micros: 20_000,
+    }], ..Default::default() }), ..Default::default() };
+    prepared.rt.routing = Some(Box::new(audio::routing::prepared::Prepared::new(Arc::new(model), &prepared.rt.session).unwrap()));
+    prepared
+}
+
+#[test]
+fn short_fade_refuses_unfilled_history_without_claiming_performance_and_cue_then_allows_it() {
+    let mut live = constant(0.2).rt;
+    let namespace = live.session.namespace;
+    let incoming = delayed(-0.3);
+    assert_eq!(priming(&incoming.rt), 960);
+    let next_namespace = incoming.rt.session.namespace;
+    let (handle, control) = queue(&mut live, incoming);
+    let performance = live.performance.status();
+    assert_eq!(control.priming_seconds(48_000), 0.02);
+    assert!(control.transition(&live.project, live.project.revision(), 0.01).unwrap_err().contains("processing history"));
+    assert!(control.ready());
+    assert_eq!(live.performance.status(), performance);
+    assert_eq!(live.session.namespace, namespace);
+    assert!(handle.applied().is_none());
+    control.preview.store(true, Ordering::Release);
+    for _ in 0..12 {
+        assert_eq!(test_alloc::measure(|| live.process_interleaved(&mut [0.0; 512], 4)), test_alloc::Counts::default());
+    }
+    assert_eq!(control.priming_seconds(48_000), 0.0);
+    assert_eq!(live.session.namespace, namespace);
+    control.transition(&live.project, live.project.revision(), 0.01).unwrap();
+    for _ in 0..4 {
+        assert_eq!(test_alloc::measure(|| live.process_interleaved(&mut [0.0; 512], 4)), test_alloc::Counts::default());
+    }
+    assert_eq!(live.session.namespace, next_namespace);
+    assert!(handle.applied().is_some());
+    assert!(matches!(handle.retire(), Some(Ok(()))));
+    assert!(!live.performance.status().changing);
+}
+
+#[test]
+fn delay_reset_after_fade_review_refuses_at_commit_and_keeps_the_current_graph() {
+    let mut live = constant(0.2).rt;
+    let namespace = live.session.namespace;
+    let (handle, control) = queue(&mut live, delayed(-0.3));
+    control.preview.store(true, Ordering::Release);
+    for _ in 0..12 { live.process_interleaved(&mut [0.0; 512], 4); }
+    assert_eq!(control.priming_seconds(48_000), 0.0);
+    control.transition(&live.project, live.project.revision(), 0.01).unwrap();
+    assert_eq!(test_alloc::measure(|| live.live_set.as_mut().unwrap().prepared.rt.routing.as_mut().unwrap().reset_latency()), test_alloc::Counts::default());
+    assert_eq!(test_alloc::measure(|| live.process_interleaved(&mut [0.0; 512], 4)), test_alloc::Counts::default());
+    assert_eq!(live.session.namespace, namespace);
+    assert!(handle.applied().is_none());
+    assert!(matches!(handle.retire(), Some(Err(Error::Invalid(reason))) if reason.contains("processing history")));
+    assert!(!live.performance.status().changing);
+}
+
+#[test]
+fn unavailable_connected_outputs_refuse_before_ready_and_again_after_width_changes() {
+    for shrink_after_ready in [false, true] {
+        let mut live = constant(0.2).rt;
+        let namespace = live.session.namespace;
+        let incoming = routed(-0.3, [0, 1], [4, 5]);
+        let routes = incoming.rt.routing.as_ref().unwrap().model.clone();
+        let handle = live.project.live_sets();
+        let control = handle.stage(handle.reserve().unwrap(), incoming, namespace, Arc::new(AtomicBool::new(false))).unwrap();
+        if shrink_after_ready {
+            live.process_interleaved(&mut [0.0; 768], 6);
+            assert!(control.ready());
+            control.transition(&live.project, live.project.revision(), 0.01).unwrap();
+        }
+        assert_eq!(test_alloc::measure(|| live.process_interleaved(&mut [0.0; 512], 4)), test_alloc::Counts::default());
+        assert_eq!(live.session.namespace, namespace);
+        assert!(handle.applied().is_none());
+        let stage = handle.0.returned.try_recv().unwrap();
+        assert_eq!(*stage.prepared.rt.routing.as_ref().unwrap().model, *routes);
+        assert!(handle.0.retired.try_send(stage).is_ok());
+        assert!(matches!(handle.retire(), Some(Err(Error::Invalid(reason))) if reason.contains("unavailable next-set outputs")));
+        assert!(!live.performance.status().changing);
+    }
+}
+
+#[test]
+fn unused_and_zero_gain_unavailable_aliases_do_not_block_a_valid_transition() {
+    let mut live = constant(0.2).rt;
+    let mut incoming = routed(-0.3, [0, 1], [4, 5]);
+    let mut model = (*incoming.rt.routing.as_ref().unwrap().model).clone();
+    for map in &mut model.connections.last_mut().unwrap().map { map.gain = 0.0; }
+    model.next_id = 4;
+    model.ports.push(audio::routing::model::Port { id: 3, alias: "Offline unused alias".into(), direction: Direction::Output, channels: vec![62, 63] });
+    incoming.rt.routing = Some(Box::new(audio::routing::prepared::Prepared::new(Arc::new(model), &incoming.rt.session).unwrap()));
+    let namespace = incoming.rt.session.namespace;
+    let (handle, control) = queue(&mut live, incoming);
+    control.transition(&live.project, live.project.revision(), 0.01).unwrap();
+    for _ in 0..4 {
+        assert_eq!(test_alloc::measure(|| live.process_interleaved(&mut [0.0; 512], 4)), test_alloc::Counts::default());
+    }
+    assert_eq!(live.session.namespace, namespace);
+    assert!(handle.applied().is_some());
+    assert!(matches!(handle.retire(), Some(Ok(()))));
+}

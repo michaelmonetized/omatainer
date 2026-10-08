@@ -1,7 +1,7 @@
 //! One prepared set, one active set and worker-owned retirement.
 use super::{project::{Applied, Error, Prepared}, *};
 use crossbeam_channel::{bounded, Receiver, Sender};
-use std::sync::atomic::{AtomicBool, AtomicU8, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU8, AtomicU64, Ordering};
 use super::audio::routing::model::{Direction, Group, Tap, MAX_PHYSICAL_CHANNELS};
 #[cfg(test)]
 mod tests;
@@ -19,6 +19,34 @@ fn physical_input(rt: &RtEngine) -> bool {
 
 fn cue_free(rt: &RtEngine) -> bool {
     rt.routing.as_ref().is_none_or(|graph| graph.monitor_channels_free || graph.monitor_output.is_some_and(|(_, pair)| pair == [2, 3]))
+}
+
+fn priming(rt: &RtEngine) -> u32 {
+    rt.routing.as_ref().map_or(0, |graph| graph.latency_status().priming_frames)
+}
+
+fn missing_outputs(rt: &RtEngine, channels: usize) -> bool {
+    rt.routing.as_ref().is_some_and(|graph| graph.model.connections.iter().any(|route| {
+        let Group::Output(id) = route.destination else { return false; };
+        graph.model.ports.iter().find(|port| port.id == id).is_some_and(|port| route.map.iter().any(|map|
+            map.gain != 0.0 && usize::from(port.channels[usize::from(map.destination)]) >= channels))
+    }))
+}
+
+#[derive(Clone, Copy)]
+enum Refusal {
+    PhysicalInput,
+    MissingOutputs,
+    Priming(u32),
+}
+impl Refusal {
+    fn message(self, rate: u32) -> String {
+        match self {
+            Self::PhysicalInput => "Sets with physical input routes must be opened while stopped; current performance and saved routes are retained".into(),
+            Self::MissingOutputs => "Remap unavailable next-set outputs while stopped; current performance and saved routes are retained".into(),
+            Self::Priming(frames) => format!("The next set still needs {:.4} seconds of processing history. Cue it first or use a longer fade; current performance is retained", f64::from(frames) / f64::from(rate)),
+        }
+    }
 }
 
 fn main_pair(rt: &RtEngine) -> Option<[usize; 2]> {
@@ -49,6 +77,7 @@ pub(crate) struct Control {
     pub(crate) cancel: Arc<AtomicBool>,
     pub(crate) preview: AtomicBool,
     pub(crate) cue_available: AtomicBool,
+    priming_frames: AtomicU64,
     request: Sender<Transition>,
     incoming: Receiver<Transition>,
 }
@@ -56,14 +85,21 @@ impl Control {
     /// Review readiness without touching the renderer graph.
     /// Takes this control; returns whether cue/transition admission is ready.
     pub(crate) fn ready(&self) -> bool { self.phase.load(Ordering::Acquire) == READY }
+    /// Read the next set's unfilled processing delay.
+    /// Takes this control and output rate; returns seconds of history still needed before a short fade.
+    pub(crate) fn priming_seconds(&self, rate: u32) -> f64 {
+        self.priming_frames.load(Ordering::Acquire) as f64 / f64::from(rate)
+    }
     /// Claim a reviewed transition.
     /// Takes the active owner, current revision and fade seconds; queues one transition or preserves the current mix.
     pub(crate) fn transition(&self, owner: &project::Handle, revision: u64, seconds: f64) -> Result<(), String> {
         if !seconds.is_finite() || !(0.01..=30.0).contains(&seconds) { return Err("Fade must be between 0.01 and 30 seconds".into()); }
+        let frames = (seconds * f64::from(owner.sample_rate())).round().max(2.0) as u64;
+        let remaining = self.priming_frames.load(Ordering::Acquire);
+        if remaining != 0 && frames <= remaining { return Err(Refusal::Priming(remaining as u32).message(owner.sample_rate())); }
         let permit = owner.performance().project_change().map_err(|error| error.to_string())?;
         self.phase.compare_exchange(READY, REQUESTED, Ordering::AcqRel, Ordering::Acquire)
             .map_err(|_| "The next set is not ready for a transition".to_string())?;
-        let frames = (seconds * f64::from(owner.sample_rate())).round().max(2.0) as u64;
         if self.request.try_send(Transition { revision, frames, _permit: permit }).is_err() {
             self.phase.store(READY, Ordering::Release);
             return Err("The transition slot is unavailable".into());
@@ -97,7 +133,7 @@ pub(crate) struct Stage {
     namespace: [u64; 2],
     scratch: Box<[f32]>,
     preview_pair: Option<[usize; 2]>,
-    physical_input_conflict: bool,
+    refusal: Option<Refusal>,
     transition: Option<Transition>,
     fade: Option<(u64, u64)>,
     preview_gain: f32,
@@ -129,7 +165,7 @@ impl Handle {
     /// Takes prepared DSP/media, active namespace and a shared cancellation flag; returns controls for that one graph.
     pub(crate) fn stage(&self, mut reservation: Reservation, mut prepared: Prepared, namespace: [u64; 2], cancel: Arc<AtomicBool>) -> Result<Arc<Control>, String> {
         if !Arc::ptr_eq(&self.0, &reservation.handle.0) { return Err("The reserved next-set owner changed".into()); }
-        if physical_input(&prepared.rt) { return Err("Next-set fades require physical input routes to be disabled; current performance and saved aliases are retained".into()); }
+        if physical_input(&prepared.rt) { return Err(Refusal::PhysicalInput.message(prepared.rt.sr as u32)); }
         if prepared.rt.routing.as_ref().is_some_and(|graph| graph.model.plugins.iter().any(|plugin| !plugin.bypass && plugin.unavailable.is_some())) {
             return Err("Next-set preflight refused an unavailable native plugin; current performance is retained".into());
         }
@@ -139,10 +175,10 @@ impl Handle {
         for deck in &mut prepared.rt.decks { deck.playing = deck.audio.is_some(); }
         let (request, incoming) = bounded(1);
         let control = Arc::new(Control { phase: AtomicU8::new(QUEUED), cancel, preview: AtomicBool::new(false),
-            cue_available: AtomicBool::new(false), request, incoming });
+            cue_available: AtomicBool::new(false), priming_frames: AtomicU64::new(u64::from(priming(&prepared.rt))), request, incoming });
         let preview_pair = main_pair(&prepared.rt);
         let stage = Box::new(Stage { prepared, control: control.clone(), namespace, scratch: vec![0.0; 128 * MAX_PHYSICAL_CHANNELS].into_boxed_slice(),
-            preview_pair, physical_input_conflict: false,
+            preview_pair, refusal: None,
             transition: None, fade: None, preview_gain: 0.0, finished: false, error: None, applied: None });
         if self.0.request.try_send(stage).is_err() {
             return Err("The renderer staging slot is unavailable".into());
@@ -157,8 +193,8 @@ impl Handle {
     /// Takes this handle; returns the authoritative outcome after dropping all retired media and DSP here.
     pub(crate) fn retire(&self) -> Option<Result<(), Error>> {
         let stage = self.0.returned.try_recv().ok()?;
-        let result = if stage.physical_input_conflict {
-            Err(Error::Invalid("Live-set fades require physical input routes to be disabled; current performance and saved aliases are retained".into()))
+        let result = if let Some(refusal) = stage.refusal {
+            Err(Error::Invalid(refusal.message(stage.prepared.rt.sr as u32)))
         } else { match stage.error.as_ref() {
             Some(Error::Conflict) => Err(Error::Conflict),
             Some(Error::Busy) => Err(Error::Busy),
@@ -182,13 +218,17 @@ impl RtEngine {
             && stage.preview_pair.is_some_and(|pair| pair.iter().all(|channel| *channel < preview_channels)), Ordering::Release);
         if stage.finished { self.live_set = Some(stage); return; }
         let committed = stage.fade.is_some();
+        if !committed { stage.control.priming_frames.store(u64::from(priming(&stage.prepared.rt)), Ordering::Release); }
         if self.performance.status().recovery {
             stage.error = Some(Error::Protected(performance::Error::Recovery));
             stage.finished = true;
         } else if !committed && stage.control.cancel.load(Ordering::Acquire) {
             stage.finished = true;
         } else if !committed && physical_input(self) {
-            stage.physical_input_conflict = true;
+            stage.refusal = Some(Refusal::PhysicalInput);
+            stage.finished = true;
+        } else if !committed && missing_outputs(&stage.prepared.rt, preview_channels) {
+            stage.refusal = Some(Refusal::MissingOutputs);
             stage.finished = true;
         } else if !committed && (stage.namespace != self.session.namespace || self.sr != stage.prepared.rt.sr
             || self.project_sealed || !self.sampler_assets.same_owner(&stage.prepared.rt.sampler_assets)) {
@@ -198,7 +238,11 @@ impl RtEngine {
             if stage.control.phase.load(Ordering::Acquire) == QUEUED { stage.control.phase.store(READY, Ordering::Release); }
             if stage.transition.is_none() { stage.transition = stage.control.incoming.try_recv().ok(); }
             if let Some(request) = &stage.transition {
-                if self.recording || self.project.revision() != request.revision || self.cmd_rx.pending_project_ui_requests() {
+                let remaining = priming(&stage.prepared.rt);
+                if remaining != 0 && request.frames <= u64::from(remaining) {
+                    stage.refusal = Some(Refusal::Priming(remaining));
+                    stage.finished = true;
+                } else if self.recording || self.project.revision() != request.revision || self.cmd_rx.pending_project_ui_requests() {
                     stage.error = Some(Error::Conflict);
                     stage.finished = true;
                 } else if self.undo.available() && self.cmd_rx.begin_project_install() && self.cmd_rx.is_empty() {
@@ -258,6 +302,7 @@ impl RtEngine {
                 }
             }
         }
+        if stage.fade.is_none() { stage.control.priming_frames.store(u64::from(priming(&stage.prepared.rt)), Ordering::Release); }
         if let Some(applied) = stage.applied.take() {
             if let Err(error) = self.project.live_sets().0.applied.try_send(applied) { stage.applied = Some(error.into_inner()); }
         }
