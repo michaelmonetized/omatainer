@@ -2163,7 +2163,9 @@
       "prs": [],
       "evidence": [
         "docs/validation/music-file-management.md",
-        "docs/validation/music-file-management-receipt.json"
+        "docs/validation/music-file-management-receipt.json",
+        "docs/validation/music-file-management-integrated.md",
+        "docs/validation/music-file-management-integrated-receipt.json"
       ]
     },
     {
