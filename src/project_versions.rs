@@ -63,6 +63,7 @@ pub(crate) struct Review {
 pub(crate) struct Pruned {
     pub removed: usize,
     pub reclaimed_audio: usize,
+    pub recovery_id: Option<String>,
     pub warning: Option<String>,
 }
 
@@ -153,9 +154,14 @@ impl Store {
         let mut creation_warning = None;
         let empty = if create && root.exists() {
             let metadata = directory(root)?;
-            fs::read_dir(root).map_err(|e| e.to_string())?.next().is_none()
+            fs::read_dir(root)
+                .map_err(|e| e.to_string())?
+                .next()
+                .is_none()
                 .then_some((metadata.dev(), metadata.ino()))
-        } else { None };
+        } else {
+            None
+        };
         if create && (!root.exists() || empty.is_some()) {
             let stage = crate::portable_project::Stage::new(
                 root.parent().ok_or("Version folder needs a parent")?,
@@ -178,9 +184,10 @@ impl Store {
             }
             let published = if let Some(identity) = empty {
                 crate::portable_project::publish_into_empty(stage, root, identity, cancel)?
-            } else { crate::portable_project::publish(stage, root, cancel)? };
-            if let SaveOutcome::CommittedButDirectorySyncFailed(w) = published
-            {
+            } else {
+                crate::portable_project::publish(stage, root, cancel)?
+            };
+            if let SaveOutcome::CommittedButDirectorySyncFailed(w) = published {
                 creation_warning = Some(w);
             }
         }
@@ -528,8 +535,8 @@ impl Store {
                 .ok_or("Cannot inspect version index")?,
         })
     }
-    /// Publish the reviewed pruning decision before reclaiming unreferenced files.
-    /// Takes a still-current review and commit callback; returns truthful committed cleanup warnings.
+    /// Quarantine reviewed unused files after a confirmed native index save.
+    /// Takes an exact review, cancellation and commit admission; returns removed references, recoverable audio count and truthful post-publication warnings.
     pub(crate) fn prune<G>(
         &mut self,
         review: Review,
@@ -547,70 +554,46 @@ impl Store {
             return Err("Version storage changed after pruning review; review again".into());
         }
         active(cancel)?;
-        self.recheck()?;
-        let _guard = authorize()?;
+        if review.entries.is_empty() && review.files.is_empty() {
+            return Ok(Pruned {
+                removed: 0,
+                reclaimed_audio: 0,
+                recovery_id: None,
+                warning: None,
+            });
+        }
         let mut next = self.index.clone();
         next.entries.retain(|entry| !ids.contains(&entry.id));
+        let prepared = cleanup::prepare(self, &review, &next, cancel)?;
+        active(cancel)?;
+        self.recheck()?;
+        let _guard = authorize()?;
         let outcome = save(&self.root.join(INDEX), &next, cancel, Overwrite::Replace)?;
         self.index = next;
         self.index_fingerprint = FileFingerprint::read(&self.root.join(INDEX));
         let mut warning = match outcome {
             SaveOutcome::Durable => None,
-            SaveOutcome::CommittedButDirectorySyncFailed(warning) => Some(warning),
+            SaveOutcome::CommittedButDirectorySyncFailed(w) => Some(w),
         };
-        warning = warning.or_else(|| {
-            self.index_fingerprint.is_none().then(|| {
-                "Pruning committed; cleanup deferred because index inspection failed".into()
-            })
-        });
+        warning = warning.or_else(|| self.index_fingerprint.is_none().then(|| "Pruning committed; quarantine deferred because index inspection failed. Recovery record and all files preserved.".into()));
+        let mut reclaimed_audio = 0;
         if warning.is_none() {
-            if let Err(error) = self.recheck() {
-                warning = Some(format!("Pruning committed; cleanup deferred: {error}"));
-            }
-        }
-        let mut reclaimed = 0;
-        if warning.is_none() {
-            for id in &review.orphaned_revisions {
-                if let Err(error) =
-                    fs::remove_file(self.root.join("revisions").join(format!("{id}.omat")))
-                {
-                    warning = Some(format!(
-                        "Pruning committed; revision cleanup deferred: {error}"
-                    ));
-                    break;
-                }
-            }
-            if warning.is_none() {
-                for hash in &review.orphaned_audio {
-                    if let Err(error) =
-                        fs::remove_file(self.root.join("audio").join(format!("{hash}.omat")))
-                    {
-                        warning = Some(format!(
-                            "Pruning committed; audio cleanup deferred: {error}"
-                        ));
-                        break;
-                    }
-                    reclaimed += 1;
-                }
-            }
-            for path in [
-                self.root.join("audio"),
-                self.root.join("revisions"),
-                self.root.clone(),
-            ] {
-                if let Err(error) = File::open(path).and_then(|f| f.sync_all()) {
-                    warning = Some(format!("Pruning committed; folder sync failed: {error}"));
-                    break;
-                }
+            match cleanup::retire(self, &prepared, cancel) {
+                Ok(count) => reclaimed_audio = count,
+                Err(error) => warning = Some(format!("Pruning committed; quarantine incomplete: {error}. Restore the saved cleanup before another batch.")),
             }
         }
         Ok(Pruned {
             removed: review.entries.len(),
-            reclaimed_audio: reclaimed,
+            reclaimed_audio,
+            recovery_id: Some(prepared.id().into()),
             warning,
         })
     }
 }
+
+pub(crate) mod cleanup;
+pub(crate) mod storage;
 
 #[cfg(test)]
 mod tests;

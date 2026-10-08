@@ -1159,6 +1159,41 @@
       ],
       "limits": "Linux ARM64 software qualification; no physical ports, capture, OS GUI or listening check. Native schema 33 stores an optional song key, optional per-clip override and explicit instrument participation. Thirteen validated scales use tonic 0–11 and absolute MIDI pitches 0–127; degree edits refuse out-of-range results. Existing chromatic notes stay unchanged unless explicitly included. Current context, captured owner metadata, note/lane bounds and cancellation guard every preview and atomic Apply. Harmony preserves originals and copies uniquely owned poly-pressure; MPE member-channel harmony refuses overlapping additional voices. Instrument participation affects newly pressed pads and retains the original pitch for held releases. Concurrent clips with differing contexts display a conflict without rewriting the song key or notes. This does not implement per-note expression curve editing, note chance, MIDI 2.0 or complete Live-authored migration comparison. Twelve isolated native import workflows were qualified separately; the retained private saved Live Set is a read-only format smoke check."
     },
+    "170": {
+      "status": "implemented",
+      "paths": [
+        {
+          "kind": "storage report and compacted copy",
+          "file": "src/project_versions/storage.rs",
+          "entry": "Read-only chosen folders, shared slices and all-version storage; exact reviewed no-overwrite archive copy"
+        },
+        {
+          "kind": "reversible cleanup ownership",
+          "file": "src/project_versions/cleanup.rs",
+          "entry": "Private native records, descriptor-bound quarantine, partial recovery, full file proof and byte-exact index restore"
+        },
+        {
+          "kind": "existing single version worker",
+          "file": "src/ui/project_versions/worker.rs",
+          "entry": "Shared work admission and memory ownership outside GUI and audio; small review IDs and explicit Apply"
+        },
+        {
+          "kind": "native storage review and recovery",
+          "file": "src/ui/project_versions.rs",
+          "entry": "Inspect, reviewed compacted copy, pruning review, cancellation and reopen/restore controls"
+        }
+      ],
+      "fixtures": [
+        "project_versions::cleanup::tests",
+        "project_versions::storage::tests",
+        "ui::project_versions::tests"
+      ],
+      "evidence": [
+        "docs/validation/project-storage.md",
+        "docs/validation/project-storage-receipt.json"
+      ],
+      "limits": "Linux aarch64 software qualification uses actual local files, exact hashes and inode identities, native bundle save/reopen, actual egui/AccessKit controls and independently compared playing PCM. No physical audio/MIDI port or new OS GUI was opened. Storage totals are sampled, and explicitly chosen shared folders may include other projects or overlap. Original recording/render provenance is not inferred from filenames. Inventories stop at 65536 entries, 16 folder levels and 64 GiB. Native archives retain the existing 1 GiB PCM/64 MiB metadata limits. Compaction saves only a reviewed new copy and preserves metadata-sensitive identities; it never replaces the source archive or changes the active renderer. Quarantine retains disk bytes and private durable recovery records. At most 128 recovery batches are inspected. Restore newest first with unchanged version indexes, retained dependencies and owned bytes; occupied paths or later edits refuse restoration without discarding the last copy. Partial moves, failed or uncertain publications keep recoverable files and records. Permanent purge and cross-filesystem destructive moves are not offered. The running app/session are preserved; installation is deferred while the independent GUI remains open. This milestone does not complete the remaining nonhardware backlog or qualify physical controller behavior."
+    },
     "176": {
       "status": "implemented",
       "paths": [

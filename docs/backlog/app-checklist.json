@@ -2390,9 +2390,12 @@
       "dependencies": [
         124
       ],
-      "state": "planned",
+      "state": "implemented",
       "prs": [],
-      "evidence": []
+      "evidence": [
+        "docs/validation/project-storage.md",
+        "docs/validation/project-storage-receipt.json"
+      ]
     },
     {
       "issue": 171,

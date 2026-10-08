@@ -1,7 +1,7 @@
 use super::*;
-struct Folder(PathBuf);
+pub(super) struct Folder(pub(super) PathBuf);
 impl Folder {
-    fn new() -> Self {
+    pub(super) fn new() -> Self {
         let p = std::env::temp_dir().join(format!(
             "omatainer-versions-{:x?}",
             crate::engine::midi_edit::NoteId::new().words()
@@ -15,7 +15,7 @@ impl Drop for Folder {
         let _ = fs::remove_dir_all(&self.0);
     }
 }
-fn fixture(value: f32) -> Bundle<serde_json::Value> {
+pub(super) fn fixture(value: f32) -> Bundle<serde_json::Value> {
     Bundle {
         state: serde_json::json!({"mix": value}),
         media: vec![Arc::new(Sample { spectrum: None,
@@ -29,7 +29,7 @@ fn fixture(value: f32) -> Bundle<serde_json::Value> {
         })],
     }
 }
-fn count(root: &Path, folder: &str) -> usize {
+pub(super) fn count(root: &Path, folder: &str) -> usize {
     fs::read_dir(root.join(folder)).unwrap().count()
 }
 #[test]
