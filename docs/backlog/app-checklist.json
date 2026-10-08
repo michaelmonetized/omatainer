@@ -2322,7 +2322,9 @@
       "prs": [],
       "evidence": [
         "docs/validation/note-variation.md",
-        "docs/validation/note-variation-receipt.json"
+        "docs/validation/note-variation-receipt.json",
+        "docs/validation/midi-composition.md",
+        "docs/validation/midi-composition-receipt.json"
       ]
     },
     {
@@ -2947,9 +2949,12 @@
         110,
         168
       ],
-      "state": "planned",
+      "state": "implemented",
       "prs": [],
-      "evidence": []
+      "evidence": [
+        "docs/validation/midi-composition.md",
+        "docs/validation/midi-composition-receipt.json"
+      ]
     },
     {
       "issue": 208,
@@ -2961,9 +2966,12 @@
         110,
         168
       ],
-      "state": "planned",
+      "state": "implemented",
       "prs": [],
-      "evidence": []
+      "evidence": [
+        "docs/validation/midi-composition.md",
+        "docs/validation/midi-composition-receipt.json"
+      ]
     },
     {
       "issue": 209,
@@ -2975,9 +2983,12 @@
         110,
         168
       ],
-      "state": "planned",
+      "state": "implemented",
       "prs": [],
-      "evidence": []
+      "evidence": [
+        "docs/validation/midi-composition.md",
+        "docs/validation/midi-composition-receipt.json"
+      ]
     },
     {
       "issue": 210,

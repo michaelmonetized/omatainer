@@ -61,6 +61,14 @@ pub(crate) enum Kind {
     Warp,
     ScaleTranspose,
     Harmony,
+    Chords,
+    Melody,
+    Articulate,
+}
+impl Kind {
+    pub(crate) fn composition(self) -> bool {
+        matches!(self, Self::Chords | Self::Melody | Self::Articulate)
+    }
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum Property {
@@ -114,6 +122,7 @@ pub(crate) struct Parameters {
     pub context: Option<super::musical_context::Context>,
     pub degrees: i16,
     pub include_chromatic: bool,
+    pub composition: composition::Settings,
 }
 impl Default for Parameters {
     fn default() -> Self {
@@ -140,12 +149,16 @@ impl Default for Parameters {
             context: None,
             degrees: 2,
             include_chromatic: false,
+            composition: composition::Settings::default(),
         }
     }
 }
 impl Parameters {
     fn valid(&self) -> bool {
-        self.rotation.unsigned_abs() < super::project::MAX_NOTES_PER_CLIP as u32
+        (!self.kind.composition() || self.composition.valid())
+            && (self.kind != Kind::Chords || self.context.is_some())
+            && (self.kind != Kind::Melody || self.include_chromatic || self.context.is_some())
+            && self.rotation.unsigned_abs() < super::project::MAX_NOTES_PER_CLIP as u32
             && self.grid.is_finite()
             && (1.0 / 1024.0..=4.0).contains(&self.grid)
             && self.strength.is_finite()
@@ -384,9 +397,14 @@ impl Held {
 /// Capture uniquely owned note expression for a prepared clip.
 /// Takes validated content, changed-note flags, explicit expression mode and cancellation; returns one owner per source message or a refusal for ambiguous voices.
 pub(crate) fn expression_owners(
-    content: &Content, changed: &[bool], mode: Expression, cancel: &AtomicBool,
+    content: &Content,
+    changed: &[bool],
+    mode: Expression,
+    cancel: &AtomicBool,
 ) -> Result<Vec<Option<usize>>, String> {
-    if changed.len() != content.notes.len() { return Err("Expression ownership flags do not match the clip notes".into()); }
+    if changed.len() != content.notes.len() {
+        return Err("Expression ownership flags do not match the clip notes".into());
+    }
     owners(content, changed, mode, cancel)
 }
 fn owners(
@@ -680,10 +698,13 @@ pub(crate) fn prepare(
             || !n.len.is_finite()
             || !(0.0..=LIMIT).contains(&n.source_start())
             || !(0.0..=LIMIT).contains(&n.source_duration())
-    }) || selected.is_empty()
+    }) || selected.is_empty() && !matches!(params.kind, Kind::Chords | Kind::Melody)
         || !selected.is_subset(&ids)
     {
         return Err("Choose a nonempty stable note selection with valid MIDI values".into());
+    }
+    if params.kind.composition() {
+        return composition::prepare(original, selected, params, cancel);
     }
     let mut indices = original
         .notes
@@ -747,6 +768,9 @@ pub(crate) fn prepare(
                     .transpose(n.pitch, params.degrees, params.include_chromatic)?;
             }
             Kind::Harmony => unreachable!("Harmony uses the bounded copy preparation path"),
+            Kind::Chords | Kind::Melody | Kind::Articulate => {
+                unreachable!("Composition uses its bounded producer path")
+            }
             Kind::Quantize => {
                 let snap =
                     |v: f64| v + ((v / params.grid).round() * params.grid - v) * params.strength;
@@ -918,3 +942,5 @@ pub(crate) fn prepare(
 mod tests;
 
 mod scale;
+
+pub(crate) mod composition;

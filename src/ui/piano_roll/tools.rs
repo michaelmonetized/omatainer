@@ -27,6 +27,7 @@ struct Original {
 struct Preview {
     original: Arc<Original>,
     summary: Summary,
+    selected: BTreeSet<NoteId>,
 }
 struct Worker {
     receiver: mpsc::Receiver<Result<Prepared, String>>,
@@ -63,20 +64,25 @@ impl Tools {
     /// Takes the tool panel state; returns validated repeatable seed parameters or a visible input error.
     pub(super) fn parameters(&self) -> Result<Parameters, String> {
         let mut params = self.params.clone();
-        if params.kind == Kind::Recombine {
+        if matches!(params.kind, Kind::Recombine | Kind::Melody) {
             params.seed = self
                 .seed
                 .parse::<u64>()
                 .map_err(|_| "Seed must be a whole number from 0 through 18446744073709551615")?;
         }
-        if matches!(params.kind, Kind::ScaleTranspose | Kind::Harmony) { params.context = None; }
+        if matches!(
+            params.kind,
+            Kind::ScaleTranspose | Kind::Harmony | Kind::Chords | Kind::Melody
+        ) {
+            params.context = None;
+        }
         Ok(params)
     }
     fn preview(&mut self, draft: &Draft) -> Result<(), String> {
         if self.busy() {
             return Err("Wait for the current MIDI preview to finish".into());
         }
-        if self.params.kind == Kind::Recombine {
+        if matches!(self.params.kind, Kind::Recombine | Kind::Melody) {
             self.params.seed = self
                 .seed
                 .parse::<u64>()
@@ -96,7 +102,15 @@ impl Tools {
             },
             |p| p.original.clone(),
         );
-        if draft.region != original.region || draft.selected != original.selected || draft.resolved_context().context != original.context {
+        if draft.region != original.region
+            || draft.selected
+                != self
+                    .preview
+                    .as_ref()
+                    .map_or(&original.selected, |preview| &preview.selected)
+                    .clone()
+            || draft.resolved_context().context != original.context
+        {
             return Err(
                 "Keep or restore this preview before changing its note selection or clip bounds"
                     .into(),
@@ -106,7 +120,12 @@ impl Tools {
         let worker_cancel = cancel.clone();
         let source = original.clone();
         let mut params = self.params.clone();
-        if matches!(params.kind, Kind::ScaleTranspose | Kind::Harmony) { params.context = original.context; }
+        if matches!(
+            params.kind,
+            Kind::ScaleTranspose | Kind::Harmony | Kind::Chords | Kind::Melody
+        ) {
+            params.context = original.context;
+        }
         let worker_params = params.clone();
         let (sender, receiver) = mpsc::sync_channel(1);
         std::thread::Builder::new()
@@ -163,6 +182,25 @@ impl Tools {
         if !draft.region.allows(&prepared.content.notes) {
             return Err("This transformation would exceed the current loop's note-density limit; lengthen the loop or select fewer notes".into());
         }
+        let generated_selection = worker.params.kind.composition().then(|| {
+            let originals: BTreeSet<_> = worker
+                .original
+                .content
+                .notes
+                .iter()
+                .map(|note| note.id)
+                .collect();
+            prepared
+                .content
+                .notes
+                .iter()
+                .filter(|note| !originals.contains(&note.id))
+                .map(|note| note.id)
+                .collect::<BTreeSet<_>>()
+        });
+        if let Some(selected) = generated_selection {
+            draft.selected = selected;
+        }
         let controls_dirty = worker.original.controls_dirty
             || !worker.original.content.same_lanes(&prepared.content);
         draft.notes = std::mem::take(&mut prepared.content.notes);
@@ -187,6 +225,7 @@ impl Tools {
         self.preview = Some(Preview {
             original: worker.original.clone(),
             summary: prepared.summary,
+            selected: draft.selected.clone(),
         });
         Ok(())
     }
@@ -247,6 +286,7 @@ fn value(ui: &mut Ui, label: &str, value: &mut u8, min: u8, max: u8) {
     }
 }
 fn curve(ui: &mut Ui, tools: &mut Tools, theme: &Theme) {
+    let melodic = tools.params.kind == Kind::Melody;
     let p = &mut tools.params;
     let previous = tools.shape;
     egui::ComboBox::from_id_salt("midi-velocity-shape")
@@ -284,18 +324,29 @@ fn curve(ui: &mut Ui, tools: &mut Tools, theme: &Theme) {
             }
         });
     }
-    ui.horizontal_wrapped(|ui| {
-        value(ui, "Velocity minimum", &mut p.velocity[0], 1, 127);
-        value(ui, "Velocity maximum", &mut p.velocity[1], 1, 127);
-        value(ui, "Velocity cycles", &mut p.cycles, 1, 16);
-        number(ui, "Velocity phase", &mut p.phase, 0.0, 1.0);
-    });
+    if !melodic {
+        ui.horizontal_wrapped(|ui| {
+            value(ui, "Velocity minimum", &mut p.velocity[0], 1, 127);
+            value(ui, "Velocity maximum", &mut p.velocity[1], 1, 127);
+            value(ui, "Velocity cycles", &mut p.cycles, 1, 16);
+            number(ui, "Velocity phase", &mut p.phase, 0.0, 1.0);
+        });
+    }
     let (response, painter) = ui.allocate_painter(
         Vec2::new(ui.available_width().max(1.0), 110.0),
         egui::Sense::click_and_drag(),
     );
     let rect = response.rect;
-    accessibility::button(ui, &response, "Draw velocity curve", None);
+    accessibility::button(
+        ui,
+        &response,
+        if melodic {
+            "Draw melody contour"
+        } else {
+            "Draw velocity curve"
+        },
+        None,
+    );
     painter.rect_filled(rect, 0.0, theme.bg_dark);
     if response.drag_started() || response.clicked() {
         tools.drag = None;
@@ -337,18 +388,32 @@ fn curve(ui: &mut Ui, tools: &mut Tools, theme: &Theme) {
             egui::Stroke::new(1.5_f32, theme.cyan),
         );
     }
-    ui.label("Draw a curve or edit its points. It follows the first through last selected note onset and repeats by Cycles. Strength blends it with the original velocities.");
-    egui::CollapsingHeader::new("Velocity curve points")
-        .id_salt("velocity-curve-points")
-        .show(ui, |ui| {
-            ui.horizontal_wrapped(|ui| {
-                for (i, v) in p.curve.iter_mut().enumerate() {
-                    if number(ui, &format!("Velocity point {}", i + 1), v, 0.0, 1.0) {
-                        tools.shape = 6;
-                    }
+    ui.label(if melodic { "Draw a contour or edit its points; low and high values stay inside the chosen pitch register." } else { "Draw a curve or edit its points. It follows the first through last selected note onset and repeats by Cycles. Strength blends it with the original velocities." });
+    egui::CollapsingHeader::new(if melodic {
+        "Melody contour points"
+    } else {
+        "Velocity curve points"
+    })
+    .id_salt("velocity-curve-points")
+    .show(ui, |ui| {
+        ui.horizontal_wrapped(|ui| {
+            for (i, v) in p.curve.iter_mut().enumerate() {
+                if number(
+                    ui,
+                    &format!(
+                        "{} point {}",
+                        if melodic { "Melody" } else { "Velocity" },
+                        i + 1
+                    ),
+                    v,
+                    0.0,
+                    1.0,
+                ) {
+                    tools.shape = 6;
                 }
-            });
+            }
         });
+    });
 }
 fn warp(ui: &mut Ui, tools: &mut Tools, theme: &Theme) {
     let p = &mut tools.params;
@@ -413,9 +478,13 @@ pub(super) fn show(ui: &mut Ui, draft: &mut Draft, theme: &Theme) -> Result<bool
     let mut preview = false;
     let mut restore = false;
     let mut keep = false;
+    let mut reroll = false;
     egui::CollapsingHeader::new("MIDI transformations").id_salt("midi-tools").show(ui,|ui|{
         ui.label(&tools.message);
-        egui::ComboBox::from_id_salt("midi-tool-kind").selected_text(match tools.params.kind{Kind::Quantize=>"Quantize",Kind::Recombine=>"Recombine",Kind::Velocity=>"Velocity curve",Kind::Stretch=>"Stretch",Kind::Reverse=>"Reverse phrase",Kind::Warp=>"Time curve",Kind::ScaleTranspose=>"Scale degrees",Kind::Harmony=>"Harmony"}).show_ui(ui,|ui|{for(kind,label)in[(Kind::Quantize,"Quantize"),(Kind::Recombine,"Recombine"),(Kind::Velocity,"Velocity curve"),(Kind::Stretch,"Stretch"),(Kind::Reverse,"Reverse phrase"),(Kind::Warp,"Time curve"),(Kind::ScaleTranspose,"Scale degrees"),(Kind::Harmony,"Harmony")]{ui.selectable_value(&mut tools.params.kind,kind,label);}});
+        let previous_kind=tools.params.kind;
+        let kind = egui::ComboBox::from_id_salt("midi-tool-kind").selected_text(match tools.params.kind{Kind::Quantize=>"Quantize",Kind::Recombine=>"Recombine",Kind::Velocity=>"Velocity curve",Kind::Stretch=>"Stretch",Kind::Reverse=>"Reverse phrase",Kind::Warp=>"Time curve",Kind::ScaleTranspose=>"Scale degrees",Kind::Harmony=>"Harmony",Kind::Chords=>"Chord progression",Kind::Melody=>"Melody contour",Kind::Articulate=>"Articulation"}).show_ui(ui,|ui|{for(kind,label)in[(Kind::Quantize,"Quantize"),(Kind::Recombine,"Recombine"),(Kind::Velocity,"Velocity curve"),(Kind::Stretch,"Stretch"),(Kind::Reverse,"Reverse phrase"),(Kind::Warp,"Time curve"),(Kind::ScaleTranspose,"Scale degrees"),(Kind::Harmony,"Harmony"),(Kind::Chords,"Chord progression"),(Kind::Melody,"Melody contour"),(Kind::Articulate,"Articulation")]{ui.selectable_value(&mut tools.params.kind,kind,label);}});
+        kind.response.widget_info(||egui::WidgetInfo::labeled(egui::WidgetType::ComboBox,true,"MIDI transformation tool"));
+        if previous_kind!=tools.params.kind && tools.params.kind==Kind::Articulate { tools.params.composition.replace=true; }
         match tools.params.kind {
             Kind::Quantize=>{ui.horizontal_wrapped(|ui|{
                 egui::ComboBox::from_id_salt("midi-tool-grid").selected_text(GRIDS.iter().skip(1).find(|(_,value)|(*value-tools.params.grid).abs()<1e-9).map_or("Custom grid",|(name,_)|*name)).show_ui(ui,|ui|{for(name,value)in GRIDS.iter().skip(1){ui.selectable_value(&mut tools.params.grid,*value,*name);}});
@@ -429,6 +498,7 @@ pub(super) fn show(ui: &mut Ui, draft: &mut Draft, theme: &Theme) -> Result<bool
             Kind::Stretch=>{number(ui,"Stretch factor",&mut tools.params.stretch,0.125,8.0);ui.label("Stretch moves starts and ends around the first selected note. Clip and loop bounds stay fixed.");}
             Kind::Reverse=>{ui.label("Reverse reflects the selected phrase and its expression around its first start and last end. Pitch, note identity and velocity stay attached.");}
             Kind::Warp=>warp(ui,&mut tools,theme),
+            Kind::Chords | Kind::Melody | Kind::Articulate => { reroll=composition::show(ui,&mut tools,theme); },
             Kind::ScaleTranspose|Kind::Harmony=>{
                 let mut degrees=f64::from(tools.params.degrees);
                 if number(ui,"Scale degrees",&mut degrees,-128.0,128.0){tools.params.degrees=degrees.round()as i16;}
@@ -449,7 +519,16 @@ pub(super) fn show(ui: &mut Ui, draft: &mut Draft, theme: &Theme) -> Result<bool
             if enabled(ui,"Next transform settings",tools.history_index.is_some_and(|i|i+1<tools.history.len())&&!tools.busy()).clicked(){tools.history(1);}
         });
     });
-    let result = if preview {
+    let result = if reroll {
+        tools
+            .seed
+            .parse::<u64>()
+            .map_err(|_| "Use a whole melody seed from 0 through 18446744073709551615".to_string())
+            .and_then(|seed| {
+                tools.seed = seed.wrapping_add(1).to_string();
+                tools.preview(draft)
+            })
+    } else if preview {
         tools.preview(draft)
     } else if restore {
         tools.restore(draft)
@@ -460,12 +539,14 @@ pub(super) fn show(ui: &mut Ui, draft: &mut Draft, theme: &Theme) -> Result<bool
         Ok(())
     };
     draft.tools = tools;
-    if result.is_ok() && (preview || restore || keep) {
+    if result.is_ok() && (preview || reroll || restore || keep) {
         ui.ctx()
             .request_repaint_after(std::time::Duration::from_millis(20));
     }
-    result.map(|_| preview || restore || keep)
+    result.map(|_| preview || reroll || restore || keep)
 }
 
 #[cfg(test)]
 mod tests;
+
+mod composition;

@@ -344,6 +344,8 @@ Linux ARM64 native software qualification. Compare at most 64 captured empty/MID
 - Acceptance fixtures: `engine::note_variation::tests`, `ui::piano_roll::variation::tests`, `engine::midi::routing::playback::tests::actual_rendered_two_thousand_loops_share_seed_choices_with_routed_expression_and_independent_blocks`.
 - Evidence: [docs/validation/note-variation.md](../docs/validation/note-variation.md).
 - Evidence: [docs/validation/note-variation-receipt.json](../docs/validation/note-variation-receipt.json).
+- Evidence: [docs/validation/midi-composition.md](../docs/validation/midi-composition.md).
+- Evidence: [docs/validation/midi-composition-receipt.json](../docs/validation/midi-composition-receipt.json).
 
 Linux ARM64 software qualification without physical ports, capture, OS GUI or listening. Native state version 34 stores optional note chance, inclusive velocity range, explicit same-onset Linked/Exclusive groups and a full-width project seed. Group weights above 100%, inconsistent linked probabilities, invalid ranges, mixed expression ownership modes and ambiguous voices refuse the complete edit. The immutable worker-prepared plan evaluates musical cycles without callback allocation, using separate random domains for independent, grouped and velocity decisions. Built-in note gates, routed paired releases and uniquely owned expression share the same cycle decision; unrelated automation remains unchanged. Explicit MPE ownership is required for member-channel expression; automatic MPE negotiation and independent expression curve editing remain #150. Copied clip/preset groups receive new stable identities. Applying a saved seed requires stopped playback and unchanged captured state, with cancellation, one Undo and exact retained notes/PCM. Ordinary notes and legacy projects retain their prior behavior, and old containers refuse future fields including null rather than discarding them. Twelve native import workflows remain separately qualified against a fresh worker; the private saved Live Set is a read-only format smoke check.
 
@@ -631,6 +633,36 @@ Linux ARM64 software qualification through actual OutputCallback/renderer PCM an
 
 Native UI, real catalog-owner transactions, persistence/migration, stale approval and 100000-track software-renderer fixtures pass. Final release qualification is in progress. Supported fields are title, artist, key, tag, group, note, BPM, duration, rating and confirmed current-version played state. Genre/date/playcount are not authoritative catalog fields yet. Large-library measurements exercise software playback, not physical device deadlines.
 
+### Issue #207: implemented
+
+- bounded composition worker: [src/engine/midi_tools/composition.rs](../src/engine/midi_tools/composition.rs) — Quantized editable notes, scale/register validation, cancellation and expression ownership; Editable degrees, inversions, voicings and bounded voice leading without crossing
+- native composition controls: [src/ui/piano_roll/tools/composition.rs](../src/ui/piano_roll/tools/composition.rs) — Actual reversible preview, ordinary draft editing and shared Apply/Undo; Editable degrees, inversions, voicings and bounded voice leading without crossing
+- Acceptance fixtures: `engine::midi_tools::composition::tests`, `ui::piano_roll::tools::composition::tests::actual_eight_chord_progression_revises_inversion_previews_restores_commits_undo_and_reopens`.
+- Evidence: [docs/validation/midi-composition.md](../docs/validation/midi-composition.md).
+- Evidence: [docs/validation/midi-composition-receipt.json](../docs/validation/midi-composition-receipt.json).
+
+Linux ARM64 software qualification through actual egui/AccessKit actions, real composition workers, ordinary editable MIDI notes, Apply/Undo/Redo, and native project save/reopen. No physical MIDI or audio ports, hardware capture, OS GUI or listening were used. Chords and constrained melodies use each clip’s saved scale context; borrowed pitches need explicit permission. Ambiguous expression ownership, overlapping voices, invalid register/timing, chance-group duplication, excess work and cancellation refuse the complete operation. The source note expression is copied only when ownership is unambiguous; unrelated automation is retained. Composition preview is visual; this receipt makes no physical audition claim. Per-note expression editing and MPE negotiation remain tracked separately in #150.
+
+### Issue #208: implemented
+
+- bounded composition worker: [src/engine/midi_tools/composition.rs](../src/engine/midi_tools/composition.rs) — Quantized editable notes, scale/register validation, cancellation and expression ownership; Drawn contours, explicit density/register/dynamics and deterministic full-width seeds
+- native composition controls: [src/ui/piano_roll/tools/composition.rs](../src/ui/piano_roll/tools/composition.rs) — Actual reversible preview, ordinary draft editing and shared Apply/Undo; Drawn contours, explicit density/register/dynamics and deterministic full-width seeds
+- Acceptance fixtures: `engine::midi_tools::composition::tests`, `ui::piano_roll::tools::composition::tests::actual_drawn_contour_ten_saved_seeded_alternatives_reopen_and_manual_note_edit_survives_without_generator`.
+- Evidence: [docs/validation/midi-composition.md](../docs/validation/midi-composition.md).
+- Evidence: [docs/validation/midi-composition-receipt.json](../docs/validation/midi-composition-receipt.json).
+
+Linux ARM64 software qualification through actual egui/AccessKit actions, real composition workers, ordinary editable MIDI notes, Apply/Undo/Redo, and native project save/reopen. No physical MIDI or audio ports, hardware capture, OS GUI or listening were used. Chords and constrained melodies use each clip’s saved scale context; borrowed pitches need explicit permission. Ambiguous expression ownership, overlapping voices, invalid register/timing, chance-group duplication, excess work and cancellation refuse the complete operation. The source note expression is copied only when ownership is unambiguous; unrelated automation is retained. Composition preview is visual; this receipt makes no physical audition claim. Per-note expression editing and MPE negotiation remain tracked separately in #150.
+
+### Issue #209: implemented
+
+- bounded composition worker: [src/engine/midi_tools/composition.rs](../src/engine/midi_tools/composition.rs) — Quantized editable notes, scale/register validation, cancellation and expression ownership; Arpeggio, strum, grace, flam, glissando, repetition and legato as ordinary notes
+- native composition controls: [src/ui/piano_roll/tools/composition.rs](../src/ui/piano_roll/tools/composition.rs) — Actual reversible preview, ordinary draft editing and shared Apply/Undo; Arpeggio, strum, grace, flam, glissando, repetition and legato as ordinary notes
+- Acceptance fixtures: `engine::midi_tools::composition::tests`, `ui::piano_roll::tools::composition::tests::actual_articulation_selector_strums_flams_and_glissandi_remain_editable_with_one_undo`.
+- Evidence: [docs/validation/midi-composition.md](../docs/validation/midi-composition.md).
+- Evidence: [docs/validation/midi-composition-receipt.json](../docs/validation/midi-composition-receipt.json).
+
+Linux ARM64 software qualification through actual egui/AccessKit actions, real composition workers, ordinary editable MIDI notes, Apply/Undo/Redo, and native project save/reopen. No physical MIDI or audio ports, hardware capture, OS GUI or listening were used. Chords and constrained melodies use each clip’s saved scale context; borrowed pitches need explicit permission. Ambiguous expression ownership, overlapping voices, invalid register/timing, chance-group duplication, excess work and cancellation refuse the complete operation. The source note expression is copied only when ownership is unambiguous; unrelated automation is retained. Composition preview is visual; this receipt makes no physical audition claim. Per-note expression editing and MPE negotiation remain tracked separately in #150.
+
 ### Issue #216: partial
 
 - isolated scanner and durable catalog: [src/plugin_host/scanner.rs](../src/plugin_host/scanner.rs) — Timed traversal/hash/probe processes, incremental content identities, quarantine, explicit retry and blacklist, atomic cache and cancel preservation
@@ -898,9 +930,9 @@ Music source: FreeToUse public keyless API. Michael excludes other third-party p
 | [#204](https://github.com/michaelmonetized/omatainer/issues/204) | Detect changing-tempo beatgrids automatically as a preview-comparison feature | planned |
 | [#205](https://github.com/michaelmonetized/omatainer/issues/205) | Add automatically maintained smart crates | implemented |
 | [#206](https://github.com/michaelmonetized/omatainer/issues/206) | Manage provider-authorized offline lockers and readiness | excluded from release |
-| [#207](https://github.com/michaelmonetized/omatainer/issues/207) | Build chord progression and voicing generation tools | planned |
-| [#208](https://github.com/michaelmonetized/omatainer/issues/208) | Create shape-guided and seeded melodic MIDI generators | planned |
-| [#209](https://github.com/michaelmonetized/omatainer/issues/209) | Generate arpeggios, strums, ornaments and articulated note repetitions | planned |
+| [#207](https://github.com/michaelmonetized/omatainer/issues/207) | Build chord progression and voicing generation tools | implemented |
+| [#208](https://github.com/michaelmonetized/omatainer/issues/208) | Create shape-guided and seeded melodic MIDI generators | implemented |
+| [#209](https://github.com/michaelmonetized/omatainer/issues/209) | Generate arpeggios, strums, ornaments and articulated note repetitions | implemented |
 | [#210](https://github.com/michaelmonetized/omatainer/issues/210) | Support microtonal tuning systems and per-track tuning bypass | planned |
 | [#211](https://github.com/michaelmonetized/omatainer/issues/211) | Support professional cross-platform collaboration and document native limits | planned |
 | [#212](https://github.com/michaelmonetized/omatainer/issues/212) | Add a separately controlled booth monitor bus | planned |
