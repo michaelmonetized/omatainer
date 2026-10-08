@@ -1,0 +1,562 @@
+{
+  "schema": 1,
+  "status": "combined_source_installed_full_acceptance_in_progress",
+  "source": "b028ca05bc9f0172bf16e484d03f343501d510b7",
+  "testsSha256": "7277ecd53044063973ac378a651ca857e46a41ff9138c4b6c749f846e9784092",
+  "releaseSha256": "6be372c54d43f1bf9368acd8b5a4d5822da92de91069151d83a100dc39aaad5a",
+  "packageManifestSha256": "e74def3eba50aca909295525a3e84a02cdbe1d5c699bb3ecb0853b0bc3cedacc",
+  "fullOrdinarySuite": {
+    "passed": 2290,
+    "failed": 0,
+    "ignored": 79,
+    "filtered": 0,
+    "seconds": 816.13,
+    "threads": 1,
+    "stackBytes": 67108864
+  },
+  "retainedFailedFullRun": {
+    "passed": 2288,
+    "failed": 2,
+    "ignored": 79,
+    "filtered": 0,
+    "seconds": 755.43,
+    "failedTests": [
+      "engine::keylock_showload_tests::showload_fixture_uses_two_locked_decks_and_preserves_exact_recording",
+      "media_tags::tests::real_unicode_tags_are_read_from_mp3_flac_wav_aiff_without_changing_files"
+    ],
+    "repeat": "Both focused repeats and the full isolated repeat passed without source or budget changes.",
+    "boundary": "The failed run overlapped native migration, desktop and volume fixtures. The recording rejection cause was not captured; overlap alone is not proof of its cause."
+  },
+  "nodeTests": {
+    "passed": 17,
+    "failed": 0
+  },
+  "nativeFocusedTests": {
+    "migrationAndNativeWidgets": 8,
+    "producerLibrary": 3,
+    "vst3Graph": 8,
+    "djWorker": 1,
+    "live12InstalledTemplate": 1
+  },
+  "nativeAudio": [
+    {
+      "mode": "server-restart",
+      "links": 2,
+      "capture": {
+        "callbacks": 116,
+        "explicit_fallback": true,
+        "explicit_input_acknowledgment": true,
+        "explicit_play": true,
+        "recorded_notes_retained": true,
+        "scope": "real CPAL/ALSA plus private PipeWire null sink; no physical devices"
+      },
+      "scope": "Real CPAL/ALSA and isolated private PipeWire null sink. No physical converter, USB removal or system suspend."
+    },
+    {
+      "mode": "stream-removal",
+      "links": 2,
+      "capture": {
+        "callbacks": 127,
+        "explicit_fallback": true,
+        "explicit_input_acknowledgment": true,
+        "explicit_play": true,
+        "recorded_notes_retained": true,
+        "scope": "real CPAL/ALSA plus private PipeWire null sink; no physical devices"
+      },
+      "scope": "Real CPAL/ALSA and isolated private PipeWire null sink. No physical converter, USB removal or system suspend."
+    },
+    {
+      "mode": "routing",
+      "links": 64,
+      "capture": {
+        "callbacks": 492,
+        "captures": [
+          {
+            "cross_channel_overlap_frames": 0,
+            "energy": [
+              0.5801742287738123,
+              0.5552773645074159,
+              0.571950260190999,
+              0.6063018661460201,
+              0.6063018661460201,
+              0.6063018661460201,
+              0.6022246542251452,
+              0.5588946469621109,
+              0.5821765543888473,
+              0.5805565424227305,
+              0.6063018661460201,
+              0.5994176225700554,
+              0.6063018661460201,
+              0.5598951843341473,
+              0.5552773645074159,
+              0.5698270595162218,
+              0.5805594542048632,
+              0.595080026429328,
+              0.5991226106849459,
+              0.6063018661460201,
+              0.6034227087070237,
+              0.5552773645074159,
+              0.5564874820193195,
+              0.6118729171965165,
+              0.5937993418638531,
+              0.6063018661460201,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "frames": 360448,
+            "input_overflow_frames": 0,
+            "input_underrun_frames": 0,
+            "peak": [
+              0.009999999776482582,
+              0.009999999776482582,
+              0.009999999776482582,
+              0.009999999776482582,
+              0.009999999776482582,
+              0.009999999776482582,
+              0.009999999776482582,
+              0.009999999776482582,
+              0.009999999776482582,
+              0.009999999776482582,
+              0.009999999776482582,
+              0.009999999776482582,
+              0.009999999776482582,
+              0.009999999776482582,
+              0.009999999776482582,
+              0.009999999776482582,
+              0.009999999776482582,
+              0.009999999776482582,
+              0.009999999776482582,
+              0.009999999776482582,
+              0.009999999776482582,
+              0.009999999776482582,
+              0.009999999776482582,
+              0.009999999776482582,
+              0.009999999776482582,
+              0.009999999776482582,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "physical_channels": [
+              1,
+              26
+            ],
+            "wav": "/home/michael/Projects/omatainer-work/producer-dj-completion/t/a42c/loopback-0.wav"
+          },
+          {
+            "cross_channel_overlap_frames": 0,
+            "energy": [
+              0.6063018661460201,
+              0.6063018661460201,
+              0.6063018661460201,
+              0.6063018661460201,
+              0.6063018661460201,
+              0.5768979947599954,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "frames": 90588,
+            "input_overflow_frames": 0,
+            "input_underrun_frames": 0,
+            "peak": [
+              0.009999999776482582,
+              0.009999999776482582,
+              0.009999999776482582,
+              0.009999999776482582,
+              0.009999999776482582,
+              0.009999999776482582,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "physical_channels": [
+              27,
+              32
+            ],
+            "wav": "/home/michael/Projects/omatainer-work/producer-dj-completion/t/a42c/loopback-1.wav"
+          }
+        ],
+        "channels": 32,
+        "input_counter_unit": "frames",
+        "input_cushion_frames": 2048,
+        "input_discontinuities": 0,
+        "input_overflow": 0,
+        "input_priming_frames": 2048,
+        "input_underruns": 0,
+        "rate": 48000
+      },
+      "scope": "Real CPAL/ALSA and isolated private PipeWire null sink. No physical converter, USB removal or system suspend."
+    }
+  ],
+  "nativeAtspi": {
+    "nodes": 350,
+    "frames": 734,
+    "scope": "Private D-Bus bridge and actual native actions; no window, physical devices or screen-reader listening proof."
+  },
+  "readonlyVolume": {
+    "mediaFingerprintRetained": true,
+    "scope": "Actual read-only ext4 mount, unmount and remount at another path in a private namespace. Initial removable classification is a test-only enrollment; later UUID resolution uses production discovery. Not physical USB removal."
+  },
+  "nativeCpuRecovery": {
+    "testSource": "44bd5f9c2bf33ddf967d83a328a97bbff6509476",
+    "testsSha256": "2bd54dfc490bfbdf8d33e4a6166a58937a373be0b808f3c63995eacd529b92b5",
+    "analog_listening": false,
+    "audio": {
+      "backend_errors": 0,
+      "callbacks": 35,
+      "cpu_budget_exhaustions": 1,
+      "deadline_overruns": 1,
+      "device_lost": 0,
+      "dropped_buffers": null,
+      "last_callback": {
+        "budget_ns": 5804988,
+        "channels": 4,
+        "elapsed_ns": 283625,
+        "frames": 256,
+        "output_latency_ns": 5804989,
+        "overrun_ns": 0,
+        "render_cpu_ns": 272957,
+        "sample_rate": 44100
+      },
+      "max_elapsed_ns": 31250261,
+      "max_overrun_ns": 25445273,
+      "realtime_denied": 0,
+      "xruns": 1
+    },
+    "device": "hw:CARD=NS7,DEV=0",
+    "held_note_finalized_after_fault": true,
+    "injected_after_callbacks": 32,
+    "injected_callback_cpu_ms": 30,
+    "input_acknowledgment_required": true,
+    "master": 0,
+    "native_recording_and_playback_observed_before_fault": true,
+    "playing_after_reconnect": false,
+    "reconnect_required": true,
+    "recorded_notes": 1,
+    "recovery_message": "Audio output exceeded its real-time CPU limit and was stopped. Your project and recorded notes are retained. Reconnect the previous output or preview and confirm another output. Release keys, pads and platters before resuming. Save and Close remain available.",
+    "reopened_notes": 1
+  },
+  "physicalLoopback": {
+    "headphone_jack_captured": false,
+    "input_device": "hw:CARD=CODEC,DEV=0",
+    "nominal_rate": 44100,
+    "output_detected_on_wired_master_return": [
+      false,
+      true,
+      false,
+      false
+    ],
+    "output_device": "hw:CARD=NS7,DEV=0",
+    "owner_reported_wiring": "NS7 XLR outputs to Peavey 8 channel 6; mixer USB return to m1pro16",
+    "pairs": [
+      {
+        "error": "No measurement: a reliable loopback probe was not found. Captured return peak -65.7 dBFS, RMS -78.7 dBFS; check the selected return and its levels.",
+        "input_channel": 0,
+        "output_channel": 0,
+        "status": "refused"
+      },
+      {
+        "error": "No measurement: a reliable loopback probe was not found. Captured return peak -64.3 dBFS, RMS -75.0 dBFS; check the selected return and its levels.",
+        "input_channel": 1,
+        "output_channel": 0,
+        "status": "refused"
+      },
+      {
+        "error": "No measurement: a reliable loopback probe was not found. Captured return peak -65.7 dBFS, RMS -78.7 dBFS; check the selected return and its levels.",
+        "input_channel": 0,
+        "output_channel": 1,
+        "status": "refused"
+      },
+      {
+        "callback_resolution_ns": 5804988,
+        "correlations": [
+          0.9938580733733047,
+          0.9938567184477566,
+          0.9947936122773131
+        ],
+        "host_return_ns": 13118115,
+        "input_channel": 1,
+        "input_frames": [
+          12027,
+          34075,
+          56123
+        ],
+        "maximum_ns": 14112868,
+        "minimum_ns": 8116020,
+        "output_channel": 1,
+        "status": "matched"
+      },
+      {
+        "error": "No measurement: a reliable loopback probe was not found. Captured return peak -65.7 dBFS, RMS -78.7 dBFS; check the selected return and its levels.",
+        "input_channel": 0,
+        "output_channel": 2,
+        "status": "refused"
+      },
+      {
+        "error": "No measurement: a reliable loopback probe was not found. Captured return peak -64.7 dBFS, RMS -75.0 dBFS; check the selected return and its levels.",
+        "input_channel": 1,
+        "output_channel": 2,
+        "status": "refused"
+      },
+      {
+        "error": "No measurement: a reliable loopback probe was not found. Captured return peak -66.8 dBFS, RMS -78.7 dBFS; check the selected return and its levels.",
+        "input_channel": 0,
+        "output_channel": 3,
+        "status": "refused"
+      },
+      {
+        "error": "No measurement: a reliable loopback probe was not found. Captured return peak -63.9 dBFS, RMS -75.0 dBFS; check the selected return and its levels.",
+        "input_channel": 1,
+        "output_channel": 3,
+        "status": "refused"
+      }
+    ],
+    "probe_level_dbfs": -36,
+    "scope": "Three distinct probe matches per successful output/input pair. Common host callback-entry timing includes converter, mixer and callback batching; this is not isolated analog converter latency or an independent-channel claim. Outputs 1/2 are the expected master pair; optional outputs 3/4 are a channel-assignment diagnostic."
+  },
+  "install": {
+    "pid": 3194371,
+    "invocation": "404cdde06a5449d8810d44b0b35d38a2",
+    "preferencesSchema": 26,
+    "projectSchema": 35,
+    "previousBinarySha256": "f54fe26efd2b4e67664cf9a2bbfe5615b1b9e11a767eeb0244fceac5efc802d1",
+    "nativeSavedProjectReopened": true,
+    "projectFileSha256": "000168ee86d4dc2923288fb546a1ec565df0347384238a11949baa87e053a090",
+    "configurationChangedFiles": [],
+    "globalClockRestored": true,
+    "decksStopped": true,
+    "midiInput": {
+      "coalesced": 0,
+      "disconnected": 0,
+      "dispatched": 6,
+      "dropped": 0,
+      "oversized": 0,
+      "queued": 6,
+      "received": 6,
+      "resets": 0
+    },
+    "midiFeedback": {
+      "connected": 4,
+      "failed": 0,
+      "sent": 532
+    },
+    "audio": {
+      "backend_errors": 0,
+      "callbacks": 90432,
+      "cpu_budget_exhaustions": 0,
+      "deadline_overruns": 8,
+      "device_lost": 0,
+      "dropped_buffers": null,
+      "last_callback": {
+        "budget_ns": 5804988,
+        "channels": 4,
+        "elapsed_ns": 276213,
+        "frames": 256,
+        "output_latency_ns": 5238095,
+        "overrun_ns": 0,
+        "render_cpu_ns": 259333,
+        "sample_rate": 44100
+      },
+      "max_elapsed_ns": 64207346,
+      "max_overrun_ns": 58402358,
+      "realtime_denied": 0,
+      "xruns": 8
+    },
+    "boundary": "Existing recovery-storage warning retained. Eight startup deadline misses and eight XRUNs were observed; this is not a stage-quality pass."
+  },
+  "pending": [
+    "Authorized user-authored Live playback and render comparisons",
+    "Physical left master and headphone return capture",
+    "Physical unplug/replug and system suspend while recording/performing",
+    "Hardware large-set transition and waveform/output timing",
+    "Extended performance and per-function controller qualification"
+  ],
+  "evidence": [
+    {
+      "name": "profiles-qualified/42/source-head.txt",
+      "sha256": "ae6dc577f397593924d2015d78f95738467582b2244177126ad96964053103bd"
+    },
+    {
+      "name": "profiles-qualified/42/license-manifest.json",
+      "sha256": "9f60e17840f1a65fcfd6c1b252e93434488f0031d715bbc040dc4e3d63781172"
+    },
+    {
+      "name": "combined-42-full.log",
+      "sha256": "c4000c3a9ce33a820b370cdc94e525513b354361aad7691807a11cd42f65ac5e"
+    },
+    {
+      "name": "combined-42-full-isolated.log",
+      "sha256": "dd1dd21cc447f2c52b6549a70220aeac7e8cc7666ccc3ce89969d8450c02991c"
+    },
+    {
+      "name": "combined-42-node-tests.log",
+      "sha256": "b84785835ddb46240857f281fba2516ad9ebf3eb816d3a20b07925270beb0c33"
+    },
+    {
+      "name": "profiles-qualified/42/showload-recheck.log",
+      "sha256": "3f22064672956a4ab660923191a46a7eacb26641bb3e236e14871129d0d121c6"
+    },
+    {
+      "name": "profiles-qualified/42/media-tags-recheck.log",
+      "sha256": "73864b5f41be1218989bcf76738d9604c24dfa70dc4f1dc0ccf9d65869af5520"
+    },
+    {
+      "name": "profiles-qualified/42/ableton.log",
+      "sha256": "4f52fe331fe860916621eeab98b66d0a9bd9cc4754e2186f0fc9774d91427832"
+    },
+    {
+      "name": "profiles-qualified/42/live12-template.log",
+      "sha256": "1313166cf3110151730974fdb0ebba557bffbd70d0c24e034f17b91952ab35e7"
+    },
+    {
+      "name": "profiles-qualified/42/cpu-owner.log",
+      "sha256": "3d32bbe2d1e60ea98882cab1c52ab8f99ae606a1f621ad1e7d9291002ffb0421"
+    },
+    {
+      "name": "profiles-qualified/42/native-ableton-workflows.log",
+      "sha256": "04c8091b6d85ab705e4f4a70c81663b98cda4103aeeecf0b5e714625d39112d6"
+    },
+    {
+      "name": "profiles-qualified/42/native-producer-library.log",
+      "sha256": "bece595e91b6c4d8babad5707883f2e3578e58b026d7b56518d0fa16ddec43d8"
+    },
+    {
+      "name": "profiles-qualified/42/native-plugin-graph.log",
+      "sha256": "cb3fb96e225ead59ae21b081d8826337328be6640795c49b8b26608c47e155d1"
+    },
+    {
+      "name": "profiles-qualified/42/native-dj-worker.log",
+      "sha256": "90dcbbc3da9f1893ec7a8dd491d9ff3c70df2e1ba24341df588fa58304a2281f"
+    },
+    {
+      "name": "profiles-qualified/42/native-bridge-tests-driver.log",
+      "sha256": "fe7c17ddab89aa082ff17369b4cb5ff42faaeba1e92109b7061eebe72aa59122"
+    },
+    {
+      "name": "profiles-qualified/41/ns7-cpu.log",
+      "sha256": "a40b28a86eb0c8200931d5b49409627b3672e55571711a97329d986ebbd9d7c1"
+    },
+    {
+      "name": "profiles-qualified/41/cpu-kernel.log",
+      "sha256": "6ff962d95b75a7395437a786cfaed13ee993e3abfd7d76d87caeea43c544d31c"
+    },
+    {
+      "name": "cpu-budget/native-41/ns7-cpu-recovery.json",
+      "sha256": "b01bec025a1cd786b434c7de7d6a7c72e24c04a50ee95eb37ecf478d52b32584"
+    },
+    {
+      "name": "loopback/ns7-peavey-41/ns7-peavey-pairs.json",
+      "sha256": "945b4dbf29e22240489139c39cdfc13affbb85cac66f58c05639c22962e9c5bd"
+    },
+    {
+      "name": "native-ui/combined-42-install-restoration-receipt.json",
+      "sha256": "680749eaf469b7a68e0d78cf55e72bef39b15e84579045f7f4128abe5dbdb3f7"
+    },
+    {
+      "name": "release-qualified/10/package-proof.json",
+      "sha256": "b603f3d1e63dd2be65b66eb043cb557ffbc2508985788938ef746d61216dc73a"
+    },
+    {
+      "name": "t/v42/volume-remount.json",
+      "sha256": "fedbb1535455eaf8e4bd65c73df498bfbc26fcdc960b1a9fe5eb21fb846c7dd5"
+    },
+    {
+      "name": "t/v42/driver.json",
+      "sha256": "d4a096db8084dfffb612848b5e02aff41e31ee5e2c5672115a9f5ade8808d627"
+    },
+    {
+      "name": "t/n42bridge-tests/report.json",
+      "sha256": "1159b7f16de54bd535f61761b738624c7092232ce2d9e7f06fb042cbd980cc7b"
+    },
+    {
+      "name": "t/a42r/receipt.json",
+      "sha256": "19259888d7d7989035985e046ff49c354915fcd686393766ebb35e18b141a094"
+    },
+    {
+      "name": "t/a42r/cleanup.json",
+      "sha256": "f1a44eb7e2d55ad40e4c5f7ce9b64c27083087a80eb1e211aa2ac2c75d3f6645"
+    },
+    {
+      "name": "t/a42r/native.log",
+      "sha256": "ad806870362bc00a42c82954bd60dee84da8560d6305b65b2a5d59491e5586d6"
+    },
+    {
+      "name": "t/a42d/receipt.json",
+      "sha256": "11d0350fec03a821e2aea5db7ed0d69a940a580cc80af2f241566cd285068ab9"
+    },
+    {
+      "name": "t/a42d/cleanup.json",
+      "sha256": "b3a5e39e30006a83a505b074103c5abaa967157d443429d8e4de591c1c50a5b7"
+    },
+    {
+      "name": "t/a42d/native.log",
+      "sha256": "a6044d84112c3ecf287984a914b53e6da8e45790ec43b7ad5dea8e5cb911442f"
+    },
+    {
+      "name": "t/a42c/receipt.json",
+      "sha256": "0a611c722489dd555545293be8a1f22a41d03d984be998a515308accf782cba9"
+    },
+    {
+      "name": "t/a42c/cleanup.json",
+      "sha256": "a9d0ab8b12beae7e0551acb66a30fdd73554f7ae7090af16a2f221c45cd98348"
+    },
+    {
+      "name": "t/a42c/native.log",
+      "sha256": "b5e204cb83bce709973873458f3172648f42b29fa6684355c0da6a1970d91794"
+    }
+  ]
+}

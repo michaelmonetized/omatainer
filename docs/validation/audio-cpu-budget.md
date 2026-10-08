@@ -1,5 +1,7 @@
 # Retain the Set after Linux audio CPU exhaustion
 
+This records the earlier recovery milestone. The [combined qualification](combined-producer-dj-native.md) records the later recording-time fault, positive right-channel loopback, full-suite repeat and installation.
+
 The original GUI exited with SIGXCPU on its CPAL ALSA output thread while rendering reverb. Linux's real-time soft limit was 5,804 microseconds and its hard limit was 200,000; the ordinary process CPU limit was unlimited. The original metadata and stack are retained privately. They identify CPU-budget exhaustion, without identifying what first made the callback run too long.
 
 The recovery handler recognizes the kernel-raised real-time limit, lowers only registered FIFO/RR audio threads to ordinary scheduling, and preserves the reset-on-fork security flag. The next callbacks stop output; the owner retains the Set and exposes explicit reconnect, input release acknowledgment, Save and Close. Other CPU signals preserve the previous handler or default termination. Linux sends this watchdog notification to the process and accounts real-time watchdog time in ticks; it does not identify the offending thread through the signal recipient. See the [Linux watchdog source](https://github.com/torvalds/linux/blob/v7.1/kernel/time/posix-cpu-timers.c) and [scheduler rules](https://man7.org/linux/man-pages/man7/sched.7.html).
