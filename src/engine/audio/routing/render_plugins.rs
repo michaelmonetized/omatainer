@@ -6,6 +6,7 @@ impl Prepared {
     /// Takes the renderer; queues bounded MIDI and updates existing compensation histories without plugin calls.
     pub(super) fn begin_plugins(&mut self, rt: &mut RtEngine) {
         rt.plugin_midi.mask = 0; rt.routing_plugin_instruments = 0;
+        if self.plugins.is_empty() { return; }
         for (saved,plugin) in self.model.plugins.iter().zip(&self.plugins) {
             if let Some(slot) = plugin.midi_slot.filter(|slot| saved.instrument && rt.session.tracks.get(*slot).is_some_and(|t|t.active&&Some(t.id)==saved.midi_track)) { rt.routing_plugin_instruments |= 1 << slot; }
             if let Some(slot) = plugin.midi_slot.filter(|slot|plugin.endpoint.as_ref().is_some_and(|e|e.control.class.info.has_midi_input) && rt.session.tracks.get(*slot).is_some_and(|t|t.active&&Some(t.id)==saved.midi_track)) {

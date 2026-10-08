@@ -126,6 +126,35 @@ fn original_continuity_and_repeated_reads_belong_to_the_retained_sample() {
 }
 
 #[test]
+fn settled_and_transitioning_reads_preserve_numbered_wide_frames_through_ring_wraps() {
+    let mut history = History::new(MAX_PORT_CHANNELS, 7);
+    assert_eq!(history.blended(0, 0, 0, 1.0), (0.0, false));
+    let counts = crate::engine::test_alloc::measure(|| {
+        for index in 0..100 {
+            let frame = std::array::from_fn::<_, MAX_PORT_CHANNELS, _>(|channel| (index * 100 + channel) as f32);
+            history.push(&frame, index % 3 != 0);
+            for channel in 0..MAX_PORT_CHANNELS {
+                for delay in 0..8_u32 {
+                    let expected = if delay as usize <= index {
+                        let original = index - delay as usize;
+                        ((original * 100 + channel) as f32, original % 3 != 0)
+                    } else { (0.0, false) };
+                    assert_eq!(history.read(channel, delay), expected);
+                    assert_eq!(history.blended(channel, 7, delay, 1.0), expected);
+                    assert_eq!(history.blended(channel, delay, 7, 0.0), expected);
+                    assert_eq!(history.blended(channel, delay, delay, 0.25), expected);
+                }
+                let before = history.read(channel, 2);
+                let after = history.read(channel, 5);
+                assert_eq!(history.blended(channel, 2, 5, 0.25), (before.0 * 0.75 + after.0 * 0.25, before.1 && after.1));
+            }
+            assert_eq!(history.read(0, 8), (0.0, false));
+        }
+    });
+    assert_eq!(counts, Default::default());
+}
+
+#[test]
 fn implicit_sources_taps_and_terminal_offsets_have_one_causal_plan() {
     let (model, layout) = model();
     let mut model = model;

@@ -54,6 +54,71 @@ fn memory() -> serde_json::Value {
 }
 
 #[test]
+#[ignore = "Explicit routed callback CPU and heap qualification; requires OMATAINER_LIVE_SET_REPORT under the project, opens no hardware"]
+fn routed_large_live_set_callback_qualification() {
+    use crate::engine::audio::routing::model::*;
+    let path = std::path::PathBuf::from(std::env::var_os("OMATAINER_LIVE_SET_REPORT").unwrap());
+    assert!(path.is_absolute() && path.starts_with(env!("CARGO_MANIFEST_DIR")));
+    let mut state = large_state();
+    state.routing = Some(Arc::new(Model { latency: Some(LatencyConfiguration { reports: vec![LatencyReport {
+        group: Group::Deck(0), external_micros: 0, processing_micros: 20_000,
+    }], ..Default::default() }), ..Default::default() }));
+    let mut current = Prepared::from_state(state.clone(), vec![source(0.01)], 44100).unwrap();
+    current.rt.playing = true;
+    current.rt.resume_project_clips();
+    for deck in &mut current.rt.decks { deck.playing = true; }
+    let next = Prepared::from_state(state, vec![source(-0.01)], 44100).unwrap();
+    let handle = current.rt.project.live_sets();
+    let control = handle.stage(handle.reserve().unwrap(), next, current.rt.session.namespace, Arc::new(AtomicBool::new(false))).unwrap();
+    let (returned, retired) = crossbeam_channel::bounded(1);
+    let mut callback = OutputCallback::managed(current.rt, 4, returned, Arc::new(AtomicBool::new(true)), Arc::new(AtomicBool::new(false)));
+    let mut output = [0.0_f32; 256 * 4];
+    let mut trials = Vec::new();
+    for phase in ["startup", "cue", "transition"] {
+        if phase == "cue" {
+            assert!(control.ready());
+            control.preview.store(true, Ordering::Release);
+        }
+        if phase == "transition" {
+            control.preview.store(false, Ordering::Release);
+            let owner = callback.renderer_for_test().project.clone();
+            control.transition(&owner, owner.revision(), 30.0).unwrap();
+        }
+        let mut cpu = Vec::with_capacity(128);
+        let mut wall = Vec::with_capacity(128);
+        let mut allocations = 0;
+        let mut frees = 0;
+        for _ in 0..128 {
+            let start = Instant::now();
+            let cpu_start = crate::engine::audio_metrics::thread_cpu_ns().unwrap();
+            let counts = test_alloc::measure(|| callback.render(&mut output));
+            cpu.push(crate::engine::audio_metrics::thread_cpu_ns().unwrap() - cpu_start);
+            wall.push(start.elapsed().as_nanos() as u64);
+            allocations += counts.allocations;
+            frees += counts.frees;
+            assert!(output.iter().all(|value| value.is_finite()));
+        }
+        trials.push(serde_json::json!({"phase":phase,"cpu_ns":cpu,"wall_ns":wall,"rust_allocations":allocations,"rust_frees":frees}));
+    }
+    callback.renderer_mut_for_test().performance.request_safety(crate::engine::performance::Safety::Silence);
+    callback.render(&mut output);
+    assert!(handle.applied().is_some());
+    assert!(handle.retire().unwrap().is_err());
+    drop(callback);
+    drop(retired.try_recv().unwrap());
+    let budget = 256_u64 * 1_000_000_000 / 44100;
+    let heap_pass = trials.iter().all(|trial| trial["rust_allocations"] == 0 && trial["rust_frees"] == 0);
+    let deadline_pass = trials.iter().all(|trial| trial["cpu_ns"].as_array().unwrap().iter().chain(trial["wall_ns"].as_array().unwrap()).all(|value| value.as_u64().unwrap() <= budget));
+    let receipt = serde_json::json!({"schema":1,"stored_tracks":64,"stored_notes_per_graph":32768,"launched_clip_tracks":8,
+        "frames":256,"channels":4,"sample_rate":44100,"reported_deck_processing_micros":20000,
+        "callbacks_per_phase":128,"callback_budget_ns":budget,"heap_pass":heap_pass,"deadline_pass":deadline_pass,
+        "scope":"Local production callback startup, two-graph cue and two-graph fade. No native scheduler, hardware, maximum-polyphony or stage-duration claim.","trials":trials});
+    let file = std::fs::OpenOptions::new().create_new(true).write(true).open(path).unwrap();
+    serde_json::to_writer_pretty(file, &receipt).unwrap();
+    assert!(heap_pass && deadline_pass, "Routed callback qualification retains measured failures");
+}
+
+#[test]
 #[ignore = "Explicit optimized transition timing and process-memory qualification; writes an immutable receipt"]
 fn large_live_set_transition_qualification() {
     assert!(!cfg!(debug_assertions), "Use the retained optimized test binary");

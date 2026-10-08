@@ -374,7 +374,8 @@ impl History {
     /// Retain the current source sample once for every downstream consumer.
     /// Takes the native channel frame and original continuity; writes exactly this history's prepared width.
     pub(super) fn push(&mut self, frame: &[f32], valid: bool) {
-        self.head = (self.head + 1) % self.frames;
+        self.head += 1;
+        if self.head == self.frames { self.head = 0; }
         self.data[self.head * self.width..(self.head + 1) * self.width]
             .copy_from_slice(&frame[..self.width]);
         self.valid[self.head] = valid;
@@ -386,7 +387,7 @@ impl History {
         if channel >= self.width || delay >= self.filled || delay as usize >= self.frames {
             return 0.0;
         }
-        let frame = (self.head + self.frames - delay as usize) % self.frames;
+        let frame = self.frame(delay);
         self.data[frame * self.width + channel]
     }
     /// Read the original continuity of a retained sample.
@@ -394,7 +395,27 @@ impl History {
     pub(super) fn valid(&self, delay: u32) -> bool {
         delay < self.filled
             && (delay as usize) < self.frames
-            && self.valid[(self.head + self.frames - delay as usize) % self.frames]
+            && self.valid[self.frame(delay)]
+    }
+    fn frame(&self, delay: u32) -> usize {
+        let delay = delay as usize;
+        if delay <= self.head { self.head - delay } else { self.frames - (delay - self.head) }
+    }
+    /// Read one original sample and its continuity together.
+    /// Takes a channel and causal delay; returns silence and unavailable continuity outside the filled history.
+    fn read(&self, channel: usize, delay: u32) -> (f32, bool) {
+        if channel >= self.width || delay >= self.filled || delay as usize >= self.frames { return (0.0, false); }
+        let frame = self.frame(delay);
+        (self.data[frame * self.width + channel], self.valid[frame])
+    }
+    /// Resolve a settled delay or a changing pair of original samples.
+    /// Takes a channel, old/new causal delays and transition gain; returns their audio and original continuity without reading unused history.
+    fn blended(&self, channel: usize, old: u32, delay: u32, mix: f32) -> (f32, bool) {
+        if mix >= 1.0 || old == delay { return self.read(channel, delay); }
+        if mix <= 0.0 { return self.read(channel, old); }
+        let (before, old_valid) = self.read(channel, old);
+        let (after, valid) = self.read(channel, delay);
+        (before * (1.0 - mix) + after * mix, old_valid && valid)
     }
     /// Count prepared sample storage for admission and retained Undo budgets.
     /// Takes this history; returns its complete owned heap bytes.
@@ -553,10 +574,7 @@ impl Runtime {
         let delay = target.saturating_sub(self.plan.taps[source][tap]);
         let old = prior.saturating_sub(self.prior.taps[source][tap]);
         let mix = self.blend();
-        (
-            history.sample(channel, old) * (1.0 - mix) + history.sample(channel, delay) * mix,
-            (mix >= 1.0 || history.valid(old)) && (mix <= 0.0 || history.valid(delay)),
-        )
+        history.blended(channel, old, delay, mix)
     }
     /// Read an exact route at the headphone summing time before terminal compensation.
     /// Takes source, tap and channel; returns the same original sample aligned to the monitor output and its retained continuity.
@@ -578,7 +596,7 @@ impl Runtime {
         let history = self.native[index].as_mut().expect("Prepared native source");
         history.push(&frame, true);
         std::array::from_fn(|channel| {
-            history.sample(channel, old) * (1.0 - mix) + history.sample(channel, delay) * mix
+            history.blended(channel, old, delay, mix).0
         })
     }
     /// Align internal sends, metronome and post-effect previews with program audio.
@@ -593,7 +611,7 @@ impl Runtime {
         let history = self.native[index].as_mut().expect("Prepared main sources");
         history.push(&[frame[0], frame[1], preview[0], preview[1]], true);
         let read = |channel, old, delay| {
-            history.sample(channel, old) * (1.0 - mix) + history.sample(channel, delay) * mix
+            history.blended(channel, old, delay, mix).0
         };
         (
             std::array::from_fn(|channel| {
@@ -629,7 +647,7 @@ impl Runtime {
                 .saturating_sub(self.prior.taps[source][tap])
         };
         let mix = self.blend();
-        history.sample(channel, old) * (1.0 - mix) + history.sample(channel, delay) * mix
+        history.blended(channel, old, delay, mix).0
     }
     /// Retain original deck headphone audio independently of its channel fader.
     /// Takes its exact node and pre-fader stereo; returns aligned or explicitly immediate headphone audio.
@@ -655,7 +673,7 @@ impl Runtime {
             .expect("Prepared headphone deck");
         history.push(&frame, true);
         std::array::from_fn(|channel| {
-            history.sample(channel, old) * (1.0 - mix) + history.sample(channel, delay) * mix
+            history.blended(channel, old, delay, mix).0
         })
     }
 
@@ -676,7 +694,7 @@ impl Runtime {
             .expect("Prepared program monitor");
         history.push(&frame, true);
         std::array::from_fn(|channel| {
-            history.sample(channel, old) * (1.0 - mix) + history.sample(channel, delay) * mix
+            history.blended(channel, old, delay, mix).0
         })
     }
 
@@ -731,11 +749,10 @@ impl Runtime {
             let old = prior.saturating_sub(self.prior.taps[source][2]);
             let history = &self.auxiliary[voice];
             for channel in 0..2 {
-                frames[voice][channel] = history.sample(channel, old) * (1.0 - mix)
-                    + history.sample(channel, delay) * mix;
+                let (value, complete) = history.blended(channel, old, delay, mix);
+                frames[voice][channel] = value;
+                valid[voice] &= complete;
             }
-            valid[voice] =
-                (mix >= 1.0 || history.valid(old)) && (mix <= 0.0 || history.valid(delay));
             if voice == 0 {
                 let gain = |delay| {
                     if delay < history.filled {

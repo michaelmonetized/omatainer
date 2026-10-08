@@ -173,7 +173,7 @@ impl Prepared {
     pub fn begin(&mut self) {
         if let Some(latency)=&mut self.latency {latency.begin();}
         for node in &mut self.nodes {
-            node.input.fill(0.0);
+            node.input[..node.width].fill(0.0);
             node.valid = true;
         }
     }
