@@ -50,6 +50,7 @@ impl Prepared {
             sampler_inst,
             sampler_oct,
             musical_context,
+            note_seed,
             sampler_scale
         );
         rt.timeline_anchor = state.timeline_seconds;
@@ -94,7 +95,7 @@ impl Prepared {
         rt.migration = state.migration.take();
         rt.scenes.timing = state.scene_timing;
         rt.deck_sync.leader = state.sync_leader;
-        rt.arrangement=arrangement::Playback::new(state.arrangement.as_ref().map(|model|arrangement::Plan::prepare(model.clone(),&media,&rt.session,&AtomicBool::new(false))).transpose().map_err(Error::Invalid)?,state.beat);
+        rt.arrangement=arrangement::Playback::new(state.arrangement.as_ref().map(|model|arrangement::Plan::prepare_with_seed(model.clone(),&media,&rt.session,state.note_seed,&AtomicBool::new(false))).transpose().map_err(Error::Invalid)?,state.beat);
         rt.sync_midi_clock();
         rt.playing = false;
         rt.recording = false;
@@ -103,6 +104,7 @@ impl Prepared {
         for (i, saved) in state.tracks.into_iter().enumerate() {
             rt.session.tracks[i].name = saved.name.clone();
             let mut track = prepare_track(saved, &media, output_sr).map_err(Error::Invalid)?;
+            track.note_seed = state.note_seed;
             track.rebuild_midi_schedule(state.beat, state.beat);
             rt.tracks.push(track);
         }
@@ -246,6 +248,7 @@ impl Prepared {
             midi_beat_reference,
             conductor,
             musical_context,
+            note_seed,
             sampler_scale,
             arrangement,
             navigation,
@@ -349,5 +352,7 @@ pub(in crate::engine) fn prepare_clip(cell:SavedClip,media:&[Arc<Sample>])->Resu
     cell.validate(STATE_VERSION,media)?;
     let audio=cell.audio.map(|i|media[i].clone());
     let audio_region=cell.audio_region.map(|r|r.prepare(audio.as_deref().ok_or("Audio region has no source")?).map_err(str::to_owned)).transpose()?;
-    Ok(Clip{properties:cell.properties,audio_region,region:cell.region,lanes:cell.lanes.as_ref().map(|l|l.prepare()).transpose()?,kind:cell.kind,name:cell.name,bars:cell.bars,notes:cell.notes,gain:cell.gain,audio})
+    let lanes=cell.lanes.as_ref().map(|l|l.prepare()).transpose()?;
+    let variation=note_variation::Plan::prepare(&cell.notes,lanes.as_deref(),&AtomicBool::new(false))?;
+    Ok(Clip{variation,properties:cell.properties,audio_region,region:cell.region,lanes,kind:cell.kind,name:cell.name,bars:cell.bars,notes:cell.notes,gain:cell.gain,audio})
 }

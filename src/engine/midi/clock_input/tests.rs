@@ -410,7 +410,7 @@ fn external_stop_continue_chases_overlapping_clip_notes_and_preserves_live_owner
     let (_engine, mut rt) = Engine::headless_for_test(48000, 128);
     rt.quant = 0.0;
     let notes = vec![
-        MidiNote {
+        MidiNote { variation: None,
             id: crate::engine::midi_edit::NoteId::new(),
             muted: false,
             pitch: 60,
@@ -421,7 +421,7 @@ fn external_stop_continue_chases_overlapping_clip_notes_and_preserves_live_owner
             release_vel: 64,
             source_timing: None,
         },
-        MidiNote {
+        MidiNote { variation: None,
             id: crate::engine::midi_edit::NoteId::new(),
             muted: false,
             pitch: 60,

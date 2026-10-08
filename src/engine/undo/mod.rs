@@ -75,6 +75,7 @@ pub enum Name {
     PluginParameter,
     ComposeClip,
     Multiple,
+    NoteSeed,
 }
 impl Name {
     pub fn label(self) -> &'static str {
@@ -96,6 +97,7 @@ impl Name {
             Self::ClipNotes => "Edit clip notes",
             Self::AudioClip => "Edit audio clip",
             Self::Arrangement => "Edit arrangement",
+            Self::NoteSeed => "Set note variation seed",
             Self::SongNavigation => "Edit song sections and loop",
             Self::MusicalContext => "Set song key and scale",
             Self::ClipManagement => "Manage clips",

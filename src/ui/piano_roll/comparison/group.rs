@@ -174,7 +174,7 @@ impl Group {
                 let mut results=Vec::with_capacity(source.len());
                 for(key,original)in source.iter() {
                     let mut owner_params=params.clone();
-                    if matches!(owner_params.kind,midi_tools::Kind::ScaleTranspose|midi_tools::Kind::Harmony) && owner_params.context.is_none(){owner_params.context=original.context;}
+                    if matches!(owner_params.kind,midi_tools::Kind::ScaleTranspose|midi_tools::Kind::Harmony|midi_tools::Kind::Chords|midi_tools::Kind::Melody) && owner_params.context.is_none(){owner_params.context=original.context;}
                     let prepared=midi_tools::prepare(&original.content,&original.selected,&owner_params,&worker_cancel)?;
                     if !original.region.allows(&prepared.content.notes) {
                         return Err(format!("Track {} scene {} would exceed its own loop note-density limit; no group preview was published",key.0+1,key.1+1));

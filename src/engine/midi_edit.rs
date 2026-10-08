@@ -118,6 +118,7 @@ pub(crate) struct Request {
     pub(super) notes: Vec<super::MidiNote>,
     pub(super) lanes: Option<Arc<super::midi_data::Lanes>>,
     pub(super) context: Option<super::musical_context::Context>,
+    pub(super) variation: Option<Arc<super::note_variation::Plan>>,
     metadata_baseline: Option<super::undo::Checkpoint>,
     pub(super) ack: Ack,
 }
@@ -170,6 +171,7 @@ impl Request {
         if lanes.as_ref().is_some_and(|l| !l.prepared()) {
             return Err("Controller lanes must finish preparation before Apply".into());
         }
+        let variation = super::note_variation::Plan::prepare(&notes, lanes.as_deref(), &AtomicBool::new(false))?;
         notes.shrink_to_fit();
         name.shrink_to_fit();
         let next = Arc::new(Document {
@@ -195,6 +197,7 @@ impl Request {
                 notes,
                 lanes,
                 context,
+                variation,
                 metadata_baseline: None,
                 ack: ack.clone(),
             },
@@ -203,7 +206,7 @@ impl Request {
         ))
     }
     pub fn bytes(&self) -> usize {
-        self.baseline.bytes()
+        self.variation.as_ref().map_or(0, |plan| plan.bytes()) + self.baseline.bytes()
             + self.name.capacity()
             + self.notes.capacity() * std::mem::size_of::<super::MidiNote>()
             + self.lanes.as_ref().map_or(0, |l| l.bytes())
@@ -353,6 +356,7 @@ impl super::RtEngine {
         }
         let clip = &mut self.tracks[t].clips[s];
         std::mem::swap(&mut clip.notes, &mut request.notes);
+        std::mem::swap(&mut clip.variation, &mut request.variation);
         std::mem::swap(&mut clip.name, &mut request.name);
         std::mem::swap(&mut clip.lanes, &mut request.lanes);
         clip.kind = super::ClipKind::Midi;
@@ -501,6 +505,7 @@ pub(super) fn qualify_legacy_notes(command: &mut super::Command) -> bool {
     {
         return true;
     }
+    if notes.iter().any(|note| note.variation.is_some()) { return false; }
     let mut used = std::collections::HashSet::with_capacity(notes.len());
     for note in notes {
         if !note.id.valid() || !used.insert(note.id) {
@@ -587,7 +592,7 @@ mod tests {
         rt.process(&mut [0.0; 128]);
     }
     fn note() -> super::super::MidiNote {
-        super::super::MidiNote {
+        super::super::MidiNote { variation: None,
             channel: 0,
             release_vel: 64,
             source_timing: None,

@@ -2,7 +2,7 @@
 //! physical key ownership, worker handles and device connections.
 use super::super::*;
 
-pub const STATE_VERSION: u32 = 33;
+pub const STATE_VERSION: u32 = 34;
 pub const MAX_BANKS: usize = 16;
 pub const MAX_FX_PER_RACK: usize = 128;
 pub const MAX_NOTES_PER_CLIP: usize = 8192;
@@ -14,6 +14,8 @@ pub const MAX_MEDIA_REFS: usize = session::MAX_TRACKS * (session::MAX_SCENES + 6
 #[serde(deny_unknown_fields)]
 pub struct State {
     pub version: u32,
+    #[serde(default = "note_variation::default_seed", skip_serializing_if = "note_variation::seed_is_default")]
+    pub(crate) note_seed: u64,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub(crate) musical_context: Option<musical_context::Context>,
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
@@ -68,6 +70,8 @@ pub struct State {
 #[serde(deny_unknown_fields)]
 struct StateWire {
     version: u32,
+    #[serde(default = "note_variation::default_seed")]
+    note_seed: u64,
     #[serde(default)]
     musical_context: Option<musical_context::Context>,
     #[serde(default)]
@@ -139,6 +143,7 @@ impl<'de> Deserialize<'de> for State {
                 "Ableton migration requires project state version 30",
             ));
         }
+        note_variation::reject_legacy_fields(&raw).map_err(serde::de::Error::custom)?;
         if version < 33 && (raw.get("musical_context").is_some() || raw.get("sampler_scale").is_some()
             || raw.get("tracks").and_then(serde_json::Value::as_array).into_iter().flatten()
                 .flat_map(|track| track.get("clips").and_then(serde_json::Value::as_array).into_iter().flatten())
@@ -211,7 +216,7 @@ impl<'de> Deserialize<'de> for State {
         let wire: StateWire = serde_json::from_value(raw).map_err(serde::de::Error::custom)?;
         Ok(Self {
             version: wire.version,
-            musical_context: wire.musical_context, sampler_scale: wire.sampler_scale,
+            musical_context: wire.musical_context, note_seed: wire.note_seed, sampler_scale: wire.sampler_scale,
             sync_leader: wire.sync_leader,
             navigation: wire.navigation,
             arrangement: wire.arrangement,
@@ -490,7 +495,7 @@ impl State {
     pub(crate) fn blank() -> Self {
         Self {
             version: STATE_VERSION,
-            musical_context: None, sampler_scale: false,
+            musical_context: None, note_seed: note_variation::DEFAULT_SEED, sampler_scale: false,
             sync_leader: None,
             navigation: None,
             scene_timing: None,
@@ -627,6 +632,7 @@ impl State {
         if self.tracks.is_empty() || self.tracks.len() > session::MAX_TRACKS || self.scene_fx.is_empty() || self.scene_fx.len() > session::MAX_SCENES || self.tracks.iter().any(|t| t.clips.len() != self.scene_fx.len()) { return fail("session dimensions (1–128 tracks, 1–512 scenes)"); }
         if self.version >= 7 && self.session.is_none() {return fail("missing session identity metadata");}
         if let Some(timing) = self.scene_timing { timing.validate()?; if self.version < 23 || self.conductor.is_some() { return fail("scene timing version or conductor conflict"); } }
+        if self.version < 34 && self.note_seed != note_variation::DEFAULT_SEED { return fail("note random seed requires project state version 34"); }
         if self.musical_context.is_some_and(|context| !context.valid()) || self.version < 33 && (self.musical_context.is_some() || self.sampler_scale) { return fail("song scale or scale-aware sampler version"); }
         if self.version < 23 && self.session.as_ref().is_some_and(|layout| layout.scenes.iter().chain(&layout.tracks).any(|item| !item.scene.is_default())) { return fail("scene properties version"); }
         if self.version < 7 && (self.tracks.len() != TRACKS || self.scene_fx.len() != SCENES || self.session.is_some()) { return fail("legacy session dimensions or identity"); }
@@ -981,6 +987,8 @@ impl SavedClip{
     /// Validate one retained clip without constructing a project graph.
     /// Takes the schema and shared media; returns its note and lane budgets or the same native source refusal used by project validation.
     pub(crate) fn validate(&self,version:u32,media:&[Arc<Sample>])->Result<(usize,usize),String>{
+        if self.notes.iter().any(|note| note.variation.is_some()) && (version < 34 || self.kind != ClipKind::Midi || self.region.is_none()) { return Err("Note variation requires a MIDI region and project state version 34".into()); }
+        note_variation::validate(&self.notes)?;
         if self.properties.context.is_some_and(|context| !context.valid()) || version < 33 && self.properties.context.is_some() { return Err("Clip scale requires a valid tonic and project state version 33".into()); }
         if version<21 && !self.properties.launch.is_default(){return Err("Clip launch policy requires project state version 21".into());}
         if version<20 && !self.properties.is_default(){return Err("Clip properties require project state version 20".into());}

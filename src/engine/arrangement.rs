@@ -183,6 +183,7 @@ struct PreparedSource {
     audio_region: Option<audio_clip::Plan>,
     length: f64,
     audio_clock: Option<AudioClock>,
+    variation: Option<Arc<super::note_variation::Plan>>,
 }
 #[derive(Clone, Copy, Debug)]
 struct AudioSpan {

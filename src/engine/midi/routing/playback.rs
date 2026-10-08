@@ -13,6 +13,7 @@ enum Kind {
     Lane(usize, bool),
     Chase([u8; 3], u8),
 }
+pub(crate) enum Advance { Packet(Packet, Owner, u32), Skipped }
 #[derive(Clone, Copy, Debug)]
 struct Event {
     beat: f64,
@@ -53,6 +54,7 @@ pub(crate) struct Playback {
     pub refused: bool,
     pub generation: u64,
     pub epoch: u64,
+    seed: u64,
     #[cfg(test)]
     pub trace: Option<Vec<(f64, Packet)>>,
 }
@@ -69,6 +71,7 @@ impl Clone for Playback {
         result.refused = self.refused;
         result.generation = self.generation;
         result.epoch = self.epoch;
+        result.seed = self.seed;
         result
     }
 }
@@ -85,6 +88,7 @@ impl Default for Playback {
             refused: false,
             generation: 0,
             epoch: 0,
+            seed: crate::engine::note_variation::DEFAULT_SEED,
             #[cfg(test)]
             trace: None,
         }
@@ -205,7 +209,7 @@ impl Playback {
                         self.events.push(Reverse(Event {
                             beat: elapsed,
                             order: u64::MAX - crate::engine::project::MAX_NOTES_PER_CLIP as u64 + index as u64,
-                            cycle: i64::MAX,
+                            cycle: if repeat { ((last - start) / self.period).round() as i64 } else { 0 },
                             weight: weight as u32,
                             kind: Kind::On(index),
                             repeating: false,
@@ -253,7 +257,17 @@ impl Playback {
                 if cycling && value.is_none_or(|p| (p.message.tick as f64) < loop_tick) {
                     value = lane.before(previous_end).or(value);
                 }
-                value
+                let value = value?;
+                if let Some(plan) = &clip.variation {
+                    let message = value.message;
+                    let index = lanes.messages.binary_search_by_key(&(message.tick, message.order), |m| (m.tick, m.order)).ok()?;
+                    if let Some(owner) = plan.expression_owner(index) {
+                        let cycle = if cycling { 1 + ((elapsed - first_pass) / self.period).floor() as i64 } else { 0 };
+                        let cycle = cycle - i64::from(cycling && message.tick as f64 >= tick);
+                        if plan.velocity(owner, self.seed, cycle, clip.notes[owner].vel).is_none() { return None }
+                    }
+                }
+                Some(value)
             };
             let chase = |bytes: [u8; 3], length: u8, order: u64| {
                 self.events.push(Reverse(Event { beat: elapsed, order, cycle: i64::MIN, weight: 1, kind: Kind::Chase(bytes, length), repeating: false }));
@@ -325,12 +339,23 @@ impl Playback {
             .is_some_and(|e| e.0.beat < elapsed - BEAT_EPSILON)
     }
     pub fn next(&mut self, track: u8, clip: &Clip, elapsed: f64) -> Option<(Packet, Owner, u32)> {
+        for _ in 0..CAPACITY {
+            match self.advance(track, clip, elapsed, crate::engine::note_variation::DEFAULT_SEED)? {
+                Advance::Packet(packet, owner, weight) => return Some((packet, owner, weight)),
+                Advance::Skipped => {}
+            }
+        }
+        None
+    }
+    /// Process one source event within the renderer budget.
+    /// Takes the captured clip, elapsed beat and saved seed; returns a paired packet, an explicitly consumed skipped event, or no due boundary.
+    pub fn advance(&mut self, track: u8, clip: &Clip, elapsed: f64, seed: u64) -> Option<Advance> {
         if !self.due(elapsed) {
             return None;
         }
         let Reverse(event) = self.events.pop()?;
         match event.kind {
-            Kind::Chase(bytes, length) => Some((Packet::new(&bytes[..usize::from(length)])?, Owner::ClipLane(track), 1)),
+            Kind::Chase(bytes, length) => Some(Advance::Packet(Packet::new(&bytes[..usize::from(length)])?, Owner::ClipLane(track), 1)),
             Kind::On(index) | Kind::Off(index) => {
                 if event.repeating {
                     let beat = event.beat + self.period;
@@ -346,12 +371,13 @@ impl Playback {
                 }
                 let note = &clip.notes[index];
                 let on = matches!(event.kind, Kind::On(_));
+                let Some(velocity) = clip.variation.as_ref().map_or(Some(note.vel), |plan| plan.velocity(index, seed, event.cycle, note.vel)) else { return Some(Advance::Skipped) };
                 let bytes = [
                     (if on { 0x90 } else { 0x80 }) | note.channel,
                     note.pitch,
-                    if on { note.vel } else { note.release_vel },
+                    if on { velocity } else { note.release_vel },
                 ];
-                Some((
+                Some(Advance::Packet(
                     Packet::new(&bytes)?,
                     Owner::Clip {
                         track,
@@ -396,7 +422,10 @@ impl Playback {
                         repeating: false,
                     }));
                 }
-                Some((
+                if let Some(owner) = clip.variation.as_ref().and_then(|plan| plan.expression_owner(index)) {
+                    if clip.variation.as_ref().unwrap().velocity(owner, seed, event.cycle, clip.notes[owner].vel).is_none() { return Some(Advance::Skipped) }
+                }
+                Some(Advance::Packet(
                     Packet::new(&current.bytes[..usize::from(current.length)])?,
                     Owner::ClipLane(track),
                     1,
@@ -461,6 +490,7 @@ impl crate::engine::RtEngine {
         }
         if self.tracks[track].midi_output.dirty {
             let t = &mut self.tracks[track];
+            t.midi_output.seed = self.note_seed;
             t.midi_output.rebuild(
                 &t.clips[usize::from(playing.scene)],
                 (elapsed - self.last_midi_step).max(0.0),
@@ -470,13 +500,14 @@ impl crate::engine::RtEngine {
         }
         while self.midi_output_budget > 0 {
             let t = &mut self.tracks[track];
-            let Some((packet, owner, weight)) =
+            let Some(advanced) =
                 t.midi_output
-                    .next(track as u8, &t.clips[usize::from(playing.scene)], elapsed)
+                    .advance(track as u8, &t.clips[usize::from(playing.scene)], elapsed, self.note_seed)
             else {
                 break;
             };
             self.midi_output_budget -= 1;
+            let Advance::Packet(packet, owner, weight) = advanced else { continue };
             #[cfg(test)]
             if let Some(trace) = &mut self.tracks[track].midi_output.trace {
                 trace.push((elapsed, packet));

@@ -172,7 +172,7 @@ fn stereo_sample_and_release_tails_keep_the_original_destination() {
 fn capture_fixture(arp: bool) -> RtEngine {
     let mut rt = engine();
     rt.apply(Command::SamplerInst(SamplerInstrument::Synth(SynthInstrument::Keys)));
-    rt.tracks[DEST].clips[0] = Clip {
+    rt.tracks[DEST].clips[0] = Clip { variation: None,
         properties: Default::default(),
         audio_region: None, lanes: None,
         region: None,
@@ -283,7 +283,7 @@ fn capture_suppression_preserves_unrelated_same_pitch_events_and_resets_on_relau
     rt.apply(Command::SetNotes {
         track: DEST as u8,
         scene: 0,
-        notes: vec![MidiNote {
+        notes: vec![MidiNote { variation: None,
             channel:0,release_vel:64,source_timing:None, id: crate::engine::midi_edit::NoteId::new(), muted: false,
             pitch: 60,
             start: 0.5,
@@ -340,7 +340,7 @@ fn instantaneous_capture_cannot_replay_in_its_first_cycle_or_one_shot() {
         assert!(rt.tracks[DEST].clips[0].notes[0].len > 0.0);
         rt.tracks[DEST].midi_schedule.trace = Some(Vec::new());
         // A subsequent ordinary append/rebuild must not chase that stored note.
-        rt.tracks[DEST].clips[0].notes.push(MidiNote {
+        rt.tracks[DEST].clips[0].notes.push(MidiNote { variation: None,
             channel:0,release_vel:64,source_timing:None, id: crate::engine::midi_edit::NoteId::new(), muted: false,
             pitch: 92,
             start: 0.5,

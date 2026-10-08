@@ -180,6 +180,7 @@ impl Frame {
             sampler_inst,
             sampler_oct,
             musical_context,
+            note_seed,
             sampler_scale
         );
         target.conductor = rt.conductor.clone();

@@ -93,7 +93,7 @@ fn document_child() {
         g.app.send(Command::SetNotes {
             track: 0,
             scene: 0,
-            notes: vec![crate::engine::MidiNote {
+            notes: vec![crate::engine::MidiNote { variation: None,
                 channel:0,release_vel:64,source_timing:None, id: crate::engine::midi_edit::NoteId::new(), muted: false,
                 pitch: 64,
                 start: 0.25,

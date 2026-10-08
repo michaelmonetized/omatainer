@@ -411,7 +411,7 @@ impl RtEngine {
                 Patch::Clip {
                     track: t,
                     scene: s,
-                    value: Clip {
+                    value: Clip { variation: clip.variation.clone(),
                         properties: clip.properties,
                         audio_region: clip.audio_region, lanes: clip.lanes.clone(),
                         region: clip.region,
@@ -425,7 +425,7 @@ impl RtEngine {
                     spare_notes: prepared.notes,
                     reserved_audio: [None, None],
                 reserved_midi_bytes: match &c {
-                        Command::MidiEdit(request) => request.baseline.lanes.as_ref().map_or(0, |l| l.bytes()) + request.lanes.as_ref().map_or(0, |l| l.bytes()),
+                        Command::MidiEdit(request) => request.baseline.lanes.as_ref().map_or(0, |l| l.bytes()) + request.lanes.as_ref().map_or(0, |l| l.bytes()) + clip.variation.as_ref().map_or(0, |plan| plan.bytes()) + request.variation.as_ref().map_or(0, |plan| plan.bytes()),
                         _ => 0,
                     },
                 }

@@ -369,7 +369,7 @@ fn clip_stop_preserves_a_live_gate_on_the_same_external_pitch() {
     let clip = &mut rt.tracks[2].clips[0];
     clip.kind = crate::engine::ClipKind::Midi;
     clip.bars = 1.0;
-    clip.notes = vec![crate::engine::MidiNote {
+    clip.notes = vec![crate::engine::MidiNote { variation: None,
         id: crate::engine::midi_edit::NoteId::new(),
         channel: 0,
         release_vel: 37,

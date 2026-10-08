@@ -287,7 +287,7 @@ impl Effect {
 pub(super) enum Patch {
     SongNavigation {saved:Option<song_navigation::Saved>,bytes:usize},
     ClipManagement(Box<clip_management::edit::Inverse>),
-    Arrangement {value:Box<arrangement::Playback>,reserved:[Option<Arc<arrangement::Plan>>;2],bytes:usize},
+    Arrangement {seed:u64,value:Box<arrangement::Playback>,reserved:[Option<Arc<arrangement::Plan>>;2],bytes:usize},
     Session(Box<session::Inverse>),
     Global(Global),
     PluginParameter { namespace:[u64;2],id:u64,parameter:u32,value:f64 },
@@ -438,7 +438,7 @@ impl Patch {
     pub fn apply(&mut self, rt: &mut RtEngine) {
         match self {
             Self::SongNavigation {saved,..} => {let floor=rt.navigation.saved.as_ref().map_or(1,|saved|saved.next_id);std::mem::swap(saved,&mut rt.navigation.saved);if let Some(current)=&mut rt.navigation.saved{current.next_id=current.next_id.max(floor);}rt.navigation.cancel();},
-            Self::Arrangement {value,..} => {for (slot,track) in rt.tracks.iter_mut().enumerate(){track.release_clip_notes();rt.midi_routing.clear_clip(slot as u8);}std::mem::swap(value,&mut rt.arrangement);rt.arrangement.reset(rt.precise_midi_beat());},
+            Self::Arrangement {value,seed,..} => {std::mem::swap(seed,&mut rt.note_seed);for (slot,track) in rt.tracks.iter_mut().enumerate(){track.note_seed=rt.note_seed;track.release_clip_notes();rt.midi_routing.clear_clip(slot as u8);}std::mem::swap(value,&mut rt.arrangement);rt.arrangement.reset(rt.precise_midi_beat());},
             Self::Session(value) => value.swap(rt),
             Self::ClipManagement(value) => value.swap(rt),
             Self::Sampler { index, value, selected, .. } => {
@@ -570,7 +570,7 @@ impl Patch {
             Self::Clip {
                 value, spare_notes, reserved_midi_bytes, ..
             } => {
-                (*reserved_midi_bytes).max(value.lanes.as_ref().map_or(0, |lanes| lanes.bytes())) + value.name.capacity()
+                (*reserved_midi_bytes).max(value.lanes.as_ref().map_or(0, |lanes| lanes.bytes()) + value.variation.as_ref().map_or(0, |plan| plan.bytes())) + value.name.capacity()
                     + (value.notes.capacity() + spare_notes.capacity()).max(2 * super::NOTE_LIMIT)
                         * std::mem::size_of::<MidiNote>()
             }

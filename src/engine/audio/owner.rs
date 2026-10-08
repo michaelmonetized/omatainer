@@ -1227,7 +1227,7 @@ pub(crate) mod tests {
     fn same_rate_stop_and_explicit_resume_rebuilds_midi_and_arp_without_render_allocation() {
         for arp in [false, true] {
             let (_engine, mut rt) = Engine::headless_for_test(48000, 256);
-            rt.tracks[1].clips[0].notes = vec![crate::engine::MidiNote {
+            rt.tracks[1].clips[0].notes = vec![crate::engine::MidiNote { variation: None,
                 channel:0,release_vel:64,source_timing:None, id: crate::engine::midi_edit::NoteId::new(), muted: false,
                 pitch: 60,
                 start: 0.0,

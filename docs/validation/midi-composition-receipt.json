@@ -1,0 +1,3887 @@
+{
+  "schema": 1,
+  "issues": [
+    166,
+    207,
+    208,
+    209
+  ],
+  "status": "implemented",
+  "physicalDevicesOpened": false,
+  "nativeStateVersion": 34,
+  "priorNoteVariationQualification": {
+    "path": "docs/validation/note-variation-receipt.json",
+    "sha256": "2840238d5636f0bfc6a7a636aba3674f08f44f2e1fea5cdf11fe20bebd80655d"
+  },
+  "sourceFiles": {
+    "src/scene_index_tests.rs": "c71933b188a55fd65a18841a7d74dc33505c85047eef392a2c9092bba097a466",
+    "src/ableton/clips.rs": "d207e05c4ff874bc3bb49eaf5f722917e7a21d709249cbde035450328f0b4eca",
+    "src/audio_delivery/tests.rs": "0574a7be694a4da2f70a1ac4c4590861d42812a512f48508945737fadd00a4c3",
+    "src/engine/arp_tests.rs": "d003952f081060b9d34fae93ca7128e464a52d731395dd409a239c39a370188e",
+    "src/engine/audio_live_set_tests.rs": "0d019aca88bf8e3233957192770f4f3e5d4dd7b3a99ce209bf1c3b327e67d5dc",
+    "src/engine/clip_gain_tests.rs": "634b92171939d160b51e3c36c40ec1040ead5e3212ac83f4672d52bb964eeced",
+    "src/engine/clip_lifecycle_tests.rs": "5017373dcf0a4392ca7faba2966a3f1be67ee64e6d488eee5c1792652cb02f48",
+    "src/engine/drum_velocity_tests.rs": "5e78915f998f20f36ea3e455d92d4dcd5f55eb32bf386bcad644dbd2f7acf97f",
+    "src/engine/fx_control_tests.rs": "757d8f42cc4be7c046404f96fd189eda35580621331df73fbb538e489dd30b5a",
+    "src/engine/midi_data.rs": "bd277604fed490277b01cf0ec463e8366ef4e3cb990c5787f5afd35392f80d4e",
+    "src/engine/midi_edit.rs": "9c0bddf80a71985b2acda7d36f622ef4c3902e091fa02562a190fd7f0efb839e",
+    "src/engine/midi_schedule_tests.rs": "e4741604dad577a633fff1a84343e94ef83857a82c18febd2ee48858e4edbac7",
+    "src/engine/mod.rs": "9ce83a6a9a2c50df19b569c12b7635ac721e0b80f6bdf856e0fc94759240a855",
+    "src/engine/mute_lifecycle_tests.rs": "7029f2a6eb89bbfbc031dd66f325f1c1a7054e95a8d60918cb2f9552bc6da673",
+    "src/engine/pad_routing_tests.rs": "63633d8d357aa7439081c4dd1b8105d0bbc595a5f71aedcf3cf7b1d308a78b99",
+    "src/engine/performance_workload_tests.rs": "44175bd2158924288dda38100631a6f04bb78e7ab99bd5923bbcc80a3e6c6c9a",
+    "src/engine/quantized_launch_tests.rs": "9a0e38869538fab2a203eb94578e8849788dd17dccc7e48b95c07006fdbbe744",
+    "src/engine/recording.rs": "696c890e03977cea2dc1e86b5d35be0414927a2ee8de681c3042fc980f9647d8",
+    "src/engine/recording_duration_tests.rs": "3eb36cb76fd9e5666d82bdc172cf374e7d22870e80ab40fa6ea5e68e206ae01b",
+    "src/engine/sample_rate_tests.rs": "8dc5650a707c9926efeefad8f76cabac24eca520a75d645f33931253c7317dbf",
+    "src/ui/piano_roll.rs": "c6347d2e8d1f5ce519ee7edda7f52430330eddbb2deabab290674e2b538b34ed",
+    "src/engine/arrangement/tests.rs": "0d53439a2a7974e466996cc11f342b23815c649ead558aacede6bff491d21b16",
+    "src/engine/audio/owner.rs": "a66e6278404d27812ca905a331cf79f40443e340bec35edb01ffe0f69e3c30b6",
+    "src/engine/clip_launch/tests.rs": "930ccf9ea5dd643c7814c380dfa12e225fc82af274f089a74d93e7bab0f32837",
+    "src/engine/clip_management/tests.rs": "cc8d69c3b6ecd3195095da976fd344b5b43eccaa794c96fffc4f47a888bd7e84",
+    "src/engine/midi_data/timeline.rs": "aa7e78f45565ea6e35faacc2a66149a636aa044ccf87dc2ab9f6e619adb808f4",
+    "src/engine/performance/tests.rs": "aa7e2d6ca17f47df9c90340100af0d23ec7c1ef19defb4a9ee63f5fda67fb662",
+    "src/engine/project/tests.rs": "85cc6730049de10153ae96a9486ce1fea85a621e3cf25759b51811ba39c7e039",
+    "src/engine/scene/tests.rs": "d5f563e140b512721df9e087d6c3018f1a51b90b70306e0ec4bc6431d9cefbde",
+    "src/engine/undo/tests.rs": "5ee5dcd66f7e9cd1f6c8257da622c36c9ff4b86ccd8ff3a578cdcefbdbc7cde6",
+    "src/ui/arrangement/tests.rs": "2ed39b10f5cefd6d71144d3f5175415f0715089e09e0e38bf4ea3912543a62de",
+    "src/ui/help/tests.rs": "ff5a99e70f3cbfaba5f3c595a8c037a3a67adc56d040473530ed5639f5677572",
+    "src/ui/piano_roll/rhythm.rs": "ca84835c065693c37c27b9b24ebf388ddbcb12bc32d3a9d6b34d93a263d742f1",
+    "src/ui/piano_roll/step.rs": "399c8a17547efbca5867d5fa1eb151b3f74c4c3b774c74bfb35dfe388c567488",
+    "src/ui/portability/tests.rs": "43afa46d34adfb5f903cc910e8be0b293b2b1abfe8e34cd37a4d178ab2bf8a03",
+    "src/ui/project/performance_gate_tests.rs": "16fa108f016a632055bafec7c0293e848c608aafac9612e05a3b5a2137bc8abc",
+    "src/ui/project/tests.rs": "25e5013ca068ac70899ba2f82c46b0b2cfb103afd5f9970bad00e692a4a55e31",
+    "src/ui/undo/tests.rs": "3365a63c6ae698b74db10c2a58d507651fea1f430fc095c47ae09c33a92c2f4a",
+    "src/engine/audio/routing/plugin_tests.rs": "150a4067c655696432b54e40699e48d16b2aeb742ace68f3a53636dc3dd3b81d",
+    "src/engine/midi/clock_input/tests.rs": "71197a11d50638d3e290f44c36d33f659749d62353e71354b1e966f2efbab787",
+    "src/engine/project/tests/session_tests.rs": "c75c595cd8e2496bfa54677d62fafa02fe2b35a12e4706d94677643536901e7d",
+    "src/ui/piano_roll/comparison/tests.rs": "9db89702d0764cba1d3dcf328cda4da30941fdf17e7b979187a29722b30997e0",
+    "src/ui/piano_roll/scale/tests.rs": "34af468e68b9f31bf77a173875c50c348b150b226bf11d99006244199899e551",
+    "src/ui/sampler_editor/tests/offline.rs": "b3278ddc7e0263eb9e7b1a3f7792cca1293a5598fdfb828eca69bc64ae6c18ce",
+    "src/engine/midi/routing/output/tests.rs": "7dbc52b9263c1760989728fe5e134afe5d1d84eb54b17c72f117c26f50a1553f",
+    "src/engine/midi/routing/playback/tests.rs": "47f273c2b9689fb67f4be492b3dd5f936ad9d7d156123b701de2d6a8fe579dc7",
+    "src/engine/note_variation.rs": "78c6f819629a27c86b4f1c70982ec0adb1746024cdfeff41278d7501152fb894",
+    "src/engine/note_variation/tests.rs": "b871623785c02d20bda8db342d42ac1b8ae2be60c79f5943bdf3e42dbf3c70d6",
+    "src/engine/project/model.rs": "a4d573ed3df3d40be3cc074b68942a0f2792f8ff28e05359a24f9ca733a62078",
+    "src/engine/project/capture.rs": "9dd764eeb023d71c914fdcf4ddcd58ce4a61f8e0cef5eecb808480257e13ee47",
+    "src/engine/project/prepare.rs": "e4bdafc14e79fe7d82bbb38117b0628f782607efd4ec91a58be427c079dcd52d",
+    "src/engine/snapshot.rs": "19f469804cf3317b2fbb864a8bcacb9ee8c6cf7c378c33e88d59203cd904e560",
+    "src/engine/clip_management/preset.rs": "c63f31da71b218c54ab21b16d7c376f546a4104abc5dea6bf1f8065e1f7c159f",
+    "src/engine/midi_interchange.rs": "0a41cf4d89a168acf945a80d2b7e7de935613df82aae677343d8f1d407a1dc82",
+    "src/engine/midi_tools.rs": "d4f3e93d25ff85dc509cca52a1288b048794c3331d2222c119aa62464f4e43c3",
+    "src/engine/recording_position_tests.rs": "b97b61a5043fb0b34773f31ad1e02915d2d3445279bd50b243457e773428b22f",
+    "src/video/decoder.rs": "4ddfa9396dc17670c9aa6a0c784c841200fb678955bff9a254c4d3bdbaf720fe",
+    "src/engine/arrangement/playback.rs": "bb3483a5fe1bb40eea93a4d6b5825e86623db0ecc7c7a7d7162b4d73acffbfd4",
+    "src/engine/audio_clip/edit.rs": "f143e86a03cd347a8134942e5f88db7e4e0423a5dfec9b192507207922d3a59e",
+    "src/engine/midi_interchange/editor.rs": "c35db35410eb972783bedcbf7fbad9a09d48dbc1554a5fdccbf8e87acfb0c622",
+    "src/engine/undo/audio_clip.rs": "ffc97a9600a96f0e35f03e97536068e1350db51110341a315181fcf3fc413d5e",
+    "src/engine/undo/capture.rs": "05508fac33c3f678ae0adbb383302a737b570818b181c26f42a2d0378ab52481",
+    "src/engine/undo/midi_import.rs": "0e230aeae4ee587f254c8b325622f21e13b11cc12eebb36ace32f58330dd32d6",
+    "src/engine/undo/patch.rs": "bc11b660f418e8bac6846b3cf403badf4c69be3c146e846ffaa36a52fe839c42",
+    "src/engine/undo/recording.rs": "7f322cbfafd02dc51d52cc8e27fc57ae9219bf85eb880822b42507bceead416e",
+    "src/engine/midi/routing/control.rs": "e328a2de4b147d5e945955b169b2ca2e2652df3e01f5439a0b18016d4165b4d0",
+    "src/engine/midi/routing/playback.rs": "c1f957d48f81d5506e8c8d0841ea4a44713f9b325fa0e437269d12b86ff55cfa",
+    "src/engine/midi_schedule.rs": "ed97c6cfbbdd239a10280dc4a94035e8de5d4aae43b4bfdf59978336e440b417",
+    "src/ui/piano_roll/variation.rs": "e1e3313e9b59dcf9b5563af6cfe2f63b2892fb1ab9af91bed013b20a30a5daf3",
+    "src/engine/arrangement.rs": "7532326a7c2649722235533d95723c9444b3ebe32b036cf3418afcca34d8ba6e",
+    "src/engine/arrangement/prepare.rs": "3863e26d9e1b79b7f194c6e9e0014d2e69dbf54e0520290fcf5a8cefd9160ecf",
+    "src/engine/arrangement/edit.rs": "a909d12ea246b7afe1631699cb1b615cf06b079febb5560999a09a705cdb7f59",
+    "src/engine/undo/arrangement.rs": "696ac654684b05e5ffc2338186fecf1208c38903409670c583937d7642cbe4cf",
+    "src/engine/arp.rs": "374c072046a81ff6925905ffda42aed240d0f323c1250d8e8b9ea2649b65f449",
+    "src/engine/clip_management/edit.rs": "4ab327b414ef590eabf26ee77d66ceb72b537da4e38a10e4deedd81ad1f21ff6",
+    "src/engine/midi_tools/scale.rs": "e91893e8844375e33c2a08da67afb9eeedbff9d9c541bd5c1bf7311eccff5d84",
+    "src/ui/piano_roll/variation/tests.rs": "26e78338e700c722acf466b7d50b06585484c5c6bf20f4b604bb0c120a07de64",
+    "src/engine/undo/mod.rs": "9350a7c4a1386661b794852a3cd9b21d375dfc9ba1a266eddedf0d87e067b405",
+    "src/ui/piano_roll/tools/composition/tests.rs": "d4bb55d7cc2c31e777425b721fa0b3da0d250e7edb241f0ca1ded89f1adbb094",
+    "src/ui/piano_roll/tools/composition.rs": "eafd42d69fa5571c271692f5e3692d711bcb1e864e6992bd0a1f515733b43d81",
+    "src/ui/piano_roll/tools.rs": "8f0e15d72f45dde196e969212c4cd30069b8326913bf79c6fa1112a973862f5d",
+    "src/ui/piano_roll/comparison/group.rs": "f88ee9edabf8d0f9b7dce04de63d61d13d3d7df218521a37d71cb40a2952749f",
+    "src/engine/midi_tools/composition/tests.rs": "7b10bfd2a4afd5a5da58de19d1e576ca3d9f699855f61dd85f1d755e8af899ef",
+    "src/engine/midi_tools/composition.rs": "21acb7c4aa3c7bd868bb1061aedfddad23efcb8077f76ba4493a94e48935f893"
+  },
+  "compiledInventory": {
+    "path": "target/app-backlog/note-variation-eleventh-source.json",
+    "sha256": "b38c709c28e8f8093ada087cc049591824a6c754a0486e105f89e235813419c0",
+    "baseRevision": "82d18858585f0ffc3b931db2ff5a6eb54bade5d5",
+    "files": 945
+  },
+  "testBinary": {
+    "path": "target/app-backlog/qualification-bin/note-variation-tests-eleventh",
+    "sha256": "5cb226761fa77bbd44dafa011356bf86e1610007352f8dc8f1bc9f75eeae163e"
+  },
+  "compileLog": {
+    "path": "target/app-backlog/note-variation-eleventh-build.log",
+    "sha256": "f4010809346001ae8caca7b85f060c7edc1747fa8c8439a8ff785b9d82eb5310"
+  },
+  "testBuildArguments": [
+    "test",
+    "--locked",
+    "--offline",
+    "--no-run",
+    "--config",
+    "profile.test.package.omatainer.debug=0"
+  ],
+  "compiledTests": {
+    "total": 2306,
+    "ignored": 73,
+    "all": {
+      "path": "target/app-backlog/note-variation-eleventh-compiled-tests.log",
+      "sha256": "d7a61157a50a5df60c915612e700ac6e8004659f5a88a4de0f492881938b3deb"
+    },
+    "ignoredFixtures": {
+      "path": "target/app-backlog/note-variation-eleventh-ignored-tests.log",
+      "sha256": "3e33f37ad85ad59e8de9db2280bffe13003bd523fd2c6589279642ded98fbbb8"
+    }
+  },
+  "tests": {
+    "composition-core": {
+      "path": "target/app-backlog/note-variation-eleventh-composition-core.log",
+      "sha256": "c74bf5d35a01a64525f249aef470857581629461b162393708d8ee81da2ad9b9",
+      "outcome": "ok",
+      "passed": 7,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2299,
+      "seconds": 0
+    },
+    "composition-native": {
+      "path": "target/app-backlog/note-variation-eleventh-composition-native.log",
+      "sha256": "ef39b9fd7dbd33f9ddd9780ff10e0e11492f3a4cad842ec12e7f9c01c8020ec5",
+      "outcome": "ok",
+      "passed": 3,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2303,
+      "seconds": 9.36
+    },
+    "controller-catalog": {
+      "path": "target/app-backlog/note-variation-eleventh-controller-catalog.log",
+      "sha256": "40e8d7c6933f58fcf8d268150b167f8a6f864344697288283879aa0b4565ba18",
+      "outcome": "ok",
+      "passed": 14,
+      "failed": 0,
+      "ignored": 2,
+      "filtered": 2290,
+      "seconds": 15.95
+    },
+    "controller-connections": {
+      "path": "target/app-backlog/note-variation-eleventh-controller-connections.log",
+      "sha256": "42934c7690c7192a6c3532c47c1a8d7a1cdb1617a151392ef974f492c199a961",
+      "outcome": "ok",
+      "passed": 15,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2291,
+      "seconds": 4.64
+    },
+    "controller-native": {
+      "path": "target/app-backlog/note-variation-eleventh-controller-native.log",
+      "sha256": "bed9dcd16b566c936b5a145b5c66ba536c3ae47dc0d4de4a766fe00657e4d436",
+      "outcome": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2305,
+      "seconds": 1.6
+    },
+    "discovery": {
+      "path": "target/app-backlog/note-variation-eleventh-discovery.log",
+      "sha256": "acb836fdfa6c5cafdc27026cde2c2d914bdc370b5a16e4d3b8b769a31b0e9d3a",
+      "outcome": "ok",
+      "passed": 5,
+      "failed": 0,
+      "ignored": 1,
+      "filtered": 2300,
+      "seconds": 0.57
+    },
+    "variation-core": {
+      "path": "target/app-backlog/note-variation-eleventh-variation-core.log",
+      "sha256": "28a4028674016aad5b8eb628d9da768a7bd606e191f292aacb7dc6704068b8a6",
+      "outcome": "ok",
+      "passed": 8,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2298,
+      "seconds": 0.15
+    },
+    "variation-native": {
+      "path": "target/app-backlog/note-variation-eleventh-variation-native.log",
+      "sha256": "e922bfa4fac1115de203557b74a4dbac7d9ca3ac0314517c60bfd73b112561a6",
+      "outcome": "ok",
+      "passed": 2,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2304,
+      "seconds": 1.61
+    },
+    "variation-rendered": {
+      "path": "target/app-backlog/note-variation-eleventh-variation-rendered.log",
+      "sha256": "1cfa500d0e2065c72b3b7299d73ee32b00793e4b547ae2dd5b8507a06b5bc893",
+      "outcome": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2305,
+      "seconds": 1.56
+    },
+    "dependencies": {
+      "path": "target/app-backlog/note-variation-eleventh-dependencies.log",
+      "sha256": "837176900b424412c72362e7f0a6b7df21679b24be9e69b50e10b4630cdf9dc3",
+      "outcome": "ok",
+      "passed": 5,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2301,
+      "seconds": 2.57
+    },
+    "context": {
+      "path": "target/app-backlog/note-variation-eleventh-context.log",
+      "sha256": "de70ec7db54cff7a153344231b5851a4d975ca5e0cf60fb9539d580f6ed20784",
+      "outcome": "ok",
+      "passed": 7,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2299,
+      "seconds": 0.45
+    },
+    "transformation": {
+      "path": "target/app-backlog/note-variation-eleventh-transformation.log",
+      "sha256": "8c459bc45c178ed0d92727fb133cf4590064a60b803ecc316bb0f8cf1ed5ac55",
+      "outcome": "ok",
+      "passed": 17,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2289,
+      "seconds": 0.07
+    },
+    "native": {
+      "path": "target/app-backlog/note-variation-eleventh-native.log",
+      "sha256": "b335aeb0807737a2f4234e1a7fa04ba78417f229b89ff144dc9672a86a40d878",
+      "outcome": "ok",
+      "passed": 3,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2303,
+      "seconds": 3.13
+    },
+    "shared": {
+      "path": "target/app-backlog/note-variation-eleventh-shared.log",
+      "sha256": "00d593b412ef7850a5e8290f42fcc644e5bd1b88c5f003f1bd2950818636063a",
+      "outcome": "ok",
+      "passed": 4,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2302,
+      "seconds": 1.63
+    },
+    "piano": {
+      "path": "target/app-backlog/note-variation-eleventh-piano.log",
+      "sha256": "ba30a68000a8e8180daaeb62c08ca6dd78d870d1fa7e921de41c45d7a5ec188e",
+      "outcome": "ok",
+      "passed": 35,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2271,
+      "seconds": 30.43
+    },
+    "midi-edit": {
+      "path": "target/app-backlog/note-variation-eleventh-midi-edit.log",
+      "sha256": "3a715ea45082b8b7400f078db13c59015f2fd95e2a16d8e2e91b4652531abea0",
+      "outcome": "ok",
+      "passed": 9,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2297,
+      "seconds": 1.11
+    },
+    "midi-interchange": {
+      "path": "target/app-backlog/note-variation-eleventh-midi-interchange.log",
+      "sha256": "7b47486e77017cad93f4069e3cfbbff0a3848d251b1f3d723c3132f049e6051f",
+      "outcome": "ok",
+      "passed": 14,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2292,
+      "seconds": 10.21
+    },
+    "project": {
+      "path": "target/app-backlog/note-variation-eleventh-project.log",
+      "sha256": "499257456ffec23b9978212f2aa7de2d7a520d1913a67116ba149aad32f99af1",
+      "outcome": "ok",
+      "passed": 56,
+      "failed": 0,
+      "ignored": 1,
+      "filtered": 2249,
+      "seconds": 13.18
+    },
+    "undo": {
+      "path": "target/app-backlog/note-variation-eleventh-undo.log",
+      "sha256": "f66be4eeb31d780de13935a0d0fcc5f2861f69be3a1d089d848b9f0b5bdf4382",
+      "outcome": "ok",
+      "passed": 36,
+      "failed": 0,
+      "ignored": 1,
+      "filtered": 2269,
+      "seconds": 4.65
+    },
+    "snapshot": {
+      "path": "target/app-backlog/note-variation-eleventh-snapshot.log",
+      "sha256": "ebe53829aaa3271953eaf6ae29997400a280fd3b1d5d3eca9e6fe5a82f86ce03",
+      "outcome": "ok",
+      "passed": 7,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2299,
+      "seconds": 0.77
+    },
+    "sampler-identity": {
+      "path": "target/app-backlog/note-variation-eleventh-sampler-identity.log",
+      "sha256": "cdae83dce94d186684f1fffa94539dc976d9743fede4cd8c87ffec357cddcc14",
+      "outcome": "ok",
+      "passed": 3,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2303,
+      "seconds": 1.65
+    },
+    "sampler-pads": {
+      "path": "target/app-backlog/note-variation-eleventh-sampler-pads.log",
+      "sha256": "a9abb1660b07a72fe138b548e6858b437ae2b4908b3b0e99962c5fa870e64ccb",
+      "outcome": "ok",
+      "passed": 8,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2298,
+      "seconds": 1.61
+    },
+    "ableton": {
+      "path": "target/app-backlog/note-variation-eleventh-ableton.log",
+      "sha256": "2ec6b5debf94b732a1c4ce5b0dbdb0ae195f93948287efcc3a55701782853c0d",
+      "outcome": "ok",
+      "passed": 7,
+      "failed": 0,
+      "ignored": 6,
+      "filtered": 2293,
+      "seconds": 0.75
+    },
+    "ableton-native": {
+      "path": "target/app-backlog/note-variation-eleventh-ableton-native.log",
+      "sha256": "449016dd6f1d4bee9388baa7939bd25de6b607d259e13cf9e4380076746570eb",
+      "outcome": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 5,
+      "filtered": 2300,
+      "seconds": 0.12
+    },
+    "producer-library": {
+      "path": "target/app-backlog/note-variation-eleventh-producer-library.log",
+      "sha256": "6abf93194e4cab5798f69765ca1fed148476db6bd994542c4ef0aa4d2acbd3f9",
+      "outcome": "ok",
+      "passed": 5,
+      "failed": 0,
+      "ignored": 3,
+      "filtered": 2298,
+      "seconds": 0.58
+    },
+    "producer-library-native": {
+      "path": "target/app-backlog/note-variation-eleventh-producer-library-native.log",
+      "sha256": "b6d88816bb916c9e0d7118cd0f9dee7808bd766e6e2c313687f8409892dcbfc6",
+      "outcome": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 1,
+      "filtered": 2304,
+      "seconds": 0.12
+    },
+    "routing": {
+      "path": "target/app-backlog/note-variation-eleventh-routing.log",
+      "sha256": "753b5878c5c35d1096487b151074ce03a90dbe7b597da1438ee83a54572d3f9e",
+      "outcome": "ok",
+      "passed": 10,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2296,
+      "seconds": 0.83
+    },
+    "workspace": {
+      "path": "target/app-backlog/note-variation-eleventh-workspace.log",
+      "sha256": "29e35113fb0c98f6317a012e3cd069eb6550229483062d6538003346ec1cc3d2",
+      "outcome": "ok",
+      "passed": 8,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2298,
+      "seconds": 0.97
+    },
+    "background-jobs": {
+      "path": "target/app-backlog/note-variation-eleventh-background-jobs.log",
+      "sha256": "5067220775680afa7ab9b6833adacd6b5dee14640f46342af323a8ad1771d504",
+      "outcome": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2305,
+      "seconds": 0.13
+    },
+    "library-scan": {
+      "path": "target/app-backlog/note-variation-eleventh-library-scan.log",
+      "sha256": "5b2fbd856e16880d64e1769758c3cf208161b97989849206ff94f2da780d6e8f",
+      "outcome": "ok",
+      "passed": 17,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2289,
+      "seconds": 3.36
+    },
+    "monitor-qualification": {
+      "path": "target/app-backlog/note-variation-eleventh-monitor-qualification.log",
+      "sha256": "8412d2e38300e0098d4afdedd261ee049474951c217d74cddcced19b941fc8e7",
+      "outcome": "ok",
+      "passed": 6,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2300,
+      "seconds": 4.08
+    },
+    "library-view": {
+      "path": "target/app-backlog/note-variation-eleventh-library-view.log",
+      "sha256": "3c58098f892d9c29670a70d9b4b686013d3fdb250516249e2add440702bd3268",
+      "outcome": "ok",
+      "passed": 10,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2296,
+      "seconds": 28.58
+    },
+    "plugin-midi-storage": {
+      "path": "target/app-backlog/note-variation-eleventh-plugin-midi-storage.log",
+      "sha256": "b4466e9bbc6ba071c6090db1d49a8204704f77d5bf92e4fdb4ec9d7298b862ab",
+      "outcome": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2305,
+      "seconds": 0
+    },
+    "media-analysis": {
+      "path": "target/app-backlog/note-variation-eleventh-media-analysis.log",
+      "sha256": "6db4194f298da0acd38ee7d6dee43bb26f1b539d79f8f7be8faf151a078a155e",
+      "outcome": "ok",
+      "passed": 9,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2297,
+      "seconds": 0.33
+    },
+    "duration": {
+      "path": "target/app-backlog/note-variation-eleventh-duration.log",
+      "sha256": "799528880eef5835b2ad5c6faa1f4bece9bf2a59916108299880079b7312e71f",
+      "outcome": "ok",
+      "passed": 5,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2301,
+      "seconds": 0.95
+    },
+    "licenses": {
+      "path": "target/app-backlog/note-variation-eleventh-licenses.log",
+      "sha256": "eda7c2aa5a17401a4aadf160224f6cf77545f6c278bceb2f46b2f544596b7847",
+      "outcome": "ok",
+      "passed": 6,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2300,
+      "seconds": 0.6
+    },
+    "play-history": {
+      "path": "target/app-backlog/note-variation-eleventh-play-history.log",
+      "sha256": "971a34838c6e5547529d38944b861bc64fb7a9d62320ef24c7ab538764713e08",
+      "outcome": "ok",
+      "passed": 11,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2295,
+      "seconds": 1.32
+    },
+    "sampler-editor": {
+      "path": "target/app-backlog/note-variation-eleventh-sampler-editor.log",
+      "sha256": "a51e23e8a4abcd3b19f91ddbb24808014eec5a5d89275339cad56a688184a744",
+      "outcome": "ok",
+      "passed": 15,
+      "failed": 0,
+      "ignored": 1,
+      "filtered": 2290,
+      "seconds": 4.4
+    },
+    "sampler-store": {
+      "path": "target/app-backlog/note-variation-eleventh-sampler-store.log",
+      "sha256": "14ec69103f031a3ea13d9833dc680be54e9a5adf3cca0548e21ba75d0b7a695e",
+      "outcome": "ok",
+      "passed": 4,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2302,
+      "seconds": 0.04
+    },
+    "compose": {
+      "path": "target/app-backlog/note-variation-eleventh-compose.log",
+      "sha256": "3fc098a0496ae53493baf644e5b3038f78b16cd90a593c84c5c45fc557f696e6",
+      "outcome": "ok",
+      "passed": 2,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2304,
+      "seconds": 0.29
+    },
+    "waveform": {
+      "path": "target/app-backlog/note-variation-eleventh-waveform.log",
+      "sha256": "8acf4c9e96f5a5c2a3fd92b12b469e859b9537fa52d78569d80c08d353e49c4a",
+      "outcome": "ok",
+      "passed": 5,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2301,
+      "seconds": 0.45
+    },
+    "song-navigation": {
+      "path": "target/app-backlog/note-variation-eleventh-song-navigation.log",
+      "sha256": "37c3156d902d458b931afa6be465b24a216c06cb1904e4e43336820d5888d74d",
+      "outcome": "ok",
+      "passed": 11,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2295,
+      "seconds": 2.76
+    },
+    "project-timing": {
+      "path": "target/app-backlog/note-variation-eleventh-project-timing.log",
+      "sha256": "195b7b3a7a357891860beef15327612fcda47c9523b27669cd6b6b343a1542b6",
+      "outcome": "ok",
+      "passed": 6,
+      "failed": 0,
+      "ignored": 1,
+      "filtered": 2299,
+      "seconds": 1.44
+    },
+    "metronome": {
+      "path": "target/app-backlog/note-variation-eleventh-metronome.log",
+      "sha256": "5d5efc70efc2a9ab68c130f4ad6158e6b136afdeaac0e4791ea8eb552fe878dc",
+      "outcome": "ok",
+      "passed": 6,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2300,
+      "seconds": 2.21
+    },
+    "recording": {
+      "path": "target/app-backlog/note-variation-eleventh-recording.log",
+      "sha256": "3563f342b981bdc17a74188af3a8e01198b1976b59434eef3bbe7593c47843fc",
+      "outcome": "ok",
+      "passed": 12,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2294,
+      "seconds": 3.93
+    },
+    "audio": {
+      "path": "target/app-backlog/note-variation-eleventh-audio.log",
+      "sha256": "b0ee102614666bd31d01a0742b175dab3e1cf88d95238d61d09a8536bac33a5f",
+      "outcome": "ok",
+      "passed": 4,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2302,
+      "seconds": 0.43
+    },
+    "full": {
+      "path": "target/app-backlog/note-variation-eleventh-full.log",
+      "sha256": "25d3e4a321a21ac8f1220fc9e1b3d4c97d74cb20f2c9deb34c9f7cb97e63046b",
+      "outcome": "ok",
+      "passed": 2233,
+      "failed": 0,
+      "ignored": 73,
+      "filtered": 0,
+      "seconds": 751.49
+    },
+    "background-reproduction-1": {
+      "path": "target/app-backlog/note-variation-eleventh-background-reproduction-1.log",
+      "sha256": "5067220775680afa7ab9b6833adacd6b5dee14640f46342af323a8ad1771d504",
+      "outcome": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2305,
+      "seconds": 0.13
+    },
+    "background-reproduction-2": {
+      "path": "target/app-backlog/note-variation-eleventh-background-reproduction-2.log",
+      "sha256": "5067220775680afa7ab9b6833adacd6b5dee14640f46342af323a8ad1771d504",
+      "outcome": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2305,
+      "seconds": 0.13
+    },
+    "background-reproduction-3": {
+      "path": "target/app-backlog/note-variation-eleventh-background-reproduction-3.log",
+      "sha256": "992e7ca46ab0124186deec1e8fe57cf3aa31f98de24aedeab885e03bec7b4651",
+      "outcome": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2305,
+      "seconds": 0.14
+    },
+    "background-reproduction-4": {
+      "path": "target/app-backlog/note-variation-eleventh-background-reproduction-4.log",
+      "sha256": "5067220775680afa7ab9b6833adacd6b5dee14640f46342af323a8ad1771d504",
+      "outcome": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2305,
+      "seconds": 0.13
+    },
+    "background-reproduction-5": {
+      "path": "target/app-backlog/note-variation-eleventh-background-reproduction-5.log",
+      "sha256": "5067220775680afa7ab9b6833adacd6b5dee14640f46342af323a8ad1771d504",
+      "outcome": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2305,
+      "seconds": 0.13
+    },
+    "background-reproduction-6": {
+      "path": "target/app-backlog/note-variation-eleventh-background-reproduction-6.log",
+      "sha256": "5067220775680afa7ab9b6833adacd6b5dee14640f46342af323a8ad1771d504",
+      "outcome": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2305,
+      "seconds": 0.13
+    },
+    "background-reproduction-7": {
+      "path": "target/app-backlog/note-variation-eleventh-background-reproduction-7.log",
+      "sha256": "992e7ca46ab0124186deec1e8fe57cf3aa31f98de24aedeab885e03bec7b4651",
+      "outcome": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2305,
+      "seconds": 0.14
+    },
+    "background-reproduction-8": {
+      "path": "target/app-backlog/note-variation-eleventh-background-reproduction-8.log",
+      "sha256": "5067220775680afa7ab9b6833adacd6b5dee14640f46342af323a8ad1771d504",
+      "outcome": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2305,
+      "seconds": 0.13
+    },
+    "background-reproduction-9": {
+      "path": "target/app-backlog/note-variation-eleventh-background-reproduction-9.log",
+      "sha256": "5067220775680afa7ab9b6833adacd6b5dee14640f46342af323a8ad1771d504",
+      "outcome": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2305,
+      "seconds": 0.13
+    },
+    "background-reproduction-10": {
+      "path": "target/app-backlog/note-variation-eleventh-background-reproduction-10.log",
+      "sha256": "5067220775680afa7ab9b6833adacd6b5dee14640f46342af323a8ad1771d504",
+      "outcome": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2305,
+      "seconds": 0.13
+    },
+    "background-reproduction-11": {
+      "path": "target/app-backlog/note-variation-eleventh-background-reproduction-11.log",
+      "sha256": "5067220775680afa7ab9b6833adacd6b5dee14640f46342af323a8ad1771d504",
+      "outcome": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2305,
+      "seconds": 0.13
+    },
+    "background-reproduction-12": {
+      "path": "target/app-backlog/note-variation-eleventh-background-reproduction-12.log",
+      "sha256": "5067220775680afa7ab9b6833adacd6b5dee14640f46342af323a8ad1771d504",
+      "outcome": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2305,
+      "seconds": 0.13
+    },
+    "background-reproduction-13": {
+      "path": "target/app-backlog/note-variation-eleventh-background-reproduction-13.log",
+      "sha256": "5067220775680afa7ab9b6833adacd6b5dee14640f46342af323a8ad1771d504",
+      "outcome": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2305,
+      "seconds": 0.13
+    },
+    "background-reproduction-14": {
+      "path": "target/app-backlog/note-variation-eleventh-background-reproduction-14.log",
+      "sha256": "5067220775680afa7ab9b6833adacd6b5dee14640f46342af323a8ad1771d504",
+      "outcome": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2305,
+      "seconds": 0.13
+    },
+    "background-reproduction-15": {
+      "path": "target/app-backlog/note-variation-eleventh-background-reproduction-15.log",
+      "sha256": "5067220775680afa7ab9b6833adacd6b5dee14640f46342af323a8ad1771d504",
+      "outcome": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2305,
+      "seconds": 0.13
+    },
+    "background-reproduction-16": {
+      "path": "target/app-backlog/note-variation-eleventh-background-reproduction-16.log",
+      "sha256": "5067220775680afa7ab9b6833adacd6b5dee14640f46342af323a8ad1771d504",
+      "outcome": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2305,
+      "seconds": 0.13
+    },
+    "background-reproduction-17": {
+      "path": "target/app-backlog/note-variation-eleventh-background-reproduction-17.log",
+      "sha256": "5067220775680afa7ab9b6833adacd6b5dee14640f46342af323a8ad1771d504",
+      "outcome": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2305,
+      "seconds": 0.13
+    },
+    "background-reproduction-18": {
+      "path": "target/app-backlog/note-variation-eleventh-background-reproduction-18.log",
+      "sha256": "992e7ca46ab0124186deec1e8fe57cf3aa31f98de24aedeab885e03bec7b4651",
+      "outcome": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2305,
+      "seconds": 0.14
+    },
+    "background-reproduction-19": {
+      "path": "target/app-backlog/note-variation-eleventh-background-reproduction-19.log",
+      "sha256": "5067220775680afa7ab9b6833adacd6b5dee14640f46342af323a8ad1771d504",
+      "outcome": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2305,
+      "seconds": 0.13
+    },
+    "background-reproduction-20": {
+      "path": "target/app-backlog/note-variation-eleventh-background-reproduction-20.log",
+      "sha256": "5067220775680afa7ab9b6833adacd6b5dee14640f46342af323a8ad1771d504",
+      "outcome": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2305,
+      "seconds": 0.13
+    },
+    "duration-reproduction-1": {
+      "path": "target/app-backlog/note-variation-eleventh-duration-reproduction-1.log",
+      "sha256": "680d0d7589b2a29895dae9b2310f9b6151ea81aff97eb048cebdc87badc3197b",
+      "outcome": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2305,
+      "seconds": 0.23
+    },
+    "duration-reproduction-2": {
+      "path": "target/app-backlog/note-variation-eleventh-duration-reproduction-2.log",
+      "sha256": "36daf47e4f80160bf4e3804c78fd8f08e6376a4f41db69c64fe0815e045d4dc7",
+      "outcome": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2305,
+      "seconds": 0.22
+    },
+    "duration-reproduction-3": {
+      "path": "target/app-backlog/note-variation-eleventh-duration-reproduction-3.log",
+      "sha256": "6723be7e361ce3512fb22e260b8e992f467463ca291a60bc75f5742412749135",
+      "outcome": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2305,
+      "seconds": 0.24
+    },
+    "duration-reproduction-4": {
+      "path": "target/app-backlog/note-variation-eleventh-duration-reproduction-4.log",
+      "sha256": "6723be7e361ce3512fb22e260b8e992f467463ca291a60bc75f5742412749135",
+      "outcome": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2305,
+      "seconds": 0.24
+    },
+    "duration-reproduction-5": {
+      "path": "target/app-backlog/note-variation-eleventh-duration-reproduction-5.log",
+      "sha256": "680d0d7589b2a29895dae9b2310f9b6151ea81aff97eb048cebdc87badc3197b",
+      "outcome": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2305,
+      "seconds": 0.23
+    },
+    "duration-reproduction-6": {
+      "path": "target/app-backlog/note-variation-eleventh-duration-reproduction-6.log",
+      "sha256": "680d0d7589b2a29895dae9b2310f9b6151ea81aff97eb048cebdc87badc3197b",
+      "outcome": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2305,
+      "seconds": 0.23
+    },
+    "duration-reproduction-7": {
+      "path": "target/app-backlog/note-variation-eleventh-duration-reproduction-7.log",
+      "sha256": "fc9deba1839b1b902048d8e41f432f220a8de3631aaf364bdbe8ecce55db4994",
+      "outcome": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2305,
+      "seconds": 0.27
+    },
+    "duration-reproduction-8": {
+      "path": "target/app-backlog/note-variation-eleventh-duration-reproduction-8.log",
+      "sha256": "6723be7e361ce3512fb22e260b8e992f467463ca291a60bc75f5742412749135",
+      "outcome": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2305,
+      "seconds": 0.24
+    },
+    "duration-reproduction-9": {
+      "path": "target/app-backlog/note-variation-eleventh-duration-reproduction-9.log",
+      "sha256": "680d0d7589b2a29895dae9b2310f9b6151ea81aff97eb048cebdc87badc3197b",
+      "outcome": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2305,
+      "seconds": 0.23
+    },
+    "duration-reproduction-10": {
+      "path": "target/app-backlog/note-variation-eleventh-duration-reproduction-10.log",
+      "sha256": "6723be7e361ce3512fb22e260b8e992f467463ca291a60bc75f5742412749135",
+      "outcome": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2305,
+      "seconds": 0.24
+    },
+    "sampler-reproduction-1": {
+      "path": "target/app-backlog/note-variation-eleventh-sampler-reproduction-1.log",
+      "sha256": "504aabae3fc57eaac3ccfb3d236cdaca385d4c2767d863164b453e8b786cdbfc",
+      "outcome": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2305,
+      "seconds": 0.4
+    },
+    "sampler-reproduction-2": {
+      "path": "target/app-backlog/note-variation-eleventh-sampler-reproduction-2.log",
+      "sha256": "15e40f2b1489ab9dcf970968fd8fb4d35d3b4899240a8d083b83794a0e375d7b",
+      "outcome": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2305,
+      "seconds": 0.42
+    },
+    "sampler-reproduction-3": {
+      "path": "target/app-backlog/note-variation-eleventh-sampler-reproduction-3.log",
+      "sha256": "330edc628a3e276525d469833afd0dd248e49f618e5d035ecd6b9ae9ac43971d",
+      "outcome": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2305,
+      "seconds": 0.43
+    },
+    "sampler-reproduction-4": {
+      "path": "target/app-backlog/note-variation-eleventh-sampler-reproduction-4.log",
+      "sha256": "cd28236c913e1f3c6c7565a044d49ce80589a245fed922958cadbc289ba50201",
+      "outcome": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2305,
+      "seconds": 0.41
+    },
+    "sampler-reproduction-5": {
+      "path": "target/app-backlog/note-variation-eleventh-sampler-reproduction-5.log",
+      "sha256": "cd28236c913e1f3c6c7565a044d49ce80589a245fed922958cadbc289ba50201",
+      "outcome": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2305,
+      "seconds": 0.41
+    },
+    "sampler-reproduction-6": {
+      "path": "target/app-backlog/note-variation-eleventh-sampler-reproduction-6.log",
+      "sha256": "089aff5381c05c28517bd889e727ee0cec5edc9fc3a3f39bb49fda06823ca2c9",
+      "outcome": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2305,
+      "seconds": 0.39
+    },
+    "sampler-reproduction-7": {
+      "path": "target/app-backlog/note-variation-eleventh-sampler-reproduction-7.log",
+      "sha256": "cd28236c913e1f3c6c7565a044d49ce80589a245fed922958cadbc289ba50201",
+      "outcome": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2305,
+      "seconds": 0.41
+    },
+    "sampler-reproduction-8": {
+      "path": "target/app-backlog/note-variation-eleventh-sampler-reproduction-8.log",
+      "sha256": "7956ba506130d55c5bb3bf335e3e075137a6b0ffe9f1f4bf6c4fd66e70a7be9d",
+      "outcome": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2305,
+      "seconds": 0.38
+    },
+    "sampler-reproduction-9": {
+      "path": "target/app-backlog/note-variation-eleventh-sampler-reproduction-9.log",
+      "sha256": "504aabae3fc57eaac3ccfb3d236cdaca385d4c2767d863164b453e8b786cdbfc",
+      "outcome": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2305,
+      "seconds": 0.4
+    },
+    "sampler-reproduction-10": {
+      "path": "target/app-backlog/note-variation-eleventh-sampler-reproduction-10.log",
+      "sha256": "504aabae3fc57eaac3ccfb3d236cdaca385d4c2767d863164b453e8b786cdbfc",
+      "outcome": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2305,
+      "seconds": 0.4
+    },
+    "heap-fixture-deck_time_tests": {
+      "path": "target/app-backlog/note-variation-eleventh-heap-fixture-deck_time_tests.log",
+      "sha256": "c0e2f4aa05de4d77fd7a5a573fd49584aed15e5cba5408df9e2578c8338dd545",
+      "outcome": "ok",
+      "passed": 8,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2298,
+      "seconds": 1
+    },
+    "heap-fixture-accessibility": {
+      "path": "target/app-backlog/note-variation-eleventh-heap-fixture-accessibility.log",
+      "sha256": "480913b6a7cfb669f64757abada877e9c1476caeb21b2216632acbb230f407ba",
+      "outcome": "ok",
+      "passed": 17,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2289,
+      "seconds": 4.62
+    },
+    "heap-fixture-grid_editor": {
+      "path": "target/app-backlog/note-variation-eleventh-heap-fixture-grid_editor.log",
+      "sha256": "7513dd245c35bc461b1f7b686d6c32e6eb5f117ef8461f115124df2b555e4f03",
+      "outcome": "ok",
+      "passed": 14,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2292,
+      "seconds": 5.4
+    },
+    "heap-fixture-help": {
+      "path": "target/app-backlog/note-variation-eleventh-heap-fixture-help.log",
+      "sha256": "921d753fe44186ba093b103537738b8c382b7beb02b1516a3337a45f5e465166",
+      "outcome": "ok",
+      "passed": 14,
+      "failed": 0,
+      "ignored": 1,
+      "filtered": 2291,
+      "seconds": 3
+    },
+    "heap-fixture-library_analysis": {
+      "path": "target/app-backlog/note-variation-eleventh-heap-fixture-library_analysis.log",
+      "sha256": "5df86e140482ec9e660e6c8ad93aedea84a47ffdd9bbad122c3cb73e48716c4f",
+      "outcome": "ok",
+      "passed": 11,
+      "failed": 0,
+      "ignored": 1,
+      "filtered": 2294,
+      "seconds": 4.59
+    },
+    "heap-fixture-library_annotations": {
+      "path": "target/app-backlog/note-variation-eleventh-heap-fixture-library_annotations.log",
+      "sha256": "aa331f4987c15c57d2f1739b77b94a996cb09fef48ffed1892bae773448cd767",
+      "outcome": "ok",
+      "passed": 2,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2304,
+      "seconds": 0.62
+    },
+    "heap-fixture-library_crates": {
+      "path": "target/app-backlog/note-variation-eleventh-heap-fixture-library_crates.log",
+      "sha256": "7b4876b30075a20e1a956c499798dc61ca73ed163e51f5eed33470e98a20fd95",
+      "outcome": "ok",
+      "passed": 7,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2299,
+      "seconds": 2.83
+    },
+    "heap-fixture-library_prepare": {
+      "path": "target/app-backlog/note-variation-eleventh-heap-fixture-library_prepare.log",
+      "sha256": "ba02cb65481653ff77a04b25594a90b6105481e4d77e77e07cd2ef262262b200",
+      "outcome": "ok",
+      "passed": 5,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2301,
+      "seconds": 1.69
+    },
+    "heap-fixture-project": {
+      "path": "target/app-backlog/note-variation-eleventh-heap-fixture-project.log",
+      "sha256": "26272d2ff0f6ae729145ca7d4c00fa77d7bb7ae41f8db11522dc50983946b09e",
+      "outcome": "ok",
+      "passed": 55,
+      "failed": 0,
+      "ignored": 2,
+      "filtered": 2249,
+      "seconds": 20.06
+    },
+    "heap-fixture-recovery": {
+      "path": "target/app-backlog/note-variation-eleventh-heap-fixture-recovery.log",
+      "sha256": "7cd57a4aa0ca4f0086b8dbf8c9635b62411624235a7eb62cf3bea61a288eb959",
+      "outcome": "ok",
+      "passed": 17,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2289,
+      "seconds": 22.99
+    },
+    "heap-fixture-sampler_editor": {
+      "path": "target/app-backlog/note-variation-eleventh-heap-fixture-sampler_editor.log",
+      "sha256": "52ba95d6d99582d7053e260cac02c4a8a310f5603b0c27a2b93018702d5c8883",
+      "outcome": "ok",
+      "passed": 15,
+      "failed": 0,
+      "ignored": 1,
+      "filtered": 2290,
+      "seconds": 4.3
+    },
+    "heap-fixture-touch": {
+      "path": "target/app-backlog/note-variation-eleventh-heap-fixture-touch.log",
+      "sha256": "1588b49d1dd0dde0fb29cafe512f582067656419494080f69ced098f9d31355b",
+      "outcome": "ok",
+      "passed": 12,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2294,
+      "seconds": 1.45
+    },
+    "heap-fixture-undo": {
+      "path": "target/app-backlog/note-variation-eleventh-heap-fixture-undo.log",
+      "sha256": "b3f154066ce161daefaa1af1feb3d559069b1292f88533c1522b27ce81026e11",
+      "outcome": "ok",
+      "passed": 5,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2301,
+      "seconds": 0.61
+    },
+    "heap-fixture-video": {
+      "path": "target/app-backlog/note-variation-eleventh-heap-fixture-video.log",
+      "sha256": "c7c32ece483e46a163d7634f2cab606930be78770010b4b5fe6a15124f73671a",
+      "outcome": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2305,
+      "seconds": 1.63
+    }
+  },
+  "checks": {
+    "composition": {
+      "chords": {
+        "actual_egui_accesskit": true,
+        "eight_chords": true,
+        "editable_inversion": true,
+        "preview_restore": true,
+        "one_undo": true,
+        "native_save_reopen": true,
+        "physical_devices_opened": false
+      },
+      "melody": {
+        "actual_egui_pointer": true,
+        "ten_native_saved_alternatives": true,
+        "deterministic_replay": true,
+        "reroll_without_accumulation": true,
+        "manual_edit_without_generator": true,
+        "physical_devices_opened": false
+      },
+      "articulation": {
+        "actual_egui_accesskit": true,
+        "strum_flam_glissando": true,
+        "ordinary_editable_notes": true,
+        "one_undo": true,
+        "paired_releases": true,
+        "physical_devices_opened": false
+      }
+    },
+    "noteVariation": {
+      "metadata": {
+        "native_schema": 34,
+        "full_u64_seed": true,
+        "legacy_null_refusal": true,
+        "arrangement_field_refusal": true,
+        "physical_devices_opened": false
+      },
+      "admission": {
+        "actual_cancellation": true,
+        "stale_refusal": true,
+        "exact_history": true,
+        "pcm_and_notes_retained": true,
+        "callback_allocations": 0,
+        "callback_frees": 0,
+        "physical_devices_opened": false
+      },
+      "native": {
+        "actual_egui_accesskit": true,
+        "velocity_chance_lanes": true,
+        "base_velocity_edited": true,
+        "linked_groups": true,
+        "one_undo": true,
+        "native_save_reopen": true,
+        "absolute_notes_retained": true,
+        "physical_devices_opened": false
+      },
+      "seed": {
+        "actual_egui_accesskit": true,
+        "exclusive_weight_refusal": true,
+        "full_u64_seed": true,
+        "one_undo": true,
+        "native_save_reopen": true,
+        "notes_retained": true,
+        "physical_devices_opened": false
+      },
+      "rendered": {
+        "loops": 2000,
+        "blocks": [
+          1,
+          37,
+          257
+        ],
+        "actual_renderer": true,
+        "routed_note_expression_pairing": true,
+        "callback_allocations": 0,
+        "callback_frees": 0,
+        "physical_devices_opened": false
+      }
+    },
+    "savedContext": {
+      "metadata": {
+        "native_state_roundtrip": true,
+        "prepared_renderer_context": true,
+        "legacy_refusal": true,
+        "physical_devices_opened": false
+      },
+      "instrument": {
+        "actual_synth_gates": true,
+        "held_pitch_retained": true,
+        "callback_allocations": 0,
+        "callback_frees": 0,
+        "physical_devices_opened": false
+      },
+      "native": {
+        "actual_egui_accesskit": true,
+        "three_nonmajor_scales": true,
+        "one_undo": true,
+        "native_save_reopen": true,
+        "chromatic_exceptions_retained": true,
+        "physical_devices_opened": false
+      },
+      "generation": {
+        "actual_egui_accesskit": true,
+        "explicit_song_context": true,
+        "participating_generation": true,
+        "original_absolute_pitches_retained": true,
+        "saved_instrument_opt_in": true,
+        "physical_devices_opened": false
+      },
+      "shared": {
+        "actual_group_worker": true,
+        "per_owner_context": true,
+        "stale_context_refusal": true,
+        "launched_key_conflict_visible": true,
+        "physical_devices_opened": false
+      }
+    }
+  },
+  "controllerCatalogQualification": {
+    "path": "target/app-backlog/note-variation-eleventh-catalog-qualifications.json",
+    "sha256": "0e754d3551a5e1a52da719c4551b909ec1e9a39b3cde5f43bf9c6f14dd5fb130",
+    "frozenInventory": {
+      "path": "target/app-backlog/note-variation-eleventh-source.json",
+      "sha256": "b38c709c28e8f8093ada087cc049591824a6c754a0486e105f89e235813419c0"
+    },
+    "results": [
+      {
+        "name": "engine::midi::catalog::tests::export_original_owned_profile_release",
+        "path": "target/app-backlog/note-variation-eleventh-catalog-qualification-1.log",
+        "sha256": "37345f201283eff5fbb3d8ea6af18fe874f763541a7aa3cacb64cb7a0db8ed6e",
+        "passed": true
+      },
+      {
+        "name": "engine::midi::catalog::tests::live_authenticated_catalog_owner_preserves_pins_and_bundled_rollback",
+        "path": "target/app-backlog/note-variation-eleventh-catalog-qualification-2.log",
+        "sha256": "08bc7076e5860d0a694eb234a16e15d55b240e63ba4f5166a29c2c75e5768100",
+        "passed": true
+      }
+    ],
+    "exported": [
+      {
+        "path": "/home/michael/Projects/omatainer-work/hardware-resurrection/target/app-backlog/note-variation-eleventh-owned-profile-export/akai-apc40-mkii-1.0.0.json",
+        "sha256": "46682fb61abca2df01a4035a6b24a816ed2df91496e51ba3d7b45d27d630b175"
+      },
+      {
+        "path": "/home/michael/Projects/omatainer-work/hardware-resurrection/target/app-backlog/note-variation-eleventh-owned-profile-export/akai-mpd232-livelite-1.0.0.json",
+        "sha256": "bcddb28407043229a65b6627d52232c24fa14063c7ba185b0138ddd6ae9268cf"
+      },
+      {
+        "path": "/home/michael/Projects/omatainer-work/hardware-resurrection/target/app-backlog/note-variation-eleventh-owned-profile-export/numark-ns7-original-1.0.0.json",
+        "sha256": "86a87cd341ba8295bb0e19afea5a4c450729cef3e0cbdd474409e685dcb8b09f"
+      },
+      {
+        "path": "/home/michael/Projects/omatainer-work/hardware-resurrection/target/app-backlog/note-variation-eleventh-owned-profile-export/pioneer-ddj-sp1-1.0.0.json",
+        "sha256": "24bce6d2cfa82ce9a5f72fc7237e898acfdfa1b59bf63c5b43a8235fe86baa3a"
+      }
+    ],
+    "physicalDevicesOpened": false,
+    "scope": "Compiled owned-profile export and real production HTTPS owner with synthetic endpoint identity; no MIDI/audio ports or hardware capture."
+  },
+  "nativeImportIntegration": {
+    "path": "target/app-backlog/note-variation-eleventh-native-imports.json",
+    "sha256": "f3384b2ea79d70134e8d4af16608e1ff89641abf81ab8e8a065e2fae62b6ca97",
+    "worker": {
+      "sourceInventory": {
+        "path": "target/app-backlog/note-variation-eleventh-source.json",
+        "sha256": "b38c709c28e8f8093ada087cc049591824a6c754a0486e105f89e235813419c0"
+      },
+      "binary": {
+        "path": "target/app-backlog/qualification-bin/note-variation-native-worker-eleventh",
+        "sha256": "7ec56c1ea997f64ac65395b88d050997c0559a6c23a4fbe6df8fb03ccbe45a74",
+        "bytes": 438706456
+      },
+      "build": {
+        "path": "target/app-backlog/note-variation-eleventh-native-worker-build.log",
+        "sha256": "afb3ffcf0dd435dc01b1757906ac107b2f6d1efd71963d4cabcd67ef006df1e7",
+        "args": [
+          "build",
+          "--locked",
+          "--offline",
+          "--bin",
+          "omatainer",
+          "--config",
+          "profile.dev.package.omatainer.debug=0"
+        ]
+      },
+      "buildInfo": {
+        "arch": "aarch64",
+        "debug_assertions": true,
+        "os": "linux",
+        "pkg_version": "0.1.0",
+        "schema": 1
+      }
+    },
+    "tests": [
+      {
+        "name": "ableton::plugins::tests::native_vst3_state_chain_automation_merge_and_reopen_restore_measured_audio",
+        "path": "target/app-backlog/note-variation-eleventh-native-import-1.log",
+        "sha256": "80e1e22a40d074c0087e3dc321c3d6c7a3e5e923807108b0e5b160bd56804863",
+        "outcome": "ok",
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 2305,
+        "seconds": 0.67
+      },
+      {
+        "name": "ableton::process::tests::actual_worker_transfers_source_state_and_refuses_corruption_mutation_and_cancel",
+        "path": "target/app-backlog/note-variation-eleventh-native-import-2.log",
+        "sha256": "ef89addbf241124fb3a7aa538d9016eb3c0733b159ffb119a0c81541c5ac5414",
+        "outcome": "ok",
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 2305,
+        "seconds": 0.03
+      },
+      {
+        "name": "ableton::tests::private_saved_live_set_is_read_without_modification",
+        "path": "target/app-backlog/note-variation-eleventh-native-import-3.log",
+        "sha256": "8b046fc2c63d03d43360d975197f668618a8317ca41a2021920bcada184e66ce",
+        "outcome": "ok",
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 2305,
+        "seconds": 0.02
+      },
+      {
+        "name": "producer_library::tests::native_pack_worker_checks_real_identity_and_stops_cancelled_or_mutated_reviews",
+        "path": "target/app-backlog/note-variation-eleventh-native-import-4.log",
+        "sha256": "e6fcae792b56171a50b2abcbc490f4eeee7efd97e607b730381d37f3b141d32e",
+        "outcome": "ok",
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 2305,
+        "seconds": 0.02
+      },
+      {
+        "name": "producer_library::tests::native_producer_scan_uses_current_mount_identity_and_keeps_source_bytes_unchanged",
+        "path": "target/app-backlog/note-variation-eleventh-native-import-5.log",
+        "sha256": "66ef70b85378d963c75ff96fec95f73e1190038f965d41a2ad6e8cd930ad5235",
+        "outcome": "ok",
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 2305,
+        "seconds": 0.03
+      },
+      {
+        "name": "producer_library::tests::original_vst3_effect_user_preset_restores_exact_class_and_opaque_state",
+        "path": "target/app-backlog/note-variation-eleventh-native-import-6.log",
+        "sha256": "7de409ab46a66203ea39ffd567989037dedff3b73dfba0c5b6f51dfec1f4821c",
+        "outcome": "ok",
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 2305,
+        "seconds": 0.05
+      },
+      {
+        "name": "ui::ableton::library::tests::actual_library_pack_review_selection_preset_import_and_mutated_publication_preserve_session",
+        "path": "target/app-backlog/note-variation-eleventh-native-import-7.log",
+        "sha256": "9a46007651a949874f5da8c27b64301447a1f1ef24d9ba49d7c47752a955e57f",
+        "outcome": "ok",
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 2305,
+        "seconds": 0.22
+      },
+      {
+        "name": "ui::ableton::tests::actual_imported_device_relink_buttons_keep_the_running_document_and_publish_original_state",
+        "path": "target/app-backlog/note-variation-eleventh-native-import-8.log",
+        "sha256": "d4fe97794d4bf5a3a4718aff6790ea5746016825e822959a682b8c80f33acf02",
+        "outcome": "ok",
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 2305,
+        "seconds": 0.22
+      },
+      {
+        "name": "ui::ableton::tests::actual_open_published_migration_preserves_unsaved_cancel_then_installs_stopped_source_state",
+        "path": "target/app-backlog/note-variation-eleventh-native-import-9.log",
+        "sha256": "c3cbdc33b2730d1cf83defe6190ae70245ee2d836dd1df963f944a1378040a1e",
+        "outcome": "ok",
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 2305,
+        "seconds": 0.26
+      },
+      {
+        "name": "ui::ableton::tests::actual_render_attach_restore_and_publication_keep_the_running_set_and_editable_midi",
+        "path": "target/app-backlog/note-variation-eleventh-native-import-10.log",
+        "sha256": "04e2a84091c3208a7520daef9b6f4194bd221b0f8d12276597b1ecbdca023203",
+        "outcome": "ok",
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 2305,
+        "seconds": 0.28
+      },
+      {
+        "name": "ui::ableton::tests::actual_review_publish_source_change_cancellation_and_existing_destination_preserve_session",
+        "path": "target/app-backlog/note-variation-eleventh-native-import-11.log",
+        "sha256": "ab71940f29599eb37577b378fdb350d3161f101482d87377bb094c73c473d7f4",
+        "outcome": "ok",
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 2305,
+        "seconds": 0.23
+      },
+      {
+        "name": "ui::ableton::tests::actual_saved_archive_review_and_restore_do_not_require_the_original_live_files",
+        "path": "target/app-backlog/note-variation-eleventh-native-import-12.log",
+        "sha256": "00e3d6f66ac6384dbd73e233d1f99c3008bcd50a26c456f2b81ba04581486b0f",
+        "outcome": "ok",
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 2305,
+        "seconds": 0.23
+      }
+    ],
+    "fixtures": {
+      "sourceHashes": {
+        "/home/michael/Projects/omatainer-work/producer-dj-completion/target/validation/combined-completion/Contract.vst3/Contents/aarch64-linux/Contract.so": "bd9f0ea2cb641f6bbd13ba64bcaa5c9d24d9598933a6bac1d7d7e11998bb0b5f",
+        "/home/michael/Projects/omatainer-work/producer-dj-completion/target/validation/combined-completion/ableton-private/Live11-default.als": "69019eafa2958fb61d8b641ecd292d51b5218fe7bf3b490e835c37d824bbac52"
+      },
+      "copiedHashes": {
+        "/home/michael/Projects/omatainer-work/hardware-resurrection/target/app-backlog/note-variation-eleventh-native-fixtures/Contract.vst3/Contents/aarch64-linux/Contract.so": "bd9f0ea2cb641f6bbd13ba64bcaa5c9d24d9598933a6bac1d7d7e11998bb0b5f",
+        "/home/michael/Projects/omatainer-work/hardware-resurrection/target/app-backlog/note-variation-eleventh-native-fixtures/Live11-default.als": "69019eafa2958fb61d8b641ecd292d51b5218fe7bf3b490e835c37d824bbac52"
+      },
+      "scope": "Read-only retained private Set smoke and original native SDK contract fixture; not an independently Live-authored musical comparison or a physical-device test."
+    }
+  },
+  "productionCheck": {
+    "path": "target/app-backlog/note-variation-eleventh-production-check.log",
+    "sha256": "fffd1c1122aabf6d0498177893d476e2dc0898629a45fb70c605137c9b4fca6f",
+    "passed": true
+  },
+  "node": {
+    "path": "target/app-backlog/note-variation-eleventh-node.log",
+    "sha256": "1cba5ed8de42ec9b80b9a5157a3396c2cdbe914d305602faeca9a24f4fe680cf",
+    "passed": 17,
+    "failed": 0
+  },
+  "clockLoadRegression": {
+    "path": "target/app-backlog/note-variation-eleventh-full-output-timing.json",
+    "sha256": "b1c9a6282dc5857e57e0d5c826cdd4cd7bc003a3f1cca81388a415757197e638",
+    "physical_devices_opened": false,
+    "real_decode_egui_iterations": 5102,
+    "schema": 1,
+    "tempos": [
+      {
+        "bpm": 40,
+        "clocks": 24,
+        "delay_ns": [
+          81056,
+          14509,
+          75963,
+          31374,
+          16577,
+          123782,
+          107568,
+          66063,
+          15516,
+          19636,
+          130299,
+          3626,
+          19622,
+          130118,
+          77362,
+          56565,
+          138561,
+          46138,
+          10091,
+          47628,
+          81581,
+          64868,
+          53279,
+          36649
+        ],
+        "max_delay_ns": 138561
+      },
+      {
+        "bpm": 73,
+        "clocks": 24,
+        "delay_ns": [
+          115806,
+          137331,
+          104856,
+          83339,
+          38823,
+          116932,
+          47498,
+          36815,
+          132716,
+          46532,
+          44515,
+          52624,
+          124858,
+          50715,
+          91157,
+          32932,
+          82624,
+          97691,
+          26715,
+          118449,
+          154516,
+          139499,
+          36523,
+          120257
+        ],
+        "max_delay_ns": 154516
+      },
+      {
+        "bpm": 120,
+        "clocks": 24,
+        "delay_ns": [
+          26639,
+          44332,
+          116609,
+          53759,
+          86202,
+          128020,
+          75253,
+          124988,
+          72514,
+          124415,
+          44732,
+          66634,
+          95034,
+          16018,
+          49795,
+          4028,
+          159430,
+          66122,
+          86606,
+          127633,
+          120492,
+          89809,
+          18376,
+          99028
+        ],
+        "max_delay_ns": 159430
+      },
+      {
+        "bpm": 137,
+        "clocks": 24,
+        "delay_ns": [
+          70972,
+          34057,
+          78726,
+          83728,
+          11854,
+          58024,
+          122193,
+          89361,
+          6529,
+          126949,
+          127284,
+          90078,
+          71247,
+          85707,
+          140293,
+          45044,
+          157089,
+          12048,
+          120092,
+          131094,
+          35637,
+          51681,
+          69725,
+          20934
+        ],
+        "max_delay_ns": 157089
+      },
+      {
+        "bpm": 180,
+        "clocks": 24,
+        "delay_ns": [
+          55430,
+          81976,
+          30771,
+          33982,
+          85235,
+          32447,
+          121493,
+          117038,
+          154708,
+          126252,
+          79089,
+          94843,
+          2553,
+          88599,
+          2915545,
+          91897,
+          97068,
+          7778,
+          38448,
+          57327,
+          26830,
+          70292,
+          119170,
+          61340
+        ],
+        "max_delay_ns": 2915545
+      },
+      {
+        "bpm": 240,
+        "clocks": 24,
+        "delay_ns": [
+          75930,
+          61902,
+          30873,
+          3259040,
+          100316,
+          106495,
+          156842,
+          143147,
+          109034,
+          9962,
+          34059,
+          62489,
+          141294,
+          131224,
+          151320,
+          42248,
+          28137,
+          94358,
+          94621,
+          147760,
+          111897,
+          20909,
+          93715,
+          108811
+        ],
+        "max_delay_ns": 3259040
+      }
+    ]
+  },
+  "retainedArtifacts": [
+    {
+      "path": "target/app-backlog/composition-candidate-second-source.json",
+      "sha256": "50fe70d528ca4dfa100776178db75615c6f2e36943d76e8830531e8da7ff38c6"
+    },
+    {
+      "path": "target/app-backlog/composition-candidate-second-syntax.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "target/app-backlog/composition-candidate-source.json",
+      "sha256": "b5a1c2ceef430af6130c7b969f29ccc75cd0e0b8431e4204a45185a2b662aabe"
+    },
+    {
+      "path": "target/app-backlog/composition-candidate-syntax.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "target/app-backlog/composition-eleventh-license-check.log",
+      "sha256": "d94a5e067286d5c5aedd5ca514a33ee02642f635614378560b96a923d8b76c14"
+    },
+    {
+      "path": "target/app-backlog/composition-eleventh-license-refresh.log",
+      "sha256": "7d7ea538ed90397e3d60787987490d1611b8bf8ec0eb3492bdfa8456ad899d35"
+    },
+    {
+      "path": "target/app-backlog/composition-eleventh-record.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "target/app-backlog/composition-eleventh-remote-guard.log",
+      "sha256": "46d5e882a5b2f0f170783eeae5aa90847a9b1a362d478bfc369e3ab8a6d71d7e"
+    },
+    {
+      "path": "target/app-backlog/composition-first-license-check.log",
+      "sha256": "d94a5e067286d5c5aedd5ca514a33ee02642f635614378560b96a923d8b76c14"
+    },
+    {
+      "path": "target/app-backlog/composition-first-license-refresh.log",
+      "sha256": "7d7ea538ed90397e3d60787987490d1611b8bf8ec0eb3492bdfa8456ad899d35"
+    },
+    {
+      "path": "target/app-backlog/composition-first-production-check.log",
+      "sha256": "1f9c03d64e022c6604e01c76364154db16dde220e593aeef7a6072b22d86871c"
+    },
+    {
+      "path": "target/app-backlog/composition-implementation-source-before-menu-label-fix.json",
+      "sha256": "b5d78f5b5ba4eb9d9d72ffc4639d944b11760738ace7185480ec3e4c54aaa630"
+    },
+    {
+      "path": "target/app-backlog/composition-implementation-source-before-native-compiler-fix.json",
+      "sha256": "d962eeb70afccdc050f703aecbb3cda4f18f80bd5094a0d1caf2d00b5c028e86"
+    },
+    {
+      "path": "target/app-backlog/composition-implementation-source-before-native-region-fix.json",
+      "sha256": "6dc4806cd26ff793604b73dea7c98053e9dbbbb2250651e9a7fc801d7ec3d108"
+    },
+    {
+      "path": "target/app-backlog/composition-implementation-source.json",
+      "sha256": "6cfc015f79195ee7958a974271a2a0bc39031040af259b352a31f352125f13e6"
+    },
+    {
+      "path": "target/app-backlog/composition-native-before-menu-label-fix.rs",
+      "sha256": "1b30a7008d2784d3fe02ce7757fc9998815f3c98caa8e11bb60ecb068d5d7fed"
+    },
+    {
+      "path": "target/app-backlog/composition-native-tests-before-compiler-fix.rs",
+      "sha256": "b5c8e833ec37cda6a2d1666f98dc78fcb53d1c1c7057f6bbdf34bf5dde325e8d"
+    },
+    {
+      "path": "target/app-backlog/composition-native-tests-before-region-fix.rs",
+      "sha256": "ef464283cc9211d2d644504fdd1eb8166a9f8a28d5fa7b3874f8b1d657d241d5"
+    },
+    {
+      "path": "target/app-backlog/composition-ninth-license-check.log",
+      "sha256": "d94a5e067286d5c5aedd5ca514a33ee02642f635614378560b96a923d8b76c14"
+    },
+    {
+      "path": "target/app-backlog/composition-ninth-license-refresh.log",
+      "sha256": "7d7ea538ed90397e3d60787987490d1611b8bf8ec0eb3492bdfa8456ad899d35"
+    },
+    {
+      "path": "target/app-backlog/composition-tenth-license-check.log",
+      "sha256": "d94a5e067286d5c5aedd5ca514a33ee02642f635614378560b96a923d8b76c14"
+    },
+    {
+      "path": "target/app-backlog/composition-tenth-license-refresh.log",
+      "sha256": "7d7ea538ed90397e3d60787987490d1611b8bf8ec0eb3492bdfa8456ad899d35"
+    },
+    {
+      "path": "target/app-backlog/note-variation-checklist-check.log",
+      "sha256": "3ddce3293266fb35350053966d1f17437f3843a6c47e8c44a830980e7471bb8f"
+    },
+    {
+      "path": "target/app-backlog/note-variation-checklist-generation.log",
+      "sha256": "bea22577387008a0050dcd8d17bdbe55b5d2339217395c99b40dc3375eb2130b"
+    },
+    {
+      "path": "target/app-backlog/note-variation-checklist-second-check.log",
+      "sha256": "3ddce3293266fb35350053966d1f17437f3843a6c47e8c44a830980e7471bb8f"
+    },
+    {
+      "path": "target/app-backlog/note-variation-checklist-second-generation.log",
+      "sha256": "bea22577387008a0050dcd8d17bdbe55b5d2339217395c99b40dc3375eb2130b"
+    },
+    {
+      "path": "target/app-backlog/note-variation-complete-candidate-syntax.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "target/app-backlog/note-variation-controller-integration.log",
+      "sha256": "fc65804f5022928adae8e1ef90ccdbd6270c953b61bf692efb1f018f89e5f14b"
+    },
+    {
+      "path": "target/app-backlog/note-variation-controller-license-check.log",
+      "sha256": "d94a5e067286d5c5aedd5ca514a33ee02642f635614378560b96a923d8b76c14"
+    },
+    {
+      "path": "target/app-backlog/note-variation-controller-license-refresh.log",
+      "sha256": "718dc624fbf3764cffa3edf69dbf4cea54cf460e47296c6f9f0aa916f9c969d9"
+    },
+    {
+      "path": "target/app-backlog/note-variation-eighth-build.log",
+      "sha256": "8cbb38f110c68a9ecab19c89dcff87e63ff80834ad7ecacc71e83ebfd26ed726"
+    },
+    {
+      "path": "target/app-backlog/note-variation-eighth-production-check.log",
+      "sha256": "0f8d1ec82ea41bbbaf8727e88d2d515950840aeb21d4f947728ceb8ef7ddfb45"
+    },
+    {
+      "path": "target/app-backlog/note-variation-eighth-source.json",
+      "sha256": "ee1d9a18ad7a45a5de61e195fb39e8d8cbbad81dc929fd228602da97667b4662"
+    },
+    {
+      "path": "target/app-backlog/note-variation-eleventh-ableton-native.log",
+      "sha256": "449016dd6f1d4bee9388baa7939bd25de6b607d259e13cf9e4380076746570eb"
+    },
+    {
+      "path": "target/app-backlog/note-variation-eleventh-ableton.log",
+      "sha256": "2ec6b5debf94b732a1c4ce5b0dbdb0ae195f93948287efcc3a55701782853c0d"
+    },
+    {
+      "path": "target/app-backlog/note-variation-eleventh-audio.log",
+      "sha256": "b0ee102614666bd31d01a0742b175dab3e1cf88d95238d61d09a8536bac33a5f"
+    },
+    {
+      "path": "target/app-backlog/note-variation-eleventh-background-jobs.log",
+      "sha256": "5067220775680afa7ab9b6833adacd6b5dee14640f46342af323a8ad1771d504"
+    },
+    {
+      "path": "target/app-backlog/note-variation-eleventh-background-reproduction-1.log",
+      "sha256": "5067220775680afa7ab9b6833adacd6b5dee14640f46342af323a8ad1771d504"
+    },
+    {
+      "path": "target/app-backlog/note-variation-eleventh-background-reproduction-10.log",
+      "sha256": "5067220775680afa7ab9b6833adacd6b5dee14640f46342af323a8ad1771d504"
+    },
+    {
+      "path": "target/app-backlog/note-variation-eleventh-background-reproduction-11.log",
+      "sha256": "5067220775680afa7ab9b6833adacd6b5dee14640f46342af323a8ad1771d504"
+    },
+    {
+      "path": "target/app-backlog/note-variation-eleventh-background-reproduction-12.log",
+      "sha256": "5067220775680afa7ab9b6833adacd6b5dee14640f46342af323a8ad1771d504"
+    },
+    {
+      "path": "target/app-backlog/note-variation-eleventh-background-reproduction-13.log",
+      "sha256": "5067220775680afa7ab9b6833adacd6b5dee14640f46342af323a8ad1771d504"
+    },
+    {
+      "path": "target/app-backlog/note-variation-eleventh-background-reproduction-14.log",
+      "sha256": "5067220775680afa7ab9b6833adacd6b5dee14640f46342af323a8ad1771d504"
+    },
+    {
+      "path": "target/app-backlog/note-variation-eleventh-background-reproduction-15.log",
+      "sha256": "5067220775680afa7ab9b6833adacd6b5dee14640f46342af323a8ad1771d504"
+    },
+    {
+      "path": "target/app-backlog/note-variation-eleventh-background-reproduction-16.log",
+      "sha256": "5067220775680afa7ab9b6833adacd6b5dee14640f46342af323a8ad1771d504"
+    },
+    {
+      "path": "target/app-backlog/note-variation-eleventh-background-reproduction-17.log",
+      "sha256": "5067220775680afa7ab9b6833adacd6b5dee14640f46342af323a8ad1771d504"
+    },
+    {
+      "path": "target/app-backlog/note-variation-eleventh-background-reproduction-18.log",
+      "sha256": "992e7ca46ab0124186deec1e8fe57cf3aa31f98de24aedeab885e03bec7b4651"
+    },
+    {
+      "path": "target/app-backlog/note-variation-eleventh-background-reproduction-19.log",
+      "sha256": "5067220775680afa7ab9b6833adacd6b5dee14640f46342af323a8ad1771d504"
+    },
+    {
+      "path": "target/app-backlog/note-variation-eleventh-background-reproduction-2.log",
+      "sha256": "5067220775680afa7ab9b6833adacd6b5dee14640f46342af323a8ad1771d504"
+    },
+    {
+      "path": "target/app-backlog/note-variation-eleventh-background-reproduction-20.log",
+      "sha256": "5067220775680afa7ab9b6833adacd6b5dee14640f46342af323a8ad1771d504"
+    },
+    {
+      "path": "target/app-backlog/note-variation-eleventh-background-reproduction-3.log",
+      "sha256": "992e7ca46ab0124186deec1e8fe57cf3aa31f98de24aedeab885e03bec7b4651"
+    },
+    {
+      "path": "target/app-backlog/note-variation-eleventh-background-reproduction-4.log",
+      "sha256": "5067220775680afa7ab9b6833adacd6b5dee14640f46342af323a8ad1771d504"
+    },
+    {
+      "path": "target/app-backlog/note-variation-eleventh-background-reproduction-5.log",
+      "sha256": "5067220775680afa7ab9b6833adacd6b5dee14640f46342af323a8ad1771d504"
+    },
+    {
+      "path": "target/app-backlog/note-variation-eleventh-background-reproduction-6.log",
+      "sha256": "5067220775680afa7ab9b6833adacd6b5dee14640f46342af323a8ad1771d504"
+    },
+    {
+      "path": "target/app-backlog/note-variation-eleventh-background-reproduction-7.log",
+      "sha256": "992e7ca46ab0124186deec1e8fe57cf3aa31f98de24aedeab885e03bec7b4651"
+    },
+    {
+      "path": "target/app-backlog/note-variation-eleventh-background-reproduction-8.log",
+      "sha256": "5067220775680afa7ab9b6833adacd6b5dee14640f46342af323a8ad1771d504"
+    },
+    {
+      "path": "target/app-backlog/note-variation-eleventh-background-reproduction-9.log",
+      "sha256": "5067220775680afa7ab9b6833adacd6b5dee14640f46342af323a8ad1771d504"
+    },
+    {
+      "path": "target/app-backlog/note-variation-eleventh-build.log",
+      "sha256": "f4010809346001ae8caca7b85f060c7edc1747fa8c8439a8ff785b9d82eb5310"
+    },
+    {
+      "path": "target/app-backlog/note-variation-eleventh-capture-build.log",
+      "sha256": "833f0f71336b064d17dd57f84975611bc4fa34c82ebcf076c55446899b764fdd"
+    },
+    {
+      "path": "target/app-backlog/note-variation-eleventh-catalog-qualification-1.log",
+      "sha256": "37345f201283eff5fbb3d8ea6af18fe874f763541a7aa3cacb64cb7a0db8ed6e"
+    },
+    {
+      "path": "target/app-backlog/note-variation-eleventh-catalog-qualification-2.log",
+      "sha256": "08bc7076e5860d0a694eb234a16e15d55b240e63ba4f5166a29c2c75e5768100"
+    },
+    {
+      "path": "target/app-backlog/note-variation-eleventh-catalog-qualifications-runner.log",
+      "sha256": "002410de103201907210d92efd3adee50a1e09a3075b10bccd530a9cb4fca80f"
+    },
+    {
+      "path": "target/app-backlog/note-variation-eleventh-compiled-tests.log",
+      "sha256": "d7a61157a50a5df60c915612e700ac6e8004659f5a88a4de0f492881938b3deb"
+    },
+    {
+      "path": "target/app-backlog/note-variation-eleventh-compose.log",
+      "sha256": "3fc098a0496ae53493baf644e5b3038f78b16cd90a593c84c5c45fc557f696e6"
+    },
+    {
+      "path": "target/app-backlog/note-variation-eleventh-composition-core.log",
+      "sha256": "c74bf5d35a01a64525f249aef470857581629461b162393708d8ee81da2ad9b9"
+    },
+    {
+      "path": "target/app-backlog/note-variation-eleventh-composition-native.log",
+      "sha256": "ef39b9fd7dbd33f9ddd9780ff10e0e11492f3a4cad842ec12e7f9c01c8020ec5"
+    },
+    {
+      "path": "target/app-backlog/note-variation-eleventh-context.log",
+      "sha256": "de70ec7db54cff7a153344231b5851a4d975ca5e0cf60fb9539d580f6ed20784"
+    },
+    {
+      "path": "target/app-backlog/note-variation-eleventh-controller-catalog.log",
+      "sha256": "40e8d7c6933f58fcf8d268150b167f8a6f864344697288283879aa0b4565ba18"
+    },
+    {
+      "path": "target/app-backlog/note-variation-eleventh-controller-connections.log",
+      "sha256": "42934c7690c7192a6c3532c47c1a8d7a1cdb1617a151392ef974f492c199a961"
+    },
+    {
+      "path": "target/app-backlog/note-variation-eleventh-controller-native.log",
+      "sha256": "bed9dcd16b566c936b5a145b5c66ba536c3ae47dc0d4de4a766fe00657e4d436"
+    },
+    {
+      "path": "target/app-backlog/note-variation-eleventh-dependencies.log",
+      "sha256": "837176900b424412c72362e7f0a6b7df21679b24be9e69b50e10b4630cdf9dc3"
+    },
+    {
+      "path": "target/app-backlog/note-variation-eleventh-discovery.log",
+      "sha256": "acb836fdfa6c5cafdc27026cde2c2d914bdc370b5a16e4d3b8b769a31b0e9d3a"
+    },
+    {
+      "path": "target/app-backlog/note-variation-eleventh-duration-reproduction-1.log",
+      "sha256": "680d0d7589b2a29895dae9b2310f9b6151ea81aff97eb048cebdc87badc3197b"
+    },
+    {
+      "path": "target/app-backlog/note-variation-eleventh-duration-reproduction-10.log",
+      "sha256": "6723be7e361ce3512fb22e260b8e992f467463ca291a60bc75f5742412749135"
+    },
+    {
+      "path": "target/app-backlog/note-variation-eleventh-duration-reproduction-2.log",
+      "sha256": "36daf47e4f80160bf4e3804c78fd8f08e6376a4f41db69c64fe0815e045d4dc7"
+    },
+    {
+      "path": "target/app-backlog/note-variation-eleventh-duration-reproduction-3.log",
+      "sha256": "6723be7e361ce3512fb22e260b8e992f467463ca291a60bc75f5742412749135"
+    },
+    {
+      "path": "target/app-backlog/note-variation-eleventh-duration-reproduction-4.log",
+      "sha256": "6723be7e361ce3512fb22e260b8e992f467463ca291a60bc75f5742412749135"
+    },
+    {
+      "path": "target/app-backlog/note-variation-eleventh-duration-reproduction-5.log",
+      "sha256": "680d0d7589b2a29895dae9b2310f9b6151ea81aff97eb048cebdc87badc3197b"
+    },
+    {
+      "path": "target/app-backlog/note-variation-eleventh-duration-reproduction-6.log",
+      "sha256": "680d0d7589b2a29895dae9b2310f9b6151ea81aff97eb048cebdc87badc3197b"
+    },
+    {
+      "path": "target/app-backlog/note-variation-eleventh-duration-reproduction-7.log",
+      "sha256": "fc9deba1839b1b902048d8e41f432f220a8de3631aaf364bdbe8ecce55db4994"
+    },
+    {
+      "path": "target/app-backlog/note-variation-eleventh-duration-reproduction-8.log",
+      "sha256": "6723be7e361ce3512fb22e260b8e992f467463ca291a60bc75f5742412749135"
+    },
+    {
+      "path": "target/app-backlog/note-variation-eleventh-duration-reproduction-9.log",
+      "sha256": "680d0d7589b2a29895dae9b2310f9b6151ea81aff97eb048cebdc87badc3197b"
+    },
+    {
+      "path": "target/app-backlog/note-variation-eleventh-duration.log",
+      "sha256": "799528880eef5835b2ad5c6faa1f4bece9bf2a59916108299880079b7312e71f"
+    },
+    {
+      "path": "target/app-backlog/note-variation-eleventh-focused-runner.log",
+      "sha256": "260e4772e9caae2f0ae3f080623095f1fcc1f6638d6f78d774c872c062c698bd"
+    },
+    {
+      "path": "target/app-backlog/note-variation-eleventh-full-output-timing.json",
+      "sha256": "b1c9a6282dc5857e57e0d5c826cdd4cd7bc003a3f1cca81388a415757197e638"
+    },
+    {
+      "path": "target/app-backlog/note-variation-eleventh-full-runner.log",
+      "sha256": "7f77fca927fd1473643439bcafe1223371abf867ec3fdc2329064f43dd015141"
+    },
+    {
+      "path": "target/app-backlog/note-variation-eleventh-full.log",
+      "sha256": "25d3e4a321a21ac8f1220fc9e1b3d4c97d74cb20f2c9deb34c9f7cb97e63046b"
+    },
+    {
+      "path": "target/app-backlog/note-variation-eleventh-heap-fixture-accessibility.log",
+      "sha256": "480913b6a7cfb669f64757abada877e9c1476caeb21b2216632acbb230f407ba"
+    },
+    {
+      "path": "target/app-backlog/note-variation-eleventh-heap-fixture-deck_time_tests.log",
+      "sha256": "c0e2f4aa05de4d77fd7a5a573fd49584aed15e5cba5408df9e2578c8338dd545"
+    },
+    {
+      "path": "target/app-backlog/note-variation-eleventh-heap-fixture-grid_editor.log",
+      "sha256": "7513dd245c35bc461b1f7b686d6c32e6eb5f117ef8461f115124df2b555e4f03"
+    },
+    {
+      "path": "target/app-backlog/note-variation-eleventh-heap-fixture-help.log",
+      "sha256": "921d753fe44186ba093b103537738b8c382b7beb02b1516a3337a45f5e465166"
+    },
+    {
+      "path": "target/app-backlog/note-variation-eleventh-heap-fixture-library_analysis.log",
+      "sha256": "5df86e140482ec9e660e6c8ad93aedea84a47ffdd9bbad122c3cb73e48716c4f"
+    },
+    {
+      "path": "target/app-backlog/note-variation-eleventh-heap-fixture-library_annotations.log",
+      "sha256": "aa331f4987c15c57d2f1739b77b94a996cb09fef48ffed1892bae773448cd767"
+    },
+    {
+      "path": "target/app-backlog/note-variation-eleventh-heap-fixture-library_crates.log",
+      "sha256": "7b4876b30075a20e1a956c499798dc61ca73ed163e51f5eed33470e98a20fd95"
+    },
+    {
+      "path": "target/app-backlog/note-variation-eleventh-heap-fixture-library_prepare.log",
+      "sha256": "ba02cb65481653ff77a04b25594a90b6105481e4d77e77e07cd2ef262262b200"
+    },
+    {
+      "path": "target/app-backlog/note-variation-eleventh-heap-fixture-project.log",
+      "sha256": "26272d2ff0f6ae729145ca7d4c00fa77d7bb7ae41f8db11522dc50983946b09e"
+    },
+    {
+      "path": "target/app-backlog/note-variation-eleventh-heap-fixture-recovery.log",
+      "sha256": "7cd57a4aa0ca4f0086b8dbf8c9635b62411624235a7eb62cf3bea61a288eb959"
+    },
+    {
+      "path": "target/app-backlog/note-variation-eleventh-heap-fixture-sampler_editor.log",
+      "sha256": "52ba95d6d99582d7053e260cac02c4a8a310f5603b0c27a2b93018702d5c8883"
+    },
+    {
+      "path": "target/app-backlog/note-variation-eleventh-heap-fixture-touch.log",
+      "sha256": "1588b49d1dd0dde0fb29cafe512f582067656419494080f69ced098f9d31355b"
+    },
+    {
+      "path": "target/app-backlog/note-variation-eleventh-heap-fixture-undo.log",
+      "sha256": "b3f154066ce161daefaa1af1feb3d559069b1292f88533c1522b27ce81026e11"
+    },
+    {
+      "path": "target/app-backlog/note-variation-eleventh-heap-fixture-video.log",
+      "sha256": "c7c32ece483e46a163d7634f2cab606930be78770010b4b5fe6a15124f73671a"
+    },
+    {
+      "path": "target/app-backlog/note-variation-eleventh-ignored-tests.log",
+      "sha256": "3e33f37ad85ad59e8de9db2280bffe13003bd523fd2c6589279642ded98fbbb8"
+    },
+    {
+      "path": "target/app-backlog/note-variation-eleventh-library-scan.log",
+      "sha256": "5b2fbd856e16880d64e1769758c3cf208161b97989849206ff94f2da780d6e8f"
+    },
+    {
+      "path": "target/app-backlog/note-variation-eleventh-library-view.log",
+      "sha256": "3c58098f892d9c29670a70d9b4b686013d3fdb250516249e2add440702bd3268"
+    },
+    {
+      "path": "target/app-backlog/note-variation-eleventh-licenses.log",
+      "sha256": "eda7c2aa5a17401a4aadf160224f6cf77545f6c278bceb2f46b2f544596b7847"
+    },
+    {
+      "path": "target/app-backlog/note-variation-eleventh-media-analysis.log",
+      "sha256": "6db4194f298da0acd38ee7d6dee43bb26f1b539d79f8f7be8faf151a078a155e"
+    },
+    {
+      "path": "target/app-backlog/note-variation-eleventh-metronome.log",
+      "sha256": "5d5efc70efc2a9ab68c130f4ad6158e6b136afdeaac0e4791ea8eb552fe878dc"
+    },
+    {
+      "path": "target/app-backlog/note-variation-eleventh-midi-edit.log",
+      "sha256": "3a715ea45082b8b7400f078db13c59015f2fd95e2a16d8e2e91b4652531abea0"
+    },
+    {
+      "path": "target/app-backlog/note-variation-eleventh-midi-interchange.log",
+      "sha256": "7b47486e77017cad93f4069e3cfbbff0a3848d251b1f3d723c3132f049e6051f"
+    },
+    {
+      "path": "target/app-backlog/note-variation-eleventh-monitor-qualification.log",
+      "sha256": "8412d2e38300e0098d4afdedd261ee049474951c217d74cddcced19b941fc8e7"
+    },
+    {
+      "path": "target/app-backlog/note-variation-eleventh-native-fixtures.json",
+      "sha256": "67f3daeea2cb22942311ea5a3faf42c929a9d1a8da30bfadeb7d120be6beee19"
+    },
+    {
+      "path": "target/app-backlog/note-variation-eleventh-native-import-1.log",
+      "sha256": "80e1e22a40d074c0087e3dc321c3d6c7a3e5e923807108b0e5b160bd56804863"
+    },
+    {
+      "path": "target/app-backlog/note-variation-eleventh-native-import-10.log",
+      "sha256": "04e2a84091c3208a7520daef9b6f4194bd221b0f8d12276597b1ecbdca023203"
+    },
+    {
+      "path": "target/app-backlog/note-variation-eleventh-native-import-11.log",
+      "sha256": "ab71940f29599eb37577b378fdb350d3161f101482d87377bb094c73c473d7f4"
+    },
+    {
+      "path": "target/app-backlog/note-variation-eleventh-native-import-12.log",
+      "sha256": "00e3d6f66ac6384dbd73e233d1f99c3008bcd50a26c456f2b81ba04581486b0f"
+    },
+    {
+      "path": "target/app-backlog/note-variation-eleventh-native-import-2.log",
+      "sha256": "ef89addbf241124fb3a7aa538d9016eb3c0733b159ffb119a0c81541c5ac5414"
+    },
+    {
+      "path": "target/app-backlog/note-variation-eleventh-native-import-3.log",
+      "sha256": "8b046fc2c63d03d43360d975197f668618a8317ca41a2021920bcada184e66ce"
+    },
+    {
+      "path": "target/app-backlog/note-variation-eleventh-native-import-4.log",
+      "sha256": "e6fcae792b56171a50b2abcbc490f4eeee7efd97e607b730381d37f3b141d32e"
+    },
+    {
+      "path": "target/app-backlog/note-variation-eleventh-native-import-5.log",
+      "sha256": "66ef70b85378d963c75ff96fec95f73e1190038f965d41a2ad6e8cd930ad5235"
+    },
+    {
+      "path": "target/app-backlog/note-variation-eleventh-native-import-6.log",
+      "sha256": "7de409ab46a66203ea39ffd567989037dedff3b73dfba0c5b6f51dfec1f4821c"
+    },
+    {
+      "path": "target/app-backlog/note-variation-eleventh-native-import-7.log",
+      "sha256": "9a46007651a949874f5da8c27b64301447a1f1ef24d9ba49d7c47752a955e57f"
+    },
+    {
+      "path": "target/app-backlog/note-variation-eleventh-native-import-8.log",
+      "sha256": "d4fe97794d4bf5a3a4718aff6790ea5746016825e822959a682b8c80f33acf02"
+    },
+    {
+      "path": "target/app-backlog/note-variation-eleventh-native-import-9.log",
+      "sha256": "c3cbdc33b2730d1cf83defe6190ae70245ee2d836dd1df963f944a1378040a1e"
+    },
+    {
+      "path": "target/app-backlog/note-variation-eleventh-native-imports-corrected-runner.log",
+      "sha256": "b004b497b79b3b7cd1fa3e2242bf8ab7a35f550822a4170bcb4d007b46e7c92c"
+    },
+    {
+      "path": "target/app-backlog/note-variation-eleventh-native-imports-runner.log",
+      "sha256": "858bdd39ba0ee0dd94a2340f86066af0612d0291f8aead905a4db857376ed5b3"
+    },
+    {
+      "path": "target/app-backlog/note-variation-eleventh-native-imports.json",
+      "sha256": "f3384b2ea79d70134e8d4af16608e1ff89641abf81ab8e8a065e2fae62b6ca97"
+    },
+    {
+      "path": "target/app-backlog/note-variation-eleventh-native-worker-build.log",
+      "sha256": "afb3ffcf0dd435dc01b1757906ac107b2f6d1efd71963d4cabcd67ef006df1e7"
+    },
+    {
+      "path": "target/app-backlog/note-variation-eleventh-native-worker-runner.log",
+      "sha256": "6d9055f6b41cc54859591900144707cee27b2f988b56271671dc9e5aee0b6095"
+    },
+    {
+      "path": "target/app-backlog/note-variation-eleventh-native-worker-source.json",
+      "sha256": "3917d481d33e2e0d96c439b0ee9db45983a1d9e354dc595700b3794f10a4081e"
+    },
+    {
+      "path": "target/app-backlog/note-variation-eleventh-native.log",
+      "sha256": "b335aeb0807737a2f4234e1a7fa04ba78417f229b89ff144dc9672a86a40d878"
+    },
+    {
+      "path": "target/app-backlog/note-variation-eleventh-node.log",
+      "sha256": "1cba5ed8de42ec9b80b9a5157a3396c2cdbe914d305602faeca9a24f4fe680cf"
+    },
+    {
+      "path": "target/app-backlog/note-variation-eleventh-piano.log",
+      "sha256": "ba30a68000a8e8180daaeb62c08ca6dd78d870d1fa7e921de41c45d7a5ec188e"
+    },
+    {
+      "path": "target/app-backlog/note-variation-eleventh-play-history.log",
+      "sha256": "971a34838c6e5547529d38944b861bc64fb7a9d62320ef24c7ab538764713e08"
+    },
+    {
+      "path": "target/app-backlog/note-variation-eleventh-plugin-midi-storage.log",
+      "sha256": "b4466e9bbc6ba071c6090db1d49a8204704f77d5bf92e4fdb4ec9d7298b862ab"
+    },
+    {
+      "path": "target/app-backlog/note-variation-eleventh-producer-library-native.log",
+      "sha256": "b6d88816bb916c9e0d7118cd0f9dee7808bd766e6e2c313687f8409892dcbfc6"
+    },
+    {
+      "path": "target/app-backlog/note-variation-eleventh-producer-library.log",
+      "sha256": "6abf93194e4cab5798f69765ca1fed148476db6bd994542c4ef0aa4d2acbd3f9"
+    },
+    {
+      "path": "target/app-backlog/note-variation-eleventh-production-check.log",
+      "sha256": "fffd1c1122aabf6d0498177893d476e2dc0898629a45fb70c605137c9b4fca6f"
+    },
+    {
+      "path": "target/app-backlog/note-variation-eleventh-project-timing.log",
+      "sha256": "195b7b3a7a357891860beef15327612fcda47c9523b27669cd6b6b343a1542b6"
+    },
+    {
+      "path": "target/app-backlog/note-variation-eleventh-project.log",
+      "sha256": "499257456ffec23b9978212f2aa7de2d7a520d1913a67116ba149aad32f99af1"
+    },
+    {
+      "path": "target/app-backlog/note-variation-eleventh-recording.log",
+      "sha256": "3563f342b981bdc17a74188af3a8e01198b1976b59434eef3bbe7593c47843fc"
+    },
+    {
+      "path": "target/app-backlog/note-variation-eleventh-routing.log",
+      "sha256": "753b5878c5c35d1096487b151074ce03a90dbe7b597da1438ee83a54572d3f9e"
+    },
+    {
+      "path": "target/app-backlog/note-variation-eleventh-sampler-editor.log",
+      "sha256": "a51e23e8a4abcd3b19f91ddbb24808014eec5a5d89275339cad56a688184a744"
+    },
+    {
+      "path": "target/app-backlog/note-variation-eleventh-sampler-identity.log",
+      "sha256": "cdae83dce94d186684f1fffa94539dc976d9743fede4cd8c87ffec357cddcc14"
+    },
+    {
+      "path": "target/app-backlog/note-variation-eleventh-sampler-pads.log",
+      "sha256": "a9abb1660b07a72fe138b548e6858b437ae2b4908b3b0e99962c5fa870e64ccb"
+    },
+    {
+      "path": "target/app-backlog/note-variation-eleventh-sampler-reproduction-1.log",
+      "sha256": "504aabae3fc57eaac3ccfb3d236cdaca385d4c2767d863164b453e8b786cdbfc"
+    },
+    {
+      "path": "target/app-backlog/note-variation-eleventh-sampler-reproduction-10.log",
+      "sha256": "504aabae3fc57eaac3ccfb3d236cdaca385d4c2767d863164b453e8b786cdbfc"
+    },
+    {
+      "path": "target/app-backlog/note-variation-eleventh-sampler-reproduction-2.log",
+      "sha256": "15e40f2b1489ab9dcf970968fd8fb4d35d3b4899240a8d083b83794a0e375d7b"
+    },
+    {
+      "path": "target/app-backlog/note-variation-eleventh-sampler-reproduction-3.log",
+      "sha256": "330edc628a3e276525d469833afd0dd248e49f618e5d035ecd6b9ae9ac43971d"
+    },
+    {
+      "path": "target/app-backlog/note-variation-eleventh-sampler-reproduction-4.log",
+      "sha256": "cd28236c913e1f3c6c7565a044d49ce80589a245fed922958cadbc289ba50201"
+    },
+    {
+      "path": "target/app-backlog/note-variation-eleventh-sampler-reproduction-5.log",
+      "sha256": "cd28236c913e1f3c6c7565a044d49ce80589a245fed922958cadbc289ba50201"
+    },
+    {
+      "path": "target/app-backlog/note-variation-eleventh-sampler-reproduction-6.log",
+      "sha256": "089aff5381c05c28517bd889e727ee0cec5edc9fc3a3f39bb49fda06823ca2c9"
+    },
+    {
+      "path": "target/app-backlog/note-variation-eleventh-sampler-reproduction-7.log",
+      "sha256": "cd28236c913e1f3c6c7565a044d49ce80589a245fed922958cadbc289ba50201"
+    },
+    {
+      "path": "target/app-backlog/note-variation-eleventh-sampler-reproduction-8.log",
+      "sha256": "7956ba506130d55c5bb3bf335e3e075137a6b0ffe9f1f4bf6c4fd66e70a7be9d"
+    },
+    {
+      "path": "target/app-backlog/note-variation-eleventh-sampler-reproduction-9.log",
+      "sha256": "504aabae3fc57eaac3ccfb3d236cdaca385d4c2767d863164b453e8b786cdbfc"
+    },
+    {
+      "path": "target/app-backlog/note-variation-eleventh-sampler-store.log",
+      "sha256": "14ec69103f031a3ea13d9833dc680be54e9a5adf3cca0548e21ba75d0b7a695e"
+    },
+    {
+      "path": "target/app-backlog/note-variation-eleventh-shared.log",
+      "sha256": "00d593b412ef7850a5e8290f42fcc644e5bd1b88c5f003f1bd2950818636063a"
+    },
+    {
+      "path": "target/app-backlog/note-variation-eleventh-snapshot.log",
+      "sha256": "ebe53829aaa3271953eaf6ae29997400a280fd3b1d5d3eca9e6fe5a82f86ce03"
+    },
+    {
+      "path": "target/app-backlog/note-variation-eleventh-song-navigation.log",
+      "sha256": "37c3156d902d458b931afa6be465b24a216c06cb1904e4e43336820d5888d74d"
+    },
+    {
+      "path": "target/app-backlog/note-variation-eleventh-source.json",
+      "sha256": "b38c709c28e8f8093ada087cc049591824a6c754a0486e105f89e235813419c0"
+    },
+    {
+      "path": "target/app-backlog/note-variation-eleventh-transformation.log",
+      "sha256": "8c459bc45c178ed0d92727fb133cf4590064a60b803ecc316bb0f8cf1ed5ac55"
+    },
+    {
+      "path": "target/app-backlog/note-variation-eleventh-undo.log",
+      "sha256": "f66be4eeb31d780de13935a0d0fcc5f2861f69be3a1d089d848b9f0b5bdf4382"
+    },
+    {
+      "path": "target/app-backlog/note-variation-eleventh-variation-core.log",
+      "sha256": "28a4028674016aad5b8eb628d9da768a7bd606e191f292aacb7dc6704068b8a6"
+    },
+    {
+      "path": "target/app-backlog/note-variation-eleventh-variation-native.log",
+      "sha256": "e922bfa4fac1115de203557b74a4dbac7d9ca3ac0314517c60bfd73b112561a6"
+    },
+    {
+      "path": "target/app-backlog/note-variation-eleventh-variation-rendered.log",
+      "sha256": "1cfa500d0e2065c72b3b7299d73ee32b00793e4b547ae2dd5b8507a06b5bc893"
+    },
+    {
+      "path": "target/app-backlog/note-variation-eleventh-waveform.log",
+      "sha256": "8acf4c9e96f5a5c2a3fd92b12b469e859b9537fa52d78569d80c08d353e49c4a"
+    },
+    {
+      "path": "target/app-backlog/note-variation-eleventh-workspace.log",
+      "sha256": "29e35113fb0c98f6317a012e3cd069eb6550229483062d6538003346ec1cc3d2"
+    },
+    {
+      "path": "target/app-backlog/note-variation-fifth-ableton-native.log",
+      "sha256": "0672ea54c823b7771fd3d0572a20417c63c1df60cdd8b7cb96cfc12a588c9879"
+    },
+    {
+      "path": "target/app-backlog/note-variation-fifth-ableton.log",
+      "sha256": "2436d8dcf528076ee2d0849e4062dd51a32be3887c7fdd3827ba3158c84bdcd2"
+    },
+    {
+      "path": "target/app-backlog/note-variation-fifth-build.log",
+      "sha256": "ee05d1573a9d4f668613acce8474b917f61cd42e4ea095c9b12434b6932153b4"
+    },
+    {
+      "path": "target/app-backlog/note-variation-fifth-closed-lossless-compression.log",
+      "sha256": "5a860f54dc20d567ea89c3f607fbb858868b91f4cb35fe99e49db35824ed470a"
+    },
+    {
+      "path": "target/app-backlog/note-variation-fifth-compiled-tests.log",
+      "sha256": "e139c400330435214ff39b8b6fa48901643bcf3e8fa817032a1a1bfd55cc4894"
+    },
+    {
+      "path": "target/app-backlog/note-variation-fifth-context.log",
+      "sha256": "2bb8dd90e76b75de7505cedbe9f77383a675140e8519a7bb4e876e74b044e30a"
+    },
+    {
+      "path": "target/app-backlog/note-variation-fifth-dependencies.log",
+      "sha256": "d64158ea91a631eade6bd62e7d2c6df8ac48cd9c2f2231706038503680645615"
+    },
+    {
+      "path": "target/app-backlog/note-variation-fifth-focused-runner.log",
+      "sha256": "5501348967673a4424a40a6e802ef870535f48f6511b905435a0e7e974015343"
+    },
+    {
+      "path": "target/app-backlog/note-variation-fifth-heap-fixture-accessibility.log",
+      "sha256": "d9e2a91e92f85217ea2983faf565134944309d058232a41c2c4b5a93be7d4bd7"
+    },
+    {
+      "path": "target/app-backlog/note-variation-fifth-heap-fixture-deck_time_tests.log",
+      "sha256": "cf8fb778cd15384f78643e9aa90140e7ac7fa84dbb70ce083ef3cfc5e10e3538"
+    },
+    {
+      "path": "target/app-backlog/note-variation-fifth-heap-fixture-grid_editor.log",
+      "sha256": "0e5d0f50fff78db30f66b68dc0e03fd136578820af8bdf4b30019085e7a6d723"
+    },
+    {
+      "path": "target/app-backlog/note-variation-fifth-heap-fixture-help.log",
+      "sha256": "3c1a8d3029632c001c9339f469292c9f9dc7f6d55b2faef16f132d58528835a2"
+    },
+    {
+      "path": "target/app-backlog/note-variation-fifth-heap-fixture-library_analysis.log",
+      "sha256": "2599dd1bd9b8af26d8ff6e3069d288a4accd2bc79412725b225f37be92f62e4f"
+    },
+    {
+      "path": "target/app-backlog/note-variation-fifth-heap-fixture-library_annotations.log",
+      "sha256": "e12af7bd22beb00cd8fab61143664bf6a4018fd28d069e188ade14b9d6556ea2"
+    },
+    {
+      "path": "target/app-backlog/note-variation-fifth-heap-fixture-library_crates.log",
+      "sha256": "9f829cd3fdc7ece4167ad197fa1ed7d16799d137d04b3480d792bddf2f608a83"
+    },
+    {
+      "path": "target/app-backlog/note-variation-fifth-heap-fixture-library_prepare.log",
+      "sha256": "e4170a524e0da710a852d744868bad698321cc715a0253ea9ff7ad7574b86164"
+    },
+    {
+      "path": "target/app-backlog/note-variation-fifth-heap-fixture-project.log",
+      "sha256": "e17dfd5fe1544129e317c290108952ac5483b2da07883dd0d3de20c91d888308"
+    },
+    {
+      "path": "target/app-backlog/note-variation-fifth-heap-fixture-recovery.log",
+      "sha256": "1a07fd2cd8d65e89da5d623914b314717c6cf6cbdeb35622dfc22083d015f6cd"
+    },
+    {
+      "path": "target/app-backlog/note-variation-fifth-heap-fixture-sampler_editor.log",
+      "sha256": "df1b229e71f9b4701b8526918e614d05ef4aba45ccc3865859da8eedaeea45ba"
+    },
+    {
+      "path": "target/app-backlog/note-variation-fifth-heap-fixture-touch.log",
+      "sha256": "33ad721b249f6d0793ea9b200f95d1b70a0af381af30f90a7ce9e2577f813059"
+    },
+    {
+      "path": "target/app-backlog/note-variation-fifth-heap-fixture-undo.log",
+      "sha256": "b104a85f139df234e124bd70e71f55af5147a2cf1695ff252c3861aeca9c9ece"
+    },
+    {
+      "path": "target/app-backlog/note-variation-fifth-heap-fixture-video.log",
+      "sha256": "1765631abfc21d81ba39dc870f74868d0b789de250576565b065b71f60025eaa"
+    },
+    {
+      "path": "target/app-backlog/note-variation-fifth-ignored-tests.log",
+      "sha256": "802cea0afd17082a87dd0bec6814ee38c802a57b5ff71e1841ef841206c59ec2"
+    },
+    {
+      "path": "target/app-backlog/note-variation-fifth-midi-edit.log",
+      "sha256": "5a01367fe9de8bb3c21367ab844dde4e2d9e117c39a76e4e6103600670456eee"
+    },
+    {
+      "path": "target/app-backlog/note-variation-fifth-midi-interchange.log",
+      "sha256": "2538e9d1b54822207a1b48977ae232d68b1159efdc3d15677c0ae3d693fd781e"
+    },
+    {
+      "path": "target/app-backlog/note-variation-fifth-native.log",
+      "sha256": "866d4a92520858352223579025d611338d0591361c1f11d4f15b5c457ece3205"
+    },
+    {
+      "path": "target/app-backlog/note-variation-fifth-piano.log",
+      "sha256": "7b71dbaf474fc08a2bbaddebd0b475529f878122f6e60531222bf0f384d53362"
+    },
+    {
+      "path": "target/app-backlog/note-variation-fifth-producer-library-native.log",
+      "sha256": "47cf92eba6959bc99260dbea619cf5c5f66830b39a4b87b78343c08bd02f873d"
+    },
+    {
+      "path": "target/app-backlog/note-variation-fifth-producer-library.log",
+      "sha256": "e21f160778bb757e8272e3b0b197ef2a9e3f30d80aff168e5585f316c5cdf545"
+    },
+    {
+      "path": "target/app-backlog/note-variation-fifth-production-check.log",
+      "sha256": "76197be0f8ab68b8bec8202f1910fc66d54ef63dea3eff696a7abee493087dab"
+    },
+    {
+      "path": "target/app-backlog/note-variation-fifth-project.log",
+      "sha256": "eb7ee02bf83e20bdfcf425b5522dd6ccf401cf1903633bf14f48e9c33061ea3e"
+    },
+    {
+      "path": "target/app-backlog/note-variation-fifth-routing.log",
+      "sha256": "acbeff61d883a8a281573c68ba0b0a3db4480f756d93a4829b55d92246598827"
+    },
+    {
+      "path": "target/app-backlog/note-variation-fifth-sampler-identity.log",
+      "sha256": "fd49b4e246ee9507235fdf65002dfbd7bd97f1a5acd2aea7f102129fcf9afb66"
+    },
+    {
+      "path": "target/app-backlog/note-variation-fifth-sampler-pads.log",
+      "sha256": "1cd93d2522ad9205624aee497a8d4a4c1e1226d5067df2c8f2a75ed549e48da2"
+    },
+    {
+      "path": "target/app-backlog/note-variation-fifth-shared.log",
+      "sha256": "4be8de0b4732d163d2653863d9f2c7dcea5eceddabb905c33ec41ba187d23fa9"
+    },
+    {
+      "path": "target/app-backlog/note-variation-fifth-snapshot.log",
+      "sha256": "c7b442b11a6b88f1566bc61cc03f71ad73a66dbe42dcf7995af8c06f23e46f3a"
+    },
+    {
+      "path": "target/app-backlog/note-variation-fifth-source.json",
+      "sha256": "3bc6dacc0c810f8195b65434751ef93bd70db52cf757097a77cd53135741214d"
+    },
+    {
+      "path": "target/app-backlog/note-variation-fifth-transformation.log",
+      "sha256": "5b6b1c47ed14e3d494e5bb4100b0ab3458ea7f539b57e9d2a4530e7260a62426"
+    },
+    {
+      "path": "target/app-backlog/note-variation-fifth-undo.log",
+      "sha256": "db0c948cb2c65e7d7b14dab6688b6b7bd9a214f28705512c0d7f87cdae6de01a"
+    },
+    {
+      "path": "target/app-backlog/note-variation-fifth-variation-core.log",
+      "sha256": "f5b62f154551663be035e4a478de1013b4d5f62beb4c4c266c2c257a0286ad04"
+    },
+    {
+      "path": "target/app-backlog/note-variation-fifth-variation-native.log",
+      "sha256": "76d75a66d1c93e07182d4ca9a2e96bdd39f5a3978c033620a167e9cc46df56a9"
+    },
+    {
+      "path": "target/app-backlog/note-variation-fifth-variation-rendered.log",
+      "sha256": "677c1538e56cfb05ce491aae55385df65baf214e5bf90a70a61926772e7466b9"
+    },
+    {
+      "path": "target/app-backlog/note-variation-fifth-workspace.log",
+      "sha256": "305550c853c347fe247bd0699a76ef6566c925bf2ac6dd2bf1b074e63f2326ce"
+    },
+    {
+      "path": "target/app-backlog/note-variation-final-license-refresh.log",
+      "sha256": "37966ac2d25659dda073b201f89d59f6e72f8f8692beee60829c901069f91cd8"
+    },
+    {
+      "path": "target/app-backlog/note-variation-final-license-second-check.log",
+      "sha256": "d94a5e067286d5c5aedd5ca514a33ee02642f635614378560b96a923d8b76c14"
+    },
+    {
+      "path": "target/app-backlog/note-variation-final-license-second-refresh.log",
+      "sha256": "37966ac2d25659dda073b201f89d59f6e72f8f8692beee60829c901069f91cd8"
+    },
+    {
+      "path": "target/app-backlog/note-variation-first-production-check.log",
+      "sha256": "4ab339e692152a1711e1085f3e1ce7082f9d31cf6313e76e781087d2a36edab5"
+    },
+    {
+      "path": "target/app-backlog/note-variation-fourth-build.log",
+      "sha256": "395b28b87d9ce31627f6a4530a9fc5c7f9ba46ed0e9583fdc793b0b9cc7bd406"
+    },
+    {
+      "path": "target/app-backlog/note-variation-fourth-closed-lossless-compression.log",
+      "sha256": "15b36039773114c918ac6424b7b785ad47c7948e8664b5a9f955a36cc24618e7"
+    },
+    {
+      "path": "target/app-backlog/note-variation-fourth-core.log",
+      "sha256": "a06cc17dc06f2778b6cbbaa79a0c7eaf49f16408324591dae344f403f862fed6"
+    },
+    {
+      "path": "target/app-backlog/note-variation-fourth-native.log",
+      "sha256": "e4f187ac40f8115398d37d545b8a935411fc4724b1bb67da1a1b43abf38377f4"
+    },
+    {
+      "path": "target/app-backlog/note-variation-fourth-preliminary-runner.log",
+      "sha256": "a8a097a21fe54996d9e4503eef64e35d9a8b23387da6ea830b02d1fa1d1c5bc1"
+    },
+    {
+      "path": "target/app-backlog/note-variation-fourth-preliminary-source.json",
+      "sha256": "02b8039c27cfd4cb73f685ad660ce1af8e369280b2cc9452553c182727b6b9ec"
+    },
+    {
+      "path": "target/app-backlog/note-variation-fourth-production-check.log",
+      "sha256": "6b72d54171494333efe965dbda3a1b22248e0cb46d28ba3a4916743a0a265f09"
+    },
+    {
+      "path": "target/app-backlog/note-variation-fourth-rendered.log",
+      "sha256": "488b010ff0f32eb6295561fcb75177ebc1688f356830b568cf8d9f0c420acce4"
+    },
+    {
+      "path": "target/app-backlog/note-variation-implementation-source-before-compiler-fix1.json",
+      "sha256": "cfc960799cc0cd175ecbd6e6c1596cbe594896f634218344b35da12a8acfa223"
+    },
+    {
+      "path": "target/app-backlog/note-variation-implementation-source-before-compiler-fix2.json",
+      "sha256": "e1d6542d21ae0f880070c9a32f3a41db4838ac7bbea1058d49fa3926635ef76a"
+    },
+    {
+      "path": "target/app-backlog/note-variation-implementation-source-before-controller-composition-integration.json",
+      "sha256": "202cf4e31f2bdf39fa57f6f5df9086bcce1d818d0bec5f162e1e5d82f765e2d8"
+    },
+    {
+      "path": "target/app-backlog/note-variation-implementation-source-before-native-qualification.json",
+      "sha256": "cd939deff167df023f06e69fa92a6f22e1c9e0b77c9e30c3c55ed3a365f97508"
+    },
+    {
+      "path": "target/app-backlog/note-variation-implementation-source-before-scroll-interaction-fix.json",
+      "sha256": "7315ec52ef5c2cd808b09c75eb7d267cfb27e4486951335da84a4e690abd51b1"
+    },
+    {
+      "path": "target/app-backlog/note-variation-implementation-source-before-seed-shortcut-fix.json",
+      "sha256": "e7153d396af368523f4ea109ac6055f4cf1c89424dafecc9ac19d18ee3f08f59"
+    },
+    {
+      "path": "target/app-backlog/note-variation-implementation-source-before-visible-grid-fix.json",
+      "sha256": "7615cd0b1cf5543bf205557616a07a612071aadb68e93e6ed7bf0efafa7a10b5"
+    },
+    {
+      "path": "target/app-backlog/note-variation-implementation-source.json",
+      "sha256": "a517112bce8f2a13878fcc96ba52497f97ed89d60a5290a88b472cad19ec25bb"
+    },
+    {
+      "path": "target/app-backlog/note-variation-matrix-check.log",
+      "sha256": "0209d86b84772269136fe351cb106aa4858dd97fe2c2c919558e765b4460ddfd"
+    },
+    {
+      "path": "target/app-backlog/note-variation-matrix-generation.log",
+      "sha256": "34d6946bbf2460f5bb76a5abf8be27dc3ae629fea0c899bd539f93b2ba9ab96f"
+    },
+    {
+      "path": "target/app-backlog/note-variation-matrix-second-check.log",
+      "sha256": "c2895831a60ec6308facb09cfcb0f03454f1eb9bff306569e8cbc17992cde56e"
+    },
+    {
+      "path": "target/app-backlog/note-variation-matrix-second-generation.log",
+      "sha256": "34d6946bbf2460f5bb76a5abf8be27dc3ae629fea0c899bd539f93b2ba9ab96f"
+    },
+    {
+      "path": "target/app-backlog/note-variation-ninth-ableton-native.log",
+      "sha256": "ba973b8b75f5987f209918c6ce61e683d0b8483692c38bf88d37a83b125a5dd5"
+    },
+    {
+      "path": "target/app-backlog/note-variation-ninth-ableton.log",
+      "sha256": "560501795ac56019eebc2d13ec554a615db609258de213d07e666ac7e3aa751d"
+    },
+    {
+      "path": "target/app-backlog/note-variation-ninth-build.log",
+      "sha256": "f4010809346001ae8caca7b85f060c7edc1747fa8c8439a8ff785b9d82eb5310"
+    },
+    {
+      "path": "target/app-backlog/note-variation-ninth-capture-build.log",
+      "sha256": "74a0ff8268074824d0088588bc6f4baf2311309c685765b88c236627411d7b2f"
+    },
+    {
+      "path": "target/app-backlog/note-variation-ninth-closed-lossless-compression.log",
+      "sha256": "976ab56dc7d0f55928e969504141b58a41949f59678ffbd58ea555d9c48868ba"
+    },
+    {
+      "path": "target/app-backlog/note-variation-ninth-compiled-tests.log",
+      "sha256": "d7a61157a50a5df60c915612e700ac6e8004659f5a88a4de0f492881938b3deb"
+    },
+    {
+      "path": "target/app-backlog/note-variation-ninth-composition-core.log",
+      "sha256": "c74bf5d35a01a64525f249aef470857581629461b162393708d8ee81da2ad9b9"
+    },
+    {
+      "path": "target/app-backlog/note-variation-ninth-composition-native.log",
+      "sha256": "eef81490a21340d8e6d7c379d6894408daf0ff97c8ed2f52f55028331b9c26b0"
+    },
+    {
+      "path": "target/app-backlog/note-variation-ninth-context.log",
+      "sha256": "79ea09ced677a5ec047ce5d5b00391c9ee6ed2ce8d65015231894a0cd1845929"
+    },
+    {
+      "path": "target/app-backlog/note-variation-ninth-controller-catalog.log",
+      "sha256": "93b06097e345589dbd487722b490afa30c1390e08340b75318ae50d1a80d1da2"
+    },
+    {
+      "path": "target/app-backlog/note-variation-ninth-controller-connections.log",
+      "sha256": "532fe077fdc28a3a8c3565100256e664a153a1c5db0f5a97b1f79f881f5fcbe1"
+    },
+    {
+      "path": "target/app-backlog/note-variation-ninth-controller-native.log",
+      "sha256": "553b9e9b9b954c44259067f648ec97f36d09b399a4ab14953ce12c4859baa3cb"
+    },
+    {
+      "path": "target/app-backlog/note-variation-ninth-dependencies.log",
+      "sha256": "003e19a66a671760cb73a9afa8a018f008a8a5950205a471fb5c432af714d8b8"
+    },
+    {
+      "path": "target/app-backlog/note-variation-ninth-discovery.log",
+      "sha256": "acb836fdfa6c5cafdc27026cde2c2d914bdc370b5a16e4d3b8b769a31b0e9d3a"
+    },
+    {
+      "path": "target/app-backlog/note-variation-ninth-focused-runner.log",
+      "sha256": "6d7d93d391de4932848b9c804676e854a899e87841ab05422048620b81f716cc"
+    },
+    {
+      "path": "target/app-backlog/note-variation-ninth-heap-fixture-accessibility.log",
+      "sha256": "d8e7ef768c98acbfe71b97beaa31dc50ce772856690dd1f34a1667630da68323"
+    },
+    {
+      "path": "target/app-backlog/note-variation-ninth-heap-fixture-deck_time_tests.log",
+      "sha256": "e21b93f2cb3016dbdefc430b37e1b80b1ef3ace14b820ae332852c3bfa36034a"
+    },
+    {
+      "path": "target/app-backlog/note-variation-ninth-heap-fixture-grid_editor.log",
+      "sha256": "b070f14ae1ed5a9b2e99cc64ec94be0688adac86d75fa2f4bd15484b4d7f234d"
+    },
+    {
+      "path": "target/app-backlog/note-variation-ninth-heap-fixture-help.log",
+      "sha256": "12c9a5b1ce5abc948957b8824093d6c3d5df145a3d00ffab67a960f531884221"
+    },
+    {
+      "path": "target/app-backlog/note-variation-ninth-heap-fixture-library_analysis.log",
+      "sha256": "b9045aa616ed7700f690b7f775a413bac6efc984828418439a2d08c6b18fa5ff"
+    },
+    {
+      "path": "target/app-backlog/note-variation-ninth-heap-fixture-library_annotations.log",
+      "sha256": "8aa7b143cd103745bfe1ea9d84fe02241787a693bc5dd73318134e655ea0c8f3"
+    },
+    {
+      "path": "target/app-backlog/note-variation-ninth-heap-fixture-library_crates.log",
+      "sha256": "636dfb4b60adec9f9385d5201f9914c6cb821c276ab89764ae2dfe21d47618cb"
+    },
+    {
+      "path": "target/app-backlog/note-variation-ninth-heap-fixture-library_prepare.log",
+      "sha256": "34574cb8826f1a5db7282ade0249b8b1703a14ec5d75f1fc4aa46528d484bd95"
+    },
+    {
+      "path": "target/app-backlog/note-variation-ninth-heap-fixture-project.log",
+      "sha256": "375126c5ffe54cd0d3fbd513d04d7da939869dbfc208be20ab7c21a9abbee0fb"
+    },
+    {
+      "path": "target/app-backlog/note-variation-ninth-heap-fixture-recovery.log",
+      "sha256": "017a471edb51361670e57ce77f27ad0494dfe092c8efcb488259b649556cd124"
+    },
+    {
+      "path": "target/app-backlog/note-variation-ninth-heap-fixture-sampler_editor.log",
+      "sha256": "8ed334d87130bcc86420e807522b8e08a8c57ea1520ccb2869c88fe8bdbb8672"
+    },
+    {
+      "path": "target/app-backlog/note-variation-ninth-heap-fixture-touch.log",
+      "sha256": "f901aa808e0d463f446ba435b15e9e4fbfcc2a915010b32a56f4f52ecc09c7ea"
+    },
+    {
+      "path": "target/app-backlog/note-variation-ninth-heap-fixture-undo.log",
+      "sha256": "111d56c675374f6c97f1b3eab564a056762a43f1a195848ef662a83e8c06f374"
+    },
+    {
+      "path": "target/app-backlog/note-variation-ninth-heap-fixture-video.log",
+      "sha256": "609ad0ad0634a6706f8cf35aada1eb70598ceecc95f6c30c7a7b2eb172293088"
+    },
+    {
+      "path": "target/app-backlog/note-variation-ninth-ignored-tests.log",
+      "sha256": "3e33f37ad85ad59e8de9db2280bffe13003bd523fd2c6589279642ded98fbbb8"
+    },
+    {
+      "path": "target/app-backlog/note-variation-ninth-midi-edit.log",
+      "sha256": "3a715ea45082b8b7400f078db13c59015f2fd95e2a16d8e2e91b4652531abea0"
+    },
+    {
+      "path": "target/app-backlog/note-variation-ninth-midi-interchange.log",
+      "sha256": "916a6c9267779f5cdd65aa8965bb3be9f43bb96cb717908aa818094e51a9246c"
+    },
+    {
+      "path": "target/app-backlog/note-variation-ninth-native.log",
+      "sha256": "0cd13cdcd71b0ef6e13162d881aae94ae250f80f6b4e02fbcd4a4a14eb59611a"
+    },
+    {
+      "path": "target/app-backlog/note-variation-ninth-piano.log",
+      "sha256": "0147552cc974929d03f89a28b9085ff353f19380cf5a93f30b18a8bc1549c2f6"
+    },
+    {
+      "path": "target/app-backlog/note-variation-ninth-producer-library-native.log",
+      "sha256": "b6d88816bb916c9e0d7118cd0f9dee7808bd766e6e2c313687f8409892dcbfc6"
+    },
+    {
+      "path": "target/app-backlog/note-variation-ninth-producer-library.log",
+      "sha256": "81d4e8ae037cdc755e15cfe0059f8c7980be0c996aeef644667eb767fae56ab3"
+    },
+    {
+      "path": "target/app-backlog/note-variation-ninth-production-check.log",
+      "sha256": "63038b1be35e36c11a74a9187cce8d973f80b4ec52f13f836f73d6891fa09f20"
+    },
+    {
+      "path": "target/app-backlog/note-variation-ninth-project.log",
+      "sha256": "754a3af8225f23961b7d2a356740e71e811b5408d585562a8e2f71aabbe1910e"
+    },
+    {
+      "path": "target/app-backlog/note-variation-ninth-routing.log",
+      "sha256": "0a25470a8c67ed028f65e0f87c85b3fa425be5eaf3e79e3d9616af34470a3035"
+    },
+    {
+      "path": "target/app-backlog/note-variation-ninth-sampler-identity.log",
+      "sha256": "718c977a3b5d33469381b549e4c3bad90b8859fbcd6455944722353101719553"
+    },
+    {
+      "path": "target/app-backlog/note-variation-ninth-sampler-pads.log",
+      "sha256": "106a0e058ab4c32b9a16d134045f56abf4587a7493d0d0393d13253cf5dc7028"
+    },
+    {
+      "path": "target/app-backlog/note-variation-ninth-shared.log",
+      "sha256": "557ff8eda1c618c8a61889997e277e5a3982e05962c365553681fdfa96de15cf"
+    },
+    {
+      "path": "target/app-backlog/note-variation-ninth-snapshot.log",
+      "sha256": "f6c2fa89b899fafcec08473104973420de5eeb96861c38d9c48dcae6a8d4045a"
+    },
+    {
+      "path": "target/app-backlog/note-variation-ninth-source.json",
+      "sha256": "e5c9f2026e6cf39ba20d51ab049545cb8102e0583b3eceb16d1fe516c2caa441"
+    },
+    {
+      "path": "target/app-backlog/note-variation-ninth-transformation.log",
+      "sha256": "9873f617b3818e8470a53259809ecb464585ad9a7031b70002db4e0a3c8bb243"
+    },
+    {
+      "path": "target/app-backlog/note-variation-ninth-undo.log",
+      "sha256": "cf2140e2f02d0a7f156985718ea63e082e82cc6fb3ef9186375d5ba159ea3c0b"
+    },
+    {
+      "path": "target/app-backlog/note-variation-ninth-variation-core.log",
+      "sha256": "28a4028674016aad5b8eb628d9da768a7bd606e191f292aacb7dc6704068b8a6"
+    },
+    {
+      "path": "target/app-backlog/note-variation-ninth-variation-native.log",
+      "sha256": "3953a4238a581558b978bf3d41b55f15ef6c62803c13af9e2d665838d69ff394"
+    },
+    {
+      "path": "target/app-backlog/note-variation-ninth-variation-rendered.log",
+      "sha256": "8421a90442fbbb5448bb2e23179db75a7e0bf41872c24d670f62b570a7baae07"
+    },
+    {
+      "path": "target/app-backlog/note-variation-ninth-workspace.log",
+      "sha256": "6ec8db5b25ef2e55f37307b822a1341303d23d049e4daa9cef8843590610cf02"
+    },
+    {
+      "path": "target/app-backlog/note-variation-precommit-fetch.log",
+      "sha256": "46d5e882a5b2f0f170783eeae5aa90847a9b1a362d478bfc369e3ab8a6d71d7e"
+    },
+    {
+      "path": "target/app-backlog/note-variation-second-production-check.log",
+      "sha256": "6919547f21664d1a65c0e6e2e8b24718be20b40a99ff31496bb9f13743807a10"
+    },
+    {
+      "path": "target/app-backlog/note-variation-seventh-ableton-native.log",
+      "sha256": "0672ea54c823b7771fd3d0572a20417c63c1df60cdd8b7cb96cfc12a588c9879"
+    },
+    {
+      "path": "target/app-backlog/note-variation-seventh-ableton.log",
+      "sha256": "da558ed35ab51cea3696720247769e2a6e4193fda03bf938f0ecf52fb5b82941"
+    },
+    {
+      "path": "target/app-backlog/note-variation-seventh-audio.log",
+      "sha256": "8712ef50a65f75fe4e979ea19ce2ae06ac3825747421168758ffb1986c5b5e89"
+    },
+    {
+      "path": "target/app-backlog/note-variation-seventh-background-jobs.log",
+      "sha256": "0a1418fdf39a384f88bf0acf4ac67aebc28222eaa7785798c6a02428058d3cf7"
+    },
+    {
+      "path": "target/app-backlog/note-variation-seventh-background-reproduction-1.log",
+      "sha256": "ca92a9b82a27eae7451fa204099237e443475e2bb912d7adb9c789b7dd74d0e3"
+    },
+    {
+      "path": "target/app-backlog/note-variation-seventh-background-reproduction-10.log",
+      "sha256": "ca92a9b82a27eae7451fa204099237e443475e2bb912d7adb9c789b7dd74d0e3"
+    },
+    {
+      "path": "target/app-backlog/note-variation-seventh-background-reproduction-11.log",
+      "sha256": "ca92a9b82a27eae7451fa204099237e443475e2bb912d7adb9c789b7dd74d0e3"
+    },
+    {
+      "path": "target/app-backlog/note-variation-seventh-background-reproduction-12.log",
+      "sha256": "0a1418fdf39a384f88bf0acf4ac67aebc28222eaa7785798c6a02428058d3cf7"
+    },
+    {
+      "path": "target/app-backlog/note-variation-seventh-background-reproduction-13.log",
+      "sha256": "ca92a9b82a27eae7451fa204099237e443475e2bb912d7adb9c789b7dd74d0e3"
+    },
+    {
+      "path": "target/app-backlog/note-variation-seventh-background-reproduction-14.log",
+      "sha256": "ca92a9b82a27eae7451fa204099237e443475e2bb912d7adb9c789b7dd74d0e3"
+    },
+    {
+      "path": "target/app-backlog/note-variation-seventh-background-reproduction-15.log",
+      "sha256": "ca92a9b82a27eae7451fa204099237e443475e2bb912d7adb9c789b7dd74d0e3"
+    },
+    {
+      "path": "target/app-backlog/note-variation-seventh-background-reproduction-16.log",
+      "sha256": "ca92a9b82a27eae7451fa204099237e443475e2bb912d7adb9c789b7dd74d0e3"
+    },
+    {
+      "path": "target/app-backlog/note-variation-seventh-background-reproduction-17.log",
+      "sha256": "28f2a48edb161579452a2f6a2ba1afec2e2e2a81a3a30bcfee9cae279db545ae"
+    },
+    {
+      "path": "target/app-backlog/note-variation-seventh-background-reproduction-18.log",
+      "sha256": "ca92a9b82a27eae7451fa204099237e443475e2bb912d7adb9c789b7dd74d0e3"
+    },
+    {
+      "path": "target/app-backlog/note-variation-seventh-background-reproduction-19.log",
+      "sha256": "ca92a9b82a27eae7451fa204099237e443475e2bb912d7adb9c789b7dd74d0e3"
+    },
+    {
+      "path": "target/app-backlog/note-variation-seventh-background-reproduction-2.log",
+      "sha256": "0a1418fdf39a384f88bf0acf4ac67aebc28222eaa7785798c6a02428058d3cf7"
+    },
+    {
+      "path": "target/app-backlog/note-variation-seventh-background-reproduction-20.log",
+      "sha256": "ca92a9b82a27eae7451fa204099237e443475e2bb912d7adb9c789b7dd74d0e3"
+    },
+    {
+      "path": "target/app-backlog/note-variation-seventh-background-reproduction-3.log",
+      "sha256": "0a1418fdf39a384f88bf0acf4ac67aebc28222eaa7785798c6a02428058d3cf7"
+    },
+    {
+      "path": "target/app-backlog/note-variation-seventh-background-reproduction-4.log",
+      "sha256": "ca92a9b82a27eae7451fa204099237e443475e2bb912d7adb9c789b7dd74d0e3"
+    },
+    {
+      "path": "target/app-backlog/note-variation-seventh-background-reproduction-5.log",
+      "sha256": "e579738b8d6eda1872b51739b07e0c807242360f5056c037fd310411782608cb"
+    },
+    {
+      "path": "target/app-backlog/note-variation-seventh-background-reproduction-6.log",
+      "sha256": "ca92a9b82a27eae7451fa204099237e443475e2bb912d7adb9c789b7dd74d0e3"
+    },
+    {
+      "path": "target/app-backlog/note-variation-seventh-background-reproduction-7.log",
+      "sha256": "28f2a48edb161579452a2f6a2ba1afec2e2e2a81a3a30bcfee9cae279db545ae"
+    },
+    {
+      "path": "target/app-backlog/note-variation-seventh-background-reproduction-8.log",
+      "sha256": "28f2a48edb161579452a2f6a2ba1afec2e2e2a81a3a30bcfee9cae279db545ae"
+    },
+    {
+      "path": "target/app-backlog/note-variation-seventh-background-reproduction-9.log",
+      "sha256": "ca92a9b82a27eae7451fa204099237e443475e2bb912d7adb9c789b7dd74d0e3"
+    },
+    {
+      "path": "target/app-backlog/note-variation-seventh-build.log",
+      "sha256": "ce094e6ea8090fff1fb95e95fdda05282f5f54012aec6420fed941e75630097a"
+    },
+    {
+      "path": "target/app-backlog/note-variation-seventh-capture-build.log",
+      "sha256": "05026a9ded1e6fb87252707f4f0b4d663ceb300560e2e6c6d38ce5b66f71584f"
+    },
+    {
+      "path": "target/app-backlog/note-variation-seventh-closed-lossless-compression.log",
+      "sha256": "dca073a6ed757b240568d474ff5e19ce93c2c392fffac604c68eac8a440b2df3"
+    },
+    {
+      "path": "target/app-backlog/note-variation-seventh-compiled-tests.log",
+      "sha256": "e139c400330435214ff39b8b6fa48901643bcf3e8fa817032a1a1bfd55cc4894"
+    },
+    {
+      "path": "target/app-backlog/note-variation-seventh-compose.log",
+      "sha256": "69b55f90569bd4afaf0e1ea5ab025fe550bcc4b14b901857c75e5c416690b7a1"
+    },
+    {
+      "path": "target/app-backlog/note-variation-seventh-context.log",
+      "sha256": "ffe2258243362329ccd29e7b527442af7e9537c5b030104c86044c3db45c5de1"
+    },
+    {
+      "path": "target/app-backlog/note-variation-seventh-dependencies.log",
+      "sha256": "713de7f3e044423fc5756c413ee6ae874469126d4943d63e00de10aece2558fa"
+    },
+    {
+      "path": "target/app-backlog/note-variation-seventh-duration-reproduction-1.log",
+      "sha256": "ad66f9c14eb63a47deefc237d7b2f08a51fb2c383b5f95b9702348d2319a4fc3"
+    },
+    {
+      "path": "target/app-backlog/note-variation-seventh-duration-reproduction-10.log",
+      "sha256": "81ef1be58acae508f2d4a65ec4b074032c337c08cf74d5f88a90ab188b27ba1b"
+    },
+    {
+      "path": "target/app-backlog/note-variation-seventh-duration-reproduction-2.log",
+      "sha256": "66875930a27f7ba65af91fab3eed83fe8f06dbf8c9884c176c155d8fa5728458"
+    },
+    {
+      "path": "target/app-backlog/note-variation-seventh-duration-reproduction-3.log",
+      "sha256": "66875930a27f7ba65af91fab3eed83fe8f06dbf8c9884c176c155d8fa5728458"
+    },
+    {
+      "path": "target/app-backlog/note-variation-seventh-duration-reproduction-4.log",
+      "sha256": "ad66f9c14eb63a47deefc237d7b2f08a51fb2c383b5f95b9702348d2319a4fc3"
+    },
+    {
+      "path": "target/app-backlog/note-variation-seventh-duration-reproduction-5.log",
+      "sha256": "66875930a27f7ba65af91fab3eed83fe8f06dbf8c9884c176c155d8fa5728458"
+    },
+    {
+      "path": "target/app-backlog/note-variation-seventh-duration-reproduction-6.log",
+      "sha256": "6e0c7aca65af92b8577674e1199614846125576592f37ce324d425809487fbcc"
+    },
+    {
+      "path": "target/app-backlog/note-variation-seventh-duration-reproduction-7.log",
+      "sha256": "81ef1be58acae508f2d4a65ec4b074032c337c08cf74d5f88a90ab188b27ba1b"
+    },
+    {
+      "path": "target/app-backlog/note-variation-seventh-duration-reproduction-8.log",
+      "sha256": "6c2f1da82f75de8e0ea06e89a0b82a9f4e18dbbaa108562b2e1ef0a6b8efaeae"
+    },
+    {
+      "path": "target/app-backlog/note-variation-seventh-duration-reproduction-9.log",
+      "sha256": "dad7db3065b992583988814ab8fe5263a452c886ac37ea415b94cb77c2e5c2b1"
+    },
+    {
+      "path": "target/app-backlog/note-variation-seventh-duration.log",
+      "sha256": "b8c6160f781135d9495d7d1986bb50a17a2c78cceab8cde6dd45483b19375e39"
+    },
+    {
+      "path": "target/app-backlog/note-variation-seventh-focused-runner.log",
+      "sha256": "18de242872eb63d1255dabba9827bdf6f1501992f0d2791e6aba574c704dbabb"
+    },
+    {
+      "path": "target/app-backlog/note-variation-seventh-full-output-timing.json",
+      "sha256": "ef356dc7dce9fea104c5bc0f6bbb01873ae4b4836107d2e8baf4d5c03381d7a2"
+    },
+    {
+      "path": "target/app-backlog/note-variation-seventh-full-runner.log",
+      "sha256": "35859ce9994193c0198dd61707fb53bc022382c201c58039a1d018b654b51189"
+    },
+    {
+      "path": "target/app-backlog/note-variation-seventh-full.log",
+      "sha256": "7ea9c772decdd68b4389e682f565639881f9ad38a5a78a79a30c1a59a784105e"
+    },
+    {
+      "path": "target/app-backlog/note-variation-seventh-heap-fixture-accessibility.log",
+      "sha256": "6700c03279cd3f780a5dba3dc577c80f7f8eea7a6186ab3f3cb4a768a6f69de6"
+    },
+    {
+      "path": "target/app-backlog/note-variation-seventh-heap-fixture-deck_time_tests.log",
+      "sha256": "40fae7483f1464edd058a5da9310fc8ff32f8191a564d63a9ea5cd1f46bc2cb9"
+    },
+    {
+      "path": "target/app-backlog/note-variation-seventh-heap-fixture-grid_editor.log",
+      "sha256": "8f13869aa6dd4559e49d2642585d007341c5c92369d4ee955943a78a2e70b0d6"
+    },
+    {
+      "path": "target/app-backlog/note-variation-seventh-heap-fixture-help.log",
+      "sha256": "d3bb40642bb4b90b5fa13c0db8bfdcb10b3631662e76780163c90ce39963b837"
+    },
+    {
+      "path": "target/app-backlog/note-variation-seventh-heap-fixture-library_analysis.log",
+      "sha256": "0510367522ee233b2a4453f89b07de0c4fe964693ac7977f48a9d6260755553a"
+    },
+    {
+      "path": "target/app-backlog/note-variation-seventh-heap-fixture-library_annotations.log",
+      "sha256": "0f8188eb8464a6a65ec7049e2e78b9270b959c9cd030fca1686913461c658473"
+    },
+    {
+      "path": "target/app-backlog/note-variation-seventh-heap-fixture-library_crates.log",
+      "sha256": "08984bc7eb31f8386b516f6161b6a1dc5ed0af331169ad412f527d916f44fe2e"
+    },
+    {
+      "path": "target/app-backlog/note-variation-seventh-heap-fixture-library_prepare.log",
+      "sha256": "9179cfaf07a183b71f61414b16b91996b08a2e8c75fd90eed2aab0a3b7190331"
+    },
+    {
+      "path": "target/app-backlog/note-variation-seventh-heap-fixture-project.log",
+      "sha256": "33a4c269fd96b7eab3bf48a2e26d3aef8e769be7652eaf51da204ff2eaa0beef"
+    },
+    {
+      "path": "target/app-backlog/note-variation-seventh-heap-fixture-recovery.log",
+      "sha256": "00c1860707c2242a953a01fd8a3ce91d09ccda370a2b1ebd7cf4d99815bbad43"
+    },
+    {
+      "path": "target/app-backlog/note-variation-seventh-heap-fixture-sampler_editor.log",
+      "sha256": "dc01e808a2f05a38e305b6c7a954d243a389ae6222ca4f951537ac93ed101957"
+    },
+    {
+      "path": "target/app-backlog/note-variation-seventh-heap-fixture-touch.log",
+      "sha256": "d0e8f8f2b75fa3dec85fc63bb2874c3222e2b16e8fcef2de2d4b7e201ca3dc2e"
+    },
+    {
+      "path": "target/app-backlog/note-variation-seventh-heap-fixture-undo.log",
+      "sha256": "006fa73aacce21c6e37cbf737816930b304de89012ca640609ada831f9017921"
+    },
+    {
+      "path": "target/app-backlog/note-variation-seventh-heap-fixture-video.log",
+      "sha256": "e427682f9a123f027f6756458471ab7a48cc0e2dd0651e457cf5614d12cbc364"
+    },
+    {
+      "path": "target/app-backlog/note-variation-seventh-ignored-tests.log",
+      "sha256": "802cea0afd17082a87dd0bec6814ee38c802a57b5ff71e1841ef841206c59ec2"
+    },
+    {
+      "path": "target/app-backlog/note-variation-seventh-library-scan.log",
+      "sha256": "21e41c0ba5347bb21e577d03c55d2607d0df8a13554e7c4e30af3896d6efb831"
+    },
+    {
+      "path": "target/app-backlog/note-variation-seventh-library-view.log",
+      "sha256": "5ddd9260d7a3161e382e56e560468ae60f6ad691650805fdfbd451969e7f5550"
+    },
+    {
+      "path": "target/app-backlog/note-variation-seventh-license-check.log",
+      "sha256": "d94a5e067286d5c5aedd5ca514a33ee02642f635614378560b96a923d8b76c14"
+    },
+    {
+      "path": "target/app-backlog/note-variation-seventh-license-refresh.log",
+      "sha256": "37966ac2d25659dda073b201f89d59f6e72f8f8692beee60829c901069f91cd8"
+    },
+    {
+      "path": "target/app-backlog/note-variation-seventh-licenses.log",
+      "sha256": "ece350f272655cc0733bb5f7566dfe99fda2ec48806b3e6c135962720cad219c"
+    },
+    {
+      "path": "target/app-backlog/note-variation-seventh-media-analysis.log",
+      "sha256": "a3c379f42d0c72462d5017e211e18940ad76f94fba20cb57fb043240aec6a892"
+    },
+    {
+      "path": "target/app-backlog/note-variation-seventh-metronome.log",
+      "sha256": "b65d48567403ea5bb394f58aeca101313c3f6c9ed4dc92c8b175196ecd828718"
+    },
+    {
+      "path": "target/app-backlog/note-variation-seventh-midi-edit.log",
+      "sha256": "23bf8cdcc5d3a25d4650edb5ef34ed9d9cae34262c9a4387a1d23130ee794c6a"
+    },
+    {
+      "path": "target/app-backlog/note-variation-seventh-midi-interchange.log",
+      "sha256": "eb97fc797e0aa3f3978093ef2f74dd4b5840f0b871522fa38dfa33a73762fafe"
+    },
+    {
+      "path": "target/app-backlog/note-variation-seventh-monitor-qualification.log",
+      "sha256": "f9eca2c523b1a208cf22414e4e752358204678c1fa807b2aaf726fa7784c700d"
+    },
+    {
+      "path": "target/app-backlog/note-variation-seventh-native-fixtures.json",
+      "sha256": "f89b46b1cc207bceaa0e1582d58fb37da7c59c46882e4f962e8cc8fb88e3b14c"
+    },
+    {
+      "path": "target/app-backlog/note-variation-seventh-native-import-1.log",
+      "sha256": "4ce9792d493862e79e11a59050270529591badc14ee14b235fe29d7e5843865d"
+    },
+    {
+      "path": "target/app-backlog/note-variation-seventh-native-import-10.log",
+      "sha256": "c4e2b4d2e2664537d2d69db2f42bfea7aab2a4ba183f42839f301107a5d6352d"
+    },
+    {
+      "path": "target/app-backlog/note-variation-seventh-native-import-11.log",
+      "sha256": "a7943a8e1f7e8b99f54b21eb0e687123e90b310c2b36b5ff323eca440c3c7aed"
+    },
+    {
+      "path": "target/app-backlog/note-variation-seventh-native-import-12.log",
+      "sha256": "f44bd4ad5cc0af6640e05a6ca72a82b99fe8fe72673b8e481177fe918fbc31b5"
+    },
+    {
+      "path": "target/app-backlog/note-variation-seventh-native-import-2.log",
+      "sha256": "0fe0a7c78effe54b791d60090209d394789234ca3cda0b33ac74e7ce219271b1"
+    },
+    {
+      "path": "target/app-backlog/note-variation-seventh-native-import-3.log",
+      "sha256": "bfb44d9f2200213c6e767a56bdfd36ec09ae4162e28e0e2b0d83f93cd4133d4f"
+    },
+    {
+      "path": "target/app-backlog/note-variation-seventh-native-import-4.log",
+      "sha256": "c06e94956fd9fce4d02cb380621fbcd630453faf7dcc2da506d28e3c94432d1b"
+    },
+    {
+      "path": "target/app-backlog/note-variation-seventh-native-import-5.log",
+      "sha256": "9bf12f52953c0dfd6b2fac6aaa40bd7c0cacc65159f69cfa1ecd2014521ca737"
+    },
+    {
+      "path": "target/app-backlog/note-variation-seventh-native-import-6.log",
+      "sha256": "e20b2c1431739031fdc03b4b0e1d8ab6f62f0e41bcd77e46bb9ced3f45c0401c"
+    },
+    {
+      "path": "target/app-backlog/note-variation-seventh-native-import-7.log",
+      "sha256": "e74f425cd37c4322d91f7ad782afe18e36d21987045647a687b5dd7c4f435d7f"
+    },
+    {
+      "path": "target/app-backlog/note-variation-seventh-native-import-8.log",
+      "sha256": "091aa797f558c2ad9125a45956d2a6095ad79439ee0827da67d2c098bec89fb1"
+    },
+    {
+      "path": "target/app-backlog/note-variation-seventh-native-import-9.log",
+      "sha256": "ce80bde378459cfa27e511c2b387a8903000c461c0e5666447592c9ca74c5648"
+    },
+    {
+      "path": "target/app-backlog/note-variation-seventh-native-imports-runner.log",
+      "sha256": "5d6f52d20e069f0f016a4d5ebdcc8ca2c404ca23dd266ceab720a59306b76712"
+    },
+    {
+      "path": "target/app-backlog/note-variation-seventh-native-imports.json",
+      "sha256": "daac9eb4b00f4e1cd9063a20eb9d2fd3c4eb689416abdf8da764721313685863"
+    },
+    {
+      "path": "target/app-backlog/note-variation-seventh-native-worker-build.log",
+      "sha256": "ad6b993102cd89ff2375881e9ab9571433f1017df5f75b4af6f15063312af1ed"
+    },
+    {
+      "path": "target/app-backlog/note-variation-seventh-native-worker-runner.log",
+      "sha256": "860f765dddde9f1d6f7ee37e304089157a3eb830d0d97c8c28965b4318472715"
+    },
+    {
+      "path": "target/app-backlog/note-variation-seventh-native-worker-source.json",
+      "sha256": "2345738c87452ae6d14e8c686e160290252febca27342e5bf0dbd32d04557fc8"
+    },
+    {
+      "path": "target/app-backlog/note-variation-seventh-native.log",
+      "sha256": "ef9fefa343214e9cc51e399a295424dadfac33b89fde8b5ee1af78e58ee66666"
+    },
+    {
+      "path": "target/app-backlog/note-variation-seventh-node.log",
+      "sha256": "91c49fed4d10e4081b26613be340d28953321d145c3f19a0724ee7db54ca9100"
+    },
+    {
+      "path": "target/app-backlog/note-variation-seventh-piano.log",
+      "sha256": "6467b3578aa0b0e609d12bf651f47dc4fd22018a89eaef59eaec99e4bc819c55"
+    },
+    {
+      "path": "target/app-backlog/note-variation-seventh-play-history.log",
+      "sha256": "d57cffb6ae26a15c0608a5f57329988fa421cf0c7114384b8f2aa8c8b017eb5c"
+    },
+    {
+      "path": "target/app-backlog/note-variation-seventh-plugin-midi-storage.log",
+      "sha256": "848c201a20f80d1354e33f1ac90620f68f4aed2db41dbe3ecd389791512a8f3b"
+    },
+    {
+      "path": "target/app-backlog/note-variation-seventh-producer-library-native.log",
+      "sha256": "9821f6cf2edddd15fd2a69805e559d14df71ea6de93563a9bde7981a101d5299"
+    },
+    {
+      "path": "target/app-backlog/note-variation-seventh-producer-library.log",
+      "sha256": "e5ff5769810e26a63cab29221989a6ebb6d665340ed2f317f17f22b8cf9beae9"
+    },
+    {
+      "path": "target/app-backlog/note-variation-seventh-production-check.log",
+      "sha256": "a514db5e5fc51c9b1b411d81be7c350983e8cab610271609072910bc90330cc6"
+    },
+    {
+      "path": "target/app-backlog/note-variation-seventh-project-timing.log",
+      "sha256": "dbde06464b2d9f20bc2f1f40e4227d766b4467dcdb441ed6c9ac4fffc045aff1"
+    },
+    {
+      "path": "target/app-backlog/note-variation-seventh-project.log",
+      "sha256": "eb1d802a4563d3b3f4546341f099b68fbd95f11ebed5ed44151b624788ac307e"
+    },
+    {
+      "path": "target/app-backlog/note-variation-seventh-recording.log",
+      "sha256": "a64c8c683722fd79da4f41ac63257933fb47db6192312e3c6f02d5bd8b39147a"
+    },
+    {
+      "path": "target/app-backlog/note-variation-seventh-routing.log",
+      "sha256": "aff018c0806a781a1fcba767c56769a1fecf534a9e82229dbfd1bd833a83b549"
+    },
+    {
+      "path": "target/app-backlog/note-variation-seventh-sampler-editor.log",
+      "sha256": "98b59dfeb16022c92debcac75a5517e528d596df8c035366b67f4ee60aee48e3"
+    },
+    {
+      "path": "target/app-backlog/note-variation-seventh-sampler-identity.log",
+      "sha256": "3aa3bcdaa5ba7603bfca5b19fabf0614d33d8267fb876954e37fe890c977630b"
+    },
+    {
+      "path": "target/app-backlog/note-variation-seventh-sampler-pads.log",
+      "sha256": "f71b7f343098cf487a6e33fbe9d9b686eb41ed38bb21e46e8360f25b56158f66"
+    },
+    {
+      "path": "target/app-backlog/note-variation-seventh-sampler-reproduction-1.log",
+      "sha256": "69e31f81ce129cac4d922220b34c55a163b571ad4087eb29cfc72f9554568aad"
+    },
+    {
+      "path": "target/app-backlog/note-variation-seventh-sampler-reproduction-10.log",
+      "sha256": "cd19fb730745981121edeccfb41c1150a847fba8cc54566001872fda3c21f2c1"
+    },
+    {
+      "path": "target/app-backlog/note-variation-seventh-sampler-reproduction-2.log",
+      "sha256": "69e31f81ce129cac4d922220b34c55a163b571ad4087eb29cfc72f9554568aad"
+    },
+    {
+      "path": "target/app-backlog/note-variation-seventh-sampler-reproduction-3.log",
+      "sha256": "cd19fb730745981121edeccfb41c1150a847fba8cc54566001872fda3c21f2c1"
+    },
+    {
+      "path": "target/app-backlog/note-variation-seventh-sampler-reproduction-4.log",
+      "sha256": "cd19fb730745981121edeccfb41c1150a847fba8cc54566001872fda3c21f2c1"
+    },
+    {
+      "path": "target/app-backlog/note-variation-seventh-sampler-reproduction-5.log",
+      "sha256": "a59cde159fdcae55c91e1587ba737e2b655e2aee66c751f23d5ce68e8094fafa"
+    },
+    {
+      "path": "target/app-backlog/note-variation-seventh-sampler-reproduction-6.log",
+      "sha256": "afba4fb58d80ad47c3e5d97e2702f9fa3f07d54741118b4cb78237e9eb78f19c"
+    },
+    {
+      "path": "target/app-backlog/note-variation-seventh-sampler-reproduction-7.log",
+      "sha256": "afba4fb58d80ad47c3e5d97e2702f9fa3f07d54741118b4cb78237e9eb78f19c"
+    },
+    {
+      "path": "target/app-backlog/note-variation-seventh-sampler-reproduction-8.log",
+      "sha256": "cd19fb730745981121edeccfb41c1150a847fba8cc54566001872fda3c21f2c1"
+    },
+    {
+      "path": "target/app-backlog/note-variation-seventh-sampler-reproduction-9.log",
+      "sha256": "cd19fb730745981121edeccfb41c1150a847fba8cc54566001872fda3c21f2c1"
+    },
+    {
+      "path": "target/app-backlog/note-variation-seventh-sampler-store.log",
+      "sha256": "967448a8e12ac75852b4bcdd05cdf379ffa0cca88295d9720e276a25b8629856"
+    },
+    {
+      "path": "target/app-backlog/note-variation-seventh-shared.log",
+      "sha256": "4be8de0b4732d163d2653863d9f2c7dcea5eceddabb905c33ec41ba187d23fa9"
+    },
+    {
+      "path": "target/app-backlog/note-variation-seventh-snapshot.log",
+      "sha256": "fb97df762bd1a4c1e0881e8de84208d7eadb76b0e6466c894ca7d453cf4e4b09"
+    },
+    {
+      "path": "target/app-backlog/note-variation-seventh-song-navigation.log",
+      "sha256": "6d881c5e4100967d5c47bc18e615e0a2ced6c16b5e1b71d6d6769c077c9fc264"
+    },
+    {
+      "path": "target/app-backlog/note-variation-seventh-source.json",
+      "sha256": "043ece5608101e6f0dafc093436e0960594f98d766e421a29869032484c96bc4"
+    },
+    {
+      "path": "target/app-backlog/note-variation-seventh-transformation.log",
+      "sha256": "5d188d0f26e5abaa8b79fde2a7149412ea07739092f7173be6641b78d64b8b2f"
+    },
+    {
+      "path": "target/app-backlog/note-variation-seventh-undo.log",
+      "sha256": "3f96f3091ab6d1097cc7b95b02c5efc2aa0a66c71386a7b6fd9b5f40a523d6fa"
+    },
+    {
+      "path": "target/app-backlog/note-variation-seventh-variation-core.log",
+      "sha256": "8c101a853abe34a293c2695cf7a4321739f177c04c0f26847602d55fc039fce3"
+    },
+    {
+      "path": "target/app-backlog/note-variation-seventh-variation-native.log",
+      "sha256": "7daed66a4d2c815f95c4ad9099813c072f4128197e4b002dca3c47284dedbf3f"
+    },
+    {
+      "path": "target/app-backlog/note-variation-seventh-variation-rendered.log",
+      "sha256": "677c1538e56cfb05ce491aae55385df65baf214e5bf90a70a61926772e7466b9"
+    },
+    {
+      "path": "target/app-backlog/note-variation-seventh-waveform.log",
+      "sha256": "8985e65329d8fc912d78748e8af33dbb80bf5d872a1650787b554f7db75efaf9"
+    },
+    {
+      "path": "target/app-backlog/note-variation-seventh-workspace.log",
+      "sha256": "cfc0c6e691b814dfa86f6a1dbd01d8340566113cd85249522701259c5e7e3ac4"
+    },
+    {
+      "path": "target/app-backlog/note-variation-seventh-write-receipt.log",
+      "sha256": "db6ef9f1297e8ca3b6e431f68d01e2e606af7fa6826c6c6be0ebc36f99a9eca3"
+    },
+    {
+      "path": "target/app-backlog/note-variation-sixth-ableton-native.log",
+      "sha256": "0672ea54c823b7771fd3d0572a20417c63c1df60cdd8b7cb96cfc12a588c9879"
+    },
+    {
+      "path": "target/app-backlog/note-variation-sixth-ableton.log",
+      "sha256": "ae23c936c79ad664b179d333f51233a389575dce6c4cdb3623356cbadfab23fc"
+    },
+    {
+      "path": "target/app-backlog/note-variation-sixth-build.log",
+      "sha256": "7e0d4b1008ba6307211c6bc2b09b0bdebe0a166076f1ae58e16f9658829667ca"
+    },
+    {
+      "path": "target/app-backlog/note-variation-sixth-capture-build.log",
+      "sha256": "668f6de69f728c9afbc9a1ed3b482748bd807ad8053c2bc7a0c7251833585671"
+    },
+    {
+      "path": "target/app-backlog/note-variation-sixth-closed-lossless-compression.log",
+      "sha256": "9af9724ce0b1ea907ecc78c50ea9316ea3f14680e85f9f1af44c9a7e8d52bd58"
+    },
+    {
+      "path": "target/app-backlog/note-variation-sixth-compiled-tests.log",
+      "sha256": "e139c400330435214ff39b8b6fa48901643bcf3e8fa817032a1a1bfd55cc4894"
+    },
+    {
+      "path": "target/app-backlog/note-variation-sixth-context.log",
+      "sha256": "2bb8dd90e76b75de7505cedbe9f77383a675140e8519a7bb4e876e74b044e30a"
+    },
+    {
+      "path": "target/app-backlog/note-variation-sixth-dependencies.log",
+      "sha256": "d64158ea91a631eade6bd62e7d2c6df8ac48cd9c2f2231706038503680645615"
+    },
+    {
+      "path": "target/app-backlog/note-variation-sixth-focused-runner.log",
+      "sha256": "79543368609502084fbead615aee089b5363c022816913de43be89a6b10bd55a"
+    },
+    {
+      "path": "target/app-backlog/note-variation-sixth-heap-fixture-accessibility.log",
+      "sha256": "6bd9479d0f27425075e9b0f2a7b09a0a1c2d8ecb8d1a960030d47d0ec4a236b2"
+    },
+    {
+      "path": "target/app-backlog/note-variation-sixth-heap-fixture-deck_time_tests.log",
+      "sha256": "a83c8122ec412f6ad8ede6b7766ff7e5a89324f3ce9ed2b3e0a31719175a62b0"
+    },
+    {
+      "path": "target/app-backlog/note-variation-sixth-heap-fixture-grid_editor.log",
+      "sha256": "196cc4bb22e8a2b4156a2b50a901342f8444baef16b4af173428f1e56fbdc074"
+    },
+    {
+      "path": "target/app-backlog/note-variation-sixth-heap-fixture-help.log",
+      "sha256": "c6c8a2fedabb01eb57d48816ef3fdb6ce1536f7ce8a83dd7afa36d298a24005c"
+    },
+    {
+      "path": "target/app-backlog/note-variation-sixth-heap-fixture-library_analysis.log",
+      "sha256": "205d60e412e6fb70cdc581d9cc3bd61f16baec6715d44e70e08a2fe1ebff7fd4"
+    },
+    {
+      "path": "target/app-backlog/note-variation-sixth-heap-fixture-library_annotations.log",
+      "sha256": "8b5221d994a3738bea9ff2101af98dc2691a8a09e1da3fa7f6b369b1a98b5b5b"
+    },
+    {
+      "path": "target/app-backlog/note-variation-sixth-heap-fixture-library_crates.log",
+      "sha256": "6e2936e69384c79f812664637d7a3983973c4f29d9fecf9d55c865a9d7e88ce9"
+    },
+    {
+      "path": "target/app-backlog/note-variation-sixth-heap-fixture-library_prepare.log",
+      "sha256": "b5cea165c3419aa8ebe362323b5025718bdec14786926aedecdb5033584793b0"
+    },
+    {
+      "path": "target/app-backlog/note-variation-sixth-heap-fixture-project.log",
+      "sha256": "3ba9f8cf4932889f45b155736f8fff9112a05ac5b6c774728fb927f71b32f845"
+    },
+    {
+      "path": "target/app-backlog/note-variation-sixth-heap-fixture-recovery.log",
+      "sha256": "2280fc354756e1e6638001edd4ca902f3bb2a6abea9d6527d9bd2096e3e05e9a"
+    },
+    {
+      "path": "target/app-backlog/note-variation-sixth-heap-fixture-sampler_editor.log",
+      "sha256": "98b59dfeb16022c92debcac75a5517e528d596df8c035366b67f4ee60aee48e3"
+    },
+    {
+      "path": "target/app-backlog/note-variation-sixth-heap-fixture-touch.log",
+      "sha256": "7a70ec5e3162cef84efefb01d9a6711b9542fcbba6f91cec8f1980908f3d4f18"
+    },
+    {
+      "path": "target/app-backlog/note-variation-sixth-heap-fixture-undo.log",
+      "sha256": "e86b52eee000184abed56b6efa971d9b4c4363b12e16f754ce8c613031f3f3f5"
+    },
+    {
+      "path": "target/app-backlog/note-variation-sixth-heap-fixture-video.log",
+      "sha256": "0934d08340a48d06f6a7e5a0e4cd084e0105a4529ec192172ded27a0ef575e3e"
+    },
+    {
+      "path": "target/app-backlog/note-variation-sixth-ignored-tests.log",
+      "sha256": "802cea0afd17082a87dd0bec6814ee38c802a57b5ff71e1841ef841206c59ec2"
+    },
+    {
+      "path": "target/app-backlog/note-variation-sixth-license-check.log",
+      "sha256": "d94a5e067286d5c5aedd5ca514a33ee02642f635614378560b96a923d8b76c14"
+    },
+    {
+      "path": "target/app-backlog/note-variation-sixth-license-refresh.log",
+      "sha256": "37966ac2d25659dda073b201f89d59f6e72f8f8692beee60829c901069f91cd8"
+    },
+    {
+      "path": "target/app-backlog/note-variation-sixth-midi-edit.log",
+      "sha256": "5a01367fe9de8bb3c21367ab844dde4e2d9e117c39a76e4e6103600670456eee"
+    },
+    {
+      "path": "target/app-backlog/note-variation-sixth-midi-interchange.log",
+      "sha256": "bf90a10009543543fb7e996ed9cca3db48e55dcdf5a2170bb6c9cd74a7fc7a99"
+    },
+    {
+      "path": "target/app-backlog/note-variation-sixth-native.log",
+      "sha256": "4ec0eef48f5b8830f41df5f1aa263b61130f72b3986f4fb6bec75c85aafb9609"
+    },
+    {
+      "path": "target/app-backlog/note-variation-sixth-piano.log",
+      "sha256": "9e7fc8d4b208fe4052d8a1b17df90a82dc2292e21cbcc05a6191cceecdef12c7"
+    },
+    {
+      "path": "target/app-backlog/note-variation-sixth-producer-library-native.log",
+      "sha256": "9821f6cf2edddd15fd2a69805e559d14df71ea6de93563a9bde7981a101d5299"
+    },
+    {
+      "path": "target/app-backlog/note-variation-sixth-producer-library.log",
+      "sha256": "fd5f0140f65f625d9f5b1e796f6a8750194a110517ffe925380cd3e0ec25f0a5"
+    },
+    {
+      "path": "target/app-backlog/note-variation-sixth-production-check.log",
+      "sha256": "93fa6ef61a15b4345073483d3ba0f0e90bd68e9ff4a97249e5aa01ef823dd7ff"
+    },
+    {
+      "path": "target/app-backlog/note-variation-sixth-project.log",
+      "sha256": "bc1850a6e161a33fccd9fc94c2efcc6696d01717db5d16cef17b22b623c0ed96"
+    },
+    {
+      "path": "target/app-backlog/note-variation-sixth-routing.log",
+      "sha256": "2485a9fc7fbfad0c424e2b455e1274754574f7dd212778f54c28ee44365458cf"
+    },
+    {
+      "path": "target/app-backlog/note-variation-sixth-sampler-identity.log",
+      "sha256": "3aa3bcdaa5ba7603bfca5b19fabf0614d33d8267fb876954e37fe890c977630b"
+    },
+    {
+      "path": "target/app-backlog/note-variation-sixth-sampler-pads.log",
+      "sha256": "450fefdbb0e6aee3f54c453a93e756955c81e9ed90528780221697eeb3f32871"
+    },
+    {
+      "path": "target/app-backlog/note-variation-sixth-shared.log",
+      "sha256": "d6dd67d08407cff277c0dad3240640baead93eed3a0f99eefc3045dc79c77676"
+    },
+    {
+      "path": "target/app-backlog/note-variation-sixth-snapshot.log",
+      "sha256": "e5fe0c88d134e2b180329c172225452a600d0aa6e1cc6f58d36a7c7809e27fd2"
+    },
+    {
+      "path": "target/app-backlog/note-variation-sixth-source.json",
+      "sha256": "44bd652ea7d31df2dff443e5d7fd132353e82a98e1c837db8c4f35cf596dc4b7"
+    },
+    {
+      "path": "target/app-backlog/note-variation-sixth-transformation.log",
+      "sha256": "cf1d9825b173dc5f4962f8b1bc79a902bec41f0cdbeb58bfb2c400253e8471d8"
+    },
+    {
+      "path": "target/app-backlog/note-variation-sixth-undo.log",
+      "sha256": "f7bb8505b9463e1c1b941fa87241cf7a8479d9ff43844ea202a03a40cf9dd4f6"
+    },
+    {
+      "path": "target/app-backlog/note-variation-sixth-variation-core.log",
+      "sha256": "f5b62f154551663be035e4a478de1013b4d5f62beb4c4c266c2c257a0286ad04"
+    },
+    {
+      "path": "target/app-backlog/note-variation-sixth-variation-native.log",
+      "sha256": "c1ae5bcbbb85909f567a7ee0fae8b058b4c7018338072a7f795d41817d1491a6"
+    },
+    {
+      "path": "target/app-backlog/note-variation-sixth-variation-rendered.log",
+      "sha256": "82da39c539e4aee87db4644fd4b71353cd9888a2e69f26d68a4e4660c3aa8ddb"
+    },
+    {
+      "path": "target/app-backlog/note-variation-sixth-workspace.log",
+      "sha256": "ca718061cd1ebab6593389a47ee0ad09ec92e453fa38b378d22da26a33b9192e"
+    },
+    {
+      "path": "target/app-backlog/note-variation-tenth-ableton-native.log",
+      "sha256": "ba973b8b75f5987f209918c6ce61e683d0b8483692c38bf88d37a83b125a5dd5"
+    },
+    {
+      "path": "target/app-backlog/note-variation-tenth-ableton.log",
+      "sha256": "1f69cfcf796c0f268f913154a88aca7dc77d922673434e1f2017859cc7d0c78e"
+    },
+    {
+      "path": "target/app-backlog/note-variation-tenth-build.log",
+      "sha256": "f4010809346001ae8caca7b85f060c7edc1747fa8c8439a8ff785b9d82eb5310"
+    },
+    {
+      "path": "target/app-backlog/note-variation-tenth-capture-build.log",
+      "sha256": "b8b6fcb37284eb1c04a4a3d7f0cb11114e12fe4d522f706fe30dd45accb38a66"
+    },
+    {
+      "path": "target/app-backlog/note-variation-tenth-closed-lossless-compression.log",
+      "sha256": "c0af27b6269badf0783d3954a4044b59e0dc4e924ecfae989a5de502c12e61fa"
+    },
+    {
+      "path": "target/app-backlog/note-variation-tenth-compiled-tests.log",
+      "sha256": "d7a61157a50a5df60c915612e700ac6e8004659f5a88a4de0f492881938b3deb"
+    },
+    {
+      "path": "target/app-backlog/note-variation-tenth-composition-core.log",
+      "sha256": "c74bf5d35a01a64525f249aef470857581629461b162393708d8ee81da2ad9b9"
+    },
+    {
+      "path": "target/app-backlog/note-variation-tenth-composition-native.log",
+      "sha256": "cb230cc8fa69cf36d23a1c246d9ae4dade708d3b4f54098c7d89bdf7207b0ed3"
+    },
+    {
+      "path": "target/app-backlog/note-variation-tenth-context.log",
+      "sha256": "15b18a0a1b95a684b9171c44d95e7a5af53fb2a7bb8857cfec202529e77ecc67"
+    },
+    {
+      "path": "target/app-backlog/note-variation-tenth-controller-catalog.log",
+      "sha256": "65679a3e816f6732d813166de40660239fc1189789a32867594f1551726d7f6c"
+    },
+    {
+      "path": "target/app-backlog/note-variation-tenth-controller-connections.log",
+      "sha256": "3a70bcb3b0b4c4e3e4ba5a228997b7bb7449ebfd91137b06e5619b9823e53df3"
+    },
+    {
+      "path": "target/app-backlog/note-variation-tenth-controller-native.log",
+      "sha256": "4c634718213bd78a30a8431f1de0bf887553cb3bb859cea15c033e1b9397be7e"
+    },
+    {
+      "path": "target/app-backlog/note-variation-tenth-dependencies.log",
+      "sha256": "21ea521e101c1e203ad766c00701afeaac95bd606dc404b1476625e024b75d37"
+    },
+    {
+      "path": "target/app-backlog/note-variation-tenth-discovery.log",
+      "sha256": "bc2e0b5effe8353e0869c510e12bc6c01e5d717393b93bdd164b7b6990ee204e"
+    },
+    {
+      "path": "target/app-backlog/note-variation-tenth-focused-runner.log",
+      "sha256": "4ed01e7d274523d05835cd62437a574ebae6126af217c3db39aba9e43630a2e5"
+    },
+    {
+      "path": "target/app-backlog/note-variation-tenth-heap-fixture-accessibility.log",
+      "sha256": "8b48b244dcf06941c1907d25a1b077ad836a8d54bb70cc092659805cfde96094"
+    },
+    {
+      "path": "target/app-backlog/note-variation-tenth-heap-fixture-deck_time_tests.log",
+      "sha256": "4bd82380821aeaf373f7712c5dc052f2e82dce0de8b95a0e4f8d5319891caec2"
+    },
+    {
+      "path": "target/app-backlog/note-variation-tenth-heap-fixture-grid_editor.log",
+      "sha256": "562b37d7d1eb5a46a2ea105df64ad5e2d6be9c9f3dd4806c92d657cc3ed1a440"
+    },
+    {
+      "path": "target/app-backlog/note-variation-tenth-heap-fixture-help.log",
+      "sha256": "6f80fdf95013c83be1cb8838366afabeb43ab93a2996cdd62091ddf73d74bcba"
+    },
+    {
+      "path": "target/app-backlog/note-variation-tenth-heap-fixture-library_analysis.log",
+      "sha256": "ba6b6c9dd081c1d82817fbcd8cbc41bc89c26c3ef9d86cce210a50926ed1bf0f"
+    },
+    {
+      "path": "target/app-backlog/note-variation-tenth-heap-fixture-library_annotations.log",
+      "sha256": "ae2fc50d677cdfcbac221ad7a8fa82c27cfdfa0bd6f4bb2d3ce0e28a24489fb5"
+    },
+    {
+      "path": "target/app-backlog/note-variation-tenth-heap-fixture-library_crates.log",
+      "sha256": "2c48845ddd2f1982d74d44f8e4ba7a218f88abaafdade5872e4ee50a97e1f03a"
+    },
+    {
+      "path": "target/app-backlog/note-variation-tenth-heap-fixture-library_prepare.log",
+      "sha256": "ab1d259e45715e05b8c3f936d7099883868d2266680e5bfa8505de62ccc86b91"
+    },
+    {
+      "path": "target/app-backlog/note-variation-tenth-heap-fixture-project.log",
+      "sha256": "44a4f1882f9ad6757eabb32f85f82ff282fbd6c672618df06f7310d6c55447b3"
+    },
+    {
+      "path": "target/app-backlog/note-variation-tenth-heap-fixture-recovery.log",
+      "sha256": "1eaae572839ba8847eebdc44481f5a1403516dfe70d3048197628685d3eae47c"
+    },
+    {
+      "path": "target/app-backlog/note-variation-tenth-heap-fixture-sampler_editor.log",
+      "sha256": "999dbd20cf885eac1211bd7b108b18ab145f20fdd6c3b905d1a3450a4a632204"
+    },
+    {
+      "path": "target/app-backlog/note-variation-tenth-heap-fixture-touch.log",
+      "sha256": "673a1b1a591d8c054edf845760331cf215851fab0d65b1f8d021c91a3b7364b8"
+    },
+    {
+      "path": "target/app-backlog/note-variation-tenth-heap-fixture-undo.log",
+      "sha256": "0c9aca10e3c63be1a1d231566f80b35fb85f00277ab4e54cd4ccf852117efd58"
+    },
+    {
+      "path": "target/app-backlog/note-variation-tenth-heap-fixture-video.log",
+      "sha256": "7c4105a8cd4caf5fdf44f24d5fcd9d921cc81d69cfb017e6027d1b0395d1b276"
+    },
+    {
+      "path": "target/app-backlog/note-variation-tenth-ignored-tests.log",
+      "sha256": "3e33f37ad85ad59e8de9db2280bffe13003bd523fd2c6589279642ded98fbbb8"
+    },
+    {
+      "path": "target/app-backlog/note-variation-tenth-midi-edit.log",
+      "sha256": "df053d775b73e3e745766a33ba94efb43f31d2830601f6fa88495d06458d6a33"
+    },
+    {
+      "path": "target/app-backlog/note-variation-tenth-midi-interchange.log",
+      "sha256": "af7b8bb33fb53683a85eef34685403744fc5a282f75b82a54f555c229558bf2b"
+    },
+    {
+      "path": "target/app-backlog/note-variation-tenth-native.log",
+      "sha256": "1cacc0f965f5b87e234411f3dc6aadc4ae57113cfd0a0cc96995559cdaff12aa"
+    },
+    {
+      "path": "target/app-backlog/note-variation-tenth-piano.log",
+      "sha256": "07338bebf1921ff2be48664f5e49a66f173aed8023a3649b3d633e1d3ead64b3"
+    },
+    {
+      "path": "target/app-backlog/note-variation-tenth-producer-library-native.log",
+      "sha256": "e12edfa4f54b160ca9bc8add595f99b5f8ec13c848cfdbd58a8a197a9184e776"
+    },
+    {
+      "path": "target/app-backlog/note-variation-tenth-producer-library.log",
+      "sha256": "08a9f7fe19f146f0106b0e3e1ecceebe92ec5711f1f7af07a1955ee7875185df"
+    },
+    {
+      "path": "target/app-backlog/note-variation-tenth-production-check.log",
+      "sha256": "ee342c070603e038560895464cd490a55a2fd28a46db6da303a93151ac95d3d7"
+    },
+    {
+      "path": "target/app-backlog/note-variation-tenth-project.log",
+      "sha256": "4f73cfa7a9da5525c9d0005c90c0f3b0c812880b204325fc623d3a2b694f76f7"
+    },
+    {
+      "path": "target/app-backlog/note-variation-tenth-routing.log",
+      "sha256": "919c01556aabf26185b4fc1f8214551956336f03b39d02ba5f019928b215230f"
+    },
+    {
+      "path": "target/app-backlog/note-variation-tenth-sampler-identity.log",
+      "sha256": "738175ef59fca0a13f121bd984927cad3044638d62d3466e13d030f69033860c"
+    },
+    {
+      "path": "target/app-backlog/note-variation-tenth-sampler-pads.log",
+      "sha256": "71049b88482de44da34426f2bfe8837fa1782d0d1957870bc4ed1fb8997635d2"
+    },
+    {
+      "path": "target/app-backlog/note-variation-tenth-shared.log",
+      "sha256": "b84b94a8074a85ac8820d6e4c895c279a4405aa6db9283ce303afa477c815ebe"
+    },
+    {
+      "path": "target/app-backlog/note-variation-tenth-snapshot.log",
+      "sha256": "aa3c78ac26523e1b5698e45bba4e772ddae763b0d8901de8ac9d660068eb4572"
+    },
+    {
+      "path": "target/app-backlog/note-variation-tenth-source.json",
+      "sha256": "65e254e655c6fc09d2c2982ce26cd2a7d13d9a940f9c12bcf8bfcd2c012f1f01"
+    },
+    {
+      "path": "target/app-backlog/note-variation-tenth-transformation.log",
+      "sha256": "9873f617b3818e8470a53259809ecb464585ad9a7031b70002db4e0a3c8bb243"
+    },
+    {
+      "path": "target/app-backlog/note-variation-tenth-undo.log",
+      "sha256": "cb8cab383c3a1a0659dcd6d0627c0f99db8b6efae3e84bb352a7f15dd1049383"
+    },
+    {
+      "path": "target/app-backlog/note-variation-tenth-variation-core.log",
+      "sha256": "28a4028674016aad5b8eb628d9da768a7bd606e191f292aacb7dc6704068b8a6"
+    },
+    {
+      "path": "target/app-backlog/note-variation-tenth-variation-native.log",
+      "sha256": "b229811f90e8b063316adfbf7e8b0731a58073c94f1f58d82166dda323898760"
+    },
+    {
+      "path": "target/app-backlog/note-variation-tenth-variation-rendered.log",
+      "sha256": "56631b741bde673e1cd0cf00c97372d028e592765ca3c3b1894e077f2345fdeb"
+    },
+    {
+      "path": "target/app-backlog/note-variation-tenth-workspace.log",
+      "sha256": "f3b5084d2297d1b79671f714ebc6fa61440f7e1caa55d58d1e86b919a4c844e2"
+    },
+    {
+      "path": "target/app-backlog/note-variation-third-production-check.log",
+      "sha256": "88f1810fc883765d817b08068000d4f8bf7049f24e1a6d22ea75ba428e3cd6ed"
+    }
+  ],
+  "limits": "Linux ARM64 software qualification through actual egui/AccessKit actions, real composition workers, ordinary editable MIDI notes, Apply/Undo/Redo, and native project save/reopen. No physical MIDI or audio ports, hardware capture, OS GUI or listening were used. Chords and constrained melodies use each clip’s saved scale context; borrowed pitches need explicit permission. Ambiguous expression ownership, overlapping voices, invalid register/timing, chance-group duplication, excess work and cancellation refuse the complete operation. The source note expression is copied only when ownership is unambiguous; unrelated automation is retained. Composition preview is visual; this receipt makes no physical audition claim. Per-note expression editing and MPE negotiation remain tracked separately in #150.",
+  "compositionImplementationAtApplication": {
+    "status": "applied_uncompiled_unqualified",
+    "baseRevision": "82d18858585f0ffc3b931db2ff5a6eb54bade5d5",
+    "parents": {
+      "src/ui/piano_roll/tools/composition/tests.rs": null,
+      "src/ui/piano_roll/tools/composition.rs": null,
+      "src/ui/piano_roll/tools.rs": {
+        "path": "target/app-backlog/composition-parent-source/src/ui/piano_roll/tools.rs",
+        "sha256": "6c5c3e62bb47fed63912fb5b29ebe0109f77ecc021df77bce8fb05de35106927"
+      },
+      "src/ui/piano_roll/comparison/group.rs": {
+        "path": "target/app-backlog/composition-parent-source/src/ui/piano_roll/comparison/group.rs",
+        "sha256": "3c85866cc903abbe3e4f6ba81c15d6e177b2f90bf02ad9e9a1dde3f2300abb5b"
+      },
+      "src/engine/midi_tools.rs": {
+        "path": "target/app-backlog/composition-parent-source/src/engine/midi_tools.rs",
+        "sha256": "a6733ba151c9fedea08edfc92cd992917328087679935d8f47ef73dbe19a182a"
+      },
+      "src/engine/midi_tools/composition/tests.rs": null,
+      "src/engine/midi_tools/composition.rs": null
+    },
+    "appliedSources": {
+      "src/ui/piano_roll/tools/composition/tests.rs": "d4bb55d7cc2c31e777425b721fa0b3da0d250e7edb241f0ca1ded89f1adbb094",
+      "src/ui/piano_roll/tools/composition.rs": "eafd42d69fa5571c271692f5e3692d711bcb1e864e6992bd0a1f515733b43d81",
+      "src/ui/piano_roll/tools.rs": "8f0e15d72f45dde196e969212c4cd30069b8326913bf79c6fa1112a973862f5d",
+      "src/ui/piano_roll/comparison/group.rs": "f88ee9edabf8d0f9b7dce04de63d61d13d3d7df218521a37d71cb40a2952749f",
+      "src/engine/midi_tools.rs": "d4f3e93d25ff85dc509cca52a1288b048794c3331d2222c119aa62464f4e43c3",
+      "src/engine/midi_tools/composition/tests.rs": "7b10bfd2a4afd5a5da58de19d1e576ca3d9f699855f61dd85f1d755e8af899ef",
+      "src/engine/midi_tools/composition.rs": "21acb7c4aa3c7bd868bb1061aedfddad23efcb8077f76ba4493a94e48935f893"
+    },
+    "scope": "Chords, drawn seeded melody and ordinary-note articulation; actual native/engine tests written but unrun. Prior note-choice qualification is retained separately; combined source has no release claim.",
+    "compilerCorrection": "Native fixture uses Clip.properties.context and actual pointer events through the public headless frame entrypoint; assertions and deadlines unchanged.",
+    "nativeRegionCorrection": "The native fixture declares four bars and uses Region::full(4), giving sixteen beats, with explicit inspection refusal diagnostics. Native schema checks, all assertions and deadlines remain intact.",
+    "nativeMenuCorrection": "Use actual native AccessKit menu activation with explicit chosen-kind assertion, including the articulation item beyond initial popup clipping. Chord-row controls use their actual nested accessible scope names. Existing assertions and deadlines remain unchanged."
+  },
+  "compositionQualification": {
+    "status": "source_qualified",
+    "issues": [
+      207,
+      208,
+      209
+    ],
+    "core": {
+      "path": "target/app-backlog/note-variation-eleventh-composition-core.log",
+      "sha256": "c74bf5d35a01a64525f249aef470857581629461b162393708d8ee81da2ad9b9",
+      "outcome": "ok",
+      "passed": 7,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2299,
+      "seconds": 0
+    },
+    "native": {
+      "path": "target/app-backlog/note-variation-eleventh-composition-native.log",
+      "sha256": "ef39b9fd7dbd33f9ddd9780ff10e0e11492f3a4cad842ec12e7f9c01c8020ec5",
+      "outcome": "ok",
+      "passed": 3,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2303,
+      "seconds": 9.36
+    },
+    "frozenInventory": {
+      "path": "target/app-backlog/note-variation-eleventh-source.json",
+      "sha256": "b38c709c28e8f8093ada087cc049591824a6c754a0486e105f89e235813419c0",
+      "baseRevision": "82d18858585f0ffc3b931db2ff5a6eb54bade5d5",
+      "files": 945
+    }
+  },
+  "releaseDeployment": {
+    "schema": 1,
+    "integratedQualification": {
+      "receipt": "docs/validation/midi-composition-receipt.json",
+      "compiledInventory": {
+        "path": "target/app-backlog/note-variation-eleventh-source.json",
+        "sha256": "b38c709c28e8f8093ada087cc049591824a6c754a0486e105f89e235813419c0",
+        "baseRevision": "82d18858585f0ffc3b931db2ff5a6eb54bade5d5",
+        "files": 945
+      },
+      "testBinary": {
+        "path": "target/app-backlog/qualification-bin/note-variation-tests-eleventh",
+        "sha256": "5cb226761fa77bbd44dafa011356bf86e1610007352f8dc8f1bc9f75eeae163e"
+      },
+      "full": {
+        "path": "target/app-backlog/note-variation-eleventh-full.log",
+        "sha256": "25d3e4a321a21ac8f1220fc9e1b3d4c97d74cb20f2c9deb34c9f7cb97e63046b",
+        "outcome": "ok",
+        "passed": 2233,
+        "failed": 0,
+        "ignored": 73,
+        "filtered": 0,
+        "seconds": 751.49
+      },
+      "nativeWorker": {
+        "path": "target/app-backlog/qualification-bin/note-variation-native-worker-eleventh",
+        "sha256": "7ec56c1ea997f64ac65395b88d050997c0559a6c23a4fbe6df8fb03ccbe45a74",
+        "bytes": 438706456
+      },
+      "nativeImportWorkflows": 12
+    },
+    "status": "ready_installation_deferred_active_app",
+    "package": {
+      "path": "/home/michael/Projects/omatainer-work/hardware-resurrection/target/app-backlog/release-midi-composition-qualified",
+      "manifestSha256": "6553ae11844fc7ef8debef48556ad9c4fb172aa5ca7c316f78ea548ca9a29efb",
+      "revision": "2b1a32d4a7674e5b15d3ee0d0a4c272ba866dffc",
+      "version": "0.1.0+2b1a32d4a767",
+      "executableSha256": "7d1b5e895e8ff3aae5e521e20edf82da486bfaf1c7a585a430fd2d36e6c2da64"
+    },
+    "installed": false,
+    "previousInstalledSha256": "463d40d467101a704ffffb6e18112a6854e7350c7829e1c041e490babdb8c2c9",
+    "installedExecutableSha256": "463d40d467101a704ffffb6e18112a6854e7350c7829e1c041e490babdb8c2c9",
+    "buildInfo": {
+      "arch": "aarch64",
+      "debug_assertions": false,
+      "os": "linux",
+      "pkg_version": "0.1.0",
+      "schema": 1
+    },
+    "applicationProcessesPreserved": [
+      {
+        "pid": 151927,
+        "executable": "/home/michael/.local/bin/omatainer",
+        "arguments": [
+          "/home/michael/.local/bin/omatainer",
+          "--empty-once"
+        ],
+        "sha256": "463d40d467101a704ffffb6e18112a6854e7350c7829e1c041e490babdb8c2c9"
+      },
+      {
+        "pid": 2273135,
+        "executable": "/home/michael/.local/bin/omatainer (deleted)",
+        "arguments": [
+          "/home/michael/.local/bin/omatainer",
+          "ctl",
+          "follow"
+        ],
+        "sha256": "3217e4bfce388cac60e0ad7bea4caf83ec0d323f6eb620d4bf3a04d2c09ed69d"
+      },
+      {
+        "pid": 933966,
+        "executable": "/home/michael/Projects/omatainer-work/producer-dj-completion/target/validation/combined-completion/release-qualified/2/omatainer",
+        "arguments": [
+          "/home/michael/Projects/omatainer-work/producer-dj-completion/target/validation/combined-completion/release-qualified/2/omatainer",
+          "--empty-once"
+        ],
+        "sha256": "463d40d467101a704ffffb6e18112a6854e7350c7829e1c041e490babdb8c2c9"
+      }
+    ],
+    "protectedSessionPreserved": {
+      "path": "/home/michael/Projects/omatainer-work/hardware-resurrection/target/hardware/apc-restart-20261006/session.omat",
+      "bytes": 162882871,
+      "sha256": "96e0b2495cdbdc549c324ecf8337fdef5590bdcbfe8916e4f014eb05d1ee827d"
+    },
+    "reason": "The default GUI is active. Replacement is deferred before changing any file; the verified package is ready for installation after the active app closes. No GUI, follower, capture, audio or MIDI connection was restarted or opened."
+  }
+}

@@ -247,7 +247,7 @@ fn midi_preview_clips_held_offsets_and_repeated_inner_loop_occurrences_to_visibl
     region.loop_start = 3.0;
     region.loop_end = 5.0;
     clip.region = Some(region);
-    clip.notes = vec![crate::engine::MidiNote {
+    clip.notes = vec![crate::engine::MidiNote { variation: None,
         id: crate::engine::midi_edit::NoteId::new(),
         muted: false,
         pitch: 64,

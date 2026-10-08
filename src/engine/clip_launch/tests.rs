@@ -13,7 +13,7 @@ fn fixture() -> (Engine, Box<RtEngine>) {
         let mut clip = Clip::empty();
         clip.kind = ClipKind::Midi;
         clip.bars = if scene == 0 { 2.0 } else { 0.5 };
-        clip.notes = vec![MidiNote {
+        clip.notes = vec![MidiNote { variation: None,
             id: crate::engine::midi_edit::NoteId::new(),
             channel: 0,
             release_vel: 64,

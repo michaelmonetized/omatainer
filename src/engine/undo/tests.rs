@@ -10,7 +10,7 @@ fn send(engine: &Engine, rt: &mut RtEngine, c: Command) {
     tick(rt);
 }
 fn note(pitch: u8) -> MidiNote {
-    MidiNote {
+    MidiNote { variation: None,
         channel:0,release_vel:64,source_timing:None, id: crate::engine::midi_edit::NoteId::new(), muted: false,
         pitch,
         start: 0.0,
@@ -204,7 +204,7 @@ fn note_replacement_owns_original_and_preserves_live_notes_while_playing() {
     let (engine, mut rt) = fixture();
     let t = 2;
     let s = 7;
-    rt.tracks[t].clips[s] = Clip {
+    rt.tracks[t].clips[s] = Clip { variation: None,
         properties: Default::default(),
         audio_region: None, lanes: None,
         region: None,

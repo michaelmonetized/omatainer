@@ -16,14 +16,14 @@ fn engine(sr: u32) -> RtEngine {
 }
 
 fn clip(pitch: u8, length: f32) -> Clip {
-    Clip {
+    Clip { variation: None,
         properties: Default::default(),
         audio_region: None, lanes: None,
         region: None,
         kind: ClipKind::Midi,
         name: "quantized probe".into(),
         bars: 0.25,
-        notes: vec![MidiNote {
+        notes: vec![MidiNote { variation: None,
             channel:0,release_vel:64,source_timing:None, id: crate::engine::midi_edit::NoteId::new(), muted: false,
             pitch,
             start: 0.0,

@@ -208,7 +208,7 @@ pub(in crate::engine::project) fn large_state() -> (State, Vec<Arc<Sample>>) {
     let clip = &mut state.tracks[127].clips[511];
     clip.kind = ClipKind::Midi;
     clip.name = "Last MIDI cell".into();
-    clip.notes = vec![MidiNote {
+    clip.notes = vec![MidiNote { variation: None,
         id: midi_edit::NoteId::new(),
         pitch: 64,
         vel: 87,

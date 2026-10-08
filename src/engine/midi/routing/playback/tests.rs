@@ -130,7 +130,7 @@ fn arrangement_seek_emits_original_program_pending_banks_and_owned_notes_without
 fn controller_clip(messages: &[(u64, &[u8])]) -> Clip {
     let mut clip = Clip::empty(); clip.kind = crate::engine::ClipKind::Midi; clip.bars = 4.0;
     clip.region = Some(Region { loop_enabled: false, ..Region::full(4.0) });
-    clip.notes = vec![MidiNote { id: crate::engine::midi_edit::NoteId::new(), channel: 3, release_vel: 64, pitch: 60, start: 0.0, len: 10.0, vel: 100, muted: false, source_timing: None }];
+    clip.notes = vec![MidiNote { variation: None, id: crate::engine::midi_edit::NoteId::new(), channel: 3, release_vel: 64, pitch: 60, start: 0.0, len: 10.0, vel: 100, muted: false, source_timing: None }];
     clip.lanes = Some(Lanes::new(960, 15360, messages.iter().enumerate().map(|(i, (tick, bytes))| { let mut saved = [0; 3]; saved[..bytes.len()].copy_from_slice(bytes); crate::midi_file::Message { tick: *tick, order: i as u32, bytes: saved, length: bytes.len() as u8 } }).collect(), vec![]).unwrap());
     clip
 }
@@ -339,7 +339,7 @@ fn seek_capacity_and_loop_boundary_order_are_prepared_without_callback_growth() 
     let mut clip = Clip::empty();
     clip.kind = crate::engine::ClipKind::Midi;
     clip.bars = 1.0;
-    clip.notes = vec![MidiNote {
+    clip.notes = vec![MidiNote { variation: None,
         id: crate::engine::midi_edit::NoteId::new(),
         channel: 3,
         release_vel: 27,
@@ -748,4 +748,85 @@ fn named_song_jump_clears_old_clip_owners_and_chases_destination_controllers_bef
         Owner::Clip { track: 2, .. }
     ));
     shared.alive.store(false, Release);
+}
+
+#[test]
+fn actual_rendered_two_thousand_loops_share_seed_choices_with_routed_expression_and_independent_blocks() {
+    use crate::engine::{note_variation::{self, Group, GroupKind, Properties, Velocity}, midi_edit::NoteId, midi_schedule::Gate, Command, Engine};
+    use std::sync::atomic::{AtomicBool, Ordering::Release};
+    const CYCLES: usize = 2000;
+    let linked = Group { identity: NoteId::new(), kind: GroupKind::Linked };
+    let exclusive = Group { identity: NoteId::new(), kind: GroupKind::Exclusive };
+    let settings = [
+        (60, Properties { chance: 3700, velocity: Some(Velocity { minimum: 41, maximum: 79 }), ..Default::default() }),
+        (64, Properties { chance: 5000, velocity: Some(Velocity { minimum: 51, maximum: 91 }), group: Some(linked), ..Default::default() }),
+        (67, Properties { chance: 5000, group: Some(linked), ..Default::default() }),
+        (72, Properties { chance: 2500, group: Some(exclusive), ..Default::default() }),
+        (76, Properties { chance: 7500, group: Some(exclusive), ..Default::default() }),
+    ];
+    let mut clip = Clip::empty();
+    clip.kind = crate::engine::ClipKind::Midi;
+    clip.name = "Repeatable note choices".into();
+    clip.bars = 1.0 / 64.0;
+    clip.region = Some(Region::full(clip.bars));
+    clip.notes = settings.into_iter().map(|(pitch, properties)| MidiNote { id: NoteId::new(), channel: 0, release_vel: 64, source_timing: None, muted: false, pitch, start: 0.0, len: 1.0 / 64.0, vel: 96, variation: Some(properties) }).collect();
+    clip.lanes = Some(Lanes::new(256, 16, vec![crate::midi_file::Message { tick: 2, order: 1, bytes: [0xa0, 60, 77], length: 3 }, crate::midi_file::Message { tick: 12, order: 2, bytes: [0xb0, 1, 93], length: 3 }], vec![]).unwrap());
+    clip.variation = note_variation::Plan::prepare(&clip.notes, clip.lanes.as_deref(), &AtomicBool::new(false)).unwrap();
+    let plan = clip.variation.as_ref().unwrap();
+    let expected: Vec<_> = (0..CYCLES).map(|cycle| (0..clip.notes.len()).map(|index| plan.velocity(index, 72, cycle as i64, clip.notes[index].vel)).collect::<Vec<_>>()).collect();
+    let independent = expected.iter().filter(|cycle|cycle[0].is_some()).count();
+    assert!((600..=900).contains(&independent));
+    for cycle in &expected { assert_eq!(cycle[1].is_some(), cycle[2].is_some()); assert_ne!(cycle[3].is_some(), cycle[4].is_some()); }
+    let mut baseline = None;
+    for block in [1, 37, 257] {
+        let (engine, rt) = Engine::headless_for_test(8000, 256);
+        let mut rt = Box::new(rt);
+        rt.bpm = 240.0;
+        rt.quant = 0.0;
+        rt.note_seed = 72;
+        for track in &mut rt.tracks { track.stop_clip(); track.note_seed = 72; }
+        rt.tracks[2].clips[0] = clip.clone();
+        rt.tracks[2].midi_schedule.sample_trace = Some(Vec::with_capacity(CYCLES * 12));
+        rt.tracks[2].midi_output.trace = Some(Vec::with_capacity(CYCLES * 16));
+        let shared = engine.cmd.midi_routing();
+        let receiver = shared.receiver.lock().take().unwrap();
+        shared.bind_identity(&super::super::Routing { enabled: true, routes: vec![super::super::Route { track: 2, inputs: vec![], output: None, output_channel: None, monitor: false, thru: false, filter: Default::default() }] });
+        shared.mask.store(1 << 2, Release);
+        shared.alive.store(true, Release);
+        engine.send(Command::LaunchClip { track: 2, scene: 0 }).unwrap();
+        rt.process(&mut []);
+        let frames = CYCLES * 125;
+        let mut output = [0.0_f32; 514];
+        let mut packets = Vec::with_capacity(CYCLES * 16);
+        let mut audio_hash = 0xcbf29ce484222325_u64;
+        let mut energy = 0.0;
+        let counts = test_alloc::measure(|| {
+            for begin in (0..frames).step_by(block) {
+                let output = &mut output[..(frames - begin).min(block) * 2];
+                rt.process(output);
+                for &sample in output.iter() { assert!(sample.is_finite()); energy += f64::from(sample).powi(2); audio_hash = (audio_hash ^ u64::from(sample.to_bits())).wrapping_mul(0x100000001b3); }
+                while let Ok(event) = receiver.try_recv() { if event.clear.is_none() { packets.push(event.packet); } }
+            }
+        });
+        assert_eq!(counts, test_alloc::Counts::default());
+        assert!(energy > 0.01);
+        assert!(!rt.tracks[2].midi_output.refused);
+        let gates = rt.tracks[2].midi_schedule.sample_trace.take().unwrap();
+        let routed = rt.tracks[2].midi_output.trace.take().unwrap();
+        assert_eq!(packets, routed.iter().map(|(_, packet)|*packet).collect::<Vec<_>>());
+        for (index, note) in clip.notes.iter().enumerate() {
+            let onsets: Vec<_> = gates.iter().filter_map(|&(frame, gate)| match gate { Gate::On(pitch, velocity) if pitch == note.pitch => Some((frame, velocity)), _ => None }).collect();
+            let releases: Vec<_> = gates.iter().filter_map(|&(frame, gate)| matches!(gate, Gate::Off(pitch) if pitch == note.pitch).then_some(frame)).collect();
+            let choices: Vec<_> = expected.iter().enumerate().filter_map(|(cycle, choices)| choices[index].map(|velocity|(cycle as u64 * 125, velocity))).collect();
+            assert_eq!(onsets.len(), choices.len()); assert_eq!(releases.len(), choices.len());
+            for ((&(frame, velocity), &release), &(onset, expected_velocity)) in onsets.iter().zip(&releases).zip(&choices) { assert!(frame.abs_diff(onset) <= 1); assert!(release.abs_diff(onset + 31) <= 1); assert_eq!(velocity, expected_velocity); }
+            assert_eq!(packets.iter().filter(|packet|packet.bytes()[0] == 0x90 && packet.bytes()[1] == note.pitch).map(|packet|packet.bytes()[2]).collect::<Vec<_>>(), choices.iter().map(|(_,velocity)|*velocity).collect::<Vec<_>>());
+            assert_eq!(packets.iter().filter(|packet|packet.bytes()[0] == 0x80 && packet.bytes()[1] == note.pitch).count(), choices.len());
+        }
+        assert_eq!(packets.iter().filter(|packet|packet.bytes() == [0xa0, 60, 77]).count(), independent);
+        assert_eq!(packets.iter().filter(|packet|packet.bytes() == [0xb0, 1, 93]).count(), CYCLES);
+        let result = (gates, packets, audio_hash);
+        if let Some(original) = &baseline { assert_eq!(&result, original); } else { baseline = Some(result); }
+    }
+    eprintln!("MIDI_NOTE_VARIATION_RENDERED {{\"loops\":2000,\"blocks\":[1,37,257],\"actual_renderer\":true,\"routed_note_expression_pairing\":true,\"callback_allocations\":0,\"callback_frees\":0,\"physical_devices_opened\":false}}");
 }

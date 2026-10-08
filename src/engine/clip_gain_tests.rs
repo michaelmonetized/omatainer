@@ -21,14 +21,14 @@ fn engine(gain: f32, kind: u8, arp: bool, live: bool) -> RtEngine {
     track.gain = 1.0;
     track.pan = 0.0;
     track.clips = (0..SCENES).map(|_| Clip::empty()).collect();
-    track.clips[0] = Clip {
+    track.clips[0] = Clip { variation: None,
         properties: Default::default(),
         audio_region: None, lanes: None,
         region: None,
         kind: ClipKind::Midi,
         name: "gain probe".into(),
         bars: 1.0,
-        notes: vec![MidiNote {
+        notes: vec![MidiNote { variation: None,
             channel:0,release_vel:64,source_timing:None, id: crate::engine::midi_edit::NoteId::new(), muted: false,
             pitch: if kind == 0 { 36 } else { 60 },
             start: 0.0,

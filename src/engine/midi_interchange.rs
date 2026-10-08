@@ -357,10 +357,14 @@ impl Request {
                 context: old.properties.context,
                 song_context: captured.state.musical_context,
             });
-            let reserved_lane_bytes = old.lanes.as_ref().map_or(0, |l| l.bytes()) + lanes.bytes();
+            checkpoint(&mut cancel)?;
+            let variation = super::note_variation::Plan::prepare(&notes, Some(lanes.as_ref()), &std::sync::atomic::AtomicBool::new(false))?;
+            let original_variation = super::note_variation::Plan::prepare(&old.notes, old.lanes.as_deref(), &std::sync::atomic::AtomicBool::new(false))?;
+            checkpoint(&mut cancel)?;
+            let reserved_lane_bytes = old.lanes.as_ref().map_or(0, |l| l.bytes()) + lanes.bytes() + variation.as_ref().map_or(0, |plan| plan.bytes()) + original_variation.as_ref().map_or(0, |plan| plan.bytes());
             targets.push(Target {
                 baseline,
-                replacement: Clip {
+                replacement: Clip { variation,
                     properties: old.properties,
                     audio_region: None,
                     lanes: Some(lanes),

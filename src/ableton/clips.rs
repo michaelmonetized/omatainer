@@ -140,7 +140,7 @@ pub(super) fn convert(
                 {
                     differences.insert("Note probability and velocity deviation retained; deterministic native note playback does not apply them");
                 }
-                clip.notes.push(engine::MidiNote {
+                clip.notes.push(engine::MidiNote { variation: None,
                     id: engine::midi_edit::NoteId::new(),
                     pitch: pitch as u8,
                     start: time as f32,

@@ -13,7 +13,7 @@ fn render(rt: &mut RtEngine, seconds: f32) {
 }
 
 fn chord() -> Clip {
-    Clip {
+    Clip { variation: None,
         properties: Default::default(),
         audio_region: None, lanes: None,
         region: None,
@@ -21,7 +21,7 @@ fn chord() -> Clip {
         name: "Sustained chord".into(),
         bars: 16.0,
         notes: [60, 64, 67]
-            .map(|pitch| MidiNote {
+            .map(|pitch| MidiNote { variation: None,
                 channel:0,release_vel:64,source_timing:None, id: crate::engine::midi_edit::NoteId::new(), muted: false,
                 pitch,
                 start: 0.0,

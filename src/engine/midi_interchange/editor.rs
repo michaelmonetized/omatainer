@@ -72,9 +72,10 @@ impl Request {
             if edit.unchanged() {
                 continue;
             }
-            let reserved_lane_bytes = old.lanes.as_ref().map_or(0, |l| l.bytes())
+            let reserved_lane_bytes = edit.variation.as_ref().map_or(0, |plan| plan.bytes())
+                + old.lanes.as_ref().map_or(0, |l| l.bytes())
                 + edit.lanes.as_ref().map_or(0, |l| l.bytes());
-            let replacement = Clip {
+            let replacement = Clip { variation: edit.variation.clone(),
                 properties: super::super::clip_management::Properties { context: edit.context, ..old.properties },
                 audio_region: None,
                 lanes: edit.lanes.clone(),

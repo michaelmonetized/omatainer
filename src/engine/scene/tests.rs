@@ -28,7 +28,7 @@ fn fixture(rate: u32) -> (Engine, Box<RtEngine>) {
             let mut clip = Clip::empty();
             clip.kind = ClipKind::Midi;
             clip.bars = 8.0;
-            clip.notes = vec![MidiNote {
+            clip.notes = vec![MidiNote { variation: None,
                 id: crate::engine::midi_edit::NoteId::new(),
                 channel: 0,
                 release_vel: 64,

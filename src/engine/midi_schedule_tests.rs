@@ -2,7 +2,7 @@ use super::*;
 use midi_schedule::{Gate, MidiSchedule};
 
 fn note(pitch: u8, start: f32, len: f32) -> MidiNote {
-    MidiNote {
+    MidiNote { variation: None,
         channel:0,release_vel:64,source_timing:None, id: crate::engine::midi_edit::NoteId::new(), muted: false,
         pitch,
         start,

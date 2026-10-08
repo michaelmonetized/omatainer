@@ -53,6 +53,7 @@ pub(super) fn harmonize(
         Ok::<_, String>(next_order)
     };
     let mut content = original.clone();
+    if copied.iter().any(|index| original.notes[*index].variation.and_then(|properties|properties.group).is_some_and(|group|group.kind == super::super::note_variation::GroupKind::Exclusive)) { return Err("Harmony would duplicate exclusive probability weights; make those selected notes independent first".into()); }
     let mut copies = BTreeMap::new();
     let mut rounding = shifted.summary.maximum_rounding_beats;
     for (step, &i) in copied.iter().enumerate() {

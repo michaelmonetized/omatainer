@@ -24,7 +24,7 @@ fn fixture() -> Box<Gui> {
         clip.notes = pitches
             .into_iter()
             .enumerate()
-            .map(|(i, pitch)| MidiNote {
+            .map(|(i, pitch)| MidiNote { variation: None,
                 id: NoteId::new(),
                 channel: 0,
                 release_vel: 37,

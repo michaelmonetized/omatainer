@@ -382,7 +382,7 @@ mod tests {
             let notes = starts
                 .iter()
                 .enumerate()
-                .map(|(i, &beat)| MidiNote {
+                .map(|(i, &beat)| MidiNote { variation: None,
                     id: crate::engine::midi_edit::NoteId::new(),
                     muted: false,
                     pitch: 60 + i as u8,
