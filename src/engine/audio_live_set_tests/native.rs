@@ -147,7 +147,14 @@ fn native_transition(routed: bool) {
         control.preview.store(false, Ordering::Release);
         std::thread::sleep(Duration::from_millis(100));
         let transition_at = origin.elapsed().as_nanos() as u64;
-        control.transition(&engine.project, engine.project.revision(), 1.0).unwrap();
+        if let Err(error) = control.transition(&engine.project, engine.project.revision(), 1.0) {
+            let status = output.handle.status();
+            let receipt = serde_json::json!({"status":"failed","trial":trial,"waiting_for":"fade admission","error":error,
+                "output_phase":format!("{:?}",status.phase),"message":status.message,"audio":engine.cmd.audio_metrics(),
+                "playing":engine.snapshot().playing,"performance":engine.cmd.performance().status()});
+            std::fs::write(directory.join(format!("failure-fade-admission-{trial}.json")),serde_json::to_vec_pretty(&receipt).unwrap()).unwrap();
+            panic!("Native fade admission failed: {receipt}");
+        }
         let mut applied = false;
         let mut retired = None;
         wait(&engine, &output, &directory, "retirement", || {

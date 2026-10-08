@@ -375,6 +375,7 @@ impl Inverse {
         }
         rt.session.generation = generation;
         rt.session.next_id = next_id;
+        if let Some(routing) = &mut rt.routing { routing.bind_positions(&rt.session); }
         rt.midi_routing.identity.publish(&rt.session);
         if let Some((slot, name)) = &mut self.track_name {
             std::mem::swap(&mut rt.tracks[*slot].name, name);

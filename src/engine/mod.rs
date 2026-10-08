@@ -1805,8 +1805,9 @@ impl RtEngine {
                 let count = channels.min(audio::routing::model::MAX_PHYSICAL_CHANNELS);
                 output[..count].copy_from_slice(&frame[..count]);
                 self.render_output_probe(output);
+                let sources = routing.source_positions(self, channels);
                 self.routing = Some(routing);
-                self.audible.push(&self.decks);
+                self.audible.push_sources(sources);
                 if self.load_profile.active { self.telemetry.profiler.publish(&self.load_profile); }
                 continue;
             }

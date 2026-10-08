@@ -30,6 +30,40 @@ impl Reference {
 }
 
 #[test]
+fn retained_coefficients_preserve_exact_pcm_through_modulation_and_rate_changes_without_heap_work() {
+    let mut filter = Svf::default();
+    let mut s1 = 0.0_f32;
+    let mut s2 = 0.0_f32;
+    let counts = crate::engine::test_alloc::measure(|| {
+        for frame in 0..64000 {
+            let sr = [8000.0_f32,44100.0,48000.0,96000.0,192000.0][frame / 12800];
+            let cutoff = if frame % 1024 < 512 { 1700.0 } else { -100.0 + (frame % 1024) as f32 * 70.0 };
+            let res = [0.0_f32,0.35,0.95,1.5,-0.5][frame / 4000 % 5];
+            let morph = (frame % 101) as f32 / 100.0;
+            let x = ((frame as f32 * 0.017).sin() + if frame % 307 == 0 { 0.5 } else { 0.0 }) * 0.2;
+            const MIN_HZ: f32 = 48000.0 * 0.0001 / std::f32::consts::PI;
+            let max_hz = 0.45 * sr;
+            let hz = cutoff.clamp(MIN_HZ.min(max_hz),max_hz);
+            let g = (std::f32::consts::PI * hz / sr).tan();
+            let k = 2.0 - res.clamp(0.0,0.95) * 1.8;
+            let a1 = 1.0 / (1.0 + g * (g + k));
+            let a2 = g * a1;
+            let a3 = g * a2;
+            let v3 = x - s2;
+            let v1 = a1 * s1 + a2 * v3;
+            let v2 = s2 + a2 * s1 + a3 * v3;
+            s1 = 2.0 * v1 - s1; s2 = 2.0 * v2 - s2;
+            let hp = x - k * v1 - v2;
+            let expected = if morph < 0.5 { let t = morph * 2.0; v2 * (1.0-t) + v1*t }
+                else { let t = (morph-0.5)*2.0; v1*(1.0-t)+hp*t };
+            assert_eq!(filter.process(x,cutoff,res,sr,morph).to_bits(),expected.to_bits(),"frame={frame}");
+            assert_eq!(filter.ic1eq.to_bits(),s1.to_bits()); assert_eq!(filter.ic2eq.to_bits(),s2.to_bits());
+        }
+    });
+    assert_eq!(counts, Default::default());
+}
+
+#[test]
 fn svf_impulse_and_chirp_match_independent_nodal_reference() {
     let mut maximum_error = 0.0_f64;
     for sr in [8_000.0, 44_100.0, 48_000.0, 96_000.0, 192_000.0] {

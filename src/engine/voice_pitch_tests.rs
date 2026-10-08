@@ -88,7 +88,7 @@ fn compare(
 
 #[test]
 fn cached_pitch_is_bit_exact_to_legacy_waveforms_for_notes_tuning_and_rate_changes() {
-    for sr in [44_100.0, 48_000.0, 96_000.0] {
+    for sr in [8_000.0, 44_100.0, 48_000.0, 96_000.0, 192_000.0] {
         for kind in SynthInstrument::ALL {
             for note in [0, 12, 36, 57, 69, 84, 108, 127] {
                 let mut voice = Voice::new(sr, kind);

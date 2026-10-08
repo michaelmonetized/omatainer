@@ -299,6 +299,7 @@ impl Plan {
             .checked_mul(4)
             .and_then(|samples| samples.checked_add(histories))
             .and_then(|samples| samples.checked_mul(reserve as usize + 1))
+            .and_then(|samples| samples.checked_add(super::positions::Positions::storage_bytes(reserve, layout)))
             .ok_or("Latency history size overflow")?;
         if bytes > MAX_STORAGE {
             return Err(

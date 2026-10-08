@@ -39,20 +39,31 @@ impl OnePole {
 pub struct Svf {
     pub ic1eq: f32,
     pub ic2eq: f32,
+    coefficients: Option<([u32; 3], [f32; 4])>,
 }
 
 impl Svf {
+    /// Render one filter frame with exact retained coefficients.
+    /// Takes the input, cutoff, resonance, output rate and morph; returns the original trapezoidal response while recalculating coefficients only when their inputs change.
     pub fn process(&mut self, x: f32, cutoff: f32, res: f32, sr: f32, morph: f32) -> f32 {
         // Clamp frequency before prewarping. Clamping the angle to 0.45
         // instead incorrectly plateaus near 6.875 kHz at a 48 kHz rate.
-        const MIN_HZ: f32 = 48_000.0 * 0.0001 / std::f32::consts::PI;
-        let max_hz = 0.45 * sr;
-        let hz = cutoff.clamp(MIN_HZ.min(max_hz), max_hz);
-        let g = (std::f32::consts::PI * hz / sr).tan();
-        let k = 2.0 - res.clamp(0.0, 0.95) * 1.8;
-        let a1 = 1.0 / (1.0 + g * (g + k));
-        let a2 = g * a1;
-        let a3 = g * a2;
+        let parameters = [cutoff.to_bits(), res.to_bits(), sr.to_bits()];
+        let [k, a1, a2, a3] = match self.coefficients {
+            Some((prior, coefficients)) if prior == parameters => coefficients,
+            _ => {
+                const MIN_HZ: f32 = 48_000.0 * 0.0001 / std::f32::consts::PI;
+                let max_hz = 0.45 * sr;
+                let hz = cutoff.clamp(MIN_HZ.min(max_hz), max_hz);
+                let g = (std::f32::consts::PI * hz / sr).tan();
+                let k = 2.0 - res.clamp(0.0, 0.95) * 1.8;
+                let a1 = 1.0 / (1.0 + g * (g + k));
+                let a2 = g * a1;
+                let coefficients = [k, a1, a2, g * a2];
+                self.coefficients = Some((parameters, coefficients));
+                coefficients
+            }
+        };
         let v3 = x - self.ic2eq;
         let v1 = a1 * self.ic1eq + a2 * v3;
         let v2 = self.ic2eq + a2 * self.ic1eq + a3 * v3;
@@ -397,8 +408,10 @@ impl Voice {
             self.sample_rate = sr;
             self.refresh_pitch();
         }
-        self.phase = (self.phase + self.phase_increment) % 1.0;
-        self.phase2 = (self.phase2 + self.detuned_increment) % 1.0;
+        let phase = self.phase + self.phase_increment;
+        self.phase = if (0.0..1.0).contains(&phase) { phase } else { phase % 1.0 };
+        let phase = self.phase2 + self.detuned_increment;
+        self.phase2 = if (0.0..1.0).contains(&phase) { phase } else { phase % 1.0 };
         let saw = self.phase * 2.0 - 1.0;
         let sq = if self.phase < 0.5 { 0.7 } else { -0.7 };
         let sine = (self.phase * std::f32::consts::TAU).sin();

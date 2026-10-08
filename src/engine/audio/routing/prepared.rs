@@ -35,6 +35,7 @@ pub struct Prepared {
     pub monitor_channels_free: bool,
     pub monitor_output: Option<(u64, [usize; 2])>,
     pub(super) latency: Option<super::latency::Runtime>,
+    positions: super::positions::Positions,
     pub(crate) plugins: Vec<Plugin>,
     pub(crate) offline: bool,
 }
@@ -78,7 +79,7 @@ impl Prepared {
         let anticipated = super::latency::Plan::new(&model,layout,&order,rate)?;
         let reserve = anticipated.as_ref().map_or(0,|p|p.reserve);
         let dry_bytes = model.plugins.iter().map(|p| (p.input_width().max(p.output_width()) * 4 + 1) * (reserve as usize + 1)).sum::<usize>();
-        if dry_bytes.saturating_add(anticipated.as_ref().map_or(0,|p|p.storage_bytes)) > 64 * 1024 * 1024 { return Err("Plugin dry and compensation histories exceed 64 MiB; reduce reserve, bus width or processor count".into()); }
+        if dry_bytes.saturating_add(anticipated.as_ref().map_or_else(|| super::positions::Positions::storage_bytes(0,layout),|p|p.storage_bytes)) > 64 * 1024 * 1024 { return Err("Plugin dry and compensation histories exceed 64 MiB; reduce reserve, bus width or processor count".into()); }
         let mut plugins = Vec::with_capacity(model.plugins.len());
         let mut resolved = (*model).clone();
         for (slot, saved) in model.plugins.iter().enumerate() {
@@ -101,8 +102,10 @@ impl Prepared {
         }
         if cancel.load(std::sync::atomic::Ordering::Acquire) { return Err("Plugin graph preparation cancelled".into()); }
         let model = if model.plugins.is_empty() { model } else { Arc::new(resolved) };
-        let latency = super::latency::Plan::new(&model, layout, &order, rate)?
-            .map(|plan|super::latency::Runtime::new(plan,&order.iter().map(|group|model.width(*group,layout).unwrap().max(model.input_width(*group,layout).unwrap())).collect::<Vec<_>>(),rate));
+        let plan = super::latency::Plan::new(&model, layout, &order, rate)?;
+        if dry_bytes.saturating_add(plan.as_ref().map_or_else(|| super::positions::Positions::storage_bytes(0,layout),|p|p.storage_bytes)) > 64 * 1024 * 1024 { return Err("Resolved processor and source-position histories exceed 64 MiB".into()); }
+        let positions = super::positions::Positions::new(&model,layout,&order,plan.as_ref());
+        let latency = plan.map(|plan|super::latency::Runtime::new(plan,&order.iter().map(|group|model.width(*group,layout).unwrap().max(model.input_width(*group,layout).unwrap())).collect::<Vec<_>>(),rate));
         let indices: BTreeMap<_, _> = order
             .iter()
             .enumerate()
@@ -163,6 +166,7 @@ impl Prepared {
             monitor_channels_free,
             monitor_output,
             latency,
+            positions,
             plugins,
             offline: false,
         })
@@ -260,6 +264,7 @@ impl Prepared {
         if let(Some(latency),Some(prior))=(&mut self.latency,&mut old.latency) {
             latency.inherit(prior,&self.nodes,&old.nodes);
         }
+        self.positions.inherit(&mut old.positions);
         for (next,prior) in self.plugins.iter_mut().zip(&mut old.plugins) { std::mem::swap(next,prior); }
     }
 
@@ -273,7 +278,19 @@ impl Prepared {
     /// Takes this graph; resets only history counters without allocating or freeing audio storage.
     pub(crate) fn reset_latency(&mut self) {
         if let Some(latency) = &mut self.latency { latency.reset(); }
+        self.positions.reset();
         for plugin in &mut self.plugins { if let Some(endpoint) = &mut plugin.endpoint { endpoint.release_notes(); } plugin.midi.clear(); }
+    }
+
+    /// Bind prepared source timing after an atomic session edit or Undo.
+    /// Takes the final admitted layout; preserves unchanged geometry and invalidates stale source paths without callback allocation.
+    pub(crate) fn bind_positions(&mut self, layout: &Layout) { self.positions.bind(layout); }
+
+    /// Retain source positions at the same frame as the routed physical output.
+    /// Takes the renderer and opened output width; returns exact delayed positions or explicit renderer fallbacks for ambiguous paths.
+    pub(crate) fn source_positions(&mut self, rt: &crate::engine::RtEngine, channels: usize) -> [crate::engine::audible::Source; crate::engine::DECKS] {
+        self.positions.capture(&rt.decks,&rt.session,channels,rt.monitor.status.channels.filter(|_|rt.monitor.status.available),
+            self.latency.as_ref().is_some_and(|latency|latency.status().transition_frames != 0))
     }
 
     /// Locate a selected output's delay inside the software graph.
@@ -323,9 +340,9 @@ impl Prepared {
         let next = super::latency::Plan::new(&self.model, layout, &order, rate)?;
         let reserve = next.as_ref().map_or(0,|plan|plan.reserve);
         let dry = self.model.plugins.iter().map(|p|(p.input_width().max(p.output_width()) * 4 + 1) * (reserve as usize + 1)).sum::<usize>();
-        let histories = next.as_ref().map_or(0,|plan|plan.storage_bytes);
+        let histories = next.as_ref().map_or_else(||super::positions::Positions::storage_bytes(0,layout),|plan|plan.storage_bytes);
         if dry.saturating_add(histories) > 64 * 1024 * 1024 { return Err("Changed-rate plugin histories exceed 64 MiB".into()); }
-        Ok(self.bytes().saturating_sub(self.latency.as_ref().map_or(0,|l|l.plan.storage_bytes)).saturating_sub(self.plugins.iter().map(|p|p.dry.bytes()).sum::<usize>()).saturating_add(histories).saturating_add(dry).saturating_add(self.plugins.len() * 8192))
+        Ok(self.bytes().saturating_sub(self.latency.as_ref().map_or_else(||self.positions.bytes(),|l|l.plan.storage_bytes)).saturating_sub(self.plugins.iter().map(|p|p.dry.bytes()).sum::<usize>()).saturating_add(histories).saturating_add(dry).saturating_add(self.plugins.len() * 8192))
     }
 
     /// Assemble physical outputs.
@@ -353,6 +370,7 @@ impl Prepared {
             + self.plugins.iter().map(|p| p.endpoint.as_ref().map_or(0, crate::plugin_host::realtime::Endpoint::bytes) + p.error.as_ref().map_or(0, String::capacity)).sum::<usize>()
             + self.plugins.iter().map(|p| p.dry.bytes() + p.midi.capacity() * std::mem::size_of::<(u64,[u8;3])>()).sum::<usize>()
             + self.latency.as_ref().map_or(0,super::latency::Runtime::bytes)
+            + self.positions.bytes()
             + self.nodes.capacity() * std::mem::size_of::<Node>()
             + self.incoming.capacity() * std::mem::size_of::<Vec<Link>>()
             + self.outputs.capacity() * std::mem::size_of::<usize>()

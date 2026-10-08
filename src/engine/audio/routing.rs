@@ -13,6 +13,7 @@ pub(crate) mod probe;
 pub(crate) mod record;
 mod render;
 mod render_plugins;
+mod positions;
 #[cfg(test)]
 mod tests;
 #[cfg(test)]
