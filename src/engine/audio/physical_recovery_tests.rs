@@ -55,13 +55,16 @@ fn native_physical_usb_recording_recovery_and_two_controller_reconnections() {
     let audio = start_with_settings(rt, &settings).unwrap();
     engine.midi = crate::engine::midi::MidiHub::start(engine.cmd.clone(), engine.snap.clone()).unwrap();
     let registry = engine.midi.profiles().unwrap().clone();
-    wait(30, || { let view = registry.view(); view.ready && !view.busy && view.devices.iter().filter(|d| d.input_open).count() == 4
+    wait(30, || { let view = registry.view(); view.ready && !view.busy && !engine.cmd.performance().status().changing
+        && engine.midi.policy_status().is_some_and(|policy| !policy.pending()) && view.devices.iter().filter(|d| d.input_open).count() == 4
         && view.devices.iter().filter(|d| d.output_open).count() == 4 });
     let initial = registry.view();
     let ns7 = initial.devices.iter().find(|d| d.device.vendor == 0x15e4 && d.device.product == 0x0071 && d.device.port == 0 && d.input_open).unwrap().clone();
     let apc = initial.devices.iter().find(|d| d.device.vendor == 0x09e8 && d.device.product == 0x0029 && d.device.port == 0 && d.input_open).unwrap().clone();
     let accepted = audio.handle.status().active.as_ref().unwrap().plan.clone();
-    let audio_identity = recovery::identity(&accepted.device).unwrap();
+    assert!(recovery::identity(&accepted.device).is_none());
+    let usb = std::path::PathBuf::from("/sys/bus/usb/devices").join(&ns7.device.topology);
+    assert!(usb.exists());
     let mut trials = Vec::new();
     for trial in 0..2 {
         for command in [Command::ComposeArm { track: 4, scene: 3 }, Command::Play, Command::SamplerPad { pad: 0, on: true }] {
@@ -71,10 +74,10 @@ fn native_physical_usb_recording_recovery_and_two_controller_reconnections() {
         let before = engine.midi.input_stats();
         let key = ns7.device.key();
         marker(&directory, "unplug", "NS7", trial, &key);
-        wait(300, || recovery::identity(&accepted.device).is_none());
+        wait(300, || !usb.exists());
         wait(15, || audio.handle.status().phase == Phase::Offline && !registry.view().devices.iter().any(|d| d.device.key() == key));
         let offline = audio.handle.status();
-        assert_eq!(offline.recovery.as_ref().unwrap().identity.as_deref(), Some(audio_identity.as_str()));
+        assert!(offline.recovery.as_ref().unwrap().identity.is_none());
         assert!(engine.cmd.send(Command::Play).is_err());
         assert!(!engine.snapshot().playing && engine.snapshot().compose_target.is_none());
         let archive = save(&directory, &engine, trial);
@@ -83,7 +86,7 @@ fn native_physical_usb_recording_recovery_and_two_controller_reconnections() {
         assert!(missing_reconnect.is_err());
         assert_eq!(audio.handle.status().phase, Phase::Offline);
         marker(&directory, "replug", "NS7", trial, &key);
-        wait(300, || recovery::identity(&accepted.device).as_deref() == Some(audio_identity.as_str()));
+        wait(300, || usb.exists());
         wait(30, || registry.view().devices.iter().any(|d| d.device.key() == key && d.input_open && d.output_open));
         let connected = registry.view();
         let found = connected.devices.iter().find(|d| d.device.key() == key).unwrap();
@@ -91,11 +94,15 @@ fn native_physical_usb_recording_recovery_and_two_controller_reconnections() {
         assert_eq!(connected.devices.iter().filter(|d| d.input_open).count(), 4);
         assert_eq!(connected.devices.iter().filter(|d| d.output_open).count(), 4);
         assert_eq!(audio.handle.status().phase, Phase::Offline);
-        let restored = audio.handle.reconnect_permitted(Arc::new(AtomicBool::new(false)), audio.handle.performance_permit().unwrap(), audio.handle.status().generation).unwrap();
+        let refused = audio.handle.reconnect_permitted(Arc::new(AtomicBool::new(false)), audio.handle.performance_permit().unwrap(), audio.handle.status().generation).unwrap_err();
+        assert!(refused.contains("no verifiable physical identity"));
+        assert_eq!(audio.handle.status().phase, Phase::Offline);
+        let (_, reviewed) = config::select(&settings).unwrap();
+        let restored = audio.handle.apply_preview(settings.clone(), reviewed, Arc::new(AtomicBool::new(false))).unwrap();
         assert_eq!(restored.phase, Phase::Running);
         let plan = &restored.active.as_ref().unwrap().plan;
         assert_eq!((plan.rate, plan.channels, plan.format, plan.buffer), (accepted.rate, accepted.channels, accepted.format, accepted.buffer));
-        assert_eq!(recovery::identity(&plan.device).as_deref(), Some(audio_identity.as_str()));
+        assert!(recovery::identity(&plan.device).is_none());
         assert!(engine.cmd.send(Command::Play).is_err());
         engine.cmd.performance().acknowledge_inputs_released().unwrap();
         wait(5, || !engine.cmd.performance().status().recovery);
@@ -103,8 +110,8 @@ fn native_physical_usb_recording_recovery_and_two_controller_reconnections() {
         let after = engine.midi.input_stats();
         assert!(after.disconnected > before.disconnected && after.resets > before.resets);
         trials.push(serde_json::json!({"model":"NS7","trial":trial,"physical_identity":key,"old_usb_connection":ns7.device.connection,
-            "new_usb_connection":found.device.connection,"output_identity":audio_identity,"route_preserved":true,"archive":archive,
-            "missing_reconnect_refused":true,"explicit_output_reconnect":true,"automatic_playback":false,"release_acknowledgment_required":true,
+            "new_usb_connection":found.device.connection,"output_identity":null,"route_preserved":true,"archive":archive,
+            "missing_reconnect_refused":true,"placeholder_serial_reconnect_refused":true,"explicit_reviewed_fallback":true,"automatic_playback":false,"release_acknowledgment_required":true,
             "before_input":before,"after_input":after,"audio":engine.cmd.audio_metrics()}));
     }
     engine.cmd.send(Command::Play).unwrap();
@@ -134,7 +141,7 @@ fn native_physical_usb_recording_recovery_and_two_controller_reconnections() {
     wait(5, || !engine.snapshot().playing);
     std::fs::write(directory.join("receipt.json"), serde_json::to_vec_pretty(&serde_json::json!({
         "schema":1,"status":"pass","physical_usb_actions":true,"trials":trials,"silent_master":true,
-        "boundary":"Actual native audio and MIDI owners; command-initiated held MIDI notes, two physical removals per owned model and native saved-document reopen. No physical note-button holding, audible performance, host suspend or stage-duration claim.",
+        "boundary":"Actual native audio and MIDI owners; command-initiated held MIDI notes, two physical removals per owned model and native saved-document reopen. NS7 has a placeholder serial: retained identity reconnect is refused; the fixture explicitly reviews and applies the returned NS7 output. MIDI pins are topology-qualified. No unique-unit serial, physical note-button holding, native mouse confirmation, audible performance, host suspend or stage-duration claim.",
     })).unwrap()).unwrap();
     marker(&directory, "complete", "NS7 and APC40 MkII", 2, "");
     drop(audio);

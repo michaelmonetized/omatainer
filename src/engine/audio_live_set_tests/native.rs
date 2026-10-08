@@ -19,10 +19,16 @@ fn carrier(frequencies: [f64; 2]) -> Arc<crate::engine::dsp::Sample> {
         sr: 48000, ch: 2, data, peaks: Arc::new(vec![]), bpm: 120.0, path: String::new() })
 }
 
-fn wait(mut ready: impl FnMut() -> bool) {
+fn wait(engine: &crate::engine::Engine, output: &AudioOut, directory: &std::path::Path, phase: &str, mut ready: impl FnMut() -> bool) {
     let deadline = Instant::now() + Duration::from_secs(15);
     while !ready() {
-        assert!(Instant::now() < deadline, "Native transition acknowledgment timed out");
+        let status = output.handle.status();
+        if status.phase == owner::Phase::Offline || Instant::now() >= deadline {
+            let receipt = serde_json::json!({"status":"failed","waiting_for":phase,"output_phase":format!("{:?}",status.phase),
+                "message":status.message,"audio":engine.cmd.audio_metrics(),"playing":engine.snapshot().playing});
+            std::fs::write(directory.join(format!("failure-{phase}.json")), serde_json::to_vec_pretty(&receipt).unwrap()).unwrap();
+            panic!("Native transition acknowledgment failed: {receipt}");
+        }
         std::thread::sleep(Duration::from_millis(10));
     }
 }
@@ -113,7 +119,7 @@ fn native_transition(routed: bool) {
     let output_settings = crate::preferences::Audio { backend: Some("ALSA".into()), device: Some("hw:CARD=NS7,DEV=0".into()),
         sample_rate: Some(44100), channels: Some(4), format: Some(crate::preferences::AudioFormat::I32), buffer_frames: Some(512), ..Default::default() };
     let output = start_with_settings(rt, &output_settings).unwrap();
-    wait(|| engine.cmd.audio_metrics().callbacks >= 100);
+    wait(&engine, &output, &directory, "warmup", || engine.cmd.audio_metrics().callbacks >= 100);
     let warmed = engine.cmd.audio_metrics();
     let measured_start = origin.elapsed().as_nanos() as u64;
     let mut trials = Vec::new();
@@ -126,7 +132,7 @@ fn native_transition(routed: bool) {
         let handle = engine.project.live_sets();
         let namespace = engine.snapshot().session.as_ref().unwrap().namespace;
         let control = handle.stage(handle.reserve().unwrap(), next, namespace, Arc::new(AtomicBool::new(false))).unwrap();
-        wait(|| control.ready());
+        wait(&engine, &output, &directory, "preload", || control.ready());
         let prepared_at = origin.elapsed().as_nanos() as u64;
         assert!(control.cue_available.load(Ordering::Acquire));
         let initial_priming_seconds = control.priming_seconds(44100);
@@ -144,7 +150,7 @@ fn native_transition(routed: bool) {
         control.transition(&engine.project, engine.project.revision(), 1.0).unwrap();
         let mut applied = false;
         let mut retired = None;
-        wait(|| {
+        wait(&engine, &output, &directory, "retirement", || {
             applied |= handle.applied().is_some();
             if retired.is_none() { retired = handle.retire(); }
             applied && retired.is_some()

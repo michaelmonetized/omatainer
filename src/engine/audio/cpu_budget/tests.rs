@@ -388,7 +388,7 @@ fn native_ns7_cpu_limit_retains_recording_and_reconnects_only_explicitly() {
     }
     let offline = audio.handle.status();
     assert!(offline.message.contains("exceeded its real-time CPU limit"));
-    assert!(offline.recovery.as_ref().unwrap().identity.is_some());
+    assert!(offline.recovery.as_ref().unwrap().identity.is_none());
     assert_eq!(engine.cmd.audio_metrics().cpu_budget_exhaustions, 1);
     assert!(engine.cmd.send(Command::Play).is_err());
     let captured = engine.project.capture(&AtomicBool::new(false)).unwrap();
@@ -418,13 +418,15 @@ fn native_ns7_cpu_limit_retains_recording_and_reconnects_only_explicitly() {
     .unwrap();
     assert_eq!(reopened.state.tracks[4].clips[3].notes, notes);
     let handle = &audio.handle;
-    let restored = handle
+    assert!(handle
         .reconnect_permitted(
             std::sync::Arc::new(AtomicBool::new(false)),
             handle.performance_permit().unwrap(),
             offline.generation,
-        )
-        .unwrap();
+        ).is_err());
+    let settings = super::super::recovery::settings(&offline.recovery.as_ref().unwrap().plan);
+    let (_, reviewed) = super::super::config::select(&settings).unwrap();
+    let restored = handle.apply_preview(settings, reviewed, Arc::new(AtomicBool::new(false))).unwrap();
     assert_eq!(restored.phase, Phase::Running);
     assert!(engine.cmd.send(Command::Play).is_err());
     engine
@@ -437,7 +439,7 @@ fn native_ns7_cpu_limit_retains_recording_and_reconnects_only_explicitly() {
         assert!(Instant::now() < deadline);
         std::thread::sleep(Duration::from_millis(2));
     }
-    let report = serde_json::json!({"device":restored.active.as_ref().unwrap().plan.device,"master":0.0,"injected_after_callbacks":32,"injected_callback_cpu_ms":30,"native_recording_and_playback_observed_before_fault":true,"held_note_finalized_after_fault":true,"audio":engine.cmd.audio_metrics(),"recovery_message":offline.message,"recorded_notes":notes.len(),"reopened_notes":reopened.state.tracks[4].clips[3].notes.len(),"reconnect_required":true,"input_acknowledgment_required":true,"playing_after_reconnect":engine.snapshot().playing,"analog_listening":false});
+    let report = serde_json::json!({"device":restored.active.as_ref().unwrap().plan.device,"master":0.0,"injected_after_callbacks":32,"injected_callback_cpu_ms":30,"native_recording_and_playback_observed_before_fault":true,"held_note_finalized_after_fault":true,"audio":engine.cmd.audio_metrics(),"recovery_message":offline.message,"recorded_notes":notes.len(),"reopened_notes":reopened.state.tracks[4].clips[3].notes.len(),"reconnect_required":true,"unverifiable_serial_reconnect_refused":true,"reviewed_fallback_applied":true,"input_acknowledgment_required":true,"playing_after_reconnect":engine.snapshot().playing,"analog_listening":false});
     std::fs::write(
         directory.join("ns7-cpu-recovery.json"),
         serde_json::to_vec_pretty(&report).unwrap(),

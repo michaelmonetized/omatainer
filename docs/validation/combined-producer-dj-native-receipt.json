@@ -1,5 +1,59 @@
 {
   "schema": 2,
+  "source53": {
+    "provenance": {
+      "source_revision": "5d0edf83946c7395dd1a41da027f29c78d65f56d",
+      "test_sha256": "5da66348cc0ceea4a1eb33c16d7b3feb8685b28f374c9ef4156c3eb7154feb12",
+      "inventory_sha256": "e3880ad5d93b1a41108d6f86389f4fca283897ed10d9350e92777dfeddc99d3e",
+      "build_log_sha256": "5430f30c8f1c1472fa90f6461c73766782bf4e6dd1061529d8a01bdf3b3b3622"
+    },
+    "focusedTests": {
+      "liveSet": 13,
+      "nativePreloader": 4
+    },
+    "nativeRoutedTransition": {
+      "status": "failed",
+      "seconds": 15.54,
+      "reason": "Native acknowledgment timed out before the final receipt; failing phase and audio metrics were not captured. Diagnostic collection added for the next run."
+    }
+  },
+  "source52": {
+    "source_revision": "9397e43da5085aab229572b3fa9321b04862ae91",
+    "test_sha256": "f473a7a418c5e92a4e613b3b8668e6eaf471b3331e86adb99367c75d7437ab58",
+    "inventory_sha256": "f4bdd9c09514a20216b37144f5ed65ab18763215a8203c3d49165adc96bba1f4",
+    "focused": {
+      "live_set": {
+        "passed": 11,
+        "failed": 1,
+        "failed_test": "unavailable_connected_outputs_refuse_before_ready_and_again_after_width_changes",
+        "reason": "Queued transition permit remained alive in external Control after renderer refusal until UI released Control"
+      },
+      "native_preload": {
+        "passed": 4,
+        "failed": 0
+      }
+    },
+    "correction": "A finished stage claims pending requests using one channel read or atomic phase claim per callback; worker retirement releases any queued transition permit."
+  },
+  "source51": {
+    "provenance": {
+      "source_revision": "a7c59583355649e135d0ed31f8f141517f7af7a9",
+      "test_sha256": "241d035ff4f7b5d9f3b3ccfda82802c13be8fdb7baf6f6bc27cd43cd88abc482",
+      "inventory_sha256": "2c357a617f305226fab504a9a00b22fd3a663c002976b26a6cb1e5efa2604f73"
+    },
+    "focusedTests": {
+      "routedLiveSet": 8,
+      "nativePreloader": 4,
+      "audioDelivery": 16
+    }
+  },
+  "actualUsbIdentityAudit": {
+    "ns7SerialPlaceholder": "no serial number",
+    "audioRecoveryAcceptedPlaceholderBeforeFix": true,
+    "midiPin": "topology qualified, not a unique unit serial",
+    "correction": "Reject placeholder and product-name USB serials. Require reviewed fallback when no verifiable audio identity exists.",
+    "correctedNativeValidation": "pending"
+  },
   "source50": {
     "provenance": {
       "source_revision": "b6f2df6f2b4adec8507de4d268ad1d6d786947da",
@@ -486,17 +540,18 @@
     },
     "nativeSavedCopyReopen": true,
     "savedCopy": {
-      "path": "target/validation/combined-completion/native-ui/session-backup/pre-transition-50-current.omatainer",
-      "bytes": 162883215,
-      "sha256": "075eb1562b05c43542386c2e7e0fe8f2a97514bb4bd807b78bcc0ba7e36f85f7",
-      "savedAt": "2026-10-08T17:40:09.101Z"
+      "path": "target/validation/combined-completion/native-ui/session-backup/pre-routed-53-current.omatainer",
+      "bytes": 162883213,
+      "sha256": "896a62cf6142aacb0db00b9e52916a203774029d520ce6774f3f4204fa8fbc4a",
+      "at": "2026-10-08T18:43:09.706Z",
+      "scope": "Fresh native Save project copy before exclusive routed physical fixture"
     },
     "ownerStatus": {
       "accepted": null,
       "active_scene_name": "",
       "audio": {
         "backend_errors": 0,
-        "callbacks": 14179,
+        "callbacks": 24930,
         "cpu_budget_exhaustions": 0,
         "deadline_overruns": 0,
         "device_lost": 0,
@@ -504,20 +559,20 @@
         "last_callback": {
           "budget_ns": 5804988,
           "channels": 4,
-          "elapsed_ns": 264335,
+          "elapsed_ns": 287543,
           "frames": 256,
-          "output_latency_ns": 5691610,
+          "output_latency_ns": 5351474,
           "overrun_ns": 0,
-          "render_cpu_ns": 250501,
+          "render_cpu_ns": 253625,
           "sample_rate": 44100
         },
-        "max_elapsed_ns": 1485759,
+        "max_elapsed_ns": 2009262,
         "max_overrun_ns": 0,
         "realtime_denied": 0,
         "xruns": 0
       },
-      "bar": 6189,
-      "beat": 0.6486198902130127,
+      "bar": 7723,
+      "beat": 3.794174909591675,
       "bpm": 103.96062469482422,
       "command_status": null,
       "commands": {
@@ -537,7 +592,7 @@
       "deckBLoadLocked": false,
       "deckBPlaying": false,
       "event": "state",
-      "id": "1728061-1",
+      "id": "2236345-1",
       "latency": {
         "enabled": false,
         "history_bytes": 0,
@@ -751,16 +806,274 @@
         124
       ],
       "xfader": 0.5275590419769287
+    },
+    "preRoutedStatus": {
+      "accepted": null,
+      "active_scene_name": "",
+      "audio": {
+        "backend_errors": 0,
+        "callbacks": 554233,
+        "cpu_budget_exhaustions": 0,
+        "deadline_overruns": 0,
+        "device_lost": 0,
+        "dropped_buffers": null,
+        "last_callback": {
+          "budget_ns": 5804988,
+          "channels": 4,
+          "elapsed_ns": 268585,
+          "frames": 256,
+          "output_latency_ns": 5419501,
+          "overrun_ns": 0,
+          "render_cpu_ns": 250875,
+          "sample_rate": 44100
+        },
+        "max_elapsed_ns": 5793958,
+        "max_overrun_ns": 0,
+        "realtime_denied": 0,
+        "xruns": 0
+      },
+      "bar": 7547,
+      "beat": 0.5941055417060852,
+      "bpm": 103.96062469482422,
+      "command_status": null,
+      "commands": {
+        "applied": 1,
+        "applied_last_block": 0,
+        "backlog": 0,
+        "budget_exhaustions": 0,
+        "coalesced": 0,
+        "high_water": 1,
+        "received": 1,
+        "received_last_block": 0
+      },
+      "deckA": "What More Can I Say",
+      "deckALoadLocked": false,
+      "deckAPlaying": false,
+      "deckB": "Public Service Announcement",
+      "deckBLoadLocked": false,
+      "deckBPlaying": false,
+      "event": "state",
+      "id": "2145265-1",
+      "latency": {
+        "enabled": false,
+        "history_bytes": 0,
+        "low_latency_monitor": false,
+        "monitor_frames": 0,
+        "priming_frames": 0,
+        "program_frames": 0,
+        "rate": 0,
+        "reserve_frames": 0,
+        "transition_frames": 0
+      },
+      "master_fx": {
+        "types": [
+          "echo",
+          "reverb",
+          "filter"
+        ],
+        "wet": [
+          0.5,
+          0,
+          0
+        ]
+      },
+      "meter": [
+        4,
+        4
+      ],
+      "midi": [
+        "[connected] keyboard + mouse · built-in",
+        "[connected] MIDI input backend · discovery",
+        "[connected] Numark NS7:Numark NS7 MIDI 24:0 · Numark NS7 (original)",
+        "[connected] APC40 mkII:APC40 mkII MIDI 1 28:0 · Akai APC40 mkII",
+        "[connected] Pioneer DDJ-SP1:Pioneer DDJ-SP1 MIDI 1 32:0 · Pioneer DDJ-SP1",
+        "[connected] MPD232:MPD232 Port A 36:0 · Akai MPD232 (LiveLite)",
+        "[disabled] MPD232:MPD232 Port B 36:1 · Class-compliant MIDI",
+        "[disabled] MPD232:MPD232 MIDI 36:2 · Class-compliant MIDI"
+      ],
+      "midi_clock": {
+        "last_source": null,
+        "ticks": 0
+      },
+      "midi_clock_input": {
+        "accepted_ticks": 0,
+        "awaiting_tick": false,
+        "backend_timing": true,
+        "batched_ticks": 0,
+        "config": {
+          "follow_transport": true,
+          "loss": "freewheel",
+          "source": null,
+          "timeout_ms": 500
+        },
+        "estimated_bpm": null,
+        "ignored": 0,
+        "inferred_missing_ticks": 0,
+        "jitter_ms": 0,
+        "locked": false,
+        "lost": null,
+        "needs_transport": false,
+        "overflow": 0,
+        "phase_error_beats": 0,
+        "reacquisitions": 0,
+        "stale": 0,
+        "transport_running": false,
+        "unsupported_bpm": null
+      },
+      "midi_clock_output": {
+        "backend_timing": true,
+        "enabled": false,
+        "error": null,
+        "late": 0,
+        "max_late_ns": 0,
+        "overflow": 0,
+        "position_sixteenths": 0,
+        "running": false,
+        "scheduled": 0,
+        "sent": 0
+      },
+      "midi_feedback": {
+        "connected": 4,
+        "failed": 0,
+        "sent": 532
+      },
+      "midi_input": {
+        "coalesced": 0,
+        "disconnected": 0,
+        "dispatched": 2,
+        "dropped": 0,
+        "oversized": 0,
+        "queued": 2,
+        "received": 2,
+        "resets": 0
+      },
+      "midi_profiles": {
+        "busy": false,
+        "cached_generation": 1,
+        "control_check": null,
+        "initialization_sent": 2,
+        "input_open": 4,
+        "output_failures": 0,
+        "output_open": 4,
+        "physical_inputs": 7,
+        "physical_qualification": "pending",
+        "previous_generation": 0,
+        "profiled_inputs": 4,
+        "ready": true,
+        "schema": 1
+      },
+      "midi_routing": {
+        "enabled": false,
+        "failed": 0,
+        "generation": 1,
+        "overruns": 0,
+        "received": 2,
+        "refused_tracks": 0,
+        "refused_tracks_extended": [
+          0,
+          0
+        ],
+        "sent": 0
+      },
+      "monitor": {
+        "active": false,
+        "available": true,
+        "blend": 0,
+        "channels": [
+          2,
+          3
+        ],
+        "faders": [
+          1,
+          1
+        ],
+        "master": false,
+        "meters": [
+          0,
+          0
+        ],
+        "mix": 0.5,
+        "output_alias": null,
+        "source": "deck_mix",
+        "split": false,
+        "tone": null,
+        "volume": 0
+      },
+      "ok": true,
+      "performance": {
+        "changing": false,
+        "deck_load_locked": [
+          false,
+          false
+        ],
+        "last_rejection": "changing",
+        "nonfinite_tail": false,
+        "observation_complete": false,
+        "observed_frames": 0,
+        "optional_active": 0,
+        "output_muted": false,
+        "protected": false,
+        "quiet_frames": 0,
+        "recovery": false,
+        "rejected": 7,
+        "safety_applied": 0,
+        "safety_requested": 0,
+        "stopped": false
+      },
+      "pitch_pickup": [
+        {
+          "acquired": false,
+          "physical": null,
+          "sync": false,
+          "target": 0.5
+        },
+        {
+          "acquired": false,
+          "physical": null,
+          "sync": false,
+          "target": 0.5039370059967041
+        }
+      ],
+      "playing": true,
+      "queued_scene_name": "",
+      "recording": false,
+      "scenes": {
+        "active": null,
+        "active_properties": null,
+        "error": null,
+        "pending": null,
+        "timing": null
+      },
+      "state_available": true,
+      "state_truncated": true,
+      "submissions": {
+        "accepted": 1,
+        "coalesced": 0,
+        "last_error": null,
+        "rejected": 0
+      },
+      "sync_aligned": [
+        false,
+        false
+      ],
+      "sync_leader": null,
+      "sync_leader_ready": false,
+      "sync_modes": [
+        "off",
+        "off"
+      ],
+      "sync_target_bpm": [
+        124,
+        124
+      ],
+      "xfader": 0.5275590419769287
     }
   },
   "status": "implementation_and_full_release_qualification_in_progress",
   "priorCheckpoint": {
-    "schema": 1,
-    "status": "combined_source_installed_full_acceptance_in_progress",
     "source": "b028ca05bc9f0172bf16e484d03f343501d510b7",
-    "testsSha256": "7277ecd53044063973ac378a651ca857e46a41ff9138c4b6c749f846e9784092",
-    "releaseSha256": "6be372c54d43f1bf9368acd8b5a4d5822da92de91069151d83a100dc39aaad5a",
-    "packageManifestSha256": "e74def3eba50aca909295525a3e84a02cdbe1d5c699bb3ecb0853b0bc3cedacc",
+    "qualificationCommit": "940d959fd9f69e52fb6050975c750d02fadf1813",
+    "receiptPath": "docs/validation/combined-producer-dj-native-receipt.json",
     "fullOrdinarySuite": {
       "passed": 2290,
       "failed": 0,
@@ -769,30 +1082,6 @@
       "seconds": 816.13,
       "threads": 1,
       "stackBytes": 67108864
-    },
-    "retainedFailedFullRun": {
-      "passed": 2288,
-      "failed": 2,
-      "ignored": 79,
-      "filtered": 0,
-      "seconds": 755.43,
-      "failedTests": [
-        "engine::keylock_showload_tests::showload_fixture_uses_two_locked_decks_and_preserves_exact_recording",
-        "media_tags::tests::real_unicode_tags_are_read_from_mp3_flac_wav_aiff_without_changing_files"
-      ],
-      "repeat": "Both focused repeats and the full isolated repeat passed without source or budget changes.",
-      "boundary": "The failed run overlapped native migration, desktop and volume fixtures. The recording rejection cause was not captured; overlap alone is not proof of its cause."
-    },
-    "nodeTests": {
-      "passed": 17,
-      "failed": 0
-    },
-    "nativeFocusedTests": {
-      "migrationAndNativeWidgets": 8,
-      "producerLibrary": 3,
-      "vst3Graph": 8,
-      "djWorker": 1,
-      "live12InstalledTemplate": 1
     },
     "nativeAudio": [
       {
@@ -998,323 +1287,10 @@
         "scope": "Real CPAL/ALSA and isolated private PipeWire null sink. No physical converter, USB removal or system suspend."
       }
     ],
-    "nativeAtspi": {
-      "nodes": 350,
-      "frames": 734,
-      "scope": "Private D-Bus bridge and actual native actions; no window, physical devices or screen-reader listening proof."
-    },
     "readonlyVolume": {
       "mediaFingerprintRetained": true,
       "scope": "Actual read-only ext4 mount, unmount and remount at another path in a private namespace. Initial removable classification is a test-only enrollment; later UUID resolution uses production discovery. Not physical USB removal."
-    },
-    "nativeCpuRecovery": {
-      "testSource": "44bd5f9c2bf33ddf967d83a328a97bbff6509476",
-      "testsSha256": "2bd54dfc490bfbdf8d33e4a6166a58937a373be0b808f3c63995eacd529b92b5",
-      "analog_listening": false,
-      "audio": {
-        "backend_errors": 0,
-        "callbacks": 35,
-        "cpu_budget_exhaustions": 1,
-        "deadline_overruns": 1,
-        "device_lost": 0,
-        "dropped_buffers": null,
-        "last_callback": {
-          "budget_ns": 5804988,
-          "channels": 4,
-          "elapsed_ns": 283625,
-          "frames": 256,
-          "output_latency_ns": 5804989,
-          "overrun_ns": 0,
-          "render_cpu_ns": 272957,
-          "sample_rate": 44100
-        },
-        "max_elapsed_ns": 31250261,
-        "max_overrun_ns": 25445273,
-        "realtime_denied": 0,
-        "xruns": 1
-      },
-      "device": "hw:CARD=NS7,DEV=0",
-      "held_note_finalized_after_fault": true,
-      "injected_after_callbacks": 32,
-      "injected_callback_cpu_ms": 30,
-      "input_acknowledgment_required": true,
-      "master": 0,
-      "native_recording_and_playback_observed_before_fault": true,
-      "playing_after_reconnect": false,
-      "reconnect_required": true,
-      "recorded_notes": 1,
-      "recovery_message": "Audio output exceeded its real-time CPU limit and was stopped. Your project and recorded notes are retained. Reconnect the previous output or preview and confirm another output. Release keys, pads and platters before resuming. Save and Close remain available.",
-      "reopened_notes": 1
-    },
-    "physicalLoopback": {
-      "headphone_jack_captured": false,
-      "input_device": "hw:CARD=CODEC,DEV=0",
-      "nominal_rate": 44100,
-      "output_detected_on_wired_master_return": [
-        false,
-        true,
-        false,
-        false
-      ],
-      "output_device": "hw:CARD=NS7,DEV=0",
-      "owner_reported_wiring": "NS7 XLR outputs to Peavey 8 channel 6; mixer USB return to m1pro16",
-      "pairs": [
-        {
-          "error": "No measurement: a reliable loopback probe was not found. Captured return peak -65.7 dBFS, RMS -78.7 dBFS; check the selected return and its levels.",
-          "input_channel": 0,
-          "output_channel": 0,
-          "status": "refused"
-        },
-        {
-          "error": "No measurement: a reliable loopback probe was not found. Captured return peak -64.3 dBFS, RMS -75.0 dBFS; check the selected return and its levels.",
-          "input_channel": 1,
-          "output_channel": 0,
-          "status": "refused"
-        },
-        {
-          "error": "No measurement: a reliable loopback probe was not found. Captured return peak -65.7 dBFS, RMS -78.7 dBFS; check the selected return and its levels.",
-          "input_channel": 0,
-          "output_channel": 1,
-          "status": "refused"
-        },
-        {
-          "callback_resolution_ns": 5804988,
-          "correlations": [
-            0.9938580733733047,
-            0.9938567184477566,
-            0.9947936122773131
-          ],
-          "host_return_ns": 13118115,
-          "input_channel": 1,
-          "input_frames": [
-            12027,
-            34075,
-            56123
-          ],
-          "maximum_ns": 14112868,
-          "minimum_ns": 8116020,
-          "output_channel": 1,
-          "status": "matched"
-        },
-        {
-          "error": "No measurement: a reliable loopback probe was not found. Captured return peak -65.7 dBFS, RMS -78.7 dBFS; check the selected return and its levels.",
-          "input_channel": 0,
-          "output_channel": 2,
-          "status": "refused"
-        },
-        {
-          "error": "No measurement: a reliable loopback probe was not found. Captured return peak -64.7 dBFS, RMS -75.0 dBFS; check the selected return and its levels.",
-          "input_channel": 1,
-          "output_channel": 2,
-          "status": "refused"
-        },
-        {
-          "error": "No measurement: a reliable loopback probe was not found. Captured return peak -66.8 dBFS, RMS -78.7 dBFS; check the selected return and its levels.",
-          "input_channel": 0,
-          "output_channel": 3,
-          "status": "refused"
-        },
-        {
-          "error": "No measurement: a reliable loopback probe was not found. Captured return peak -63.9 dBFS, RMS -75.0 dBFS; check the selected return and its levels.",
-          "input_channel": 1,
-          "output_channel": 3,
-          "status": "refused"
-        }
-      ],
-      "probe_level_dbfs": -36,
-      "scope": "Three distinct probe matches per successful output/input pair. Common host callback-entry timing includes converter, mixer and callback batching; this is not isolated analog converter latency or an independent-channel claim. Outputs 1/2 are the expected master pair; optional outputs 3/4 are a channel-assignment diagnostic."
-    },
-    "install": {
-      "pid": 3194371,
-      "invocation": "404cdde06a5449d8810d44b0b35d38a2",
-      "preferencesSchema": 26,
-      "projectSchema": 35,
-      "previousBinarySha256": "f54fe26efd2b4e67664cf9a2bbfe5615b1b9e11a767eeb0244fceac5efc802d1",
-      "nativeSavedProjectReopened": true,
-      "projectFileSha256": "000168ee86d4dc2923288fb546a1ec565df0347384238a11949baa87e053a090",
-      "configurationChangedFiles": [],
-      "globalClockRestored": true,
-      "decksStopped": true,
-      "midiInput": {
-        "coalesced": 0,
-        "disconnected": 0,
-        "dispatched": 6,
-        "dropped": 0,
-        "oversized": 0,
-        "queued": 6,
-        "received": 6,
-        "resets": 0
-      },
-      "midiFeedback": {
-        "connected": 4,
-        "failed": 0,
-        "sent": 532
-      },
-      "audio": {
-        "backend_errors": 0,
-        "callbacks": 90432,
-        "cpu_budget_exhaustions": 0,
-        "deadline_overruns": 8,
-        "device_lost": 0,
-        "dropped_buffers": null,
-        "last_callback": {
-          "budget_ns": 5804988,
-          "channels": 4,
-          "elapsed_ns": 276213,
-          "frames": 256,
-          "output_latency_ns": 5238095,
-          "overrun_ns": 0,
-          "render_cpu_ns": 259333,
-          "sample_rate": 44100
-        },
-        "max_elapsed_ns": 64207346,
-        "max_overrun_ns": 58402358,
-        "realtime_denied": 0,
-        "xruns": 8
-      },
-      "boundary": "Existing recovery-storage warning retained. Eight startup deadline misses and eight XRUNs were observed; this is not a stage-quality pass."
-    },
-    "pending": [
-      "Authorized user-authored Live playback and render comparisons",
-      "Physical left master and headphone return capture",
-      "Physical unplug/replug and system suspend while recording/performing",
-      "Hardware large-set transition and waveform/output timing",
-      "Extended performance and per-function controller qualification"
-    ],
-    "evidence": [
-      {
-        "name": "profiles-qualified/42/source-head.txt",
-        "sha256": "ae6dc577f397593924d2015d78f95738467582b2244177126ad96964053103bd"
-      },
-      {
-        "name": "profiles-qualified/42/license-manifest.json",
-        "sha256": "9f60e17840f1a65fcfd6c1b252e93434488f0031d715bbc040dc4e3d63781172"
-      },
-      {
-        "name": "combined-42-full.log",
-        "sha256": "c4000c3a9ce33a820b370cdc94e525513b354361aad7691807a11cd42f65ac5e"
-      },
-      {
-        "name": "combined-42-full-isolated.log",
-        "sha256": "dd1dd21cc447f2c52b6549a70220aeac7e8cc7666ccc3ce89969d8450c02991c"
-      },
-      {
-        "name": "combined-42-node-tests.log",
-        "sha256": "b84785835ddb46240857f281fba2516ad9ebf3eb816d3a20b07925270beb0c33"
-      },
-      {
-        "name": "profiles-qualified/42/showload-recheck.log",
-        "sha256": "3f22064672956a4ab660923191a46a7eacb26641bb3e236e14871129d0d121c6"
-      },
-      {
-        "name": "profiles-qualified/42/media-tags-recheck.log",
-        "sha256": "73864b5f41be1218989bcf76738d9604c24dfa70dc4f1dc0ccf9d65869af5520"
-      },
-      {
-        "name": "profiles-qualified/42/ableton.log",
-        "sha256": "4f52fe331fe860916621eeab98b66d0a9bd9cc4754e2186f0fc9774d91427832"
-      },
-      {
-        "name": "profiles-qualified/42/live12-template.log",
-        "sha256": "1313166cf3110151730974fdb0ebba557bffbd70d0c24e034f17b91952ab35e7"
-      },
-      {
-        "name": "profiles-qualified/42/cpu-owner.log",
-        "sha256": "3d32bbe2d1e60ea98882cab1c52ab8f99ae606a1f621ad1e7d9291002ffb0421"
-      },
-      {
-        "name": "profiles-qualified/42/native-ableton-workflows.log",
-        "sha256": "04c8091b6d85ab705e4f4a70c81663b98cda4103aeeecf0b5e714625d39112d6"
-      },
-      {
-        "name": "profiles-qualified/42/native-producer-library.log",
-        "sha256": "bece595e91b6c4d8babad5707883f2e3578e58b026d7b56518d0fa16ddec43d8"
-      },
-      {
-        "name": "profiles-qualified/42/native-plugin-graph.log",
-        "sha256": "cb3fb96e225ead59ae21b081d8826337328be6640795c49b8b26608c47e155d1"
-      },
-      {
-        "name": "profiles-qualified/42/native-dj-worker.log",
-        "sha256": "90dcbbc3da9f1893ec7a8dd491d9ff3c70df2e1ba24341df588fa58304a2281f"
-      },
-      {
-        "name": "profiles-qualified/42/native-bridge-tests-driver.log",
-        "sha256": "fe7c17ddab89aa082ff17369b4cb5ff42faaeba1e92109b7061eebe72aa59122"
-      },
-      {
-        "name": "profiles-qualified/41/ns7-cpu.log",
-        "sha256": "a40b28a86eb0c8200931d5b49409627b3672e55571711a97329d986ebbd9d7c1"
-      },
-      {
-        "name": "profiles-qualified/41/cpu-kernel.log",
-        "sha256": "6ff962d95b75a7395437a786cfaed13ee993e3abfd7d76d87caeea43c544d31c"
-      },
-      {
-        "name": "cpu-budget/native-41/ns7-cpu-recovery.json",
-        "sha256": "b01bec025a1cd786b434c7de7d6a7c72e24c04a50ee95eb37ecf478d52b32584"
-      },
-      {
-        "name": "loopback/ns7-peavey-41/ns7-peavey-pairs.json",
-        "sha256": "945b4dbf29e22240489139c39cdfc13affbb85cac66f58c05639c22962e9c5bd"
-      },
-      {
-        "name": "native-ui/combined-42-install-restoration-receipt.json",
-        "sha256": "680749eaf469b7a68e0d78cf55e72bef39b15e84579045f7f4128abe5dbdb3f7"
-      },
-      {
-        "name": "release-qualified/10/package-proof.json",
-        "sha256": "b603f3d1e63dd2be65b66eb043cb557ffbc2508985788938ef746d61216dc73a"
-      },
-      {
-        "name": "t/v42/volume-remount.json",
-        "sha256": "fedbb1535455eaf8e4bd65c73df498bfbc26fcdc960b1a9fe5eb21fb846c7dd5"
-      },
-      {
-        "name": "t/v42/driver.json",
-        "sha256": "d4a096db8084dfffb612848b5e02aff41e31ee5e2c5672115a9f5ade8808d627"
-      },
-      {
-        "name": "t/n42bridge-tests/report.json",
-        "sha256": "1159b7f16de54bd535f61761b738624c7092232ce2d9e7f06fb042cbd980cc7b"
-      },
-      {
-        "name": "t/a42r/receipt.json",
-        "sha256": "19259888d7d7989035985e046ff49c354915fcd686393766ebb35e18b141a094"
-      },
-      {
-        "name": "t/a42r/cleanup.json",
-        "sha256": "f1a44eb7e2d55ad40e4c5f7ce9b64c27083087a80eb1e211aa2ac2c75d3f6645"
-      },
-      {
-        "name": "t/a42r/native.log",
-        "sha256": "ad806870362bc00a42c82954bd60dee84da8560d6305b65b2a5d59491e5586d6"
-      },
-      {
-        "name": "t/a42d/receipt.json",
-        "sha256": "11d0350fec03a821e2aea5db7ed0d69a940a580cc80af2f241566cd285068ab9"
-      },
-      {
-        "name": "t/a42d/cleanup.json",
-        "sha256": "b3a5e39e30006a83a505b074103c5abaa967157d443429d8e4de591c1c50a5b7"
-      },
-      {
-        "name": "t/a42d/native.log",
-        "sha256": "a6044d84112c3ecf287984a914b53e6da8e45790ec43b7ad5dea8e5cb911442f"
-      },
-      {
-        "name": "t/a42c/receipt.json",
-        "sha256": "0a611c722489dd555545293be8a1f22a41d03d984be998a515308accf782cba9"
-      },
-      {
-        "name": "t/a42c/cleanup.json",
-        "sha256": "a9d0ab8b12beae7e0551acb66a30fdd73554f7ae7090af16a2f221c45cd98348"
-      },
-      {
-        "name": "t/a42c/native.log",
-        "sha256": "b5e204cb83bce709973873458f3172648f42b29fa6684355c0da6a1970d91794"
-      }
-    ]
+    }
   },
   "source49": {
     "source": "dd1ef555d1004803a11ae8ad67a0bd0c403e2ffb",
@@ -2051,6 +2027,66 @@
     {
       "name": "native-ui/49-owner-clock-restored-status.json",
       "sha256": "9bded04b615d3efcea6892fbbee776e51550b3637d625ef075b4c48a2fd41031"
+    },
+    {
+      "name": "profiles-qualified/51/provenance.json",
+      "sha256": "90203c985c1b890464dbcde36aa6f7a56083945f1bd6680191f7636ea5803721"
+    },
+    {
+      "name": "profiles-qualified/51/routed-live-set.log",
+      "sha256": "0adbb7d0fbfb95a0a97833f2142f4698f4697cae743a8ebd5c19d8167e4398cc"
+    },
+    {
+      "name": "profiles-qualified/51/native-preload.log",
+      "sha256": "81f2e9670850d689643aa70a23187b1934367e0e2ebc6e90bcb8e1bd5d97163a"
+    },
+    {
+      "name": "profiles-qualified/51/audio-delivery-regressions.log",
+      "sha256": "03e43ea94ec305c170b8b27f17e7c31538f405c06a55850ead64fd45c5877925"
+    },
+    {
+      "name": "profiles-qualified/52/provenance.json",
+      "sha256": "4ac5fdcc7faf51a49bbc355299c6d6cd96b487d0b0078aaa38310ad3f7b81fd2"
+    },
+    {
+      "name": "profiles-qualified/52/guarded-live-set.log",
+      "sha256": "56f186165abe377fea93608a59f8474ba77bcec120058b331bda3fce2e2ead05"
+    },
+    {
+      "name": "profiles-qualified/52/native-preload.log",
+      "sha256": "21ba9a6a4b1d81eb9f95d610212007c7badee399d426b0855a397b790e5f028e"
+    },
+    {
+      "name": "profiles-qualified/53/provenance.json",
+      "sha256": "c95d3c56c42849b133fa322447e87ba7b88ce2614419bd9ba3f1e735fdb38773"
+    },
+    {
+      "name": "profiles-qualified/53/guarded-live-set.log",
+      "sha256": "5fa4d74b66a1b312ccbac69988b641af5faec07ad875e75ccb005656e77a36d3"
+    },
+    {
+      "name": "profiles-qualified/53/native-preload.log",
+      "sha256": "2af5b28fb5806ade2b25c645c9a7a3b15c316726d7c5609275e399308c0f32aa"
+    },
+    {
+      "name": "profiles-qualified/53/native-ns7-routed-transition.log",
+      "sha256": "5ca85f382681233335e8d2dd3e3b556367f971eb60c723d937d17b94e95f3134"
+    },
+    {
+      "name": "usb-identities-53.json",
+      "sha256": "bf781ac334143683cef8ba1b5c37bce658880ddd5838eefb6d4fd5539a1e50c8"
+    },
+    {
+      "name": "native-ui/pre-routed-53-backup-proof.json",
+      "sha256": "52415bcd2d84599d084ff230f7d86a2da5f92197ecf8ccce590de1b9d76ca1e5"
+    },
+    {
+      "name": "native-ui/49-pre-53-qualification-status.json",
+      "sha256": "045eb9987ad210c7fa99a9f2bddbf0d4b44a85f3c10b0bf6e58f0500b6864e0e"
+    },
+    {
+      "name": "native-ui/49-post-routed-53-restored-status.json",
+      "sha256": "e47464b9394ffc93570c6f55212aa822525a3a5fcd8498b67ced44bc208c6907"
     }
   ]
 }
