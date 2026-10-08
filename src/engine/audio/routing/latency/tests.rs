@@ -50,7 +50,7 @@ fn retained_zero_frames_keep_original_validity_signed_samples_and_wrapped_delays
             }
         });
         assert_eq!(counts, crate::engine::test_alloc::Counts::default());
-        assert_eq!(history.storage_bytes(), 17 * (width * 4 + 1));
+        assert_eq!(history.bytes(), 17 * (width * 4 + 1));
     }
 }
 

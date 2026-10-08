@@ -2207,6 +2207,10 @@
     {
       "name": "native-ui/49-after-release-58-status.json",
       "sha256": "05693f7f522e9b12182eea0799ff4cc114a520ac92434954b0ab1af95fba8ebf"
+    },
+    {
+      "name": "combined-59-release-test-build.log",
+      "sha256": "a365bc3eda856be7bb5ca7c8d2356654d163f65ea55aa7b4aad5844660b225ed"
     }
   ],
   "routedQualificationThrough58": {
@@ -2718,6 +2722,11 @@
       }
     },
     "status": "Native routed deadline/XRUN/CPU-limit failure retained; implementation and qualification continue. Full final-suite, physical detach/suspend, authored Live10/11, captured waveform and extended loaded performance remain unqualified.",
-    "nextImplementation": "Uncompiled: remove unused Analog sine evaluation, retain zero history frames without PCM writes while preserving exact signed samples and continuity, inline bounded history reads, and advance the position-generation fixture through its initial demo load fade."
+    "nextImplementation": "Uncompiled: remove unused Analog sine evaluation, retain zero history frames without PCM writes while preserving exact signed samples and continuity, inline bounded history reads, and advance the position-generation fixture through its initial demo load fade.",
+    "source59Compile": {
+      "source": "77012e07c6bf38dbcddf187208a2a54b4c0f4f20",
+      "status": "failed before binary publication",
+      "error": "E0599: new fixture called History.storage_bytes rather than the existing History.bytes. Assertion corrected; recompile pending."
+    }
   }
 }
