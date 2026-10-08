@@ -38,3 +38,5 @@ The catalogs under `tests/fixtures/controller-catalogs/` are original signed met
 | MPD232 LiveLite | Compiled fixtures | Compiled fixtures | Compiled fixtures | Compiled fixtures | Safe inquiry/send facts only; current response pending | No audio interface |
 
 Fixture results establish the implemented message path, not physical compatibility. The reference for dated observations is [the powered-hub receipt](../docs/validation/powered-hub-controller-qualification.md). Current input, application, lights, motors and audio results remain separate pending checks. No NS7/SP1/MPD resweep occurred in that receipt.
+
+The [acquisition checks](../docs/validation/controller-profile-acquisition.md) record the published release, installed HTTPS acquisition, stopped application of all four profiles, native inquiry responses, and network-isolated cache recovery. Their software results do not replace a physical control check.
