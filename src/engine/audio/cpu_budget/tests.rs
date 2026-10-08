@@ -236,6 +236,20 @@ impl super::super::owner::Backend for BudgetBackend {
 #[test]
 #[ignore = "Requires exclusive NS7 master XLR outputs wired to Peavey USB return and OMATAINER_LOOPBACK_DIR under /home; emits quiet -48 dBFS probes"]
 fn native_ns7_master_to_peavey_usb_return_channels() {
+    let output_channels = std::env::var("OMATAINER_LOOPBACK_OUTPUT_CHANNELS")
+        .map(|value| value.parse::<u16>().expect("numeric channel count"))
+        .unwrap_or(2);
+    assert!(matches!(output_channels, 2 | 4));
+    native_ns7_loopback(output_channels, 0..2, false);
+}
+
+#[test]
+#[ignore = "Requires exclusive NS7 headphone jack wired through a stereo breakout to Peavey 7/8, master cables disconnected, and OMATAINER_LOOPBACK_DIR under /home; emits quiet probes"]
+fn native_ns7_headphones_to_peavey_usb_return_channels() {
+    native_ns7_loopback(4, 2..4, true);
+}
+
+fn native_ns7_loopback(output_channels: u16, required: std::ops::Range<u16>, headphones: bool) {
     use super::super::{calibration, config};
     let directory = std::path::PathBuf::from(std::env::var_os("OMATAINER_LOOPBACK_DIR").unwrap());
     assert!(directory.starts_with("/home"));
@@ -244,10 +258,11 @@ fn native_ns7_master_to_peavey_usb_return_channels() {
         .map(|value| value.parse::<f32>().expect("numeric probe level"))
         .unwrap_or(-48.0);
     assert!(level_db.is_finite() && (-60.0..=-24.0).contains(&level_db));
-    let output_channels = std::env::var("OMATAINER_LOOPBACK_OUTPUT_CHANNELS")
-        .map(|value| value.parse::<u16>().expect("numeric channel count"))
-        .unwrap_or(2);
-    assert!(matches!(output_channels, 2 | 4));
+    let wiring = if headphones {
+        "NS7 headphone jack through stereo left/right breakout to Peavey PV8 USB inputs 7/8; master feed disconnected; mixer USB return to m1pro16"
+    } else {
+        "NS7 XLR outputs to Peavey PV8 USB stereo strip 7/8; mixer USB return to m1pro16"
+    };
     let output = config::Plan {
         backend: "ALSA".into(),
         graph: Default::default(),
@@ -273,7 +288,7 @@ fn native_ns7_master_to_peavey_usb_return_channels() {
     for output_channel in 0..output_channels {
         for input_channel in 0..2 {
             let request = calibration::Request {
-                profile: "NS7 XLR -> Peavey PV8 USB channels 7/8 -> USB Audio CODEC".into(),
+                profile: wiring.into(),
                 input: input.clone(),
                 output: output.clone(),
                 input_channel,
@@ -295,10 +310,15 @@ fn native_ns7_master_to_peavey_usb_return_channels() {
                 }
             };
             pairs.push(row);
-            std::fs::write(directory.join("ns7-peavey-pairs.json"),serde_json::to_vec_pretty(&serde_json::json!({"nominal_rate":44100,"probe_level_dbfs":level_db,"output_device":output.device,"input_device":input.device,"owner_reported_wiring":"NS7 XLR outputs to Peavey PV8 USB stereo strip 7/8; mixer USB return to m1pro16","pairs":pairs,"output_detected_on_wired_master_return":found,"headphone_jack_captured":false,"scope":"Three distinct probe matches per successful output/input pair. Common host callback-entry timing includes converter, mixer and callback batching; this is not isolated analog converter latency or an independent-channel claim. Outputs 1/2 are the expected master pair; optional outputs 3/4 are a channel-assignment diagnostic."})).unwrap()).unwrap();
+            std::fs::write(directory.join("ns7-peavey-pairs.json"),serde_json::to_vec_pretty(&serde_json::json!({"nominal_rate":44100,"probe_level_dbfs":level_db,"output_device":output.device,"input_device":input.device,"owner_reported_wiring":wiring,"pairs":pairs,"output_detected_on_selected_return":found,"required_output_channels":required.clone().collect::<Vec<_>>(),"headphone_jack_captured":headphones&&required.clone().all(|channel|found[channel as usize]),"scope":"Three distinct probe matches per successful output/input pair. Common host callback-entry timing includes converter, mixer and callback batching; this is not isolated analog converter latency, simultaneous stereo playback or physical listening proof. Outputs 1/2 are the expected master pair; outputs 3/4 must reach the directly wired headphone jack for headphone qualification."})).unwrap()).unwrap();
         }
     }
-    assert!(found[..2].iter().all(|v|*v),"Each expected NS7 master output must deliver all three probes to at least one Peavey USB input: {pairs:?}");
+    assert!(required.clone().all(|channel|found[channel as usize]),"Each selected NS7 output must deliver all three probes to at least one Peavey USB input: {pairs:?}");
+    if headphones {
+        assert!(!found[..2].iter().any(|value|*value), "Master probes unexpectedly reached the headphone return: {pairs:?}");
+        let matched_inputs: Vec<_> = required.map(|channel| pairs.iter().filter(|row|row["output_channel"]==channel && row["status"]=="matched").map(|row|row["input_channel"].as_u64().unwrap()).collect::<Vec<_>>()).collect();
+        assert!(matched_inputs.iter().all(|inputs|inputs.len()==1) && matched_inputs[0]!=matched_inputs[1], "Headphone left/right must arrive on separate Peavey inputs: {pairs:?}");
+    }
 }
 
 #[test]

@@ -28,20 +28,20 @@ pub(super) struct ReadResult {
     pub records: Vec<Record>,
     pub warning: Option<String>,
 }
-struct Bounded(Vec<u8>);
+struct Bounded { bytes: Vec<u8>, limit: usize }
 impl Write for Bounded {
     fn write(&mut self, bytes: &[u8]) -> std::io::Result<usize> {
         if self
-            .0
+            .bytes
             .len()
             .checked_add(bytes.len())
-            .is_none_or(|len| len > RECORD_LIMIT)
+            .is_none_or(|len| len > self.limit)
         {
-            return Err(std::io::Error::other(
-                "recovery record metadata exceeds 8 MiB",
-            ));
+            return Err(std::io::Error::other(format!(
+                "recovery metadata exceeds {} byte bound", self.limit,
+            )));
         }
-        self.0.extend_from_slice(bytes);
+        self.bytes.extend_from_slice(bytes);
         Ok(bytes.len())
     }
     fn flush(&mut self) -> std::io::Result<()> {
@@ -49,16 +49,19 @@ impl Write for Bounded {
     }
 }
 pub(super) fn json<T: Serialize>(value: &T) -> Result<Vec<u8>, Error> {
-    let mut output = Bounded(Vec::new());
+    bounded_json(value, crate::project_file::DEFAULT_METADATA_LIMIT)
+}
+fn bounded_json<T: Serialize>(value: &T, limit: usize) -> Result<Vec<u8>, Error> {
+    let mut output = Bounded { bytes: Vec::new(), limit };
     serde_json::to_writer(&mut output, value).map_err(|e| Error::invalid(e.to_string()))?;
-    Ok(output.0)
+    Ok(output.bytes)
 }
 pub(super) fn frame(
     sequence: u64,
     previous: [u8; 32],
     body: &Body,
 ) -> Result<(Vec<u8>, [u8; 32]), Error> {
-    let json = json(body)?;
+    let json = bounded_json(body, RECORD_LIMIT)?;
     let mut bytes = Vec::with_capacity(HEADER + json.len() + 32);
     bytes.extend_from_slice(MAGIC);
     bytes.extend_from_slice(&sequence.to_le_bytes());
@@ -77,7 +80,7 @@ pub(super) fn read(path: &Path, cancel: &AtomicBool) -> Result<ReadResult, Error
         .len();
     if len > SEGMENT_LIMIT {
         return Err(Error::invalid(
-            "journal segment exceeds 64 MiB replay bound",
+            "journal segment exceeds 65 MiB replay bound",
         ));
     }
     let mut result = ReadResult {

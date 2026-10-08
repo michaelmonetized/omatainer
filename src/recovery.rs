@@ -11,8 +11,8 @@ use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
 pub use storage::{discard, discover, lookup_exact, recover, session_digest, Store};
 
-const RECORD_LIMIT: usize = 8 * 1024 * 1024;
-const SEGMENT_LIMIT: u64 = 64 * 1024 * 1024;
+const RECORD_LIMIT: usize = crate::project_file::DEFAULT_METADATA_LIMIT + 64 * 1024;
+const SEGMENT_LIMIT: u64 = 65 * 1024 * 1024;
 const RECORDS_LIMIT: u64 = 256;
 const SESSIONS_LIMIT: usize = 128;
 const FILES_LIMIT: usize = 100_000;
