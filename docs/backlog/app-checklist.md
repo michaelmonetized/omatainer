@@ -6,7 +6,7 @@ Michael resumed physical checks on 2026-10-06. All MPD A/B/C controls were captu
 
 Each issue appears once, after its dependencies. The Code column checks off implemented code, including the existing stack, and does not claim complete acceptance. Accepted requires complete recorded acceptance. The eight provider integrations previously excluded by Michael stay outside this release. No open issue is automatically closed by this checklist.
 
-127 existing stack · 68 implemented · 9 partial · 144 planned · 0 accepted · 8 outside release
+127 existing stack · 69 implemented · 9 partial · 143 planned · 0 accepted · 8 outside release
 
 - [x] High-resolution stereo source peaks with measured rainbow frequency bands, native-rate validation, project reopen and pixel-scaled rendering. [Receipt](../validation/rainbow-waveforms.md)
 
@@ -244,7 +244,7 @@ Each issue appears once, after its dependencies. The Code column checks off impl
 | [ ] | [#231](https://github.com/michaelmonetized/omatainer/issues/231) | Validate loudness, true peaks and metadata before delivery | planned | #179 |  |
 | [x] | [#232](https://github.com/michaelmonetized/omatainer/issues/232) | Add selectable one-knob channel effects | implemented | #187 | [receipt](../../docs/validation/channel-effects.md), [receipt](../../docs/validation/channel-effects-receipt.json) |
 | [ ] | [#233](https://github.com/michaelmonetized/omatainer/issues/233) | Add DVS signal calibration and diagnostics | planned | #201 |  |
-| [ ] | [#234](https://github.com/michaelmonetized/omatainer/issues/234) | Save and share DJ effect presets and unit layouts | planned | #187 |  |
+| [x] | [#234](https://github.com/michaelmonetized/omatainer/issues/234) | Save and share DJ effect presets and unit layouts | implemented | #187 | [receipt](../../docs/validation/dj-fx-presets.md), [receipt](../../docs/validation/dj-fx-presets-receipt.json) |
 | [ ] | [#235](https://github.com/michaelmonetized/omatainer/issues/235) | Add instant doubles and deck transfer | planned | #189, #131 |  |
 | [x] | [#236](https://github.com/michaelmonetized/omatainer/issues/236) | Add momentary loop-roll pad performance | implemented | #192, #203 | [receipt](../../docs/validation/roll-reverse.md), [receipt](../../docs/validation/roll-reverse-receipt.json) |
 | [x] | [#237](https://github.com/michaelmonetized/omatainer/issues/237) | Add reverse playback and momentary censor controls | implemented | #203 | [receipt](../../docs/validation/roll-reverse.md), [receipt](../../docs/validation/roll-reverse-receipt.json) |

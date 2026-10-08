@@ -25,6 +25,8 @@ pub enum Input {
         delta: i16,
     },
     DjFx { bank: u8, control: fx::Control },
+    DjFxName { bank: u8, name: super::dj_fx_preset::Name },
+    DjFxRecall(super::dj_fx_recall::Request),
     SamplerVolume(f32),
     SamplerPressure {
         source: u64,
@@ -58,6 +60,8 @@ impl Input {
                 delta,
             } => bank < 2 && control < 128 && (-64..=63).contains(&delta),
             Self::DjFx { bank, control } => bank < 2 && control.valid(),
+            Self::DjFxName { bank, .. } => bank < 2,
+            Self::DjFxRecall(request) => request.valid(),
             Self::SamplerVolume(value) => value.is_finite() && (0.0..=1.0).contains(&value),
             Self::SamplerPressure { pad, value, .. } => {
                 pad < 16 && value.is_finite() && (0.0..=1.0).contains(&value)
@@ -91,12 +95,14 @@ pub struct Status {
     pub device_master: bool,
     pub master_parameter: [f32; 3],
     pub fx: [EffectBank; 2],
+    pub fx_recall: super::dj_fx_recall::Receipt,
     pub sampler_volume: f32,
     pub sampler_playing: [bool; 16],
 }
 
 #[derive(Clone, Copy, Debug, serde::Serialize)]
 pub struct EffectBank {
+    pub name: super::dj_fx_preset::Name,
     pub kinds: [super::FxKind; 3],
     pub wet: [f32; 3],
     pub on: [bool; 3],
@@ -113,6 +119,7 @@ pub struct EffectBank {
 impl Default for EffectBank {
     fn default() -> Self {
         Self {
+            name: super::dj_fx_preset::Name::new("Unit").expect("Visible default label"),
             kinds: [
                 super::FxKind::Echo,
                 super::FxKind::Reverb,
@@ -142,6 +149,7 @@ pub(super) struct State {
     deck_fx: [[[fx::Processor; 3]; 4]; 2],
     pub(in crate::engine) channel_fx: [super::channel_fx::Channel; 2],
     fx_rate: f32,
+    pub(in crate::engine) fx_recall: super::dj_fx_recall::Transition,
     sampler_slots: [Option<usize>; 2],
     sampler_history_target: [Option<super::session::Reference>; 2],
     pad_owners: [Option<(u64, Option<u32>, u8)>; super::control::MAX_COMMANDS],
@@ -158,6 +166,8 @@ impl State {
             sampler_volume: 1.0,
             ..Status::default()
         };
+        status.fx[0].name = super::dj_fx_preset::Name::new("Unit A").expect("Visible unit label");
+        status.fx[1].name = super::dj_fx_preset::Name::new("Unit B").expect("Visible unit label");
         status.fx[0].assigned[0] = true;
         status.fx[1].assigned[1] = true;
         Ok(Self {
@@ -176,6 +186,7 @@ impl State {
             deck_fx: [fx::prepare_bank(sr)?, fx::prepare_bank(sr)?],
             channel_fx: [super::channel_fx::Channel::new(sr)?, super::channel_fx::Channel::new(sr)?],
             fx_rate: sr,
+            fx_recall: super::dj_fx_recall::Transition::default(),
             sampler_slots: [None; 2],
             sampler_history_target: [None; 2],
             track_gain: std::array::from_fn(|_| {
@@ -260,6 +271,11 @@ impl RtEngine {
                 note,
             } => self.apc_input(channel, control, value, note),
             Input::DjFx { bank, control } => { let _ = self.dj_fx_control(bank, control); },
+            Input::DjFxName { bank, name } => self.surface.status.fx[usize::from(bank)].name = name,
+            Input::DjFxRecall(request) => {
+                self.surface.fx_recall.begin(request, self.surface.status.fx.map(Into::into), &self.session, self.sr);
+                self.surface.status.fx_recall = self.surface.fx_recall.receipt;
+            },
             Input::SamplerVolume(value) => self.surface.status.sampler_volume = value,
             Input::TrackSend { track, send, value } => {
                 self.surface.sends[usize::from(track)][usize::from(send)] = value

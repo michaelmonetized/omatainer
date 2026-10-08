@@ -16,6 +16,8 @@ impl App {
             accessibility::scope(ui, "DJ FX", |ui| {
                 ui.label("Each unit can process Deck A, Deck B, a selected sampler destination, and Master. Assigning several sources applies the unit separately to each; assigning a deck and Master applies it twice along that path.");
                 let scroll=egui::ScrollArea::vertical().max_height((ctx.screen_rect().height()-180.0).max(120.0)).show(ui, |ui| {
+                    self.dj_fx_presets_ui(ui);
+                    ui.separator();
                     ui.heading("Channel effects");
                     ui.label("The center detent is dry. Type changes blend over five milliseconds; crossing the center clears the previous side's echo or room history.");
                     for deck in 0..2 {
@@ -51,7 +53,7 @@ impl App {
                         let settings = self.snap.surfaces.fx[bank];
                         let scope=format!("Unit {}", (b'A'+bank as u8) as char);
                         ui.push_id(bank, |ui| accessibility::scope(ui, &scope, |ui| {
-                            ui.heading(&scope);
+                            ui.heading(format!("{} · {}", scope, settings.name.as_str()));
                             let send=|control| self.send(Command::Surface(Input::DjFx { bank: bank as u8, control }));
                             ui.horizontal_wrapped(|ui| {
                                 for deck in 0..2 {

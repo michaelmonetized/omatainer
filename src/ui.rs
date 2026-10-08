@@ -29,6 +29,7 @@ use bpm::{Bpm, Origin};
 use crate::engine::media_source::FileFingerprint;
 mod fx_controls;
 mod dj_fx;
+mod dj_fx_presets;
 mod plugins;
 mod library_view;
 mod library_layout;
@@ -258,6 +259,7 @@ pub struct App {
     deck_pad_inputs: deck_pads::Inputs,
     deck_direction: deck_direction::Inputs,
     dj_fx_open: bool,
+    dj_fx_presets: dj_fx_presets::Panel,
     cue_audition: cue_audition::Inputs,
     pitch_inputs: pitch_controls::Inputs,
     shortcut_focus: keyboard::ShortcutFocus,
@@ -418,6 +420,7 @@ impl App {
             deck_pad_inputs: deck_pads::Inputs::new(),
             deck_direction: deck_direction::Inputs::new(),
             dj_fx_open: false,
+            dj_fx_presets: Default::default(),
             cue_audition: cue_audition::Inputs::new(),
             pitch_inputs: pitch_controls::Inputs::new(),
             shortcut_focus: keyboard::ShortcutFocus::default(),
@@ -920,6 +923,7 @@ impl App {
         self.project_import.poll();
         self.ableton.poll();
         self.project_versions.poll();
+        self.dj_fx_presets.poll(&self.snap);
         self.poll_sampler_editor();
         self.poll_library_backup(ctx);
         self.poll_library_analysis();
