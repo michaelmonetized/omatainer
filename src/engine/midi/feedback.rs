@@ -41,6 +41,7 @@ impl Surface {
         messages
     }
 
+    #[cfg(test)]
     fn named(name: &str) -> Option<Self> {
         if super::connections::application_port(name) {
             return None;
@@ -219,7 +220,10 @@ pub struct Stats {
 }
 
 struct Output {
-    name: String,
+    incarnation:String,
+    profile_hash:String,
+    port_id:String,
+    registry:Arc<super::catalog::runtime::Registry>,
     surface: Surface,
     connection: MidiOutputConnection,
     values: BTreeMap<(u8, u8), u8>,
@@ -250,6 +254,7 @@ impl Motors {
 
 impl Drop for Output {
     fn drop(&mut self) {
+        self.registry.output_result(&self.port_id,false,false,false);
         match self.surface {
             Surface::Ns7 => {
                 for controller in [66, 76] { let _ = self.connection.send(&[0xb0, controller, 127]); }
@@ -272,6 +277,7 @@ impl Manager {
         cmd: CommandPort,
         input_counters: Arc<super::handoff::InputCounters>,
         policy: impl Fn() -> Arc<PolicyStatus> + Send + 'static,
+        registry:Arc<super::catalog::runtime::Registry>,
     ) -> std::io::Result<Self> {
         let stopped = Arc::new(AtomicBool::new(false));
         let stop = stopped.clone();
@@ -282,12 +288,13 @@ impl Manager {
             .spawn(move || {
                 let mut outputs: BTreeMap<String, Output> = BTreeMap::new();
                 let mut discover = Instant::now();
+                let mut profile_view=None;
                 while !stop.load(Relaxed) {
                     let Some(snapshot) = snapshot.upgrade() else {
                         break;
                     };
                     let policy = policy();
-                    outputs.retain(|_, output| policy.requested_policy.allows(&output.name));
+                    outputs.retain(|id, output| registry.output(id).is_some_and(|d|d.profile_hash==output.profile_hash && d.device.connection==output.incarnation && (policy.requested_policy.allows(&d.name)||policy.requested_policy.allows(&d.endpoint_name))));
                     if Instant::now() >= discover && !policy.pending() {
                         discover = Instant::now() + Duration::from_secs(2);
                         if let Ok(_permit) = cmd.performance().project_change() {
@@ -298,13 +305,11 @@ impl Manager {
                                     if outputs.contains_key(&port.id()) {
                                         continue;
                                     }
-                                    let Ok(name) = probe.port_name(&port) else {
-                                        continue;
-                                    };
-                                    let Some(surface) = Surface::named(&name) else {
-                                        continue;
-                                    };
-                                    if !policy.requested_policy.allows(&name) {
+
+                                    let Some(device)=registry.output(&port.id()) else{continue;};
+                                    let profile=device.profile.as_ref().unwrap();
+                                    let surface=match profile.feedback{super::catalog::Driver::Ns7=>Surface::Ns7,super::catalog::Driver::Sp1=>Surface::Sp1,super::catalog::Driver::Apc40Mk2=>Surface::ApcMk2,super::catalog::Driver::Mpd232=>Surface::Mpd232,super::catalog::Driver::Generic=>continue};
+                                    if !policy.requested_policy.allows(&device.name) && !policy.requested_policy.allows(&device.endpoint_name) {
                                         continue;
                                     }
                                     let Ok(midi) = MidiOutput::new("omatainer-feedback") else {
@@ -313,7 +318,9 @@ impl Manager {
                                     match midi.connect(&port, "omatainer-feedback-out") {
                                         Ok(mut connection) => {
                                             let mut ready = true;
-                                            for message in surface.initialization() {
+                                            let initialization=match profile.initialization{super::catalog::Initialization::None=>Vec::new(),super::catalog::Initialization::Inquiry=>vec![vec![0xf0,0x7e,0x7f,6,1,0xf7]],super::catalog::Initialization::Apc40Mk2Host41=>surface.initialization()};
+                                            let initialization_sent = !initialization.is_empty();
+                                            for message in initialization {
                                                 if connection.send(&message).is_ok() {
                                                     counts.sent.fetch_add(1, Relaxed);
                                                 } else {
@@ -322,13 +329,14 @@ impl Manager {
                                                     break;
                                                 }
                                             }
+                                            registry.output_result(&port.id(),ready,ready&&initialization_sent,!ready);
                                             if !ready {
                                                 continue;
                                             }
                                             outputs.insert(
                                                 port.id(),
                                                 Output {
-                                                    name,
+                                                    incarnation:device.device.connection,profile_hash:device.profile_hash,port_id:port.id(),registry:registry.clone(),
                                                     surface,
                                                     connection,
                                                     values: BTreeMap::new(),
@@ -385,6 +393,7 @@ impl Manager {
                             if !failed { output.motors.applied(desired); }
                         }
                         if failed {
+                            registry.output_result(&id,false,false,true);
                             outputs.remove(&id);
                         }
                     }
@@ -394,6 +403,7 @@ impl Manager {
                         connected: outputs.len() as u64,
                     };
                     snapshot.lock().midi_input = input_counters.snapshot();
+                    let view=registry.view();if profile_view.as_ref().is_none_or(|old|!Arc::ptr_eq(old,&view)){snapshot.lock().midi_profiles=registry.receipt();profile_view=Some(view);}
                     std::thread::park_timeout(Duration::from_millis(16));
                 }
                 outputs.clear();

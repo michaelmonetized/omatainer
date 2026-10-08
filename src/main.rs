@@ -70,6 +70,11 @@ const APPLICATION_ID: &str = "org.omarchy.omatainer";
 fn main() -> anyhow::Result<()> {
     let _audio_shutdown = engine::audio::owner::Shutdown;
     let mut args = std::env::args().skip(1).collect::<Vec<_>>();
+    if args.first().map(String::as_str)==Some("controller-profiles-inspect"){anyhow::ensure!(args.len()==1,"usage: omatainer controller-profiles-inspect");println!("{}",engine::midi::catalog::inspect().map_err(anyhow::Error::msg)?);return Ok(());}
+    if args.first().map(String::as_str)==Some("controller-profiles-export") {
+        anyhow::ensure!(args.len()==2,"usage: omatainer controller-profiles-export NEW_DIRECTORY");
+        return engine::midi::catalog::export(std::path::Path::new(&args[1])).map_err(anyhow::Error::msg);
+    }
     if args.first().map(String::as_str) == Some("producer-library-worker") {
         anyhow::ensure!(args.len()==1,"usage: omatainer producer-library-worker (JSON request on stdin)");
         return producer_library::worker().map_err(anyhow::Error::msg);
@@ -556,6 +561,7 @@ fn handle_client_with_stop(
             "deckALoadLocked": s.decks.first().map(|d| d.load_locked).unwrap_or(false),
             "deckBLoadLocked": s.decks.get(1).map(|d| d.load_locked).unwrap_or(false),
         });
+        out["midi_profiles"] = s.midi_profiles.clone();
         out["latency"] = serde_json::json!(s.latency);
         out["midi_clock_input"] = serde_json::json!(s.midi_clock_input);
         drop(s);

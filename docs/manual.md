@@ -2986,7 +2986,7 @@ Workflow: Connect a controller.
 
 32 named factory overlays per profile; 256 active assignments
 
-Save a selected exact port's learned overrides as a named definition. Duplicate, rename, delete or export definitions without changing active assignments. Portable version 1 JSON omits backend port IDs; Import validates the entire file for explicit review and bank save. A conflicting name needs a new name. Review load or factory defaults for one unique connected exact port; Apply checks its config revision, source owner and active profile again. Reconnects and other edits require fresh review. Unlisted factory controls and other port assignments remain intact. Save MIDI assignments persists the applied layer; bank save alone does not activate it. All file work is cancellable and owned by Preferences. A failed save retains previous settings and live assignments.
+Save a selected exact port's learned overrides as a named definition. Duplicate, rename, delete or export definitions without changing active assignments. Portable version 6 JSON omits backend port IDs; Import validates the entire file for explicit review and bank save. A conflicting name needs a new name. Review load or factory defaults for one unique connected exact port; Apply checks its config revision, source owner and active profile again. Reconnects and other edits require fresh review. Unlisted factory controls and other port assignments remain intact. Save MIDI assignments persists the applied layer; bank save alone does not activate it. All file work is cancellable and owned by Preferences. A failed save retains previous settings and live assignments.
 
 Workflow: Connect a controller.
 

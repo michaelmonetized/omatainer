@@ -342,3 +342,19 @@ fn scene_status_exposes_names_properties_queue_and_meter_without_repeated_cache_
     assert_eq!(crate::engine::test_alloc::measure(||{for _ in 0..1000{assert!(cache.update(&s,&commands,&id).is_ok());}}),Default::default());
     let serializations=cache.serializations;s.scenes.pending=None;let frame:Value=serde_json::from_str(cache.update(&s,&commands,&id).unwrap()).unwrap();assert_eq!(frame["queued_scene_name"],"");assert!(frame["scenes"]["pending"].is_null());assert_eq!(cache.serializations,serializations+1);
 }
+
+#[test]
+fn controller_summary_survives_follow_cache_without_repeating_heap_work() {
+    let (commands, _) = crate::engine::CommandPort::channel(80);
+    let mut snapshot = Snapshot::default();
+    snapshot.midi_profiles = json!({"schema":1,"ready":true,"input_open":4,"output_open":4,"control_check":{"control":"Master","input_received":true,"captured_packets":64,"capturing":false},"physical_qualification":"pending"});
+    let mut cache = Cache::default();
+    let id = json!("controller status");
+    let first: Value = serde_json::from_str(cache.update(&snapshot,&commands,&id).unwrap()).unwrap();
+    assert_eq!(first["midi_profiles"], snapshot.midi_profiles);
+    assert_eq!(crate::engine::test_alloc::measure(||{for _ in 0..1000{cache.update(&snapshot,&commands,&id).unwrap();}}), Default::default());
+    snapshot.midi_profiles["input_open"] = json!(3);
+    let next: Value = serde_json::from_str(cache.update(&snapshot,&commands,&id).unwrap()).unwrap();
+    assert_eq!(next["midi_profiles"]["input_open"],3);
+    assert_eq!(cache.serializations,2);
+}

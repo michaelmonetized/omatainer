@@ -67,6 +67,7 @@ mod portability;
 mod midi_routing;
 mod midi_clock;
 mod midi_learn;
+mod midi_profiles;
 mod midi_presets;
 mod play_time;
 pub(crate) mod project;
@@ -1004,6 +1005,7 @@ impl App {
                 });
         }
         self.help_panel(ctx);
+        if let Some(profiles)=self.engine.midi.profiles(){profiles.finish_when_unsafe(&self.snap,self.midi_open);}
         if self.midi_open {
             egui::Window::new(tr!("midi")).id(egui::Id::new("midi")).vscroll(true).max_height(self.theme.window_height(ctx)).show(ctx, |ui| {
                 let busy = self.engine.midi.connections_busy();
@@ -1030,6 +1032,7 @@ impl App {
                 for d in &self.snap.midi {
                     ui.label(d);
                 }
+                self.controller_profiles_ui(ui,ctx);
                 self.midi_routing_status_ui(ui,ctx);
                 self.midi_clock_status_ui(ui,ctx);
                 ui.push_id("midi_learn_editor", |ui| self.midi_learn_ui(ui,ctx));

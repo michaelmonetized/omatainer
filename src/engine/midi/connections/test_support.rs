@@ -24,6 +24,7 @@ pub(crate) enum Reply {
     Connected(Result<(), String>),
 }
 pub(crate) struct Control {
+    pub presence:Arc<Mutex<Option<Vec<(String,String)>>>>,
     pub attempts: Receiver<Attempt>,
     pub replies: Sender<Reply>,
 }
@@ -52,6 +53,8 @@ impl Control {
     }
 }
 struct Fake {
+    presence:Arc<Mutex<Option<Vec<(String,String)>>>>,
+    registry:Option<Arc<super::super::catalog::runtime::Registry>>,
     attempts: Sender<Attempt>,
     replies: Receiver<Reply>,
 }
@@ -82,6 +85,11 @@ impl Backend for Fake {
                 .collect()
         })
     }
+    fn presence(&mut self)->Result<Option<Vec<(String,String)>>,String>{Ok(self.presence.lock().clone())}
+    fn mapping(&self,id:&str,name:&str,maps:&[MidiMap])->MidiMap{self.registry.as_ref().map_or_else(||pick_map(maps,name),|r|r.mapping(id,None))}
+    fn endpoint(&self,id:&str,name:&str,policy:&InputPolicy)->(String,String,String){self.registry.as_ref().map_or_else(||(name.into(),id.into(),name.into()),|r|r.endpoint(id,name,policy))}
+    fn incarnation(&self,id:&str)->String{self.registry.as_ref().and_then(|r|r.view().devices.iter().find(|d|d.id==id).map(|d|d.device.connection.clone())).unwrap_or_else(||id.into())}
+    fn registry(&self)->Option<Arc<super::super::catalog::runtime::Registry>>{self.registry.clone()}
     fn connect(
         &mut self,
         id: &String,
@@ -106,12 +114,18 @@ pub(crate) fn install(engine: &mut Engine) -> Control {
     install_with_policy(engine, InputPolicy::All)
 }
 pub(crate) fn install_with_policy(engine: &mut Engine, policy: InputPolicy) -> Control {
+    install_profiled(engine,policy,None)
+}
+pub(crate) fn install_profiled(engine:&mut Engine,policy:InputPolicy,registry:Option<Arc<super::super::catalog::runtime::Registry>>)->Control{
     let (attempt_tx, attempts) = bounded(8);
     let (replies, reply_rx) = bounded(8);
+    let presence=Arc::new(Mutex::new(None));
     let mut hub = MidiHub::without_devices();
+    hub.profiles=registry.clone();
     hub.connections = Some(
         Manager::start_with_policy(
             Fake {
+                presence:presence.clone(),registry,
                 attempts: attempt_tx,
                 replies: reply_rx,
             },
@@ -125,7 +139,7 @@ pub(crate) fn install_with_policy(engine: &mut Engine, policy: InputPolicy) -> C
         .unwrap(),
     );
     engine.midi = hub;
-    Control { attempts, replies }
+    Control { presence,attempts, replies }
 }
 pub(crate) fn until(mut predicate: impl FnMut() -> bool) {
     let end = Instant::now() + Duration::from_secs(3);

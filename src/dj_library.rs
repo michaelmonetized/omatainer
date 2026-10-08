@@ -48,6 +48,8 @@ pub(crate) struct Directory {
     offset: usize,
     depth: u8,
     fingerprint: Option<FileFingerprint>,
+    #[serde(default)]
+    restarts: u8,
 }
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -152,7 +154,7 @@ impl Request {
                 || cursor
                     .pending
                     .iter()
-                    .any(|d| !valid_path(&d.path) || d.depth > 64 || d.offset > 1_000_000)
+                    .any(|d| !valid_path(&d.path) || d.depth > 64 || d.offset > 1_000_000 || d.restarts > 2)
             {
                 return Err("DJ discovery cursor exceeds its path, memory or depth bounds".into());
             }
@@ -169,6 +171,9 @@ fn probe(path: &Path, snapshot: &Snapshot, purpose: Purpose) -> Result<Option<Ca
         .unwrap_or("")
         .to_ascii_lowercase();
     let basename = path.file_name().and_then(|v| v.to_str()).unwrap_or("");
+    if matches!(extension.as_str(),"wav"|"wave"|"aif"|"aiff"|"flac"|"mp3"|"m4a"|"aac"|"ogg"|"opus"|"wma"|"mp4"|"mov"|"mkv"|"jpg"|"jpeg"|"png") {
+        return Ok(None);
+    }
     let vendor_db = matches!(
         basename,
         "database V2"
@@ -200,17 +205,18 @@ fn probe(path: &Path, snapshot: &Snapshot, purpose: Purpose) -> Result<Option<Ca
     let mut prefix = [0u8; 8192];
     let count = file.read(&mut prefix).map_err(|e| e.to_string())?;
     let prefix = &prefix[..count];
-    let text = String::from_utf8_lossy(prefix);
+    let text = if prefix.starts_with(&[0xff,0xfe]) || prefix.starts_with(&[0xfe,0xff]) {
+        let little = prefix[0] == 0xff;
+        std::borrow::Cow::Owned(String::from_utf16_lossy(&prefix[2..].chunks_exact(2).map(|b|if little{u16::from_le_bytes([b[0],b[1]])}else{u16::from_be_bytes([b[0],b[1]])}).collect::<Vec<_>>()))
+    } else { String::from_utf8_lossy(prefix) };
     let (format, reviewable) = if prefix.starts_with(b"vrsn") {
         ("Serato crate (version checked during review)", true)
     } else if text.contains("<DJ_PLAYLISTS") {
         ("rekordbox XML (version checked during review)", true)
     } else if text.contains("<NML") {
         ("Traktor NML (version checked during review)", true)
-    } else if text.contains("<plist") {
+    } else if text.contains("<plist") && text.contains("Tracks") {
         ("Apple XML candidate (content checked during review)", true)
-    } else if prefix.starts_with(&[0xff, 0xfe]) || prefix.starts_with(&[0xfe, 0xff]) {
-        ("UTF-16 XML candidate (format checked during review)", true)
     } else if (text.trim_start_matches('\u{feff}').starts_with("#EXTM3U")
         || matches!(extension.as_str(), "m3u" | "m3u8"))
         && std::str::from_utf8(prefix).map_or_else(|error| error.error_len().is_none(), |_| true)
@@ -306,8 +312,11 @@ fn scan_with_watch(
             }
         }
         let mut pending = VecDeque::new();
-        for root in &roots {
-            if !excluded(root) {
+        for root in roots {
+            if excluded(&root) {
+                notice(&mut notices,&root,"Excluded virtual, runtime, build or cache tree; choose its exact library subdirectory explicitly to review a source file");
+                continue;
+            }
                 for known in [
                     root.join("Music/_Serato_/Subcrates"),
                     root.join("_Serato_/Subcrates"),
@@ -318,20 +327,15 @@ fn scan_with_watch(
                         offset: 0,
                         depth: 0,
                         fingerprint: None,
+                        restarts: 0,
                     });
                 }
-            }
-        }
-        for root in roots {
-            if excluded(&root) {
-                notice(&mut notices,&root,"Excluded virtual, runtime, build or cache tree; choose its exact library subdirectory explicitly to review a source file");
-                continue;
-            }
             pending.push_back(Directory {
                 path: root,
                 offset: 0,
                 depth: 0,
                 fingerprint: None,
+                restarts: 0,
             });
         }
         Cursor {
@@ -347,6 +351,10 @@ fn scan_with_watch(
     while let Some(mut directory) = cursor.pending.pop_front() {
         if !active() {
             return Err("DJ discovery cancelled".into());
+        }
+        if page_entries >= PAGE_ENTRIES || candidates.len() >= MAX_CANDIDATES || started.elapsed() >= Duration::from_secs(3) {
+            cursor.pending.push_front(directory);
+            break;
         }
         let metadata = match std::fs::symlink_metadata(&directory.path) {
             Ok(m) => m,
@@ -369,9 +377,8 @@ fn scan_with_watch(
         }
         let fingerprint = FileFingerprint::from_metadata(&metadata);
         if directory.fingerprint.is_some_and(|fp| fp != fingerprint) {
-            return Err(
-                "A resumed discovery directory changed; restart to avoid losing entries".into(),
-            );
+            retry_directory(directory, &mut cursor, &mut notices, (metadata.dev(),metadata.ino()));
+            continue;
         }
         if directory.offset == 0 {
             if cursor.seen.contains(&(metadata.dev(), metadata.ino())) {
@@ -399,10 +406,9 @@ fn scan_with_watch(
                 continue;
             }
         };
-        for _ in 0..directory.offset {
-            if entries.next().is_none() {
-                return Err("Resumed directory is shorter than its captured cursor".into());
-            }
+        if entries.by_ref().take(directory.offset).count() != directory.offset {
+            retry_directory(directory, &mut cursor, &mut notices, (metadata.dev(),metadata.ino()));
+            continue;
         }
         let mut exhausted = true;
         for entry in entries {
@@ -447,6 +453,7 @@ fn scan_with_watch(
                                 offset: 0,
                                 depth: directory.depth + 1,
                                 fingerprint: None,
+                                restarts: 0,
                             });
                         }
                     }
@@ -495,7 +502,8 @@ fn scan_with_watch(
         if !std::fs::symlink_metadata(&directory.path)
             .is_ok_and(|m| m.is_dir() && FileFingerprint::from_metadata(&m) == fingerprint)
         {
-            return Err("A discovery directory changed before its page was published; restart to retain complete membership".into());
+            retry_directory(directory, &mut cursor, &mut notices, (metadata.dev(),metadata.ino()));
+            continue;
         }
         if !exhausted {
             directory.fingerprint = Some(fingerprint);
@@ -519,6 +527,20 @@ fn scan_with_watch(
 }
 
 static RETIRING: std::sync::OnceLock<std::sync::Mutex<Vec<Child>>> = std::sync::OnceLock::new();
+/// Retry one changing directory without starving the other volumes.
+/// Takes its traversal state, pending scan, notices and physical directory identity; restarts at the end of the queue at most twice, then records an explicit exclusion. Already verified files remain subject to source review before import.
+fn retry_directory(mut directory: Directory, cursor: &mut Cursor, notices: &mut Vec<Notice>, identity: (u64,u64)) {
+    if directory.restarts >= 2 {
+        notice(notices,&directory.path,"Directory kept changing after two retries; other roots continue. Rescan this directory to inspect its current membership");
+        return;
+    }
+    notice(notices,&directory.path,"Directory changed; restarting its bounded scan while other roots continue");
+    directory.restarts += 1;
+    directory.offset = 0;
+    directory.fingerprint = None;
+    cursor.seen.remove(&identity);
+    cursor.pending.push_back(directory);
+}
 fn retiring() -> &'static std::sync::Mutex<Vec<Child>> {
     RETIRING.get_or_init(|| std::sync::Mutex::new(Vec::new()))
 }
@@ -1033,7 +1055,7 @@ mod tests {
         .is_err());
     }
     #[test]
-    fn discovery_resumes_large_directories_and_refuses_changed_mount_or_directory_cursors() {
+    fn discovery_resumes_large_directories_retries_changes_and_refuses_changed_mounts() {
         let files = Files::new();
         for index in 0..10020 {
             std::fs::write(files.0.join(format!("file-{index}.bin")), b"").unwrap();
@@ -1076,17 +1098,45 @@ mod tests {
         .unwrap_err()
         .contains("Mounts changed"));
         std::fs::write(files.0.join("new.bin"), b"").unwrap();
-        assert!(scan(
+        let other = Files::new();
+        std::fs::write(other.0.join("other.m3u"), b"#EXTM3U\n").unwrap();
+        let mut changed = first.cursor.unwrap();
+        changed.pending.push_back(Directory {path:other.0.clone(),offset:0,depth:0,fingerprint:None,restarts:0});
+        let retry = scan(
             Request {
                 purpose: Purpose::Dj,
-                roots: vec![],
+                roots: vec![files.0.clone(),other.0.clone()],
                 all_mounts: false,
-                cursor: first.cursor
+                cursor: Some(changed)
             },
             &|| true
         )
-        .unwrap_err()
-        .contains("directory changed"));
+        .unwrap();
+        assert!(retry.notices.iter().any(|n|n.state.contains("Directory changed")));
+        assert!(retry.candidates.iter().any(|c|c.path==other.0.join("other.m3u")));
+        let mut cursor=retry.cursor;
+        let mut restarts=0;
+        while let Some(next)=cursor {
+            let page=scan(Request {purpose:Purpose::Dj,roots:vec![files.0.clone(),other.0.clone()],all_mounts:false,cursor:Some(next)},&||true).unwrap();
+            cursor=page.cursor;
+            restarts+=1;
+            assert!(restarts<4,"Stable retry did not finish within its entry bounds");
+        }
+    }
+    #[test]
+    fn apple_library_and_utf16_detection_exclude_system_plists_and_media() {
+        let files=Files::new();
+        std::fs::write(files.0.join("system.plist"),b"<?xml version=\"1.0\"?><plist><dict><key>ProductVersion</key><string>1</string></dict></plist>").unwrap();
+        let library="<?xml version=\"1.0\" encoding=\"UTF-16\"?><plist><dict><key>Tracks</key><dict/></dict></plist>";
+        let mut bytes=vec![0xff,0xfe];for c in library.encode_utf16(){bytes.extend_from_slice(&c.to_le_bytes());}
+        std::fs::write(files.0.join("owned-apple.xml"),bytes).unwrap();
+        std::fs::write(files.0.join("audio.wav"),b"<NML></NML>").unwrap();
+        std::fs::write(files.0.join("notes.txt"),[0xff,0xfe,b'x',0]).unwrap();
+        let page=scan(Request{purpose:Purpose::Dj,roots:vec![files.0.clone()],all_mounts:false,cursor:None},&||true).unwrap();
+        assert!(page.complete);
+        assert_eq!(page.candidates.len(),1);
+        assert_eq!(page.candidates[0].path,files.0.join("owned-apple.xml"));
+        assert!(page.candidates[0].reviewable);
     }
     #[test]
     fn request_bounds_and_virtual_roots_are_explicit() {
