@@ -1,0 +1,453 @@
+{
+  "schema": 1,
+  "preset_version": 6,
+  "id": "numark-ns7-original",
+  "version": "1.0.0",
+  "model": "Numark NS7 (original)",
+  "variant": "Exact USB model; other generations require another profile",
+  "minimum_app": [
+    0,
+    1,
+    0
+  ],
+  "driver": "ns7",
+  "required_capabilities": [
+    "midi1-binding-v6",
+    "ns7-original-v1"
+  ],
+  "usb": [
+    {
+      "vendor": 5604,
+      "product": 113,
+      "minimum_release": null,
+      "maximum_release": null
+    }
+  ],
+  "protocol": "ns7-original-v1",
+  "firmware_constraint": "No firmware-wide claim; record USB release and actual inquiry response during qualification",
+  "ports": {
+    "input": 0,
+    "output": 0,
+    "role": "performance",
+    "other_roles": []
+  },
+  "initialization": "none",
+  "feedback": "ns7",
+  "layer": "factory_overlay",
+  "unmapped_notes_live": false,
+  "bindings": [
+    {
+      "kind": "Note",
+      "ch": 0,
+      "data": 17,
+      "action": "DeckPlay",
+      "deck": 0,
+      "extra": 0,
+      "relative": null
+    },
+    {
+      "kind": "Note",
+      "ch": 0,
+      "data": 16,
+      "action": "DeckCue",
+      "deck": 0,
+      "extra": 0,
+      "relative": null
+    },
+    {
+      "kind": "Note",
+      "ch": 0,
+      "data": 15,
+      "action": "DeckSync",
+      "deck": 0,
+      "extra": 0,
+      "relative": null
+    },
+    {
+      "kind": "Note",
+      "ch": 0,
+      "data": 33,
+      "action": "DeckVinyl",
+      "deck": 0,
+      "extra": 0,
+      "relative": null
+    },
+    {
+      "kind": "Note",
+      "ch": 0,
+      "data": 18,
+      "action": "Shift",
+      "deck": 0,
+      "extra": 0,
+      "relative": null
+    },
+    {
+      "kind": "Note",
+      "ch": 0,
+      "data": 12,
+      "action": "DeckLoad",
+      "deck": 0,
+      "extra": 0,
+      "relative": null
+    },
+    {
+      "kind": "Note",
+      "ch": 0,
+      "data": 40,
+      "action": "DeckLoopIn",
+      "deck": 0,
+      "extra": 0,
+      "relative": null
+    },
+    {
+      "kind": "Note",
+      "ch": 0,
+      "data": 41,
+      "action": "DeckLoopOut",
+      "deck": 0,
+      "extra": 0,
+      "relative": null
+    },
+    {
+      "kind": "Note",
+      "ch": 0,
+      "data": 36,
+      "action": "DeckLoop4",
+      "deck": 0,
+      "extra": 0,
+      "relative": null
+    },
+    {
+      "kind": "Note",
+      "ch": 0,
+      "data": 19,
+      "action": "DeckHotCue",
+      "deck": 0,
+      "extra": 0,
+      "relative": null
+    },
+    {
+      "kind": "Note",
+      "ch": 0,
+      "data": 20,
+      "action": "DeckHotCue",
+      "deck": 0,
+      "extra": 1,
+      "relative": null
+    },
+    {
+      "kind": "Note",
+      "ch": 0,
+      "data": 21,
+      "action": "DeckHotCue",
+      "deck": 0,
+      "extra": 2,
+      "relative": null
+    },
+    {
+      "kind": "Note",
+      "ch": 0,
+      "data": 22,
+      "action": "DeckHotCue",
+      "deck": 0,
+      "extra": 3,
+      "relative": null
+    },
+    {
+      "kind": "Note",
+      "ch": 0,
+      "data": 23,
+      "action": "DeckHotCue",
+      "deck": 0,
+      "extra": 4,
+      "relative": null
+    },
+    {
+      "kind": "Cc",
+      "ch": 0,
+      "data": 4,
+      "action": "DeckPitch",
+      "deck": 0,
+      "extra": 0,
+      "relative": null
+    },
+    {
+      "kind": "Cc",
+      "ch": 0,
+      "data": 12,
+      "action": "DeckGain",
+      "deck": 0,
+      "extra": 0,
+      "relative": null
+    },
+    {
+      "kind": "Cc",
+      "ch": 0,
+      "data": 8,
+      "action": "DeckGain",
+      "deck": 0,
+      "extra": 0,
+      "relative": null
+    },
+    {
+      "kind": "Cc",
+      "ch": 0,
+      "data": 11,
+      "action": "DeckEqHi",
+      "deck": 0,
+      "extra": 0,
+      "relative": null
+    },
+    {
+      "kind": "Cc",
+      "ch": 0,
+      "data": 10,
+      "action": "DeckEqMid",
+      "deck": 0,
+      "extra": 0,
+      "relative": null
+    },
+    {
+      "kind": "Cc",
+      "ch": 0,
+      "data": 9,
+      "action": "DeckEqLow",
+      "deck": 0,
+      "extra": 0,
+      "relative": null
+    },
+    {
+      "kind": "Note",
+      "ch": 0,
+      "data": 50,
+      "action": "DeckPlay",
+      "deck": 1,
+      "extra": 0,
+      "relative": null
+    },
+    {
+      "kind": "Note",
+      "ch": 0,
+      "data": 49,
+      "action": "DeckCue",
+      "deck": 1,
+      "extra": 0,
+      "relative": null
+    },
+    {
+      "kind": "Note",
+      "ch": 0,
+      "data": 48,
+      "action": "DeckSync",
+      "deck": 1,
+      "extra": 0,
+      "relative": null
+    },
+    {
+      "kind": "Note",
+      "ch": 0,
+      "data": 66,
+      "action": "DeckVinyl",
+      "deck": 1,
+      "extra": 0,
+      "relative": null
+    },
+    {
+      "kind": "Note",
+      "ch": 0,
+      "data": 51,
+      "action": "Shift",
+      "deck": 1,
+      "extra": 0,
+      "relative": null
+    },
+    {
+      "kind": "Note",
+      "ch": 0,
+      "data": 14,
+      "action": "DeckLoad",
+      "deck": 1,
+      "extra": 0,
+      "relative": null
+    },
+    {
+      "kind": "Note",
+      "ch": 0,
+      "data": 73,
+      "action": "DeckLoopIn",
+      "deck": 1,
+      "extra": 0,
+      "relative": null
+    },
+    {
+      "kind": "Note",
+      "ch": 0,
+      "data": 74,
+      "action": "DeckLoopOut",
+      "deck": 1,
+      "extra": 0,
+      "relative": null
+    },
+    {
+      "kind": "Note",
+      "ch": 0,
+      "data": 69,
+      "action": "DeckLoop4",
+      "deck": 1,
+      "extra": 0,
+      "relative": null
+    },
+    {
+      "kind": "Note",
+      "ch": 0,
+      "data": 52,
+      "action": "DeckHotCue",
+      "deck": 1,
+      "extra": 0,
+      "relative": null
+    },
+    {
+      "kind": "Note",
+      "ch": 0,
+      "data": 53,
+      "action": "DeckHotCue",
+      "deck": 1,
+      "extra": 1,
+      "relative": null
+    },
+    {
+      "kind": "Note",
+      "ch": 0,
+      "data": 54,
+      "action": "DeckHotCue",
+      "deck": 1,
+      "extra": 2,
+      "relative": null
+    },
+    {
+      "kind": "Note",
+      "ch": 0,
+      "data": 55,
+      "action": "DeckHotCue",
+      "deck": 1,
+      "extra": 3,
+      "relative": null
+    },
+    {
+      "kind": "Note",
+      "ch": 0,
+      "data": 56,
+      "action": "DeckHotCue",
+      "deck": 1,
+      "extra": 4,
+      "relative": null
+    },
+    {
+      "kind": "Cc",
+      "ch": 0,
+      "data": 5,
+      "action": "DeckPitch",
+      "deck": 1,
+      "extra": 0,
+      "relative": null
+    },
+    {
+      "kind": "Cc",
+      "ch": 0,
+      "data": 17,
+      "action": "DeckGain",
+      "deck": 1,
+      "extra": 0,
+      "relative": null
+    },
+    {
+      "kind": "Cc",
+      "ch": 0,
+      "data": 13,
+      "action": "DeckGain",
+      "deck": 1,
+      "extra": 0,
+      "relative": null
+    },
+    {
+      "kind": "Cc",
+      "ch": 0,
+      "data": 16,
+      "action": "DeckEqHi",
+      "deck": 1,
+      "extra": 0,
+      "relative": null
+    },
+    {
+      "kind": "Cc",
+      "ch": 0,
+      "data": 15,
+      "action": "DeckEqMid",
+      "deck": 1,
+      "extra": 0,
+      "relative": null
+    },
+    {
+      "kind": "Cc",
+      "ch": 0,
+      "data": 14,
+      "action": "DeckEqLow",
+      "deck": 1,
+      "extra": 0,
+      "relative": null
+    },
+    {
+      "kind": "Cc",
+      "ch": 0,
+      "data": 7,
+      "action": "Xfader",
+      "deck": 0,
+      "extra": 0,
+      "relative": null
+    },
+    {
+      "kind": "Cc",
+      "ch": 0,
+      "data": 85,
+      "action": "XfaderCurve",
+      "deck": 0,
+      "extra": 0,
+      "relative": null
+    },
+    {
+      "kind": "Cc",
+      "ch": 0,
+      "data": 64,
+      "action": "Master",
+      "deck": 0,
+      "extra": 0,
+      "relative": null
+    }
+  ],
+  "fixtures": [
+    {
+      "bytes": [
+        144,
+        17,
+        127
+      ],
+      "action": "DeckPlay",
+      "deck": 0,
+      "extra": 0,
+      "evidence": "Original native NS7 protocol fixture; physical result is separate"
+    }
+  ],
+  "provenance": {
+    "license": "MIT",
+    "authored_by": "Omatainer original native mappings",
+    "manufacturer_documents": [],
+    "licensed_sources": [
+      "https://github.com/michaelmonetized/omatainer/blob/stack/app-completion/LICENSE"
+    ],
+    "synthetic_fixture_claim": "Schema and message decoding only; does not promote current physical qualification",
+    "physical_receipts": [
+      "https://github.com/michaelmonetized/omatainer/blob/a4020338a805ce2efd690da34f898892806d6e32/docs/validation/powered-hub-controller-qualification.md"
+    ],
+    "current_physical_qualification": false
+  }
+}

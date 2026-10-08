@@ -1,0 +1,587 @@
+{
+  "schema": 1,
+  "preset_version": 6,
+  "id": "pioneer-ddj-sp1",
+  "version": "1.0.0",
+  "model": "Pioneer DDJ-SP1",
+  "variant": "Exact USB model; other generations require another profile",
+  "minimum_app": [
+    0,
+    1,
+    0
+  ],
+  "driver": "sp1",
+  "required_capabilities": [
+    "ddj-sp1-v1",
+    "midi1-binding-v6"
+  ],
+  "usb": [
+    {
+      "vendor": 2276,
+      "product": 385,
+      "minimum_release": null,
+      "maximum_release": null
+    }
+  ],
+  "protocol": "ddj-sp1-v1",
+  "firmware_constraint": "No firmware-wide claim; record USB release and actual inquiry response during qualification",
+  "ports": {
+    "input": 0,
+    "output": 0,
+    "role": "performance",
+    "other_roles": []
+  },
+  "initialization": "none",
+  "feedback": "sp1",
+  "layer": "factory_overlay",
+  "unmapped_notes_live": false,
+  "bindings": [
+    {
+      "kind": "Note",
+      "ch": 0,
+      "data": 88,
+      "action": "DeckSync",
+      "deck": 0,
+      "extra": 0,
+      "relative": null
+    },
+    {
+      "kind": "Note",
+      "ch": 0,
+      "data": 85,
+      "action": "DeckLoop4",
+      "deck": 0,
+      "extra": 0,
+      "relative": null
+    },
+    {
+      "kind": "Note",
+      "ch": 6,
+      "data": 70,
+      "action": "DeckLoad",
+      "deck": 0,
+      "extra": 0,
+      "relative": null
+    },
+    {
+      "kind": "Note",
+      "ch": 7,
+      "data": 0,
+      "action": "DeckHotCue",
+      "deck": 0,
+      "extra": 0,
+      "relative": null
+    },
+    {
+      "kind": "Note",
+      "ch": 7,
+      "data": 1,
+      "action": "DeckHotCue",
+      "deck": 0,
+      "extra": 1,
+      "relative": null
+    },
+    {
+      "kind": "Note",
+      "ch": 7,
+      "data": 2,
+      "action": "DeckHotCue",
+      "deck": 0,
+      "extra": 2,
+      "relative": null
+    },
+    {
+      "kind": "Note",
+      "ch": 7,
+      "data": 3,
+      "action": "DeckHotCue",
+      "deck": 0,
+      "extra": 3,
+      "relative": null
+    },
+    {
+      "kind": "Note",
+      "ch": 7,
+      "data": 4,
+      "action": "DeckHotCue",
+      "deck": 0,
+      "extra": 4,
+      "relative": null
+    },
+    {
+      "kind": "Note",
+      "ch": 7,
+      "data": 5,
+      "action": "DeckHotCue",
+      "deck": 0,
+      "extra": 5,
+      "relative": null
+    },
+    {
+      "kind": "Note",
+      "ch": 7,
+      "data": 6,
+      "action": "DeckHotCue",
+      "deck": 0,
+      "extra": 6,
+      "relative": null
+    },
+    {
+      "kind": "Note",
+      "ch": 7,
+      "data": 7,
+      "action": "DeckHotCue",
+      "deck": 0,
+      "extra": 7,
+      "relative": null
+    },
+    {
+      "kind": "Note",
+      "ch": 7,
+      "data": 96,
+      "action": "DeckLoopIn",
+      "deck": 0,
+      "extra": 0,
+      "relative": null
+    },
+    {
+      "kind": "Note",
+      "ch": 7,
+      "data": 97,
+      "action": "DeckLoopOut",
+      "deck": 0,
+      "extra": 0,
+      "relative": null
+    },
+    {
+      "kind": "Note",
+      "ch": 1,
+      "data": 88,
+      "action": "DeckSync",
+      "deck": 1,
+      "extra": 0,
+      "relative": null
+    },
+    {
+      "kind": "Note",
+      "ch": 1,
+      "data": 85,
+      "action": "DeckLoop4",
+      "deck": 1,
+      "extra": 0,
+      "relative": null
+    },
+    {
+      "kind": "Note",
+      "ch": 6,
+      "data": 71,
+      "action": "DeckLoad",
+      "deck": 1,
+      "extra": 0,
+      "relative": null
+    },
+    {
+      "kind": "Note",
+      "ch": 8,
+      "data": 0,
+      "action": "DeckHotCue",
+      "deck": 1,
+      "extra": 0,
+      "relative": null
+    },
+    {
+      "kind": "Note",
+      "ch": 8,
+      "data": 1,
+      "action": "DeckHotCue",
+      "deck": 1,
+      "extra": 1,
+      "relative": null
+    },
+    {
+      "kind": "Note",
+      "ch": 8,
+      "data": 2,
+      "action": "DeckHotCue",
+      "deck": 1,
+      "extra": 2,
+      "relative": null
+    },
+    {
+      "kind": "Note",
+      "ch": 8,
+      "data": 3,
+      "action": "DeckHotCue",
+      "deck": 1,
+      "extra": 3,
+      "relative": null
+    },
+    {
+      "kind": "Note",
+      "ch": 8,
+      "data": 4,
+      "action": "DeckHotCue",
+      "deck": 1,
+      "extra": 4,
+      "relative": null
+    },
+    {
+      "kind": "Note",
+      "ch": 8,
+      "data": 5,
+      "action": "DeckHotCue",
+      "deck": 1,
+      "extra": 5,
+      "relative": null
+    },
+    {
+      "kind": "Note",
+      "ch": 8,
+      "data": 6,
+      "action": "DeckHotCue",
+      "deck": 1,
+      "extra": 6,
+      "relative": null
+    },
+    {
+      "kind": "Note",
+      "ch": 8,
+      "data": 7,
+      "action": "DeckHotCue",
+      "deck": 1,
+      "extra": 7,
+      "relative": null
+    },
+    {
+      "kind": "Note",
+      "ch": 8,
+      "data": 96,
+      "action": "DeckLoopIn",
+      "deck": 1,
+      "extra": 0,
+      "relative": null
+    },
+    {
+      "kind": "Note",
+      "ch": 8,
+      "data": 97,
+      "action": "DeckLoopOut",
+      "deck": 1,
+      "extra": 0,
+      "relative": null
+    },
+    {
+      "kind": "Note",
+      "ch": 2,
+      "data": 88,
+      "action": "DeckSync",
+      "deck": 0,
+      "extra": 0,
+      "relative": null
+    },
+    {
+      "kind": "Note",
+      "ch": 2,
+      "data": 85,
+      "action": "DeckLoop4",
+      "deck": 0,
+      "extra": 0,
+      "relative": null
+    },
+    {
+      "kind": "Note",
+      "ch": 6,
+      "data": 72,
+      "action": "DeckLoad",
+      "deck": 0,
+      "extra": 0,
+      "relative": null
+    },
+    {
+      "kind": "Note",
+      "ch": 9,
+      "data": 0,
+      "action": "DeckHotCue",
+      "deck": 0,
+      "extra": 0,
+      "relative": null
+    },
+    {
+      "kind": "Note",
+      "ch": 9,
+      "data": 1,
+      "action": "DeckHotCue",
+      "deck": 0,
+      "extra": 1,
+      "relative": null
+    },
+    {
+      "kind": "Note",
+      "ch": 9,
+      "data": 2,
+      "action": "DeckHotCue",
+      "deck": 0,
+      "extra": 2,
+      "relative": null
+    },
+    {
+      "kind": "Note",
+      "ch": 9,
+      "data": 3,
+      "action": "DeckHotCue",
+      "deck": 0,
+      "extra": 3,
+      "relative": null
+    },
+    {
+      "kind": "Note",
+      "ch": 9,
+      "data": 4,
+      "action": "DeckHotCue",
+      "deck": 0,
+      "extra": 4,
+      "relative": null
+    },
+    {
+      "kind": "Note",
+      "ch": 9,
+      "data": 5,
+      "action": "DeckHotCue",
+      "deck": 0,
+      "extra": 5,
+      "relative": null
+    },
+    {
+      "kind": "Note",
+      "ch": 9,
+      "data": 6,
+      "action": "DeckHotCue",
+      "deck": 0,
+      "extra": 6,
+      "relative": null
+    },
+    {
+      "kind": "Note",
+      "ch": 9,
+      "data": 7,
+      "action": "DeckHotCue",
+      "deck": 0,
+      "extra": 7,
+      "relative": null
+    },
+    {
+      "kind": "Note",
+      "ch": 9,
+      "data": 96,
+      "action": "DeckLoopIn",
+      "deck": 0,
+      "extra": 0,
+      "relative": null
+    },
+    {
+      "kind": "Note",
+      "ch": 9,
+      "data": 97,
+      "action": "DeckLoopOut",
+      "deck": 0,
+      "extra": 0,
+      "relative": null
+    },
+    {
+      "kind": "Note",
+      "ch": 3,
+      "data": 88,
+      "action": "DeckSync",
+      "deck": 1,
+      "extra": 0,
+      "relative": null
+    },
+    {
+      "kind": "Note",
+      "ch": 3,
+      "data": 85,
+      "action": "DeckLoop4",
+      "deck": 1,
+      "extra": 0,
+      "relative": null
+    },
+    {
+      "kind": "Note",
+      "ch": 6,
+      "data": 73,
+      "action": "DeckLoad",
+      "deck": 1,
+      "extra": 0,
+      "relative": null
+    },
+    {
+      "kind": "Note",
+      "ch": 10,
+      "data": 0,
+      "action": "DeckHotCue",
+      "deck": 1,
+      "extra": 0,
+      "relative": null
+    },
+    {
+      "kind": "Note",
+      "ch": 10,
+      "data": 1,
+      "action": "DeckHotCue",
+      "deck": 1,
+      "extra": 1,
+      "relative": null
+    },
+    {
+      "kind": "Note",
+      "ch": 10,
+      "data": 2,
+      "action": "DeckHotCue",
+      "deck": 1,
+      "extra": 2,
+      "relative": null
+    },
+    {
+      "kind": "Note",
+      "ch": 10,
+      "data": 3,
+      "action": "DeckHotCue",
+      "deck": 1,
+      "extra": 3,
+      "relative": null
+    },
+    {
+      "kind": "Note",
+      "ch": 10,
+      "data": 4,
+      "action": "DeckHotCue",
+      "deck": 1,
+      "extra": 4,
+      "relative": null
+    },
+    {
+      "kind": "Note",
+      "ch": 10,
+      "data": 5,
+      "action": "DeckHotCue",
+      "deck": 1,
+      "extra": 5,
+      "relative": null
+    },
+    {
+      "kind": "Note",
+      "ch": 10,
+      "data": 6,
+      "action": "DeckHotCue",
+      "deck": 1,
+      "extra": 6,
+      "relative": null
+    },
+    {
+      "kind": "Note",
+      "ch": 10,
+      "data": 7,
+      "action": "DeckHotCue",
+      "deck": 1,
+      "extra": 7,
+      "relative": null
+    },
+    {
+      "kind": "Note",
+      "ch": 10,
+      "data": 96,
+      "action": "DeckLoopIn",
+      "deck": 1,
+      "extra": 0,
+      "relative": null
+    },
+    {
+      "kind": "Note",
+      "ch": 10,
+      "data": 97,
+      "action": "DeckLoopOut",
+      "deck": 1,
+      "extra": 0,
+      "relative": null
+    },
+    {
+      "kind": "Note",
+      "ch": 6,
+      "data": 101,
+      "action": "CrateReturn",
+      "deck": 0,
+      "extra": 0,
+      "relative": null
+    },
+    {
+      "kind": "Note",
+      "ch": 6,
+      "data": 103,
+      "action": "Prepare",
+      "deck": 0,
+      "extra": 0,
+      "relative": null
+    },
+    {
+      "kind": "Note",
+      "ch": 6,
+      "data": 104,
+      "action": "PrepareCrate",
+      "deck": 0,
+      "extra": 0,
+      "relative": null
+    },
+    {
+      "kind": "CcRel",
+      "ch": 6,
+      "data": 64,
+      "action": "Browse",
+      "deck": 0,
+      "extra": 0,
+      "relative": {
+        "encoding": "TwosComplement",
+        "scale": 1.0
+      }
+    },
+    {
+      "kind": "CcRel",
+      "ch": 6,
+      "data": 100,
+      "action": "BrowseCrates",
+      "deck": 0,
+      "extra": 0,
+      "relative": {
+        "encoding": "TwosComplement",
+        "scale": 1.0
+      }
+    }
+  ],
+  "fixtures": [
+    {
+      "bytes": [
+        144,
+        88,
+        127
+      ],
+      "action": "DeckSync",
+      "deck": 0,
+      "extra": 0,
+      "evidence": "Manufacturer Sync address, original fixture"
+    }
+  ],
+  "provenance": {
+    "license": "MIT",
+    "authored_by": "Omatainer original native mappings",
+    "manufacturer_documents": [
+      "https://downloads.support.alphatheta.com/software_info/dj-controllers/DDJ-SP1/DDJ-SP1_List_of_MIDI_Messages_E.pdf"
+    ],
+    "licensed_sources": [
+      "https://github.com/michaelmonetized/omatainer/blob/stack/app-completion/LICENSE"
+    ],
+    "synthetic_fixture_claim": "Schema and message decoding only; does not promote current physical qualification",
+    "physical_receipts": [
+      "https://github.com/michaelmonetized/omatainer/blob/a4020338a805ce2efd690da34f898892806d6e32/docs/validation/powered-hub-controller-qualification.md"
+    ],
+    "current_physical_qualification": false
+  }
+}

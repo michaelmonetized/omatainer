@@ -1,0 +1,563 @@
+{
+  "schema": 1,
+  "preset_version": 6,
+  "id": "akai-apc40-mkii",
+  "version": "1.0.0",
+  "model": "Akai APC40 mkII",
+  "variant": "Exact USB model; other generations require another profile",
+  "minimum_app": [
+    0,
+    1,
+    0
+  ],
+  "driver": "apc40_mk2",
+  "required_capabilities": [
+    "apc40-mkii-v1",
+    "midi1-binding-v6"
+  ],
+  "usb": [
+    {
+      "vendor": 2536,
+      "product": 41,
+      "minimum_release": null,
+      "maximum_release": null
+    }
+  ],
+  "protocol": "apc40-mkii-v1",
+  "firmware_constraint": "No firmware-wide claim; record USB release and actual inquiry response during qualification",
+  "ports": {
+    "input": 0,
+    "output": 0,
+    "role": "performance",
+    "other_roles": []
+  },
+  "initialization": "apc40_mk2_host41",
+  "feedback": "apc40_mk2",
+  "layer": "factory_overlay",
+  "unmapped_notes_live": false,
+  "bindings": [
+    {
+      "kind": "Note",
+      "ch": 255,
+      "data": 82,
+      "action": "Scene",
+      "deck": 0,
+      "extra": 0,
+      "relative": null
+    },
+    {
+      "kind": "Note",
+      "ch": 255,
+      "data": 83,
+      "action": "Scene",
+      "deck": 0,
+      "extra": 1,
+      "relative": null
+    },
+    {
+      "kind": "Note",
+      "ch": 255,
+      "data": 84,
+      "action": "Scene",
+      "deck": 0,
+      "extra": 2,
+      "relative": null
+    },
+    {
+      "kind": "Note",
+      "ch": 255,
+      "data": 85,
+      "action": "Scene",
+      "deck": 0,
+      "extra": 3,
+      "relative": null
+    },
+    {
+      "kind": "Note",
+      "ch": 255,
+      "data": 86,
+      "action": "Scene",
+      "deck": 0,
+      "extra": 4,
+      "relative": null
+    },
+    {
+      "kind": "Cc",
+      "ch": 0,
+      "data": 7,
+      "action": "TrackFader",
+      "deck": 0,
+      "extra": 0,
+      "relative": null
+    },
+    {
+      "kind": "Cc",
+      "ch": 1,
+      "data": 7,
+      "action": "TrackFader",
+      "deck": 0,
+      "extra": 1,
+      "relative": null
+    },
+    {
+      "kind": "Cc",
+      "ch": 2,
+      "data": 7,
+      "action": "TrackFader",
+      "deck": 0,
+      "extra": 2,
+      "relative": null
+    },
+    {
+      "kind": "Cc",
+      "ch": 3,
+      "data": 7,
+      "action": "TrackFader",
+      "deck": 0,
+      "extra": 3,
+      "relative": null
+    },
+    {
+      "kind": "Cc",
+      "ch": 4,
+      "data": 7,
+      "action": "TrackFader",
+      "deck": 0,
+      "extra": 4,
+      "relative": null
+    },
+    {
+      "kind": "Cc",
+      "ch": 5,
+      "data": 7,
+      "action": "TrackFader",
+      "deck": 0,
+      "extra": 5,
+      "relative": null
+    },
+    {
+      "kind": "Cc",
+      "ch": 6,
+      "data": 7,
+      "action": "TrackFader",
+      "deck": 0,
+      "extra": 6,
+      "relative": null
+    },
+    {
+      "kind": "Cc",
+      "ch": 7,
+      "data": 7,
+      "action": "TrackFader",
+      "deck": 0,
+      "extra": 7,
+      "relative": null
+    },
+    {
+      "kind": "Cc",
+      "ch": 0,
+      "data": 14,
+      "action": "Master",
+      "deck": 0,
+      "extra": 0,
+      "relative": null
+    },
+    {
+      "kind": "Note",
+      "ch": 255,
+      "data": 92,
+      "action": "Stop",
+      "deck": 0,
+      "extra": 0,
+      "relative": null
+    },
+    {
+      "kind": "Note",
+      "ch": 255,
+      "data": 32,
+      "action": "Clip",
+      "deck": 0,
+      "extra": 0,
+      "relative": null
+    },
+    {
+      "kind": "Note",
+      "ch": 255,
+      "data": 33,
+      "action": "Clip",
+      "deck": 1,
+      "extra": 0,
+      "relative": null
+    },
+    {
+      "kind": "Note",
+      "ch": 255,
+      "data": 34,
+      "action": "Clip",
+      "deck": 2,
+      "extra": 0,
+      "relative": null
+    },
+    {
+      "kind": "Note",
+      "ch": 255,
+      "data": 35,
+      "action": "Clip",
+      "deck": 3,
+      "extra": 0,
+      "relative": null
+    },
+    {
+      "kind": "Note",
+      "ch": 255,
+      "data": 36,
+      "action": "Clip",
+      "deck": 4,
+      "extra": 0,
+      "relative": null
+    },
+    {
+      "kind": "Note",
+      "ch": 255,
+      "data": 37,
+      "action": "Clip",
+      "deck": 5,
+      "extra": 0,
+      "relative": null
+    },
+    {
+      "kind": "Note",
+      "ch": 255,
+      "data": 38,
+      "action": "Clip",
+      "deck": 6,
+      "extra": 0,
+      "relative": null
+    },
+    {
+      "kind": "Note",
+      "ch": 255,
+      "data": 39,
+      "action": "Clip",
+      "deck": 7,
+      "extra": 0,
+      "relative": null
+    },
+    {
+      "kind": "Note",
+      "ch": 255,
+      "data": 24,
+      "action": "Clip",
+      "deck": 0,
+      "extra": 1,
+      "relative": null
+    },
+    {
+      "kind": "Note",
+      "ch": 255,
+      "data": 25,
+      "action": "Clip",
+      "deck": 1,
+      "extra": 1,
+      "relative": null
+    },
+    {
+      "kind": "Note",
+      "ch": 255,
+      "data": 26,
+      "action": "Clip",
+      "deck": 2,
+      "extra": 1,
+      "relative": null
+    },
+    {
+      "kind": "Note",
+      "ch": 255,
+      "data": 27,
+      "action": "Clip",
+      "deck": 3,
+      "extra": 1,
+      "relative": null
+    },
+    {
+      "kind": "Note",
+      "ch": 255,
+      "data": 28,
+      "action": "Clip",
+      "deck": 4,
+      "extra": 1,
+      "relative": null
+    },
+    {
+      "kind": "Note",
+      "ch": 255,
+      "data": 29,
+      "action": "Clip",
+      "deck": 5,
+      "extra": 1,
+      "relative": null
+    },
+    {
+      "kind": "Note",
+      "ch": 255,
+      "data": 30,
+      "action": "Clip",
+      "deck": 6,
+      "extra": 1,
+      "relative": null
+    },
+    {
+      "kind": "Note",
+      "ch": 255,
+      "data": 31,
+      "action": "Clip",
+      "deck": 7,
+      "extra": 1,
+      "relative": null
+    },
+    {
+      "kind": "Note",
+      "ch": 255,
+      "data": 16,
+      "action": "Clip",
+      "deck": 0,
+      "extra": 2,
+      "relative": null
+    },
+    {
+      "kind": "Note",
+      "ch": 255,
+      "data": 17,
+      "action": "Clip",
+      "deck": 1,
+      "extra": 2,
+      "relative": null
+    },
+    {
+      "kind": "Note",
+      "ch": 255,
+      "data": 18,
+      "action": "Clip",
+      "deck": 2,
+      "extra": 2,
+      "relative": null
+    },
+    {
+      "kind": "Note",
+      "ch": 255,
+      "data": 19,
+      "action": "Clip",
+      "deck": 3,
+      "extra": 2,
+      "relative": null
+    },
+    {
+      "kind": "Note",
+      "ch": 255,
+      "data": 20,
+      "action": "Clip",
+      "deck": 4,
+      "extra": 2,
+      "relative": null
+    },
+    {
+      "kind": "Note",
+      "ch": 255,
+      "data": 21,
+      "action": "Clip",
+      "deck": 5,
+      "extra": 2,
+      "relative": null
+    },
+    {
+      "kind": "Note",
+      "ch": 255,
+      "data": 22,
+      "action": "Clip",
+      "deck": 6,
+      "extra": 2,
+      "relative": null
+    },
+    {
+      "kind": "Note",
+      "ch": 255,
+      "data": 23,
+      "action": "Clip",
+      "deck": 7,
+      "extra": 2,
+      "relative": null
+    },
+    {
+      "kind": "Note",
+      "ch": 255,
+      "data": 8,
+      "action": "Clip",
+      "deck": 0,
+      "extra": 3,
+      "relative": null
+    },
+    {
+      "kind": "Note",
+      "ch": 255,
+      "data": 9,
+      "action": "Clip",
+      "deck": 1,
+      "extra": 3,
+      "relative": null
+    },
+    {
+      "kind": "Note",
+      "ch": 255,
+      "data": 10,
+      "action": "Clip",
+      "deck": 2,
+      "extra": 3,
+      "relative": null
+    },
+    {
+      "kind": "Note",
+      "ch": 255,
+      "data": 11,
+      "action": "Clip",
+      "deck": 3,
+      "extra": 3,
+      "relative": null
+    },
+    {
+      "kind": "Note",
+      "ch": 255,
+      "data": 12,
+      "action": "Clip",
+      "deck": 4,
+      "extra": 3,
+      "relative": null
+    },
+    {
+      "kind": "Note",
+      "ch": 255,
+      "data": 13,
+      "action": "Clip",
+      "deck": 5,
+      "extra": 3,
+      "relative": null
+    },
+    {
+      "kind": "Note",
+      "ch": 255,
+      "data": 14,
+      "action": "Clip",
+      "deck": 6,
+      "extra": 3,
+      "relative": null
+    },
+    {
+      "kind": "Note",
+      "ch": 255,
+      "data": 15,
+      "action": "Clip",
+      "deck": 7,
+      "extra": 3,
+      "relative": null
+    },
+    {
+      "kind": "Note",
+      "ch": 255,
+      "data": 0,
+      "action": "Clip",
+      "deck": 0,
+      "extra": 4,
+      "relative": null
+    },
+    {
+      "kind": "Note",
+      "ch": 255,
+      "data": 1,
+      "action": "Clip",
+      "deck": 1,
+      "extra": 4,
+      "relative": null
+    },
+    {
+      "kind": "Note",
+      "ch": 255,
+      "data": 2,
+      "action": "Clip",
+      "deck": 2,
+      "extra": 4,
+      "relative": null
+    },
+    {
+      "kind": "Note",
+      "ch": 255,
+      "data": 3,
+      "action": "Clip",
+      "deck": 3,
+      "extra": 4,
+      "relative": null
+    },
+    {
+      "kind": "Note",
+      "ch": 255,
+      "data": 4,
+      "action": "Clip",
+      "deck": 4,
+      "extra": 4,
+      "relative": null
+    },
+    {
+      "kind": "Note",
+      "ch": 255,
+      "data": 5,
+      "action": "Clip",
+      "deck": 5,
+      "extra": 4,
+      "relative": null
+    },
+    {
+      "kind": "Note",
+      "ch": 255,
+      "data": 6,
+      "action": "Clip",
+      "deck": 6,
+      "extra": 4,
+      "relative": null
+    },
+    {
+      "kind": "Note",
+      "ch": 255,
+      "data": 7,
+      "action": "Clip",
+      "deck": 7,
+      "extra": 4,
+      "relative": null
+    }
+  ],
+  "fixtures": [
+    {
+      "bytes": [
+        144,
+        32,
+        127
+      ],
+      "action": "Clip",
+      "deck": 0,
+      "extra": 0,
+      "evidence": "Manufacturer v1.2 top-left grid address, original fixture"
+    }
+  ],
+  "provenance": {
+    "license": "MIT",
+    "authored_by": "Omatainer original native mappings",
+    "manufacturer_documents": [
+      "https://cdn.inmusicbrands.com/akai/attachments/apc40II/APC40Mk2_Communications_Protocol_v1.2.pdf"
+    ],
+    "licensed_sources": [
+      "https://github.com/michaelmonetized/omatainer/blob/stack/app-completion/LICENSE"
+    ],
+    "synthetic_fixture_claim": "Schema and message decoding only; does not promote current physical qualification",
+    "physical_receipts": [
+      "https://github.com/michaelmonetized/omatainer/blob/a4020338a805ce2efd690da34f898892806d6e32/docs/validation/powered-hub-controller-qualification.md"
+    ],
+    "current_physical_qualification": false
+  }
+}
