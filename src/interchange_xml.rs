@@ -7,7 +7,7 @@ use std::collections::BTreeMap;
 const MAX_NODES: usize = 250_000;
 const MAX_TEXT: usize = 16 * 1024 * 1024;
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub(crate) struct Element {
     pub name: String,
     pub attributes: BTreeMap<String, String>,

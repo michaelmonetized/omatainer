@@ -290,6 +290,7 @@ fn unicode_media_remap_and_missing_source_refs_remain_distinct_after_native_reop
     let path = fixture.set(&text);
     let options = Options {
         remaps: vec![("/old/mac".into(), fixture.root.clone())],
+        ..Default::default()
     };
     let imported = load(&path, &options, &AtomicBool::new(false)).unwrap();
     let clip = &imported.state.tracks[0].clips[0];

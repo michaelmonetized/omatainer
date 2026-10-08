@@ -200,6 +200,11 @@ pub(super) fn asset(
     if asset.original.starts_with('/') {
         paths.push(asset.original.clone().into());
     }
+    if !asset.pack.is_empty() && !asset.relative.is_empty() {
+        let relative=Path::new(&asset.relative);
+        if relative.is_absolute() || relative.components().any(|c|matches!(c,std::path::Component::ParentDir|std::path::Component::RootDir)) {return Err("Pack asset escapes its declared installation".into());}
+        for pack in &options.libraries {if pack.validate()?==asset.pack {paths.insert(0,pack.root(cancel)?.join(relative));}}
+    }
     paths.dedup();
     for path in paths {
         active(cancel)?;
@@ -306,4 +311,18 @@ pub(super) fn asset(
     }
     source.assets.push(asset);
     Ok(result)
+}
+
+/// Resolve retained device samples without substituting an engine.
+/// Takes the source device tree, explicit libraries and native media budget; embeds verified audio while preserving original device paths and the unresolved engine decision.
+pub(super) fn resolve_inventory(track:&Element, id:i64, source:&mut Source, options:&Options, snapshot:&crate::media_location::Snapshot, media:&mut Vec<Arc<Sample>>, pcm:&mut u64, cancel:&AtomicBool)->Result<(),String>{
+    fn visit(node:&Element, id:i64, path:&str, source:&mut Source, options:&Options, snapshot:&crate::media_location::Snapshot, media:&mut Vec<Arc<Sample>>, pcm:&mut u64, cancel:&AtomicBool)->Result<(),String>{
+        active(cancel)?;
+        for (index,item) in node.children.iter().enumerate(){
+            let identity=if item.attr("Id").is_empty(){index.to_string()}else{item.attr("Id").into()};let next=format!("{path}/{}[{identity}]",item.name);
+            if item.name=="FileRef" {let asset_id=format!("track:{id}/{next}");if let Some(index)=source.assets.iter().position(|a|a.id==asset_id){source.assets.remove(index);asset(item,asset_id,source,options,snapshot,media,pcm,cancel)?;}}
+            visit(item,id,&next,source,options,snapshot,media,pcm,cancel)?;
+        }Ok(())
+    }
+    if let Some(chain)=at(track,&["DeviceChain","DeviceChain"])? {visit(chain,id,"DeviceChain",source,options,snapshot,media,pcm,cancel)?;}Ok(())
 }

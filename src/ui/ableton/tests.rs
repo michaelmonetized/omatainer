@@ -20,7 +20,7 @@ fn protection_blocks_migration_worker_admission() {
         .contains("protection"));
 }
 
-fn frame(
+pub(super) fn frame(
     ctx: &egui::Context,
     fixture: &mut crate::ui::test_support::Fixture,
     events: Vec<egui::Event>,
@@ -45,7 +45,7 @@ fn frame(
     );
     output.platform_output.accesskit_update.unwrap().nodes
 }
-fn click(ctx: &egui::Context, fixture: &mut crate::ui::test_support::Fixture, label: &str) {
+pub(super) fn click(ctx: &egui::Context, fixture: &mut crate::ui::test_support::Fixture, label: &str) {
     let nodes = frame(ctx, fixture, vec![]);
     let node = nodes
         .iter()
@@ -64,7 +64,7 @@ fn click(ctx: &egui::Context, fixture: &mut crate::ui::test_support::Fixture, la
         )],
     );
 }
-fn settle(ctx: &egui::Context, fixture: &mut crate::ui::test_support::Fixture) {
+pub(super) fn settle(ctx: &egui::Context, fixture: &mut crate::ui::test_support::Fixture) {
     let deadline = Instant::now() + std::time::Duration::from_secs(10);
     while fixture.app.ableton.busy() {
         frame(ctx, fixture, vec![]);

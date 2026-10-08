@@ -1,8 +1,8 @@
 # Ableton migration matrix 1
 
-Project → Setup → **Import Ableton Live Set…** reviews an owned Live 10/11 Set without changing it. The saved XML format must have `MajorVersion=5` and a `MinorVersion` beginning with 10 or 11. A filename or installed Live version does not establish compatibility. Raw UTF-8 XML and one CRC-checked gzip member are supported.
+Project → Setup → **Import Ableton Live Set…** reviews an owned Live 10/11 Set, `.alc` clip Set, or `.adg`/`.adv` user device preset without changing it. The saved XML format must have `MajorVersion=5` and a `MinorVersion` beginning with 10 or 11. A filename or installed Live version does not establish compatibility. Raw UTF-8 XML and one CRC-checked gzip member are supported.
 
-Review track, scene, device and asset counts and every playback difference. Supply an explicit source-prefix/replacement-folder pair for cross-machine media. Acknowledge the report and publish to a new `.omatainer` path. Publication is atomic; an existing destination is refused. The running session remains intact until **Open imported project**, which uses the ordinary unsaved-work decision. Migration metadata is project state version 31, retained-source schema 1.
+Review track, scene, device and asset counts and every playback difference. Supply an explicit source-prefix/replacement-folder pair for cross-machine media. Acknowledge the report and publish to a new `.omatainer` path. Publication is atomic; an existing destination is refused. The running session remains intact until **Open imported project**, which uses the ordinary unsaved-work decision. Migration metadata uses project state version 32 and retained-source schema 1 or 2; schema 2 retains explicitly selected installed Pack manifests.
 
 | Source feature | Native behavior | Retained or unresolved behavior |
 | --- | --- | --- |
@@ -36,6 +36,14 @@ These are implemented behaviors and explicit limits, not identical-sound certifi
 Use a source export with the declared start and musical body, including its complete tail. Track prints include track effects and mixer gain, excluding returns/master; pre-fader or additional outputs must be reviewed separately. Complete mixes may include returns and, when explicitly declared, master processing/gain. Omatainer disconnects the printed source routes and uses a neutral render track so baked processing is not applied twice. A printed master bypasses native master gain; the physical output limiter still applies. [Ableton's stem instructions](https://help.ableton.com/hc/en-us/articles/360000843404-Importing-and-exporting-stems) explain source export alignment and processing choices.
 
 **Restore pre-render draft** reverses an unpublished attachment. To restore after reopening, review the `.omatainer` with **Read a saved Omatainer migration archive**, then **Restore saved editable source**. The original Live Set, installation and render file can be offline. Restoration checks the printed route hash, source mute state, references and print placements; later conflicting edits are refused. The saved archive must remain available and unchanged during review/publication. Relink devices after restoring the editable draft.
+
+## Producer libraries
+
+Choose **Discover producer libraries** for paged searches across home, configured/custom roots and current accessible mounts. Search and continue are explicit; sources, limits, exclusions and failures remain visible. Samples are candidates until the ordinary decoder verifies them. **Use sample folder for relink** supplies a replacement folder; provide the original prefix and review the source again. No filename-only matching is inferred.
+
+**Review Pack manifest** supports installed `Ableton Folder Info/Properties.cfg` metadata with the observed `Ableton#04I` grammar. It retains the declared Pack identity/vendor/version, original metadata, SHA-256, fingerprint and stable volume-relative identity. After reviewing applicable use, **Use reviewed Pack for next import** resolves only matching Pack IDs and bounded relative paths. The importer embeds verified referenced audio while keeping the device engine unresolved. Changed, unavailable or ambiguous installations are refused before publication. Saved native archives retain their metadata and embedded audio when original installations are offline.
+
+`.alp` archives require installation with the authorized source application; discovery does not unpack or execute them. Unsupported manifest versions remain explicit review failures. Ordinary `.adg`/`.adv` device presets produce one editable source track while retaining original XML, chain order, nested branches, macros, key/velocity ranges and state. Top-level compatible VST3 effects can relink with their exact class and original state. Instrument role must be declared or recognized; unknown plugin roles, nested rack branches and Ableton-native engines require explicit resolution. Clip Sets use the same structural checks as Sets. These paths do not certify identical playback or convert factory engines into native plugins.
 
 ## Bounds and failure behavior
 

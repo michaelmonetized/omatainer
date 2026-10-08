@@ -348,6 +348,7 @@ impl Request {
                         schema: 1,
                         sources: Vec::new(),
                     });
+            migration.schema=migration.schema.max(source_migration.schema);
             migration_bytes += state
                 .migration
                 .as_ref()

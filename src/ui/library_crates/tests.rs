@@ -367,7 +367,7 @@ fn discovered_rekordbox_source_uses_native_review_hierarchy_and_repeated_snapsho
     let files=Files::new();let location=url::Url::from_file_path(files.0.join("One.flac")).unwrap();
     let source=format!(r#"<DJ_PLAYLISTS Version="1.0.0"><COLLECTION Entries="1"><TRACK TrackID="1" Name="One" Location="{location}" AverageBpm="122" Album="Source-only album"/></COLLECTION><PLAYLISTS><NODE Type="0" Name="ROOT" Count="1"><NODE Type="0" Name="Tour" Count="1"><NODE Type="1" Name="Opening" KeyType="0" Entries="1"><TRACK Key="1"/></NODE></NODE></NODE></PLAYLISTS></DJ_PLAYLISTS>"#);
     let path=files.0.join("source.export");std::fs::write(&path,&source).unwrap();
-    let scanned=crate::dj_library::scan(crate::dj_library::Request {roots:vec![files.0.clone()],all_mounts:false,cursor:None},&||true).unwrap();
+    let scanned=crate::dj_library::scan(crate::dj_library::Request {purpose:crate::dj_library::Purpose::Dj,roots:vec![files.0.clone()],all_mounts:false,cursor:None},&||true).unwrap();
     assert_eq!(scanned.candidates.len(),1);
     let mut gui=Gui::new(&files);gui.click("Import playlists…");
     gui.app.library_playlist.discovery.candidates=scanned.candidates;

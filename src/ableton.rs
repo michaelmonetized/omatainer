@@ -24,6 +24,7 @@ use std::{
 mod clips;
 mod convert;
 mod dependencies;
+mod presets;
 pub(crate) mod plugins;
 pub(crate) mod process;
 pub(crate) mod renders;
@@ -53,6 +54,8 @@ pub(crate) struct Source {
     pub creator: String,
     pub xml: String,
     pub remaps: Vec<(String, PathBuf)>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub libraries: Vec<crate::producer_library::Pack>,
     pub tracks: Vec<Track>,
     pub devices: Vec<Device>,
     pub assets: Vec<Asset>,
@@ -124,6 +127,8 @@ pub(crate) struct Difference {
 #[serde(deny_unknown_fields)]
 pub(crate) struct Options {
     pub remaps: Vec<(String, PathBuf)>,
+    #[serde(default)]
+    pub libraries: Vec<crate::producer_library::Pack>,
 }
 #[derive(Clone)]
 pub(crate) struct Imported {
@@ -278,7 +283,7 @@ impl Migration {
     /// Validate retained migration records before native publication.
     /// Takes the archived source and native media count; returns an error for corrupt identity, excess storage or invalid references.
     pub(crate) fn validate(&self, _media: usize) -> Result<(), String> {
-        if self.schema != 1
+        if !matches!(self.schema, 1 | 2)
             || self.sources.is_empty()
             || self.sources.len() > MAX_RECORDS
             || self.sources.iter().map(|s| s.xml.len()).sum::<usize>() > MAX_XML
@@ -288,6 +293,9 @@ impl Migration {
             );
         }
         for source in &self.sources {
+            if source.libraries.len()>32 || self.schema<2 && !source.libraries.is_empty() {return Err("Pack dependency metadata requires migration schema 2 and at most 32 libraries".into());}
+            let mut pack_ids=BTreeSet::new();
+            for pack in &source.libraries {if !pack_ids.insert(pack.validate()?) {return Err("Duplicate reviewed Pack identity".into());}}
             if source.xml_sha256 != digest(source.xml.as_bytes())
                 || source.file_sha256.len() != 64
                 || !source.file_sha256.bytes().all(|b| b.is_ascii_hexdigit())
@@ -419,6 +427,7 @@ pub(crate) fn load(
 ) -> Result<Imported, String> {
     active(cancel)?;
     if !path.is_absolute()
+        || options.libraries.len() > 32
         || options.remaps.len() > 32
         || options.remaps.iter().any(|(from, to)| {
             from.is_empty() || !text_valid(from) || !to.is_absolute() || to.as_os_str().len() > 4096
@@ -426,6 +435,7 @@ pub(crate) fn load(
     {
         return Err("Choose an absolute Set path and at most 32 absolute path remaps".into());
     }
+    for pack in &options.libraries {pack.root(cancel)?;}
     let mut file = OpenOptions::new()
         .read(true)
         .custom_flags(libc::O_NONBLOCK | libc::O_CLOEXEC)
@@ -472,12 +482,18 @@ pub(crate) fn load(
         creator: root.attr("Creator").into(),
         xml: String::from_utf8(xml).map_err(|_| "Live Set XML must be UTF-8")?,
         remaps: options.remaps.clone(),
+        libraries: options.libraries.clone(),
         tracks: vec![],
         devices: vec![],
         assets: vec![],
         differences: vec![],
         renders: vec![],
     };
+    let preset = !root.children.iter().any(|n|n.name=="LiveSet");
+    if preset && path.extension().is_none_or(|e|e!="adg" && e!="adv") {return Err("Non-Set content must be an explicitly selected .adg or .adv user device preset".into());}
+    let root=presets::normalize(root)?;
+    let mut source=source;
+    if preset {source.difference("preset","Source device preset","Original device/rack state is retained intact in a fresh track; compatible native relink or explicit replacement is required")?;}
     let imported = convert::convert(root.one("LiveSet")?, source, options, cancel)?;
     if FileFingerprint::from_metadata(&file.metadata().map_err(|e| e.to_string())?) != before
         || FileFingerprint::read(path) != Some(before)
@@ -575,6 +591,7 @@ pub(crate) fn verify_sources(state: &project::State, cancel: &AtomicBool) -> Res
         .ok_or("Native draft has no Ableton provenance")?;
     for source in &migration.sources {
         active(cancel)?;
+        for pack in &source.libraries {pack.root(cancel)?;}
         let mut file = OpenOptions::new()
             .read(true)
             .custom_flags(libc::O_NONBLOCK | libc::O_CLOEXEC)

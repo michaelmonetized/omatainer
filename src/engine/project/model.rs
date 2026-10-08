@@ -2,7 +2,7 @@
 //! physical key ownership, worker handles and device connections.
 use super::super::*;
 
-pub const STATE_VERSION: u32 = 31;
+pub const STATE_VERSION: u32 = 32;
 pub const MAX_BANKS: usize = 16;
 pub const MAX_FX_PER_RACK: usize = 128;
 pub const MAX_NOTES_PER_CLIP: usize = 8192;
@@ -597,6 +597,7 @@ impl State {
             if self.version < 30 {
                 return fail("migration in legacy state");
             }
+            if self.version<32 && migration.schema>=2 {return fail("Pack metadata in legacy migration state");}
             migration.validate(media.len())?;
         }
         if self.version < 17 && self.mic_aux.is_some() {return fail("mic/aux controls in a legacy state");}

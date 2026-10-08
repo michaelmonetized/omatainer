@@ -113,6 +113,7 @@ pub(super) fn convert(
             &format!("track:{id}"),
         )?;
         dependencies::inventory(node, id, &mut source, cancel)?;
+        dependencies::resolve_inventory(node,id,&mut source,options,&snapshot,&mut media,&mut pcm,cancel)?;
         if let Some(chain) = child(node, "DeviceChain")? {
             for kind in ["AudioInputRouting", "MidiInputRouting", "MidiOutputRouting"] {
                 if let Some(route) = child(chain, kind)? {
@@ -254,7 +255,7 @@ pub(super) fn convert(
     navigation(set, &mut state)?;
     source.difference("project","Device fidelity","Ableton stock engines, racks, MIDI effects, AU and unsupported plugins remain retained dependencies. MIDI tracks are silent until an instrument or an aligned render is explicitly resolved")?;
     state.migration = Some(Arc::new(Migration {
-        schema: 1,
+        schema: if source.libraries.is_empty(){1}else{2},
         sources: vec![source],
     }));
     state.validate(&media)?;

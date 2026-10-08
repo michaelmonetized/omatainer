@@ -160,8 +160,8 @@ pub(crate) fn relink(
     if !reviewed_version && device.version.as_deref() != Some(class.info.version.as_str()) {
         return Err("Source plugin version is absent or different. Review installed-version and cross-platform state compatibility before trying this relink".into());
     }
-    let root =
-        interchange_xml::parse_text(source.xml.as_bytes(), &|| !cancel.load(Ordering::Acquire))?;
+    let root = presets::normalize(
+        interchange_xml::parse_text(source.xml.as_bytes(), &|| !cancel.load(Ordering::Acquire))?)?;
     let node = element(&root, &device)?;
     if device.path.split('/').count() != 3 {
         return Err("Nested rack/branch processors retain their state; resolve the rack through an explicit compatible routing replacement or aligned render".into());

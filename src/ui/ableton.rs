@@ -6,12 +6,14 @@ use crate::{
 };
 use crossbeam_channel::{bounded, Receiver};
 use std::sync::atomic::{AtomicBool, Ordering};
+mod library;
 #[cfg(test)]
 mod tests;
 
 #[derive(Default)]
 pub(super) struct Panel {
     pub open: bool,
+    pub(super) library: library::Panel,
     path: String,
     destination: String,
     from: String,
@@ -48,6 +50,7 @@ impl Panel {
         }
     }
     pub(super) fn poll(&mut self) {
+        self.library.poll();
         let Some(events) = &self.events else { return };
         let event = match events.try_recv() {
             Ok(event) => event,
@@ -150,6 +153,7 @@ impl Panel {
                     return Err("Choose an owned Live Set".into());
                 }
                 let options = Options {
+                    libraries: if self.native_review {vec![]} else {self.library.selected.clone()},
                     remaps: if self.native_review || self.from.trim().is_empty() {
                         vec![]
                     } else {
@@ -328,6 +332,7 @@ impl Panel {
 impl Drop for Panel {
     fn drop(&mut self) {
         self.cancel();
+        self.library.cancel();
     }
 }
 impl App {
@@ -335,6 +340,7 @@ impl App {
         if !self.ableton.open {
             return;
         }
+        self.producer_library_ui(ctx);
         let mut open = true;
         let enabled = !self.project.busy()
             && !self.project.committing()
@@ -346,6 +352,7 @@ impl App {
         let mut publish = false;
         egui::Window::new("Import Ableton Live Set").id(egui::Id::new("ableton-migration")).open(&mut open).default_width(680.).show(ctx,|ui|{
             let panel=&mut self.ableton;
+            if ui.button("Discover producer libraries").clicked(){panel.library.open=true;}
             ui.add_enabled_ui(enabled&&!panel.busy(),|ui|{
                 let label=ui.label("Owned Live 10/11 Set or saved migration project");
                 let changed=ui.add(egui::TextEdit::singleline(&mut panel.path).char_limit(4096).desired_width(f32::INFINITY)).labelled_by(label.id).changed();
