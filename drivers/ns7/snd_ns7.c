@@ -5,6 +5,7 @@
 #include <linux/delay.h>
 #include <linux/slab.h>
 #include <linux/usb.h>
+#include <linux/usb/quirks.h>
 #include <sound/core.h>
 #include <sound/pcm.h>
 #include <sound/pcm_params.h>
@@ -943,6 +944,7 @@ static int ns7_probe(struct usb_interface *interface,
 	result = snd_card_register(card);
 	if (result)
 		goto fail;
+	usb->quirks |= USB_QUIRK_RESET_RESUME;
 	usb_set_intfdata(interface, chip);
 	dev_info(&interface->dev,
 		 "original NS7 duplex MIDI and PCM registered\n");
@@ -1165,6 +1167,6 @@ static struct usb_driver ns7_driver = {
 };
 module_usb_driver(ns7_driver);
 MODULE_LICENSE("GPL");
-MODULE_VERSION("0.1.1");
+MODULE_VERSION("0.1.2");
 MODULE_AUTHOR("Omatainer contributors");
 MODULE_DESCRIPTION("Original Numark NS7 vendor USB MIDI and PCM transport");

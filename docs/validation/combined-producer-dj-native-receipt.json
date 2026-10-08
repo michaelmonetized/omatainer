@@ -1076,7 +1076,7 @@
       "xfader": 0.5275590419769287
     }
   },
-  "status": "Source63 passes 2322 ordinary tests and both short native stereo handoffs. Source64 passes 89 selected checks but its first actual s2idle sleep fails reviewed NS7 output recovery after retaining the recording; DDJ-SP1 and MPD232 also disappear during wake. The NS7 driver now implements sleep callbacks; its rebuilt installed module restores both interfaces and exact ALSA preparation after reload. Actual sleep retry, captured waveform timing, updated production installation, extended loaded performance and applicable compatibility criteria remain in progress.",
+  "status": "in progress; source65 software/native worker checks and production installation pass, actual host-sleep recovery still fails; reset-resume correction installed but unqualified",
   "priorCheckpoint": {
     "source": "b028ca05bc9f0172bf16e484d03f343501d510b7",
     "qualificationCommit": "940d959fd9f69e52fb6050975c750d02fadf1813",
@@ -7326,6 +7326,472 @@
       "afterReloadExactAlsaProbe": "open: 0 Success\nany: 0 Success\nsettings: 0 Success\nhw_params: 0 Success\nprepare: 0 Success\n",
       "actual_sleep_retry": "pending",
       "improved_fixture_diagnostics": "Sleep and reviewed output status are written before recovery assertions."
+    }
+  },
+  "source65": {
+    "provenance": {
+      "source_revision": "bf37c80b5bdc859b234f05edd5f3d79bce14ad33",
+      "compiler_profile": "release tests, opt-level3, codegen-units4, debug0, test unwind",
+      "compiler_flags": [
+        "opt-level=3",
+        "embed-bitcode=no",
+        "codegen-units=4",
+        "metadata=ccce059c87a51535",
+        "extra-filename=-552c0e61ca670d04",
+        "strip=debuginfo"
+      ],
+      "test_sha256": "99ef1603c91815b49e16940116a0266c3fbdd209e28237dc141ffadb7bba2135",
+      "inventory_sha256": "5d559991f280298571e073fe2599636e44d3ab5bf3d507621fc8ddfc5e8966b5",
+      "build_log_sha256": "3d653908b1abc5e49258dbf8c47513a1353ace3ae53300433641e93b485dbb2d"
+    },
+    "focused": {
+      "provenance": {
+        "source_revision": "bf37c80b5bdc859b234f05edd5f3d79bce14ad33",
+        "compiler_profile": "release tests, opt-level3, codegen-units4, debug0, test unwind",
+        "compiler_flags": [
+          "opt-level=3",
+          "embed-bitcode=no",
+          "codegen-units=4",
+          "metadata=ccce059c87a51535",
+          "extra-filename=-552c0e61ca670d04",
+          "strip=debuginfo"
+        ],
+        "test_sha256": "99ef1603c91815b49e16940116a0266c3fbdd209e28237dc141ffadb7bba2135",
+        "inventory_sha256": "5d559991f280298571e073fe2599636e44d3ab5bf3d507621fc8ddfc5e8966b5",
+        "build_log_sha256": "3d653908b1abc5e49258dbf8c47513a1353ace3ae53300433641e93b485dbb2d"
+      },
+      "results": [
+        {
+          "name": "captured-carriers",
+          "selector": "engine::audio::live_set_tests::native::",
+          "exit": 0,
+          "signal": null,
+          "passed": 2,
+          "failed": 0,
+          "ignored": 2,
+          "seconds": 0.4,
+          "log_sha256": "b0af6cc518940942392ebd0fbe1d420f4cdb8b80851809ef674107d95aba7c4a"
+        },
+        {
+          "name": "native-scheduling",
+          "selector": "engine::audio::scheduling::linux::tests::",
+          "exit": 0,
+          "signal": null,
+          "passed": 2,
+          "failed": 0,
+          "ignored": 0,
+          "seconds": 0,
+          "log_sha256": "195ed1078d3706208fa36eecfbab6ba723b08f91ffb6998c954dfb13f783e872"
+        },
+        {
+          "name": "callback-metrics",
+          "selector": "engine::audio::metrics_tests::",
+          "exit": 0,
+          "signal": null,
+          "passed": 8,
+          "failed": 0,
+          "ignored": 0,
+          "seconds": 0.94,
+          "log_sha256": "0f44666290d2d430aa2fac3fcf88a4a27dd58f3ed7c51a05825de1a50bcc79a2"
+        },
+        {
+          "name": "performance-guard",
+          "selector": "engine::performance::tests::",
+          "exit": 0,
+          "signal": null,
+          "passed": 19,
+          "failed": 0,
+          "ignored": 0,
+          "seconds": 5.09,
+          "log_sha256": "7b625b42e9ad396fcd6a5cc724b5ccd951de317652cdddf2de8065f9a2be6426"
+        },
+        {
+          "name": "midi-policy",
+          "selector": "engine::midi::connections::policy_tests::",
+          "exit": 0,
+          "signal": null,
+          "passed": 9,
+          "failed": 0,
+          "ignored": 0,
+          "seconds": 3.64,
+          "log_sha256": "ed86982c091bc482322a0b54360d91a52523d36e56969bdf0eab577779b3bcf1"
+        },
+        {
+          "name": "routed-positions",
+          "selector": "engine::audio::routing::positions::tests::",
+          "exit": 0,
+          "signal": null,
+          "passed": 7,
+          "failed": 0,
+          "ignored": 0,
+          "seconds": 0.03,
+          "log_sha256": "889c76e3ee9b65ee3002ada1436bef000af1a86c65dcfad3fd226a925bc989a8"
+        },
+        {
+          "name": "svf-fidelity",
+          "selector": "engine::svf_tests::",
+          "exit": 0,
+          "signal": null,
+          "passed": 4,
+          "failed": 0,
+          "ignored": 0,
+          "seconds": 0.86,
+          "log_sha256": "f800541bc4812f25a392329de0efc85dea7cba4de452320950068f5b2373ed75"
+        },
+        {
+          "name": "voice-fidelity",
+          "selector": "engine::dsp::voice_pitch_tests::",
+          "exit": 0,
+          "signal": null,
+          "passed": 5,
+          "failed": 0,
+          "ignored": 1,
+          "seconds": 0.73,
+          "log_sha256": "fa77594303a708894954f5526dd12ca158e3126cbe5c81784946ae4c881044aa"
+        },
+        {
+          "name": "audible-fidelity",
+          "selector": "engine::audio::audible_tests::",
+          "exit": 0,
+          "signal": null,
+          "passed": 2,
+          "failed": 0,
+          "ignored": 0,
+          "seconds": 0.66,
+          "log_sha256": "1a04f31d3622d1e59670afa2052b8fea0adf0d8afa2816ae1a8a3ad0d0540c14"
+        },
+        {
+          "name": "latency-fidelity",
+          "selector": "engine::audio::routing::latency::tests::",
+          "exit": 0,
+          "signal": null,
+          "passed": 13,
+          "failed": 0,
+          "ignored": 0,
+          "seconds": 0.61,
+          "log_sha256": "38c816b648c8a8644b9f535c8c6b9e0f4a9d1d686aa1bd2d723fc29924629b49"
+        },
+        {
+          "name": "live-set-fidelity",
+          "selector": "engine::live_set::tests::",
+          "exit": 0,
+          "signal": null,
+          "passed": 13,
+          "failed": 0,
+          "ignored": 0,
+          "seconds": 2.67,
+          "log_sha256": "2775972bd4400afbb67e94e11fd28b25273eaf61dc0035f2266b49e3d9e29078"
+        },
+        {
+          "name": "waveform-ui",
+          "selector": "ui::waveform::tests::",
+          "exit": 0,
+          "signal": null,
+          "passed": 5,
+          "failed": 0,
+          "ignored": 0,
+          "seconds": 0.33,
+          "log_sha256": "655b9bb643ed54e34fb8d26c202015ba8722b8421b59ba37bc5057cc8037cfc9"
+        }
+      ]
+    },
+    "nativeWorkers": {
+      "provenance": {
+        "source_revision": "bf37c80b5bdc859b234f05edd5f3d79bce14ad33",
+        "compiler_profile": "release tests, opt-level3, codegen-units4, debug0, test unwind",
+        "compiler_flags": [
+          "opt-level=3",
+          "embed-bitcode=no",
+          "codegen-units=4",
+          "metadata=ccce059c87a51535",
+          "extra-filename=-552c0e61ca670d04",
+          "strip=debuginfo"
+        ],
+        "test_sha256": "99ef1603c91815b49e16940116a0266c3fbdd209e28237dc141ffadb7bba2135",
+        "inventory_sha256": "5d559991f280298571e073fe2599636e44d3ab5bf3d507621fc8ddfc5e8966b5",
+        "build_log_sha256": "3d653908b1abc5e49258dbf8c47513a1353ace3ae53300433641e93b485dbb2d"
+      },
+      "worker": "/home/michael/.local/bin/omatainer",
+      "worker_sha256": "cd112d1c7bd3b8c79a650eba2e402e49b982e178b792bc8d301b44925a7ecb82",
+      "results": [
+        {
+          "name": "native-plugin-graph",
+          "selector": "engine::audio::routing::plugin_tests::",
+          "exit": 0,
+          "signal": null,
+          "error": null,
+          "passed": 8,
+          "failed": 0,
+          "ignored": 0,
+          "seconds": 2.23,
+          "expected": 8,
+          "log_sha256": "fa5cd94ec9c6cc1dd2c06b2b6055eabbdfac4fbd09852e08b4006220b624bc23"
+        },
+        {
+          "name": "native-plugin-scanner",
+          "selector": "plugin_host::scanner::tests::native_",
+          "exit": 0,
+          "signal": null,
+          "error": null,
+          "passed": 3,
+          "failed": 0,
+          "ignored": 0,
+          "seconds": 1.24,
+          "expected": 3,
+          "log_sha256": "a8a65088ea68949046fc230551fbf7427eb44f761cebb53f9422d30c73c01695"
+        },
+        {
+          "name": "native-plugin-bridge",
+          "selector": "plugin_host::realtime::tests::native_processor_bridge_preserves_delay_state_and_samples",
+          "exit": 0,
+          "signal": null,
+          "error": null,
+          "passed": 1,
+          "failed": 0,
+          "ignored": 0,
+          "seconds": 0.08,
+          "expected": 1,
+          "log_sha256": "4aff8875d5b6e1745cb3f9ab229f5b82efef4aded4be27b80681ceca4106b36d"
+        },
+        {
+          "name": "native-ableton-workflows",
+          "selector": "ui::ableton::tests::",
+          "exit": 0,
+          "signal": null,
+          "error": null,
+          "passed": 5,
+          "failed": 0,
+          "ignored": 0,
+          "seconds": 0.9,
+          "expected": 5,
+          "log_sha256": "c0bbfb12393aba47f69e8d1d262e9fdf78379efe6ba16fe8c2e7f37bf5f2d0cd"
+        },
+        {
+          "name": "native-ableton-plugin",
+          "selector": "ableton::plugins::tests::",
+          "exit": 0,
+          "signal": null,
+          "error": null,
+          "passed": 1,
+          "failed": 0,
+          "ignored": 0,
+          "seconds": 0.63,
+          "expected": 1,
+          "log_sha256": "10d4ec37be944c3b16877d6c63bb9bd7e22b9701628415bbf05a4514aa4bf4a8"
+        },
+        {
+          "name": "native-ableton-worker",
+          "selector": "ableton::process::tests::actual_worker_transfers_source_state_and_refuses_corruption_mutation_and_cancel",
+          "exit": 0,
+          "signal": null,
+          "error": null,
+          "passed": 1,
+          "failed": 0,
+          "ignored": 0,
+          "seconds": 0.03,
+          "expected": 1,
+          "log_sha256": "b8e92166c99f5d4bf9035f017047bdfbffff4d4aa63e4c5c2931660c72257fd9"
+        },
+        {
+          "name": "native-producer-library",
+          "selector": "producer_library::tests::",
+          "exit": 0,
+          "signal": null,
+          "error": null,
+          "passed": 3,
+          "failed": 0,
+          "ignored": 0,
+          "seconds": 0.1,
+          "expected": 3,
+          "log_sha256": "38b2dad04c3e4d40235c9c3b323c9ba7265d9a374260423b533397e5b8499c1b"
+        },
+        {
+          "name": "native-library-workflow",
+          "selector": "ui::ableton::library::tests::",
+          "exit": 0,
+          "signal": null,
+          "error": null,
+          "passed": 1,
+          "failed": 0,
+          "ignored": 0,
+          "seconds": 0.17,
+          "expected": 1,
+          "log_sha256": "5743f61df815969c2d83f72397a4e6e4375cde21b0348abd43c723b07471853c"
+        },
+        {
+          "name": "native-dj-worker",
+          "selector": "dj_library::tests::native_worker_ipc_cancellation_and_crash_keep_previous_sources",
+          "exit": 0,
+          "signal": null,
+          "error": null,
+          "passed": 1,
+          "failed": 0,
+          "ignored": 0,
+          "seconds": 0.77,
+          "expected": 1,
+          "log_sha256": "0851276d779c3caf810b404c85a1a02fe14b2b9e568a5e188eabf54cc0860c68"
+        }
+      ]
+    },
+    "productionInstallation": {
+      "manifest_sha": "611fe78dd79c688ecb433dd617e3a29e2224d0f8f337cb555c55967d77aaae0b",
+      "revision": "bf37c80b5bdc859b234f05edd5f3d79bce14ad33",
+      "receipt": {
+        "schema": 1,
+        "before": "40b0b290d0fafade8bd193b8cb27a01cfb0245d512e2c9cab80e021e1ff3b68d",
+        "after": "cd112d1c7bd3b8c79a650eba2e402e49b982e178b792bc8d301b44925a7ecb82",
+        "installedAt": "2026-10-08T23:18:00.007Z"
+      },
+      "build_log_sha256": "0e53860556854a3132bd466a42fdaeeb85e54ec848700fc3b738e98979d076d0",
+      "compiler": {
+        "pid": 162020,
+        "observed": "2026-10-08T23:16:45.776Z",
+        "flags": [
+          "opt-level=3",
+          "panic=abort",
+          "embed-bitcode=no",
+          "codegen-units=4",
+          "metadata=17f6e552a9d4c863",
+          "extra-filename=-6fab43e6f28b5b1b",
+          "strip=debuginfo",
+          "metadata=bf37c80b5bdc859b234f05edd5f3d79bce14ad33"
+        ],
+        "crate": "omatainer",
+        "production": true,
+        "output": "/home/michael/Projects/omatainer-work/hardware-resurrection/target/app-backlog/release/deps"
+      },
+      "installed_build_info": {
+        "arch": "aarch64",
+        "debug_assertions": false,
+        "os": "linux",
+        "pkg_version": "0.1.0",
+        "schema": 1
+      },
+      "app_started": false,
+      "reason": "Waiting for the requested controller-hub power cycle before starting restored session."
+    },
+    "ownerRestoredBeforeSleep": {
+      "time": "2026-10-08T23:23:58.187Z",
+      "source": "bf37c80b5bdc859b234f05edd5f3d79bce14ad33",
+      "pid_observed_from_systemd": 228483,
+      "installed_binary_sha256": "cd112d1c7bd3b8c79a650eba2e402e49b982e178b792bc8d301b44925a7ecb82",
+      "backup": "target/validation/combined-completion/native-ui/session-backup/pre-suspend-64-current.omatainer",
+      "backup_sha256": "6c26d157c7db61bb5b4f2e8fc5d34e4fca7fc419d115c696083e8ee6eaa68bb6",
+      "restored_saved_title": true,
+      "midi": [
+        "[connected] keyboard + mouse · built-in",
+        "[connected] MIDI input backend · discovery",
+        "[connected] Numark NS7:Numark NS7 MIDI 24:0 · Numark NS7 (original)",
+        "[connected] APC40 mkII:APC40 mkII MIDI 1 32:0 · Akai APC40 mkII",
+        "[connected] MPD232:MPD232 Port A 28:0 · Akai MPD232 (LiveLite)",
+        "[disabled] MPD232:MPD232 Port B 28:1 · Class-compliant MIDI",
+        "[disabled] MPD232:MPD232 MIDI 28:2 · Class-compliant MIDI",
+        "[disabled] MPD232:MPD232 Remote 28:3 · Class-compliant MIDI"
+      ],
+      "midi_profiles": {
+        "busy": false,
+        "cached_generation": 1,
+        "control_check": null,
+        "initialization_sent": 2,
+        "input_open": 4,
+        "output_failures": 0,
+        "output_open": 4,
+        "physical_inputs": 7,
+        "physical_qualification": "pending",
+        "previous_generation": 0,
+        "profiled_inputs": 4,
+        "ready": true,
+        "schema": 1
+      },
+      "midi_feedback": {
+        "connected": 4,
+        "failed": 0,
+        "sent": 497
+      },
+      "recording": false,
+      "decks_stopped": true,
+      "driver_srcversion": "F8391E8D4113827F0B47318",
+      "state": "owner stopped after verified saved-title and backup checks for exclusive silent fixture",
+      "boundary": "User-confirmed physical powered-hub cycle, four native controller input/output pairs, actual saved project reopened in source65 production. The proc symlink hash helper refused its symlink; the installed regular file and systemd launch were verified instead. No physical control action or sleep retry claim."
+    },
+    "actualHostSuspend": {
+      "status": "failed",
+      "source": "bf37c80b5bdc859b234f05edd5f3d79bce14ad33",
+      "driver": {
+        "status": "compiled and installed; actual sleep retry pending",
+        "version": "0.1.1",
+        "kernel": "7.1.13-3-2-ARCH",
+        "source_sha256": "0eac486d24a7ffdf33207509274dc75c8a2a83e74493c7b4bfe85a7f5f94dec6",
+        "module_sha256": "f994187f24ec5a7512eef5de31954889522a4c6bac19dc39f3ffd54c666d381e",
+        "srcversion": "F8391E8D4113827F0B47318",
+        "interface_alternates": [
+          {
+            "interface": 0,
+            "alternate": "1",
+            "driver": "/sys/bus/usb/drivers/snd_ns7"
+          },
+          {
+            "interface": 1,
+            "alternate": "1",
+            "driver": "/sys/bus/usb/drivers/snd_ns7"
+          }
+        ],
+        "native_vector_build_log_sha256": "7fd94c5498a605c78cc1df07ff121d6baab52eff35d64d796971c74387b33d07",
+        "install_log_sha256": "20d12ef666d948cce08606d6c58db9df47b7b4c428de3897c6cd0c8f49dfa4f7"
+      },
+      "mode": "s2idle",
+      "entered": "2026-10-08T19:24:17-04:00",
+      "resumed": "2026-10-08T19:27:51-04:00",
+      "actual_sleep_ns": 212693274001,
+      "fixture_exit": 101,
+      "reviewed_output": {
+        "message": "Audio change failed: ALSA function 'snd_pcm_hw_params' failed with error 'Connection timed out (110)'. Recovery output unavailable: no previous active output. Session retained; Save, New/Open and Close remain available",
+        "output": "Status { generation: 5, phase: Offline, active: None, requested: Audio { graph: Routes { outputs: [], inputs: [] }, backend: Some(\"ALSA\"), format: Some(I32), calibration: CalibrationInput { device: None, channels: None, format: None, buffer_frames: None, channel: 0, output_channel: 0, level_db: -40.0 }, device: Some(\"hw:CARD=NS7,DEV=0\"), sample_rate: Some(44100), channels: Some(4), buffer_frames: Some(512) }, message: \"Audio change failed: ALSA function 'snd_pcm_hw_params' failed with error 'Connection timed out (110)'. Recovery output unavailable: no previous active output. Session retained; Save, New/Open and Close remain available\", measurement: None, callback_floor: 18446744073709551615, recovery: Some(Target { plan: Plan { graph: Routes { outputs: [], inputs: [] }, backend: \"ALSA\", device: \"hw:CARD=NS7,DEV=0\", channels: 4, rate: 44100, format: I32, buffer: Some(512), warning: None }, identity: None }) }",
+        "phase": "Offline",
+        "trial": 0
+      },
+      "saved_archive": {
+        "path": "target/validation/combined-completion/host-suspend-65/retained-0.omatainer",
+        "bytes": 10302754,
+        "sha256": "abd446eb3dd1fb7fb8c20e88127b828b387dc4bc7064fb15be0c10f246c13fea",
+        "command_held_notes": 1,
+        "native_reopened_before_output_assertion": true
+      },
+      "ns7_interfaces": [
+        {
+          "interface": 0,
+          "alternate": "1",
+          "driver": "/sys/bus/usb/drivers/snd_ns7"
+        },
+        {
+          "interface": 1,
+          "alternate": "1",
+          "driver": "/sys/bus/usb/drivers/snd_ns7"
+        }
+      ],
+      "usb_enumeration_failed": [
+        "DDJ-SP1"
+      ],
+      "owned_ns7_reset_recovery": "open: 0 Success\nany: 0 Success\nsettings: 0 Success\nhw_params: 0 Success\nprepare: 0 Success\n",
+      "logs": {
+        "fixture.log": "be8bd3dd58b275ea1ad0e179f21a7eba2766dab6ee80265f3226c0dfbf1ccc58",
+        "sleep-systemd.log": "6afa93a10db8d3f68a08ee4ae9cb899574315b6566818516bda8cc74fb3b3455",
+        "sleep-kernel-full.log": "ec64af8f6bed227931b6509358258b8d9f6b3ecde3da0197d23b376ae399bb4a"
+      },
+      "boundary": "One real host sleep, ~212.7 seconds boot-minus-monotonic proof. No completed recovery round or second trial. Both NS7 interfaces remained bound at alternate one; clock restart timed out until an NS7-only USB reset. DDJ-SP1 failed USB enumeration."
+    },
+    "correction": {
+      "status": "compiled, installed, ordinary ALSA preparation passes; actual sleep retry pending",
+      "version": "0.1.2",
+      "kernel": "7.1.13-3-2-ARCH",
+      "source_sha256": "bf060ec186fa5ef6ee3842a34daa9f17e1a51568d07798ddda4a1435d3433820",
+      "module_sha256": "dc4804a420306dee43366e2b17635312fc469e30995eae6e2df249553e56ae23",
+      "srcversion": "DFE5604C1A61E0E41F1E492",
+      "quirks": "0x2",
+      "build_log_sha256": "448e00f5aae67254d491009d86725c1511e0e9000d3bf455ad878166df014982",
+      "install_log_sha256": "4bee2d739da45c2ab26c0bc926e60bd8db9789e24afbf36de52801b9b57d63d1",
+      "alsa_probe": "open: 0 Success\nany: 0 Success\nsettings: 0 Success\nhw_params: 0 Success\nprepare: 0 Success\n",
+      "behavior": "Only the original NS7 requests USB_QUIRK_RESET_RESUME. Shared transfers and interrupted PCM remain stopped until explicit application recovery."
     }
   }
 }
