@@ -3373,9 +3373,12 @@
       "dependencies": [
         187
       ],
-      "state": "planned",
+      "state": "implemented",
       "prs": [],
-      "evidence": []
+      "evidence": [
+        "docs/validation/dj-fx-presets.md",
+        "docs/validation/dj-fx-presets-receipt.json"
+      ]
     },
     {
       "issue": 235,

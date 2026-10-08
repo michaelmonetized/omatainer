@@ -29,6 +29,8 @@ pub(crate) mod provider_preview;
 mod arp;
 mod deck_filter;
 pub(crate) mod channel_fx;
+pub(crate) mod dj_fx_preset;
+pub(crate) mod dj_fx_recall;
 #[cfg(test)]
 mod deck_filter_tests;
 
@@ -1736,6 +1738,7 @@ impl RtEngine {
             #[cfg(test)]
             { self.current_sample_frame = self.frames_done + i as u64; }
             let external_step = self.external_clock_frame(i);
+            self.surface.fx_recall_frame(&self.session);
             self.song_navigation_tick();
             if self.count_in.as_ref().is_some_and(|count| count.finished()) { self.count_in = None; }
             self.scene_launch_tick();

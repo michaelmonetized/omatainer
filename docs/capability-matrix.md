@@ -811,6 +811,17 @@ Software qualification: atomic whole-scene tempo/meter and clip switches at exac
 
 Linux aarch64 software qualification uses actual native egui/AccessKit controls, MIDI dispatch workers without OS ports, durable project and preset file I/O, independently compared playing PCM, bounded stereo histories and fixed renderer transitions. Controller feedback exposes the renderer-confirmed deck assignment, effect name, knob and neutral flag in status; physical display behavior is unqualified. Existing signed factory profiles remain version 6 and unchanged. Portable learned selections use version 7, preferences version 26 and project state version 35. Echo history is capped at two seconds and the neutral detent clears previous side histories. The active app, follower and session remain preserved. This milestone does not complete the remaining software checklist or establish physical controller/audio acceptance.
 
+### Issue #234: implemented
+
+- versioned portable preset: [src/engine/dj_fx_preset.rs](../src/engine/dj_fx_preset.rs) — Bounded named two-unit native file with ordered controls and stable routes; durable no-overwrite save and strict import validation
+- atomic playback recall: [src/engine/dj_fx_recall.rs](../src/engine/dj_fx_recall.rs) — Fixed Reset after fade transaction with expected-controls/project checks, exact timing and owner/rate retirement
+- native review and file worker: [src/ui/dj_fx_presets.rs](../src/ui/dj_fx_presets.rs) — Save, inspect, route rebinding/removal, review and renderer-confirmed recall in the existing DJ FX panel
+- Acceptance fixtures: `engine::dj_fx_preset::tests`, `ui::dj_fx_presets::tests`.
+- Evidence: [docs/validation/dj-fx-presets.md](../docs/validation/dj-fx-presets.md).
+- Evidence: [docs/validation/dj-fx-presets-receipt.json](../docs/validation/dj-fx-presets-receipt.json).
+
+Linux aarch64 software qualification uses actual egui/AccessKit buttons, durable native file I/O and independently compared playing PCM. The version-1 .omatfx format holds two units with bounded UTF-8 names, ordered slots, routes and parameters; it contains no audio media and is limited to 64 KiB of metadata. Sampler routes use stable project identities and foreign/deleted targets require explicit rebinding or removal. The sole recall policy is Reset after fade: exactly five milliseconds to dry, atomic replacement of both units with history retirement, then exactly five milliseconds back. Tails are not carried across the reset. Reviewed settings and project routes are rechecked in the renderer; stale requests preserve current controls. Files are never overwritten by Save new layout. These portable presets are separate from native project persistence and do not depend on proprietary Serato formats. No physical controller or stage acceptance is claimed; the independent app and session remain preserved and the software checklist remains open.
+
 ### Issue #236: implemented
 
 - shared held roll renderer: [src/engine/deck_controls/slicer.rs](../src/engine/deck_controls/slicer.rs) — Immediate/current-source or deck-quantized onset, original pending owner, latest-held fallback and advancing release root
@@ -1007,7 +1018,7 @@ Music source: FreeToUse public keyless API. Michael excludes other third-party p
 | [#231](https://github.com/michaelmonetized/omatainer/issues/231) | Validate loudness, true peaks and metadata before delivery | planned |
 | [#232](https://github.com/michaelmonetized/omatainer/issues/232) | Add selectable one-knob channel effects | implemented |
 | [#233](https://github.com/michaelmonetized/omatainer/issues/233) | Add DVS signal calibration and diagnostics | planned |
-| [#234](https://github.com/michaelmonetized/omatainer/issues/234) | Save and share DJ effect presets and unit layouts | planned |
+| [#234](https://github.com/michaelmonetized/omatainer/issues/234) | Save and share DJ effect presets and unit layouts | implemented |
 | [#235](https://github.com/michaelmonetized/omatainer/issues/235) | Add instant doubles and deck transfer | planned |
 | [#236](https://github.com/michaelmonetized/omatainer/issues/236) | Add momentary loop-roll pad performance | implemented |
 | [#237](https://github.com/michaelmonetized/omatainer/issues/237) | Add reverse playback and momentary censor controls | implemented |

@@ -1,14 +1,14 @@
 use super::*;
 use crate::engine::session::{Axis, Reference};
 
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, serde::Serialize)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum Placement {
     #[default]
     PreFader,
     PostFader,
 }
 
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, serde::Serialize)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum Timing {
     #[default]
     Beat,
@@ -182,6 +182,9 @@ impl State {
     ) -> Result<Self, std::collections::TryReserveError> {
         let mut prepared = Self::new(rate)?;
         prepared.status = self.status;
+        prepared.fx_recall.receipt = self.fx_recall.receipt;
+        prepared.fx_recall.receipt.phase = match self.fx_recall.receipt.phase { super::super::dj_fx_recall::Phase::FadingOut | super::super::dj_fx_recall::Phase::FadingIn => super::super::dj_fx_recall::Phase::Stale, phase => phase };
+        prepared.status.fx_recall = prepared.fx_recall.receipt;
         prepared.assignments = self.assignments;
         prepared.sends = self.sends;
         prepared.master_saved = self.master_saved;
@@ -203,6 +206,8 @@ impl State {
     /// Retire DJ FX histories when the unique audio owner stops its stream.
     /// Takes no data; clears fixed history generations without allocation while keeping reviewed source assignments and controls.
     pub(in crate::engine) fn reset_fx_histories(&mut self) {
+        self.fx_recall.retire();
+        self.status.fx_recall = self.fx_recall.receipt;
         for channel in &mut self.channel_fx { channel.reset(); }
         for bank in 0..2 {
             for source in &mut self.deck_fx[bank] {
@@ -237,6 +242,7 @@ impl State {
             if (!assigned || !settings.on.iter().any(|on| *on)) && !settings.tails[source] {
                 continue;
             }
+            let dry = input;
             let frames = settings.frames(samples_per_beat, rate);
             let mut active = false;
             for (slot, processor) in self.deck_fx[bank][source].iter_mut().enumerate() {
@@ -250,6 +256,7 @@ impl State {
                 );
                 active |= processor.active;
             }
+            input = blend_recall(dry, input, self.fx_recall.gain);
             self.status.fx[bank].tails[source] = active;
         }
         input
@@ -288,7 +295,8 @@ impl State {
             if !settings.on.iter().any(|on| *on) && !settings.tails[2] {
                 continue;
             }
-            let mut frame = buses[track];
+            let dry = buses[track];
+            let mut frame = dry;
             let frames = settings.frames(samples_per_beat, rate);
             let mut active = false;
             for (slot, processor) in self.deck_fx[bank][2].iter_mut().enumerate() {
@@ -302,7 +310,7 @@ impl State {
                 );
                 active |= processor.active;
             }
-            buses[track] = frame;
+            buses[track] = blend_recall(dry, frame, self.fx_recall.gain);
             self.status.fx[bank].tails[2] = active;
             if !active && settings.sampler.is_none() {
                 self.sampler_history_target[bank] = None;
@@ -385,3 +393,29 @@ impl RtEngine {
 
 #[cfg(test)]
 mod tests;
+
+fn blend_recall(dry: [f32; 2], wet: [f32; 2], gain: f32) -> [f32; 2] {
+    if gain == 1.0 { wet } else if gain == 0.0 { dry } else { std::array::from_fn(|channel| dry[channel] + (wet[channel] - dry[channel]) * gain) }
+}
+impl State {
+    /// Advance one atomic reviewed preset at the actual output-frame boundary.
+    /// Takes the current project; fades both unit contributions, applies both together at zero gain, retires their histories and resolves new sampler routes before audio is rendered.
+    pub(in crate::engine) fn fx_recall_frame(&mut self, layout: &crate::engine::session::Layout) {
+        if !matches!(self.fx_recall.receipt.phase, crate::engine::dj_fx_recall::Phase::FadingOut | crate::engine::dj_fx_recall::Phase::FadingIn | crate::engine::dj_fx_recall::Phase::Stale) { return; }
+        if let Some(units) = self.fx_recall.frame(self.status.fx.map(Into::into), layout) {
+            for bank in 0..2 {
+                for source in &mut self.deck_fx[bank] {
+                    for (slot, processor) in source.iter_mut().enumerate() {
+                        processor.reset(self.status.fx[bank].kinds[slot]);
+                        processor.reset(units[bank].kinds[slot]);
+                        processor.parameter(self.fx_rate, units[bank].parameter[slot]);
+                    }
+                }
+            }
+            self.status.fx = units.map(|settings| settings.bank());
+            self.sampler_history_target = self.status.fx.map(|bank| bank.sampler);
+            self.resolve_fx_samplers(layout);
+        }
+        self.status.fx_recall = self.fx_recall.receipt;
+    }
+}
