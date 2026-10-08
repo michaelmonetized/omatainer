@@ -1,6 +1,22 @@
 use super::*;
 use crate::engine::audio::routing::model::{Direction, Group, MAX_PHYSICAL_CHANNELS};
 
+/// Check whether a track needs its original processing for this export.
+/// Takes the saved state and track slot; returns true for an unmuted track or a nonzero send taken before its mute.
+fn required_track(state: &crate::engine::project::State, slot: usize) -> bool {
+    if !state.tracks[slot].mute {
+        return true;
+    }
+    let Some(id) = state.session.as_ref().and_then(|layout| layout.tracks.get(slot)).map(|track| track.id) else {
+        return false;
+    };
+    state.routing.as_ref().is_some_and(|model| model.connections.iter().any(|route| {
+        route.source.group == Group::Track(id)
+            && route.source.tap != crate::engine::audio::routing::model::Tap::PostMixer
+            && route.map.iter().any(|channel| channel.gain != 0.0)
+    }))
+}
+
 /// Prepare the reviewed native render source.
 /// Takes an owned coherent capture and export request; returns a stopped independent graph, exact ordered source channels and render width without opening devices.
 pub(super) fn prepare(
@@ -23,8 +39,8 @@ fn prepare_cancelled(mut captured:Captured,request:&Export,cancel:&AtomicBool) -
     {
         return Err("Selected export scene no longer exists".into());
     }
-    if state.tracks.iter().any(|t| {
-        t.fx.iter()
+    if state.tracks.iter().enumerate().any(|(slot, t)| {
+        required_track(state, slot) && t.fx.iter()
             .any(|f| f.on && f.mix > 0.0 && f.offline.is_some())
     }) || state
         .scene_fx
@@ -37,8 +53,8 @@ fn prepare_cancelled(mut captured:Captured,request:&Export,cancel:&AtomicBool) -
                 .into(),
         );
     }
-    if request.source==Source::Arrangement{if let Some(model)=&state.arrangement{for instance in &model.instances{let Some(slot)=state.session.as_ref().and_then(|layout|layout.tracks.iter().position(|t|t.active&&t.id==instance.track.id))else{continue};if model.sources.iter().find(|s|s.id==instance.source).is_some_and(|s|s.clip.kind==crate::engine::ClipKind::Midi&&!s.clip.notes.is_empty())&&state.tracks[slot].kind!=0&&state.tracks[slot].synth.offline.is_some(){return Err("A song instrument is unavailable; restore it before exporting".into());}}}}
-    for track in &state.tracks {
+    if request.source==Source::Arrangement{if let Some(model)=&state.arrangement{for instance in &model.instances{let Some(slot)=state.session.as_ref().and_then(|layout|layout.tracks.iter().position(|t|t.active&&t.id==instance.track.id))else{continue};if model.sources.iter().find(|s|s.id==instance.source).is_some_and(|s|s.clip.kind==crate::engine::ClipKind::Midi&&!s.clip.notes.is_empty())&&required_track(state,slot)&&state.tracks[slot].kind!=0&&state.tracks[slot].synth.offline.is_some(){return Err("A song instrument is unavailable; restore it before exporting".into());}}}}
+    for (slot, track) in state.tracks.iter().enumerate() {
         let scene = if request.source == Source::Scene {
             Some(request.scene)
         } else {
@@ -49,6 +65,7 @@ fn prepare_cancelled(mut captured:Captured,request:&Export,cancel:&AtomicBool) -
             .is_some_and(|c| c.kind == crate::engine::ClipKind::Midi && !c.notes.is_empty())
             && track.kind != 0
             && track.synth.offline.is_some()
+            && required_track(state, slot)
         {
             return Err("A sounding instrument is unavailable; restore it before exporting".into());
         }

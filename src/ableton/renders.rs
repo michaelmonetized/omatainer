@@ -596,6 +596,49 @@ pub(crate) mod tests {
         let mut legacy = serde_json::to_value(&reopened.state).unwrap();
         legacy["version"] = 30.into();
         assert!(serde_json::from_value::<project::State>(legacy).is_err());
+        let (engine, _) = engine::Engine::headless_for_test(48000, 256);
+        let request = crate::audio_delivery::Export {
+            source: crate::audio_delivery::Source::Arrangement,
+            output_alias: Some(1),
+            end: 1.25,
+            tail: 0.,
+            ..Default::default()
+        };
+        let export = |state: project::State, folder: &str| {
+            crate::audio_delivery::run(
+                project::Captured {
+                    state,
+                    media: reopened.media.clone(),
+                    revision: 0,
+                    checkpoint: Default::default(),
+                    playback_receipts: [None, None],
+                },
+                &request,
+                &root.join(folder),
+                &engine.cmd.performance().optional_work().unwrap(),
+                &Default::default(),
+            )
+        };
+        assert_eq!(export(reopened.state.clone(), "print-export").unwrap().frames, 60000);
+        let exported = engine::decode::decode_audio(&root.join("print-export/master.wav")).unwrap();
+        assert_eq!(exported.sample.frames(), 60000);
+        assert!(exported.sample.data.iter().all(|value| (*value - 0.25f32.tanh()).abs() < 1e-5));
+        let mut unmuted = reopened.state.clone();
+        unmuted.tracks[0].mute = false;
+        assert!(export(unmuted, "unresolved-unmuted").unwrap_err().contains("instrument is unavailable"));
+        assert!(!root.join("unresolved-unmuted").exists());
+        for tap in [Tap::PreFx, Tap::PostFx] {
+            let mut before_mute = reopened.state.clone();
+            let id = before_mute.session.as_ref().unwrap().tracks[0].id;
+            Arc::make_mut(before_mute.routing.as_mut().unwrap()).connections.push(Connection {
+                source: TapSource { group: Group::Track(id), tap },
+                destination: Group::Output(1),
+                map: vec![ChannelMap { source: 0, destination: 0, gain: 1. }],
+            });
+            let folder = format!("unresolved-before-mute-{}", tap.index());
+            assert!(export(before_mute, &folder).unwrap_err().contains("instrument is unavailable"));
+            assert!(!root.join(folder).exists());
+        }
         let mut rt = project::Prepared::from_state(reopened.state, reopened.media, 48000)
             .unwrap()
             .into_offline();
