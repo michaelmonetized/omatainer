@@ -20,6 +20,7 @@ pub(crate) struct Preset {
 impl<'de> Deserialize<'de> for Preset {
     fn deserialize<D:serde::Deserializer<'de>>(deserializer:D)->Result<Self,D::Error>{
         let raw=serde_json::Value::deserialize(deserializer)?;
+        if raw["clip_schema"].as_u64().unwrap_or(0)<33 && raw.get("clip").and_then(|clip|clip.get("properties")).is_some_and(|properties|properties.get("context").is_some()) { return Err(serde::de::Error::custom("Clip scale requires preset clip schema 33")); }
         if raw["clip_schema"].as_u64().unwrap_or(0)<26 && raw.get("clip").and_then(|c|c.get("audio_region")).is_some_and(|r|r.get("fades").is_some()) { return Err(serde::de::Error::custom("Audio fades require preset clip schema 26")); }
         if raw["clip_schema"].as_u64().unwrap_or(0)<21 && raw.get("clip").and_then(|c|c.get("properties")).is_some_and(|p|p.get("launch").is_some()){return Err(serde::de::Error::custom("Clip launch policy requires preset clip schema 21"));}
         #[derive(Deserialize)]

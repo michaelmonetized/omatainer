@@ -1,0 +1,3219 @@
+{
+  "schema": 1,
+  "issues": [
+    168
+  ],
+  "status": "implemented",
+  "nativeStateVersion": 33,
+  "sourceFiles": {
+    "src/engine/clip_management.rs": "624ff0535fdba3cd2816c78a2fca75673722d7684bfb64f5457c2f6a665ef264",
+    "src/engine/clip_management/preset.rs": "ee1b3f2b5699521cb7ca36ffbdbf6619314b74b2c6b39ecddecfad24ab926be6",
+    "src/engine/midi_edit.rs": "3f4ba4857a6ee90de0d8e408f4c282fd871cc80b83662c1640ed5d7897cbe50a",
+    "src/engine/midi_interchange.rs": "1155095fbfa64464620c538e57ec21c33ae5532869513225e1796bdb82f701e1",
+    "src/engine/midi_interchange/editor.rs": "128354c4bdaf94a86d5ebbfe73ffbbdcdbb6a28f90b4d3316a738a2e0da536e0",
+    "src/engine/midi_tools.rs": "68587ac1a2e6da7f72e244a4fbba4c12c85e3b758368f81b2e477ae0a7a86349",
+    "src/engine/midi_tools/scale.rs": "07c04ed03a837fdd1632bad87e252cfe0005cc4bf417fdde23fc96d7ce4767ea",
+    "src/engine/midi_tools/scale/tests.rs": "30e553355de5ec4d77d7cb4d5fbfe3104bfa9611b4bbdc48d17366a3fe7abdff",
+    "src/engine/mod.rs": "6f2101cffaba7db199c0847ecdc36179b312d985fb1915b260f5b22d6268c142",
+    "src/engine/musical_context.rs": "ce3e6bde12f25944925be52ed869736affd2930b5a2190ce889280a73191eb0e",
+    "src/engine/musical_context/integration_tests.rs": "7fc143d5a01766cea99f6572db6b221ddccf79cf2a5e36849970a9a591c84fed",
+    "src/engine/performance.rs": "b257d9538e0c5e77dd3a64b12a9e9dcb74eca562a757981f96daba906e5509d1",
+    "src/engine/project.rs": "d45a0f62435686f4bd94b003c3c971da8ddd5a30716aec5cf54b0cecc33eec5b",
+    "src/engine/project/capture.rs": "4083bcc41db5caf9af7c3a844e57777e099c3054a076d46d376b94d96a7402bd",
+    "src/engine/project/model.rs": "47659ef52000e9e4d9ec0cab58a52ab1ae3c8b88362211800526dee594000858",
+    "src/engine/project/prepare.rs": "d356d3f47713b695372ae4287f349037f9b20f46e70cc7910d55b6831965a404",
+    "src/engine/sampler.rs": "1e1d9100dc62a4ff3a41a07ad519727d918faa74b8133fb7f76ab65348b40f26",
+    "src/engine/snapshot.rs": "8c7f651a9155c36d7c255b1cf55ed020a04e69ab892aa448a0df49b4b2f72c28",
+    "src/engine/undo/capture.rs": "26eab58c61d867290967b2064d375a961356239977ca59ff21a8aed89b42b653",
+    "src/engine/undo/mod.rs": "faafc9099c0f4f57ee2ea64172ea2eaa5cca04bad5484e33e4a94558c73ee8f7",
+    "src/engine/undo/patch.rs": "cfd12c132b92cf07885260f1bd8d3e6ff9b702991cabe91923c6bc1a25636338",
+    "src/ui.rs": "a1097cf5319aed2bb03235b4ae65d11fba8b450a620ac6a827a1810ee5069ac1",
+    "src/ui/load_status.rs": "2852f29adc765371dbe52ad092e26efdc853706976df91372173fd29bfc3cb49",
+    "src/ui/piano_roll.rs": "19b1f553b0b10a64f2206d7b6eed1bdf325973cfb2f8933d709be6bb6728a3d3",
+    "src/ui/piano_roll/canvas.rs": "245b33ca4b37fd4179b8f65c74e0682f7ce07bc6c1f86c917ad72f87b53f32d5",
+    "src/ui/piano_roll/comparison/batch.rs": "95282054649ea968321d1fbb35b39981f8c5a8ffd3f0659d442a595bdde7130c",
+    "src/ui/piano_roll/comparison/group.rs": "3c85866cc903abbe3e4f6ba81c15d6e177b2f90bf02ad9e9a1dde3f2300abb5b",
+    "src/ui/piano_roll/comparison/view.rs": "324b370069c356e48473d472ad4e5673f5c0d144daad3831cba7d7def39508b3",
+    "src/ui/piano_roll/control.rs": "33df5135f12b5f9df1a6b56e4c5658fcaf897d3cdbaf00a6c1889f782838ac63",
+    "src/ui/piano_roll/rhythm.rs": "c6b5f6fbf44d4a1d714322eea6afe8301ad01563926f5a84f96810b78ea4947b",
+    "src/ui/piano_roll/scale.rs": "fc2e22dfeb3c4197bb5aaca463060e8b77b4c14c8674cd48232886a32c6a6696",
+    "src/ui/piano_roll/scale/tests.rs": "199b120778c42ef87997e060db7a3be41f0c767e302798be688d0d6e5506e6fb",
+    "src/ui/piano_roll/tests.rs": "dba4d04423f117dab16ceff4df525a76208d7f7b9f4f568f9afedfb5b8a7cb65",
+    "src/ui/piano_roll/tools.rs": "6c5c3e62bb47fed63912fb5b29ebe0109f77ecc021df77bce8fb05de35106927",
+    "src/ui/scale_status.rs": "e459f033500731b695c670f7d8b0b79334d4e8fbf0482b1c48cfcf68f56c02f0",
+    "src/ui/workspace.rs": "a244408707fe61431dfcf702a519cb1a7faf7d7c45541af16552b5e8477db580",
+    "src/ui/deck_time_tests.rs": "d296d81f4ce423bc2990bb2472cb396c9ad9787b567991491cdb3b543805529f",
+    "src/ui/accessibility/tests.rs": "e949c0f688f6fb2d9371791ba2bf03aab8308117d57698f2c3ac9a3745327433",
+    "src/ui/grid_editor/tests.rs": "997585406f37c88b44081e46225f2adc6753bd6409869089123590baf2c219c2",
+    "src/ui/help/tests.rs": "4fcf048e2e9a82e3d49e7a1f4cfc47262bbaf7076ce90acf993eb29c6cc2777b",
+    "src/ui/library_analysis/tests.rs": "38d65059d3254800d924679c55131048de690ef8bc83c65506b57b47a839dc99",
+    "src/ui/library_annotations/tests.rs": "a88db1d18039519fa65d98e30315b14111d67bd42fea4a45b558472c29a7ee71",
+    "src/ui/library_crates/tests.rs": "5dab72f5a9e5607330020bea6da9371c1e2e96e855020e000d6ff29579d5ca76",
+    "src/ui/project/performance_gate_tests.rs": "883d7a457de770b6fe96a5554b784bb6128153d65c160eec8cfa4e666bec4f5b",
+    "src/ui/project/tests.rs": "83c2137e83ff350d47cc21430a4a6cf723a4e20bc5624e4e2a657cc6cb8cb6c8",
+    "src/ui/recovery/tests.rs": "c13361fcbe9506f4c3aed4cd89c3b90a02efb86618262dbf3cae713199e9696f",
+    "src/ui/sampler_editor/tests.rs": "a512b843972fc7841e0f793ebe6468e068bf6a73966ee47d40aab5db2d375412",
+    "src/ui/touch/tests.rs": "b466b38cb80680b4cfc66f89a25a430d96994e6b960bfdd55e7ccb6c0b92628e",
+    "src/ui/undo/tests.rs": "fb00ea197400b61f664b7098c87af8de7647a54a25d647e133e86061b1b2e91b",
+    "src/ui/video/tests.rs": "edf48be789376ea580ae86658351634bf818b1c9c45758260437770f4db9f719",
+    "src/ui/workspace/tests.rs": "a8ef08894c188cb8fbc9ed659d2c7d3cab1ec0afa482e23926837a72589022ae",
+    "src/ui/library_prepare/tests.rs": "14d883ef162ee576d3de085e4763359362f50e978e47f77ead8ea6120920dac1"
+  },
+  "implementation": {
+    "status": "applied_uncompiled_unqualified",
+    "baseRevision": "b81460cea09a6891024dd821c403bfb02189cfaf",
+    "parents": {
+      "src/engine/clip_management.rs": "5fb8bb835e714277887ea7912446e618e6d12fab52ab57d4a7addeb3595890e8",
+      "src/engine/clip_management/preset.rs": "5efdc0f18ec6e6fa5ff9b92e0d9c1441b9752150c39e320496ef9a46797b7277",
+      "src/engine/midi_edit.rs": "f986d40fa4833d34b84cc6456ceeaa9c6f91b4333895793e3fc4b0345529d83e",
+      "src/engine/midi_interchange.rs": "eeffe9ad2f463a2d60cb4a5dba5977849ea3cde10148effab99420d5b767573c",
+      "src/engine/midi_interchange/editor.rs": "027641777a00731875f389a41c94404c6564ed34aaa2a104a8650358221ef462",
+      "src/engine/midi_tools.rs": "462a4173a1823f7903108deaf0c240c6dddd661c0bfdc5c671fb2033d64453bd",
+      "src/engine/midi_tools/scale.rs": null,
+      "src/engine/midi_tools/scale/tests.rs": null,
+      "src/engine/mod.rs": "350bf4ffe7d78657dcd908e752346cd2673fbc1adb6b96e32c6638ce1ad60a1b",
+      "src/engine/musical_context.rs": null,
+      "src/engine/musical_context/integration_tests.rs": null,
+      "src/engine/performance.rs": "72ee85af8fd88cdd8d262020ac64e11caa85119f82b1909a615674e671bd4d73",
+      "src/engine/project.rs": "3161c9b24f922ec6dc47405e0abfe46c88f548b868524c8e7dff8872316336a6",
+      "src/engine/project/capture.rs": "de51003e35cf9b4283f0d67e83a8f8a4ac567d8b83f5767928b3c7600d26dd1d",
+      "src/engine/project/model.rs": "50da6ea870e1ce78651b5046e4214f8fe791403ffbecd7e96c130dd24dad8052",
+      "src/engine/project/prepare.rs": "fc4b2e60ac96c47e1347d4cfd3c95bceaee82224f006e605da9b63c879463254",
+      "src/engine/sampler.rs": "3ff01a1ffa2f0325ce7bccd2a262d87bcd2a963d89b810208768f97cdf1eb9f3",
+      "src/engine/snapshot.rs": "ba792e207e9dcc9a34910ba7cd501dfa51a0fb588bab53e5caaf2c9da4d056ce",
+      "src/engine/undo/capture.rs": "a1ced82bb01b703c692036f67a6a40360ead935249a72addbcf3853b3ec8833e",
+      "src/engine/undo/mod.rs": "4025cacb4da6f4c50c64127947abdb73185413738f610232fa247209ed582fb4",
+      "src/engine/undo/patch.rs": "a5155a58ef650ed078e262ce9e5c7f652613e12ceda03d3ec8ea43c9d7a199ef",
+      "src/ui.rs": "2f43da133b55727af610fd07461c8dad991e7c64d9d4f132a8cd2e770215a6c5",
+      "src/ui/load_status.rs": "4c168052dafb989d7def41f3b9b9688a8476287129ef33177ef8d6d22dc266c3",
+      "src/ui/piano_roll.rs": "d932148a49c7c75eba540a32ae0472eef7351c4c826b456e772b75a427c22694",
+      "src/ui/piano_roll/canvas.rs": "c9a20e707b5154627bad5a5d67754b5b04efc079a34d4d74f070c87826224958",
+      "src/ui/piano_roll/comparison/batch.rs": "1a2988bb58da90da296410862b96efe909e8a4f03f4c1e6495c424cb365b2ad9",
+      "src/ui/piano_roll/comparison/group.rs": "bc4601010dd841c9f8c2454dc2ee80c5566bfc272c6d5bb0045c34e2367ba216",
+      "src/ui/piano_roll/comparison/view.rs": "0a3fda57a2787d5b5ce47ebe390548acdd02d86decb7edf2ee3c2a7279a5f4cf",
+      "src/ui/piano_roll/control.rs": "bb032fe7708bfcc1e86f24f566868324fad3d23493e7b28ade5c806d49dc862b",
+      "src/ui/piano_roll/rhythm.rs": "fb2a433b2a8e98331171e1cd3741f3e260db1615faf57ea0023c1f10147839d7",
+      "src/ui/piano_roll/scale.rs": null,
+      "src/ui/piano_roll/scale/tests.rs": null,
+      "src/ui/piano_roll/tests.rs": "53385ea4e15557c27ef9780061776ccf3452f67d267cfabe75e0b1d4d3be5180",
+      "src/ui/piano_roll/tools.rs": "4b6d894eeaca26b6fbb892c4c7f01765daddb061791ab8d6eb739a09f8988cf3",
+      "src/ui/scale_status.rs": null,
+      "src/ui/workspace.rs": "2d73c5ca6c777f267bade427fbe77fa7b1422916e0b819a66209d24b28881e4b",
+      "src/ui/deck_time_tests.rs": "e8e6a36056289b1f710dc31723ce6b58fed4fdeadd8458844cea2e2674348861",
+      "src/ui/accessibility/tests.rs": "0d2678a1ecdedec6755f7e57b808d69f6d74a37b0a87be7f28187cee76f953b9",
+      "src/ui/grid_editor/tests.rs": "4a57689960c75ff8c0b3c880e006d00bb2304f8eb3114f4892b2aef104311780",
+      "src/ui/help/tests.rs": "5d5480fdc7d20ec4d7778dd83a0d2b3e7c69eb17ac7579b6001fcff1c718be46",
+      "src/ui/library_analysis/tests.rs": "736c549fbdcf91585c0b4cffb4da0ddaba4f1b13c187274d02324fe40fcdff53",
+      "src/ui/library_annotations/tests.rs": "9251931837e9afc1be32e2ca631b3fd2869651fb131868ff9b192f603a628c22",
+      "src/ui/library_crates/tests.rs": "dde55b057364971d99d7052f99b1d999d8e346e5e281c7d7435c0e9a031eaf68",
+      "src/ui/project/performance_gate_tests.rs": "97ea2ebd5a9a4e0646abf112e8b2dfb8a76d7ba097c347dcd20c84c7173efeee",
+      "src/ui/project/tests.rs": "a76ee9c669e9a4ae0881d843419402f9314d077690974c4f54d84c1dbc84ce11",
+      "src/ui/recovery/tests.rs": "e1ccc603ceaff483dc676b3a9b6098f64bc5ea6d9c81a809861d0c77feb2c3b8",
+      "src/ui/sampler_editor/tests.rs": "cd13799586f6799ee7eb62a36cfeb68933735036cbf5b17b6b3aa9588b6b51eb",
+      "src/ui/touch/tests.rs": "0409159e20ee177d4ae2f7e8acc03fd1555fe6321fa31aa218b0f44d80185dc7",
+      "src/ui/undo/tests.rs": "e7b165a87f28635f0e90fec9a04009123b32ee7ac26a0823dfc693a5467e8d80",
+      "src/ui/video/tests.rs": "cf58e06dad854276265c9283982d601d4b40c476888bf1b47bc1f5dfa49d7587",
+      "src/ui/workspace/tests.rs": "a0d39d26186024e4510fdd018b766e24d3d8d8c3ff31aee94f7c5a958b34b29a",
+      "src/ui/library_prepare/tests.rs": "b19b60ae87d04c664153667c0e0cc3d39730f607031b095232c43a623c30ac32"
+    },
+    "appliedSources": {
+      "src/engine/clip_management.rs": "624ff0535fdba3cd2816c78a2fca75673722d7684bfb64f5457c2f6a665ef264",
+      "src/engine/clip_management/preset.rs": "ee1b3f2b5699521cb7ca36ffbdbf6619314b74b2c6b39ecddecfad24ab926be6",
+      "src/engine/midi_edit.rs": "3f4ba4857a6ee90de0d8e408f4c282fd871cc80b83662c1640ed5d7897cbe50a",
+      "src/engine/midi_interchange.rs": "1155095fbfa64464620c538e57ec21c33ae5532869513225e1796bdb82f701e1",
+      "src/engine/midi_interchange/editor.rs": "128354c4bdaf94a86d5ebbfe73ffbbdcdbb6a28f90b4d3316a738a2e0da536e0",
+      "src/engine/midi_tools.rs": "68587ac1a2e6da7f72e244a4fbba4c12c85e3b758368f81b2e477ae0a7a86349",
+      "src/engine/midi_tools/scale.rs": "07c04ed03a837fdd1632bad87e252cfe0005cc4bf417fdde23fc96d7ce4767ea",
+      "src/engine/midi_tools/scale/tests.rs": "30e553355de5ec4d77d7cb4d5fbfe3104bfa9611b4bbdc48d17366a3fe7abdff",
+      "src/engine/mod.rs": "6f2101cffaba7db199c0847ecdc36179b312d985fb1915b260f5b22d6268c142",
+      "src/engine/musical_context.rs": "ce3e6bde12f25944925be52ed869736affd2930b5a2190ce889280a73191eb0e",
+      "src/engine/musical_context/integration_tests.rs": "7fc143d5a01766cea99f6572db6b221ddccf79cf2a5e36849970a9a591c84fed",
+      "src/engine/performance.rs": "b257d9538e0c5e77dd3a64b12a9e9dcb74eca562a757981f96daba906e5509d1",
+      "src/engine/project.rs": "d45a0f62435686f4bd94b003c3c971da8ddd5a30716aec5cf54b0cecc33eec5b",
+      "src/engine/project/capture.rs": "4083bcc41db5caf9af7c3a844e57777e099c3054a076d46d376b94d96a7402bd",
+      "src/engine/project/model.rs": "47659ef52000e9e4d9ec0cab58a52ab1ae3c8b88362211800526dee594000858",
+      "src/engine/project/prepare.rs": "d356d3f47713b695372ae4287f349037f9b20f46e70cc7910d55b6831965a404",
+      "src/engine/sampler.rs": "1e1d9100dc62a4ff3a41a07ad519727d918faa74b8133fb7f76ab65348b40f26",
+      "src/engine/snapshot.rs": "8c7f651a9155c36d7c255b1cf55ed020a04e69ab892aa448a0df49b4b2f72c28",
+      "src/engine/undo/capture.rs": "26eab58c61d867290967b2064d375a961356239977ca59ff21a8aed89b42b653",
+      "src/engine/undo/mod.rs": "faafc9099c0f4f57ee2ea64172ea2eaa5cca04bad5484e33e4a94558c73ee8f7",
+      "src/engine/undo/patch.rs": "cfd12c132b92cf07885260f1bd8d3e6ff9b702991cabe91923c6bc1a25636338",
+      "src/ui.rs": "a1097cf5319aed2bb03235b4ae65d11fba8b450a620ac6a827a1810ee5069ac1",
+      "src/ui/load_status.rs": "2852f29adc765371dbe52ad092e26efdc853706976df91372173fd29bfc3cb49",
+      "src/ui/piano_roll.rs": "19b1f553b0b10a64f2206d7b6eed1bdf325973cfb2f8933d709be6bb6728a3d3",
+      "src/ui/piano_roll/canvas.rs": "245b33ca4b37fd4179b8f65c74e0682f7ce07bc6c1f86c917ad72f87b53f32d5",
+      "src/ui/piano_roll/comparison/batch.rs": "95282054649ea968321d1fbb35b39981f8c5a8ffd3f0659d442a595bdde7130c",
+      "src/ui/piano_roll/comparison/group.rs": "3c85866cc903abbe3e4f6ba81c15d6e177b2f90bf02ad9e9a1dde3f2300abb5b",
+      "src/ui/piano_roll/comparison/view.rs": "324b370069c356e48473d472ad4e5673f5c0d144daad3831cba7d7def39508b3",
+      "src/ui/piano_roll/control.rs": "33df5135f12b5f9df1a6b56e4c5658fcaf897d3cdbaf00a6c1889f782838ac63",
+      "src/ui/piano_roll/rhythm.rs": "c6b5f6fbf44d4a1d714322eea6afe8301ad01563926f5a84f96810b78ea4947b",
+      "src/ui/piano_roll/scale.rs": "fc2e22dfeb3c4197bb5aaca463060e8b77b4c14c8674cd48232886a32c6a6696",
+      "src/ui/piano_roll/scale/tests.rs": "199b120778c42ef87997e060db7a3be41f0c767e302798be688d0d6e5506e6fb",
+      "src/ui/piano_roll/tests.rs": "dba4d04423f117dab16ceff4df525a76208d7f7b9f4f568f9afedfb5b8a7cb65",
+      "src/ui/piano_roll/tools.rs": "6c5c3e62bb47fed63912fb5b29ebe0109f77ecc021df77bce8fb05de35106927",
+      "src/ui/scale_status.rs": "e459f033500731b695c670f7d8b0b79334d4e8fbf0482b1c48cfcf68f56c02f0",
+      "src/ui/workspace.rs": "a244408707fe61431dfcf702a519cb1a7faf7d7c45541af16552b5e8477db580",
+      "src/ui/deck_time_tests.rs": "d296d81f4ce423bc2990bb2472cb396c9ad9787b567991491cdb3b543805529f",
+      "src/ui/accessibility/tests.rs": "e949c0f688f6fb2d9371791ba2bf03aab8308117d57698f2c3ac9a3745327433",
+      "src/ui/grid_editor/tests.rs": "997585406f37c88b44081e46225f2adc6753bd6409869089123590baf2c219c2",
+      "src/ui/help/tests.rs": "4fcf048e2e9a82e3d49e7a1f4cfc47262bbaf7076ce90acf993eb29c6cc2777b",
+      "src/ui/library_analysis/tests.rs": "38d65059d3254800d924679c55131048de690ef8bc83c65506b57b47a839dc99",
+      "src/ui/library_annotations/tests.rs": "a88db1d18039519fa65d98e30315b14111d67bd42fea4a45b558472c29a7ee71",
+      "src/ui/library_crates/tests.rs": "5dab72f5a9e5607330020bea6da9371c1e2e96e855020e000d6ff29579d5ca76",
+      "src/ui/project/performance_gate_tests.rs": "883d7a457de770b6fe96a5554b784bb6128153d65c160eec8cfa4e666bec4f5b",
+      "src/ui/project/tests.rs": "83c2137e83ff350d47cc21430a4a6cf723a4e20bc5624e4e2a657cc6cb8cb6c8",
+      "src/ui/recovery/tests.rs": "c13361fcbe9506f4c3aed4cd89c3b90a02efb86618262dbf3cae713199e9696f",
+      "src/ui/sampler_editor/tests.rs": "a512b843972fc7841e0f793ebe6468e068bf6a73966ee47d40aab5db2d375412",
+      "src/ui/touch/tests.rs": "b466b38cb80680b4cfc66f89a25a430d96994e6b960bfdd55e7ccb6c0b92628e",
+      "src/ui/undo/tests.rs": "fb00ea197400b61f664b7098c87af8de7647a54a25d647e133e86061b1b2e91b",
+      "src/ui/video/tests.rs": "edf48be789376ea580ae86658351634bf818b1c9c45758260437770f4db9f719",
+      "src/ui/workspace/tests.rs": "a8ef08894c188cb8fbc9ed659d2c7d3cab1ec0afa482e23926837a72589022ae",
+      "src/ui/library_prepare/tests.rs": "14d883ef162ee576d3de085e4763359362f50e978e47f77ead8ea6120920dac1"
+    },
+    "retainedPreparedPatch": "target/app-backlog/scale-prepared-source-paths.patch",
+    "integration": "Native state version 33 follows the combined Live import/render schemas 30-32. Earlier scale-free native files keep absolute notes and inherit no implicit context.",
+    "corrections": [
+      {
+        "round": "first",
+        "result": "Production/test compilation passed. Six of seven context and two of three native workflows passed; all neighboring gates passed. Instrument fixture expected no notes but the actual starter session has 46. The strict oracle now compares every original note byte/field to the actual baseline. Rhythm numeric control uses its actual exported scope label. No production behavior, deadline, test stack, or acceptance assertion was weakened."
+      },
+      {
+        "source": "src/ui/piano_roll/tests.rs",
+        "previousSha256": "4a4934566a147262d27ebc6e654589e2e36bc58fc576a7208eb127db4d99c510",
+        "correctedSha256": "dba4d04423f117dab16ceff4df525a76208d7f7b9f4f568f9afedfb5b8a7cb65",
+        "mechanism": "The dependency GUI test retains two actual native GUI fixtures and a returned fixture. The ordinary two-MiB test thread overflows during renderer construction beneath those inline renderers. Move the shared GUI fixture renderer onto the heap without changing actions, assertions, deadlines, compiler profile or test stack.",
+        "evidence": [
+          "target/app-backlog/scale-context-second-full.log",
+          "target/app-backlog/scale-context-second-crash-backtrace.log"
+        ],
+        "core": {
+          "process": 1595771,
+          "signal": "SIGABRT",
+          "crashingThread": 1823946,
+          "extractedCopyDeleted": true
+        },
+        "qualification": "Requires a fresh build and complete rerun; no passing claim from the aborted run."
+      },
+      {
+        "mechanism": "All fifteen remaining native GUI fixtures retain the real renderer on the heap. The recovery preview/reopen test reproduced the same ordinary-stack inline-renderer overflow after the earlier shared piano-roll fixture correction. Every action, assertion, deadline, source limit, test and ordinary stack remains unchanged.",
+        "evidence": [
+          "target/app-backlog/scale-context-third-full.log",
+          "target/app-backlog/scale-context-third-crash-backtrace.log"
+        ],
+        "changes": [
+          {
+            "path": "src/ui/deck_time_tests.rs",
+            "previousSha256": "e8e6a36056289b1f710dc31723ce6b58fed4fdeadd8458844cea2e2674348861",
+            "correctedSha256": "d296d81f4ce423bc2990bb2472cb396c9ad9787b567991491cdb3b543805529f",
+            "type": "Gui",
+            "constructors": 1
+          },
+          {
+            "path": "src/ui/accessibility/tests.rs",
+            "previousSha256": "0d2678a1ecdedec6755f7e57b808d69f6d74a37b0a87be7f28187cee76f953b9",
+            "correctedSha256": "e949c0f688f6fb2d9371791ba2bf03aab8308117d57698f2c3ac9a3745327433",
+            "type": "Gui",
+            "constructors": 1
+          },
+          {
+            "path": "src/ui/grid_editor/tests.rs",
+            "previousSha256": "4a57689960c75ff8c0b3c880e006d00bb2304f8eb3114f4892b2aef104311780",
+            "correctedSha256": "2ccb541ae377ea36c3586b1423c2cbbc984edaa7aaacb2523f1123863b71d0aa",
+            "type": "Gui",
+            "constructors": 1
+          },
+          {
+            "path": "src/ui/help/tests.rs",
+            "previousSha256": "5d5480fdc7d20ec4d7778dd83a0d2b3e7c69eb17ac7579b6001fcff1c718be46",
+            "correctedSha256": "4fcf048e2e9a82e3d49e7a1f4cfc47262bbaf7076ce90acf993eb29c6cc2777b",
+            "type": "Gui",
+            "constructors": 1
+          },
+          {
+            "path": "src/ui/library_analysis/tests.rs",
+            "previousSha256": "736c549fbdcf91585c0b4cffb4da0ddaba4f1b13c187274d02324fe40fcdff53",
+            "correctedSha256": "38d65059d3254800d924679c55131048de690ef8bc83c65506b57b47a839dc99",
+            "type": "Gui",
+            "constructors": 1
+          },
+          {
+            "path": "src/ui/library_annotations/tests.rs",
+            "previousSha256": "9251931837e9afc1be32e2ca631b3fd2869651fb131868ff9b192f603a628c22",
+            "correctedSha256": "a88db1d18039519fa65d98e30315b14111d67bd42fea4a45b558472c29a7ee71",
+            "type": "Gui",
+            "constructors": 1
+          },
+          {
+            "path": "src/ui/library_crates/tests.rs",
+            "previousSha256": "dde55b057364971d99d7052f99b1d999d8e346e5e281c7d7435c0e9a031eaf68",
+            "correctedSha256": "5dab72f5a9e5607330020bea6da9371c1e2e96e855020e000d6ff29579d5ca76",
+            "type": "Gui",
+            "constructors": 1
+          },
+          {
+            "path": "src/ui/project/performance_gate_tests.rs",
+            "previousSha256": "97ea2ebd5a9a4e0646abf112e8b2dfb8a76d7ba097c347dcd20c84c7173efeee",
+            "correctedSha256": "883d7a457de770b6fe96a5554b784bb6128153d65c160eec8cfa4e666bec4f5b",
+            "type": "Gui",
+            "constructors": 1
+          },
+          {
+            "path": "src/ui/project/tests.rs",
+            "previousSha256": "a76ee9c669e9a4ae0881d843419402f9314d077690974c4f54d84c1dbc84ce11",
+            "correctedSha256": "83c2137e83ff350d47cc21430a4a6cf723a4e20bc5624e4e2a657cc6cb8cb6c8",
+            "type": "Gui",
+            "constructors": 1
+          },
+          {
+            "path": "src/ui/recovery/tests.rs",
+            "previousSha256": "e1ccc603ceaff483dc676b3a9b6098f64bc5ea6d9c81a809861d0c77feb2c3b8",
+            "correctedSha256": "c13361fcbe9506f4c3aed4cd89c3b90a02efb86618262dbf3cae713199e9696f",
+            "type": "Gui",
+            "constructors": 1
+          },
+          {
+            "path": "src/ui/sampler_editor/tests.rs",
+            "previousSha256": "cd13799586f6799ee7eb62a36cfeb68933735036cbf5b17b6b3aa9588b6b51eb",
+            "correctedSha256": "b6712cf36812ac8aee4611ad96577acf8d0cad0f3192db0a3076dd040449062e",
+            "type": "Gui",
+            "constructors": 1
+          },
+          {
+            "path": "src/ui/touch/tests.rs",
+            "previousSha256": "0409159e20ee177d4ae2f7e8acc03fd1555fe6321fa31aa218b0f44d80185dc7",
+            "correctedSha256": "b466b38cb80680b4cfc66f89a25a430d96994e6b960bfdd55e7ccb6c0b92628e",
+            "type": "Gui",
+            "constructors": 1
+          },
+          {
+            "path": "src/ui/undo/tests.rs",
+            "previousSha256": "e7b165a87f28635f0e90fec9a04009123b32ee7ac26a0823dfc693a5467e8d80",
+            "correctedSha256": "fb00ea197400b61f664b7098c87af8de7647a54a25d647e133e86061b1b2e91b",
+            "type": "Gui",
+            "constructors": 1
+          },
+          {
+            "path": "src/ui/video/tests.rs",
+            "previousSha256": "cf58e06dad854276265c9283982d601d4b40c476888bf1b47bc1f5dfa49d7587",
+            "correctedSha256": "edf48be789376ea580ae86658351634bf818b1c9c45758260437770f4db9f719",
+            "type": "Gui",
+            "constructors": 1
+          },
+          {
+            "path": "src/ui/workspace/tests.rs",
+            "previousSha256": "a0d39d26186024e4510fdd018b766e24d3d8d8c3ff31aee94f7c5a958b34b29a",
+            "correctedSha256": "a8ef08894c188cb8fbc9ed659d2c7d3cab1ec0afa482e23926837a72589022ae",
+            "type": "Gui",
+            "constructors": 1
+          }
+        ],
+        "qualification": "Requires a fresh build and all native/full gates; neither aborted full run is passing evidence."
+      },
+      {
+        "mechanism": "Dereference boxed GUI renderers when transferring their contents into the actual audio callback and swapping them back. This preserves the original renderer value, audio assertions and ordinary test stack.",
+        "evidence": [
+          "target/app-backlog/scale-context-fourth-build.log"
+        ],
+        "changes": [
+          {
+            "path": "src/ui/library_prepare/tests.rs",
+            "previousSha256": "b19b60ae87d04c664153667c0e0cc3d39730f607031b095232c43a623c30ac32",
+            "correctedSha256": "14d883ef162ee576d3de085e4763359362f50e978e47f77ead8ea6120920dac1",
+            "edits": [
+              [
+                "std::mem::replace(&mut gui.rt, placeholder)",
+                "std::mem::replace(&mut *gui.rt, placeholder)"
+              ],
+              [
+                "std::mem::swap(&mut gui.rt, callback.renderer_mut_for_test())",
+                "std::mem::swap(&mut *gui.rt, callback.renderer_mut_for_test())"
+              ]
+            ]
+          },
+          {
+            "path": "src/ui/grid_editor/tests.rs",
+            "previousSha256": "2ccb541ae377ea36c3586b1423c2cbbc984edaa7aaacb2523f1123863b71d0aa",
+            "correctedSha256": "997585406f37c88b44081e46225f2adc6753bd6409869089123590baf2c219c2",
+            "edits": [
+              [
+                "std::mem::replace(&mut gui.rt, other)",
+                "std::mem::replace(&mut *gui.rt, other)"
+              ]
+            ]
+          },
+          {
+            "path": "src/ui/sampler_editor/tests.rs",
+            "previousSha256": "b6712cf36812ac8aee4611ad96577acf8d0cad0f3192db0a3076dd040449062e",
+            "correctedSha256": "a512b843972fc7841e0f793ebe6468e068bf6a73966ee47d40aab5db2d375412",
+            "edits": [
+              [
+                "std::mem::replace(&mut g.rt, replacement)",
+                "std::mem::replace(&mut *g.rt, replacement)"
+              ]
+            ]
+          }
+        ],
+        "qualification": "Fourth build failed with five type errors; fresh fifth build and all original gates are required."
+      }
+    ]
+  },
+  "compiledInventory": {
+    "path": "target/app-backlog/scale-context-fifth-source.json",
+    "sha256": "e118fb517d454e8143b9a0a807e199c6957899ca7aa7a2edc5adc46c866cbf09",
+    "baseRevision": "b81460cea09a6891024dd821c403bfb02189cfaf",
+    "files": 918
+  },
+  "testBinary": {
+    "path": "target/app-backlog/qualification-bin/scale-context-tests-fifth",
+    "sha256": "dd7264bbc7bcf8db66d13c85b2b8750678e7690f7b2df02b701eb6c02d2663e2"
+  },
+  "compileLog": {
+    "path": "target/app-backlog/scale-context-fifth-build.log",
+    "sha256": "e8fee5374f1ca2e49c83b5be4b0726c35c910f698ec8b21ba12055e8a0889d36"
+  },
+  "testBuildArguments": [
+    "test",
+    "--locked",
+    "--offline",
+    "--no-run",
+    "--config",
+    "profile.test.package.omatainer.debug=0"
+  ],
+  "compiledTests": {
+    "total": 2264,
+    "ignored": 71,
+    "all": {
+      "path": "target/app-backlog/scale-context-fifth-compiled-tests.log",
+      "sha256": "31f207839479d6e980473723e0134f66557d90f4fe5aa5627d47d48a9289fe64"
+    },
+    "ignoredFixtures": {
+      "path": "target/app-backlog/scale-context-fifth-ignored-tests.log",
+      "sha256": "802cea0afd17082a87dd0bec6814ee38c802a57b5ff71e1841ef841206c59ec2"
+    }
+  },
+  "tests": {
+    "dependencies": {
+      "path": "target/app-backlog/scale-context-fifth-dependencies.log",
+      "sha256": "f835e77533134ca5774da674ec4256a745c6ee0313b44e171e7c95f00470b8d0",
+      "outcome": "ok",
+      "passed": 5,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2259,
+      "seconds": 2.6
+    },
+    "context": {
+      "path": "target/app-backlog/scale-context-fifth-context.log",
+      "sha256": "687f3371e986bd95fed42912ae1f452ba7312a1a8f12513f4264b55c76a59a23",
+      "outcome": "ok",
+      "passed": 7,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2257,
+      "seconds": 0.45
+    },
+    "transformation": {
+      "path": "target/app-backlog/scale-context-fifth-transformation.log",
+      "sha256": "e477d5f6b87a6916dc72aad605c06a116286e0c77c15fa7aaf5049b24bee0322",
+      "outcome": "ok",
+      "passed": 10,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2254,
+      "seconds": 0.06
+    },
+    "native": {
+      "path": "target/app-backlog/scale-context-fifth-native.log",
+      "sha256": "490adea8cffba0cd45e608381fad88dbdbdeba1a32eb529db235153f2d47e3b1",
+      "outcome": "ok",
+      "passed": 3,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2261,
+      "seconds": 3.42
+    },
+    "shared": {
+      "path": "target/app-backlog/scale-context-fifth-shared.log",
+      "sha256": "732bc1771946eaac0441d237a7e78809c00998510a2795fddc7727d6afff4e9c",
+      "outcome": "ok",
+      "passed": 4,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2260,
+      "seconds": 1.57
+    },
+    "piano": {
+      "path": "target/app-backlog/scale-context-fifth-piano.log",
+      "sha256": "51a61c6385d26d325268fa567d2dedfc03edb5b977b9279a9d9c8bf9ac13a8e0",
+      "outcome": "ok",
+      "passed": 30,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2234,
+      "seconds": 14.74
+    },
+    "midi-edit": {
+      "path": "target/app-backlog/scale-context-fifth-midi-edit.log",
+      "sha256": "85e6eb494c312506a3da225fbba3cc7a7eedce00c67134efe99dc51e20c48a9c",
+      "outcome": "ok",
+      "passed": 9,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2255,
+      "seconds": 1.18
+    },
+    "midi-interchange": {
+      "path": "target/app-backlog/scale-context-fifth-midi-interchange.log",
+      "sha256": "bcd93986c4eb240bc0ea6ccfc89b9afad0c6f3ee67e075d6196f5135d157b8f3",
+      "outcome": "ok",
+      "passed": 14,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2250,
+      "seconds": 10.54
+    },
+    "project": {
+      "path": "target/app-backlog/scale-context-fifth-project.log",
+      "sha256": "b773f786e1fcbe6213a377cf7024ad62bc16a67078f6701e90c6e09db4936ccb",
+      "outcome": "ok",
+      "passed": 56,
+      "failed": 0,
+      "ignored": 1,
+      "filtered": 2207,
+      "seconds": 14.11
+    },
+    "undo": {
+      "path": "target/app-backlog/scale-context-fifth-undo.log",
+      "sha256": "8f156256b472b0710e1cb5d92c26d62eca51c253cf0aa4b41a3e826eaecc39fa",
+      "outcome": "ok",
+      "passed": 36,
+      "failed": 0,
+      "ignored": 1,
+      "filtered": 2227,
+      "seconds": 4.75
+    },
+    "snapshot": {
+      "path": "target/app-backlog/scale-context-fifth-snapshot.log",
+      "sha256": "28d7afbc53b88ad3a04f4a8c145ccb7316fdd9fe570c2822d55fd8aa369422c6",
+      "outcome": "ok",
+      "passed": 7,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2257,
+      "seconds": 0.74
+    },
+    "sampler-identity": {
+      "path": "target/app-backlog/scale-context-fifth-sampler-identity.log",
+      "sha256": "d76fc929a02d5d494604d6c477cc2390002692365fe30b2ed032fd1ac1cc2921",
+      "outcome": "ok",
+      "passed": 3,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2261,
+      "seconds": 1.72
+    },
+    "sampler-pads": {
+      "path": "target/app-backlog/scale-context-fifth-sampler-pads.log",
+      "sha256": "ec1b21d4616e76d61bf901eb48acd9ac5beb4766d876c80b0463b2455eb87f63",
+      "outcome": "ok",
+      "passed": 8,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2256,
+      "seconds": 1.6
+    },
+    "ableton": {
+      "path": "target/app-backlog/scale-context-fifth-ableton.log",
+      "sha256": "3bef80e4095cc1946a0a63b525e22cbda49ca2f67c944a5e6830a27179462aad",
+      "outcome": "ok",
+      "passed": 6,
+      "failed": 0,
+      "ignored": 6,
+      "filtered": 2252,
+      "seconds": 0.66
+    },
+    "ableton-native": {
+      "path": "target/app-backlog/scale-context-fifth-ableton-native.log",
+      "sha256": "9152f3f5623349800edc57f5dff32d5994b1d3955866779f744853c64fdf69e5",
+      "outcome": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 5,
+      "filtered": 2258,
+      "seconds": 0.12
+    },
+    "producer-library": {
+      "path": "target/app-backlog/scale-context-fifth-producer-library.log",
+      "sha256": "90315c3f279421c3541b37f334e4e862d0461e99d95a2cb4aa6896b9c662660d",
+      "outcome": "ok",
+      "passed": 5,
+      "failed": 0,
+      "ignored": 3,
+      "filtered": 2256,
+      "seconds": 0.84
+    },
+    "producer-library-native": {
+      "path": "target/app-backlog/scale-context-fifth-producer-library-native.log",
+      "sha256": "4e31c035f997f2a032a3e394890591900f33cc4de56e1f9106eb3c9b4a134f35",
+      "outcome": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 1,
+      "filtered": 2262,
+      "seconds": 0.12
+    },
+    "routing": {
+      "path": "target/app-backlog/scale-context-fifth-routing.log",
+      "sha256": "2d9d2b0bd2897bf1d0a13115046d6cac153d31534189764183a3d63f5a2a2193",
+      "outcome": "ok",
+      "passed": 10,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2254,
+      "seconds": 0.74
+    },
+    "workspace": {
+      "path": "target/app-backlog/scale-context-fifth-workspace.log",
+      "sha256": "c14aad8d1a49e017507a30448d927465f1868e05638685407bc52432aff4b3d0",
+      "outcome": "ok",
+      "passed": 8,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2256,
+      "seconds": 1
+    },
+    "background-jobs": {
+      "path": "target/app-backlog/scale-context-fifth-background-jobs.log",
+      "sha256": "c1a5e382ee01823553291870e0991f20fbc210836b6f1ff8bf12672dbac65fe9",
+      "outcome": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2263,
+      "seconds": 0.13
+    },
+    "library-scan": {
+      "path": "target/app-backlog/scale-context-fifth-library-scan.log",
+      "sha256": "41ecc2b31c88ca44153ad79be1af196c6f7be5ba9bf7d39585f74bf626f17d80",
+      "outcome": "ok",
+      "passed": 17,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2247,
+      "seconds": 3.25
+    },
+    "monitor-qualification": {
+      "path": "target/app-backlog/scale-context-fifth-monitor-qualification.log",
+      "sha256": "cea1ea2c5c9539641fedb32d6bb85a000d6c638553ac711c4584dfd4196f5c22",
+      "outcome": "ok",
+      "passed": 6,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2258,
+      "seconds": 4.07
+    },
+    "library-view": {
+      "path": "target/app-backlog/scale-context-fifth-library-view.log",
+      "sha256": "529b3027fffa78986aed3a0d4efe2f69bab9f5b76f11b63c8ac759314f03e040",
+      "outcome": "ok",
+      "passed": 10,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2254,
+      "seconds": 28.69
+    },
+    "plugin-midi-storage": {
+      "path": "target/app-backlog/scale-context-fifth-plugin-midi-storage.log",
+      "sha256": "b553cec4c8f798a641f81a98d3f646b7646c1f6152c84fa31e8cf3399e49ed7f",
+      "outcome": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2263,
+      "seconds": 0
+    },
+    "media-analysis": {
+      "path": "target/app-backlog/scale-context-fifth-media-analysis.log",
+      "sha256": "c65b5665c3cf6ebe7540e797396fa2c990a2733cb23d7b6fcda9e67d6b93779d",
+      "outcome": "ok",
+      "passed": 9,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2255,
+      "seconds": 0.33
+    },
+    "duration": {
+      "path": "target/app-backlog/scale-context-fifth-duration.log",
+      "sha256": "a03e0b14c648a24b6b57c997551e58c0cdd2823347a885735f70b359c0572009",
+      "outcome": "ok",
+      "passed": 5,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2259,
+      "seconds": 1.03
+    },
+    "licenses": {
+      "path": "target/app-backlog/scale-context-fifth-licenses.log",
+      "sha256": "e7bdc6eea86634577978c0177d256fcb35bd2f553e60df056e5e9c1d5b338df3",
+      "outcome": "ok",
+      "passed": 6,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2258,
+      "seconds": 0.52
+    },
+    "play-history": {
+      "path": "target/app-backlog/scale-context-fifth-play-history.log",
+      "sha256": "48f9ec496d271bf526e6751a1827d5818a4b957059b6b5ac95459b79807698b1",
+      "outcome": "ok",
+      "passed": 11,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2253,
+      "seconds": 1.29
+    },
+    "sampler-editor": {
+      "path": "target/app-backlog/scale-context-fifth-sampler-editor.log",
+      "sha256": "b098e7ebb0b343685d71766049ad8530a54e1ec948a9990503c796ac01c6aea0",
+      "outcome": "ok",
+      "passed": 15,
+      "failed": 0,
+      "ignored": 1,
+      "filtered": 2248,
+      "seconds": 4.4
+    },
+    "sampler-store": {
+      "path": "target/app-backlog/scale-context-fifth-sampler-store.log",
+      "sha256": "90b221837dd9f1d5ba6f3fa98a43a61ce7530b72235abd5fb6fd34ffe9c79013",
+      "outcome": "ok",
+      "passed": 4,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2260,
+      "seconds": 0.04
+    },
+    "compose": {
+      "path": "target/app-backlog/scale-context-fifth-compose.log",
+      "sha256": "f64717f3ea80cba83b104851291b1ab8cdb8f44c6685f41f8eb729b91babff65",
+      "outcome": "ok",
+      "passed": 2,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2262,
+      "seconds": 0.29
+    },
+    "waveform": {
+      "path": "target/app-backlog/scale-context-fifth-waveform.log",
+      "sha256": "c125b9641a893302915e4ca7b54dc2be2cdf08f9e805d2f5016c45d2eb890f48",
+      "outcome": "ok",
+      "passed": 5,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2259,
+      "seconds": 0.5
+    },
+    "song-navigation": {
+      "path": "target/app-backlog/scale-context-fifth-song-navigation.log",
+      "sha256": "c6b0dd0fff35188180bf4b980f01410afefd5391fc586fe8e0c2044cbc4839cf",
+      "outcome": "ok",
+      "passed": 11,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2253,
+      "seconds": 2.7
+    },
+    "project-timing": {
+      "path": "target/app-backlog/scale-context-fifth-project-timing.log",
+      "sha256": "843e0549f7d0066b7de6197e3c04fd0500eeb6b746849651ba4b3376fb467c48",
+      "outcome": "ok",
+      "passed": 6,
+      "failed": 0,
+      "ignored": 1,
+      "filtered": 2257,
+      "seconds": 1.5
+    },
+    "metronome": {
+      "path": "target/app-backlog/scale-context-fifth-metronome.log",
+      "sha256": "4ebf980b8f423e87e049ead289abafc358fb99c58468f6148b6919a73f6ce56c",
+      "outcome": "ok",
+      "passed": 6,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2258,
+      "seconds": 2.22
+    },
+    "recording": {
+      "path": "target/app-backlog/scale-context-fifth-recording.log",
+      "sha256": "8b8588b81b6c1997cd70908d25153f62f2bb0ba94c3699b5e4c367dc80b7a108",
+      "outcome": "ok",
+      "passed": 12,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2252,
+      "seconds": 4.07
+    },
+    "audio": {
+      "path": "target/app-backlog/scale-context-fifth-audio.log",
+      "sha256": "2894a0e24a89dd9cb38d7ee348cc2de3444184f225c2f6ac537ea835813436df",
+      "outcome": "ok",
+      "passed": 4,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2260,
+      "seconds": 0.41
+    },
+    "full": {
+      "path": "target/app-backlog/scale-context-fifth-full.log",
+      "sha256": "4eae84f64e548c0e7e4906e034630ec2c94e867820f93680d3dab95004948c3b",
+      "outcome": "ok",
+      "passed": 2193,
+      "failed": 0,
+      "ignored": 71,
+      "filtered": 0,
+      "seconds": 737.76
+    },
+    "background-reproduction-1": {
+      "path": "target/app-backlog/scale-context-fifth-background-reproduction-1.log",
+      "sha256": "c1a5e382ee01823553291870e0991f20fbc210836b6f1ff8bf12672dbac65fe9",
+      "outcome": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2263,
+      "seconds": 0.13
+    },
+    "background-reproduction-2": {
+      "path": "target/app-backlog/scale-context-fifth-background-reproduction-2.log",
+      "sha256": "c1a5e382ee01823553291870e0991f20fbc210836b6f1ff8bf12672dbac65fe9",
+      "outcome": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2263,
+      "seconds": 0.13
+    },
+    "background-reproduction-3": {
+      "path": "target/app-backlog/scale-context-fifth-background-reproduction-3.log",
+      "sha256": "c1a5e382ee01823553291870e0991f20fbc210836b6f1ff8bf12672dbac65fe9",
+      "outcome": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2263,
+      "seconds": 0.13
+    },
+    "background-reproduction-4": {
+      "path": "target/app-backlog/scale-context-fifth-background-reproduction-4.log",
+      "sha256": "c1a5e382ee01823553291870e0991f20fbc210836b6f1ff8bf12672dbac65fe9",
+      "outcome": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2263,
+      "seconds": 0.13
+    },
+    "background-reproduction-5": {
+      "path": "target/app-backlog/scale-context-fifth-background-reproduction-5.log",
+      "sha256": "c1a5e382ee01823553291870e0991f20fbc210836b6f1ff8bf12672dbac65fe9",
+      "outcome": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2263,
+      "seconds": 0.13
+    },
+    "background-reproduction-6": {
+      "path": "target/app-backlog/scale-context-fifth-background-reproduction-6.log",
+      "sha256": "c1a5e382ee01823553291870e0991f20fbc210836b6f1ff8bf12672dbac65fe9",
+      "outcome": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2263,
+      "seconds": 0.13
+    },
+    "background-reproduction-7": {
+      "path": "target/app-backlog/scale-context-fifth-background-reproduction-7.log",
+      "sha256": "402f8b86c636f43306e648de44989e272e085186a495610132553d904b20b8d9",
+      "outcome": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2263,
+      "seconds": 0.15
+    },
+    "background-reproduction-8": {
+      "path": "target/app-backlog/scale-context-fifth-background-reproduction-8.log",
+      "sha256": "c1a5e382ee01823553291870e0991f20fbc210836b6f1ff8bf12672dbac65fe9",
+      "outcome": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2263,
+      "seconds": 0.13
+    },
+    "background-reproduction-9": {
+      "path": "target/app-backlog/scale-context-fifth-background-reproduction-9.log",
+      "sha256": "402f8b86c636f43306e648de44989e272e085186a495610132553d904b20b8d9",
+      "outcome": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2263,
+      "seconds": 0.15
+    },
+    "background-reproduction-10": {
+      "path": "target/app-backlog/scale-context-fifth-background-reproduction-10.log",
+      "sha256": "c1a5e382ee01823553291870e0991f20fbc210836b6f1ff8bf12672dbac65fe9",
+      "outcome": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2263,
+      "seconds": 0.13
+    },
+    "background-reproduction-11": {
+      "path": "target/app-backlog/scale-context-fifth-background-reproduction-11.log",
+      "sha256": "402f8b86c636f43306e648de44989e272e085186a495610132553d904b20b8d9",
+      "outcome": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2263,
+      "seconds": 0.15
+    },
+    "background-reproduction-12": {
+      "path": "target/app-backlog/scale-context-fifth-background-reproduction-12.log",
+      "sha256": "c1a5e382ee01823553291870e0991f20fbc210836b6f1ff8bf12672dbac65fe9",
+      "outcome": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2263,
+      "seconds": 0.13
+    },
+    "background-reproduction-13": {
+      "path": "target/app-backlog/scale-context-fifth-background-reproduction-13.log",
+      "sha256": "c1a5e382ee01823553291870e0991f20fbc210836b6f1ff8bf12672dbac65fe9",
+      "outcome": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2263,
+      "seconds": 0.13
+    },
+    "background-reproduction-14": {
+      "path": "target/app-backlog/scale-context-fifth-background-reproduction-14.log",
+      "sha256": "c1a5e382ee01823553291870e0991f20fbc210836b6f1ff8bf12672dbac65fe9",
+      "outcome": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2263,
+      "seconds": 0.13
+    },
+    "background-reproduction-15": {
+      "path": "target/app-backlog/scale-context-fifth-background-reproduction-15.log",
+      "sha256": "c1a5e382ee01823553291870e0991f20fbc210836b6f1ff8bf12672dbac65fe9",
+      "outcome": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2263,
+      "seconds": 0.13
+    },
+    "background-reproduction-16": {
+      "path": "target/app-backlog/scale-context-fifth-background-reproduction-16.log",
+      "sha256": "402f8b86c636f43306e648de44989e272e085186a495610132553d904b20b8d9",
+      "outcome": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2263,
+      "seconds": 0.15
+    },
+    "background-reproduction-17": {
+      "path": "target/app-backlog/scale-context-fifth-background-reproduction-17.log",
+      "sha256": "c1a5e382ee01823553291870e0991f20fbc210836b6f1ff8bf12672dbac65fe9",
+      "outcome": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2263,
+      "seconds": 0.13
+    },
+    "background-reproduction-18": {
+      "path": "target/app-backlog/scale-context-fifth-background-reproduction-18.log",
+      "sha256": "c1a5e382ee01823553291870e0991f20fbc210836b6f1ff8bf12672dbac65fe9",
+      "outcome": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2263,
+      "seconds": 0.13
+    },
+    "background-reproduction-19": {
+      "path": "target/app-backlog/scale-context-fifth-background-reproduction-19.log",
+      "sha256": "c1a5e382ee01823553291870e0991f20fbc210836b6f1ff8bf12672dbac65fe9",
+      "outcome": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2263,
+      "seconds": 0.13
+    },
+    "background-reproduction-20": {
+      "path": "target/app-backlog/scale-context-fifth-background-reproduction-20.log",
+      "sha256": "8e7fe7faad39464224143632df8ef756536deaae9254ac57cbcfae97719fa949",
+      "outcome": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2263,
+      "seconds": 0.16
+    },
+    "duration-reproduction-1": {
+      "path": "target/app-backlog/scale-context-fifth-duration-reproduction-1.log",
+      "sha256": "91595d48bc73a0b868b1ed4325eca9e797f08a9db09fdd3ebf1e81e84bdc0b05",
+      "outcome": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2263,
+      "seconds": 0.3
+    },
+    "duration-reproduction-2": {
+      "path": "target/app-backlog/scale-context-fifth-duration-reproduction-2.log",
+      "sha256": "fc752982b0eca2ad1e8e8bdd521fc8e42f498d4b8a86b8c310a34441efb8e098",
+      "outcome": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2263,
+      "seconds": 0.25
+    },
+    "duration-reproduction-3": {
+      "path": "target/app-backlog/scale-context-fifth-duration-reproduction-3.log",
+      "sha256": "90352caf6b5d3367c9e830bcd231e9983e3ab14e4dfddfd8da2e1a398165ff5b",
+      "outcome": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2263,
+      "seconds": 0.27
+    },
+    "duration-reproduction-4": {
+      "path": "target/app-backlog/scale-context-fifth-duration-reproduction-4.log",
+      "sha256": "fc752982b0eca2ad1e8e8bdd521fc8e42f498d4b8a86b8c310a34441efb8e098",
+      "outcome": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2263,
+      "seconds": 0.25
+    },
+    "duration-reproduction-5": {
+      "path": "target/app-backlog/scale-context-fifth-duration-reproduction-5.log",
+      "sha256": "d7654674abeeebfe060cf53a2d5e2141e08a29aa3e4415f7cf769402fdd221b5",
+      "outcome": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2263,
+      "seconds": 0.33
+    },
+    "duration-reproduction-6": {
+      "path": "target/app-backlog/scale-context-fifth-duration-reproduction-6.log",
+      "sha256": "8a43cc2754d4b9ab6408ef27e111946d9b5fd7e8836b5ff686d384866365ebc0",
+      "outcome": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2263,
+      "seconds": 0.22
+    },
+    "duration-reproduction-7": {
+      "path": "target/app-backlog/scale-context-fifth-duration-reproduction-7.log",
+      "sha256": "fc752982b0eca2ad1e8e8bdd521fc8e42f498d4b8a86b8c310a34441efb8e098",
+      "outcome": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2263,
+      "seconds": 0.25
+    },
+    "duration-reproduction-8": {
+      "path": "target/app-backlog/scale-context-fifth-duration-reproduction-8.log",
+      "sha256": "583c65eb3eb6f6b102202b7f41b65c7220c9503dba9016b9cd3266eadf2e26e0",
+      "outcome": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2263,
+      "seconds": 0.24
+    },
+    "duration-reproduction-9": {
+      "path": "target/app-backlog/scale-context-fifth-duration-reproduction-9.log",
+      "sha256": "8a43cc2754d4b9ab6408ef27e111946d9b5fd7e8836b5ff686d384866365ebc0",
+      "outcome": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2263,
+      "seconds": 0.22
+    },
+    "duration-reproduction-10": {
+      "path": "target/app-backlog/scale-context-fifth-duration-reproduction-10.log",
+      "sha256": "8a43cc2754d4b9ab6408ef27e111946d9b5fd7e8836b5ff686d384866365ebc0",
+      "outcome": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2263,
+      "seconds": 0.22
+    },
+    "sampler-reproduction-1": {
+      "path": "target/app-backlog/scale-context-fifth-sampler-reproduction-1.log",
+      "sha256": "6e5ec6f62dc5ecf3e58732351ede998ef096469e53f635c8ae8778a7b165584f",
+      "outcome": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2263,
+      "seconds": 0.41
+    },
+    "sampler-reproduction-2": {
+      "path": "target/app-backlog/scale-context-fifth-sampler-reproduction-2.log",
+      "sha256": "e0041979fb65bbfc42c3a2ae49f82174546eaf4bb364473eb2dd64e0f25f8b0c",
+      "outcome": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2263,
+      "seconds": 0.39
+    },
+    "sampler-reproduction-3": {
+      "path": "target/app-backlog/scale-context-fifth-sampler-reproduction-3.log",
+      "sha256": "1b0af1e1327206f5ecc09e58dba9d4c588f57dc9de5c402715235bad1198da56",
+      "outcome": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2263,
+      "seconds": 0.4
+    },
+    "sampler-reproduction-4": {
+      "path": "target/app-backlog/scale-context-fifth-sampler-reproduction-4.log",
+      "sha256": "6e5ec6f62dc5ecf3e58732351ede998ef096469e53f635c8ae8778a7b165584f",
+      "outcome": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2263,
+      "seconds": 0.41
+    },
+    "sampler-reproduction-5": {
+      "path": "target/app-backlog/scale-context-fifth-sampler-reproduction-5.log",
+      "sha256": "6e5ec6f62dc5ecf3e58732351ede998ef096469e53f635c8ae8778a7b165584f",
+      "outcome": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2263,
+      "seconds": 0.41
+    },
+    "sampler-reproduction-6": {
+      "path": "target/app-backlog/scale-context-fifth-sampler-reproduction-6.log",
+      "sha256": "1b0af1e1327206f5ecc09e58dba9d4c588f57dc9de5c402715235bad1198da56",
+      "outcome": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2263,
+      "seconds": 0.4
+    },
+    "sampler-reproduction-7": {
+      "path": "target/app-backlog/scale-context-fifth-sampler-reproduction-7.log",
+      "sha256": "6e5ec6f62dc5ecf3e58732351ede998ef096469e53f635c8ae8778a7b165584f",
+      "outcome": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2263,
+      "seconds": 0.41
+    },
+    "sampler-reproduction-8": {
+      "path": "target/app-backlog/scale-context-fifth-sampler-reproduction-8.log",
+      "sha256": "e0041979fb65bbfc42c3a2ae49f82174546eaf4bb364473eb2dd64e0f25f8b0c",
+      "outcome": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2263,
+      "seconds": 0.39
+    },
+    "sampler-reproduction-9": {
+      "path": "target/app-backlog/scale-context-fifth-sampler-reproduction-9.log",
+      "sha256": "6e5ec6f62dc5ecf3e58732351ede998ef096469e53f635c8ae8778a7b165584f",
+      "outcome": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2263,
+      "seconds": 0.41
+    },
+    "sampler-reproduction-10": {
+      "path": "target/app-backlog/scale-context-fifth-sampler-reproduction-10.log",
+      "sha256": "6e5ec6f62dc5ecf3e58732351ede998ef096469e53f635c8ae8778a7b165584f",
+      "outcome": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2263,
+      "seconds": 0.41
+    },
+    "heap-fixture-deck_time_tests": {
+      "path": "target/app-backlog/scale-context-fifth-heap-fixture-deck_time_tests.log",
+      "sha256": "bf0f07445916ab000a42886a76d17b127b1777c423101f889282659dda8097bd",
+      "outcome": "ok",
+      "passed": 8,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2256,
+      "seconds": 1.04
+    },
+    "heap-fixture-accessibility": {
+      "path": "target/app-backlog/scale-context-fifth-heap-fixture-accessibility.log",
+      "sha256": "3c1a55e8efd7925108f95f6c6a6cb9482369793e15dd6b4063f6d41c574982e1",
+      "outcome": "ok",
+      "passed": 17,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2247,
+      "seconds": 4.5
+    },
+    "heap-fixture-grid_editor": {
+      "path": "target/app-backlog/scale-context-fifth-heap-fixture-grid_editor.log",
+      "sha256": "e79b64b05a3936148d6e621602791c609881a465f627295379811e75e2e7897f",
+      "outcome": "ok",
+      "passed": 14,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2250,
+      "seconds": 5.55
+    },
+    "heap-fixture-help": {
+      "path": "target/app-backlog/scale-context-fifth-heap-fixture-help.log",
+      "sha256": "dde239e9572e52aa7f2332904bfca669d374ad15981b4b26c3fe54d9131812ca",
+      "outcome": "ok",
+      "passed": 14,
+      "failed": 0,
+      "ignored": 1,
+      "filtered": 2249,
+      "seconds": 3.1
+    },
+    "heap-fixture-library_analysis": {
+      "path": "target/app-backlog/scale-context-fifth-heap-fixture-library_analysis.log",
+      "sha256": "bac07cdfbac4ea52a15f032d84d93362e520c63e5a3aa479d1c9a74a51cbd608",
+      "outcome": "ok",
+      "passed": 11,
+      "failed": 0,
+      "ignored": 1,
+      "filtered": 2252,
+      "seconds": 4.77
+    },
+    "heap-fixture-library_annotations": {
+      "path": "target/app-backlog/scale-context-fifth-heap-fixture-library_annotations.log",
+      "sha256": "b2e45d7d5a3793bbc87c06da9a64092233f64fddc8d59da3dd3c7467e1702f76",
+      "outcome": "ok",
+      "passed": 2,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2262,
+      "seconds": 0.6
+    },
+    "heap-fixture-library_crates": {
+      "path": "target/app-backlog/scale-context-fifth-heap-fixture-library_crates.log",
+      "sha256": "685a3b9c42c30c7dbf8356db0877a803033e6cacfc5b7fe134e193149bcbf522",
+      "outcome": "ok",
+      "passed": 7,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2257,
+      "seconds": 2.84
+    },
+    "heap-fixture-library_prepare": {
+      "path": "target/app-backlog/scale-context-fifth-heap-fixture-library_prepare.log",
+      "sha256": "a97c5ea0f42a89ae934aedb4988ee8e56a218d8c63178203f5edb5492e5a2838",
+      "outcome": "ok",
+      "passed": 5,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2259,
+      "seconds": 1.66
+    },
+    "heap-fixture-project": {
+      "path": "target/app-backlog/scale-context-fifth-heap-fixture-project.log",
+      "sha256": "d6f91934822629d636967591b3d2bb2a261ccb7873333fc8960cbc964bb6ac59",
+      "outcome": "ok",
+      "passed": 55,
+      "failed": 0,
+      "ignored": 2,
+      "filtered": 2207,
+      "seconds": 21.39
+    },
+    "heap-fixture-recovery": {
+      "path": "target/app-backlog/scale-context-fifth-heap-fixture-recovery.log",
+      "sha256": "44fa35eec3360a36c64c1ac6be5d89c12109fe75396fb65acc7df1cf724dd085",
+      "outcome": "ok",
+      "passed": 17,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2247,
+      "seconds": 23.03
+    },
+    "heap-fixture-sampler_editor": {
+      "path": "target/app-backlog/scale-context-fifth-heap-fixture-sampler_editor.log",
+      "sha256": "1e9ca7f6bae4de67e45ce7bde9de494d8be3063fd834f2ecde16b25f53556e00",
+      "outcome": "ok",
+      "passed": 15,
+      "failed": 0,
+      "ignored": 1,
+      "filtered": 2248,
+      "seconds": 4.45
+    },
+    "heap-fixture-touch": {
+      "path": "target/app-backlog/scale-context-fifth-heap-fixture-touch.log",
+      "sha256": "26365f1748585e9d51f327a35884446ff2930df48a29280351025bc62cb68437",
+      "outcome": "ok",
+      "passed": 12,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2252,
+      "seconds": 1.48
+    },
+    "heap-fixture-undo": {
+      "path": "target/app-backlog/scale-context-fifth-heap-fixture-undo.log",
+      "sha256": "99788ca6f99f891578f6791015b4abe444ceb49f6f931875902f1f2037e38507",
+      "outcome": "ok",
+      "passed": 5,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2259,
+      "seconds": 0.59
+    },
+    "heap-fixture-video": {
+      "path": "target/app-backlog/scale-context-fifth-heap-fixture-video.log",
+      "sha256": "59a56a0112cdb4bb0895bd4ce6826de03ab73b6d86089ae7c6022dc03a1d220f",
+      "outcome": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2263,
+      "seconds": 1.74
+    }
+  },
+  "checks": {
+    "metadata": {
+      "native_state_roundtrip": true,
+      "prepared_renderer_context": true,
+      "legacy_refusal": true,
+      "physical_devices_opened": false
+    },
+    "instrument": {
+      "actual_synth_gates": true,
+      "held_pitch_retained": true,
+      "callback_allocations": 0,
+      "callback_frees": 0,
+      "physical_devices_opened": false
+    },
+    "native": {
+      "actual_egui_accesskit": true,
+      "three_nonmajor_scales": true,
+      "one_undo": true,
+      "native_save_reopen": true,
+      "chromatic_exceptions_retained": true,
+      "physical_devices_opened": false
+    },
+    "generation": {
+      "actual_egui_accesskit": true,
+      "explicit_song_context": true,
+      "participating_generation": true,
+      "original_absolute_pitches_retained": true,
+      "saved_instrument_opt_in": true,
+      "physical_devices_opened": false
+    },
+    "shared": {
+      "actual_group_worker": true,
+      "per_owner_context": true,
+      "stale_context_refusal": true,
+      "launched_key_conflict_visible": true,
+      "physical_devices_opened": false
+    }
+  },
+  "nativeImportIntegration": {
+    "path": "target/app-backlog/scale-context-fifth-native-imports.json",
+    "sha256": "1aebe2406e43149120c6b85ec563c308d91647d12d53762e773fef55a87dda54",
+    "worker": {
+      "sourceInventory": {
+        "path": "target/app-backlog/scale-context-fifth-source.json",
+        "sha256": "e118fb517d454e8143b9a0a807e199c6957899ca7aa7a2edc5adc46c866cbf09"
+      },
+      "binary": {
+        "path": "target/app-backlog/qualification-bin/scale-context-native-worker-fifth",
+        "sha256": "541541c469378261e9736c3e6f5f88a854bebf992042ed2bc1085f569eeea472",
+        "bytes": 437788832
+      },
+      "build": {
+        "path": "target/app-backlog/scale-context-fifth-native-worker-build.log",
+        "sha256": "fdabcd4239cfb346438155f22f28b0332a4f999d562159fe31889dbfdd812673",
+        "args": [
+          "build",
+          "--locked",
+          "--offline",
+          "--bin",
+          "omatainer",
+          "--config",
+          "profile.dev.package.omatainer.debug=0"
+        ]
+      },
+      "buildInfo": {
+        "arch": "aarch64",
+        "debug_assertions": true,
+        "os": "linux",
+        "pkg_version": "0.1.0",
+        "schema": 1
+      }
+    },
+    "tests": [
+      {
+        "name": "ableton::plugins::tests::native_vst3_state_chain_automation_merge_and_reopen_restore_measured_audio",
+        "path": "target/app-backlog/scale-context-fifth-native-import-1.log",
+        "sha256": "8381a2d2b673ec89d93c4ea41027067b7b6252869babf195e601ef2e4c0580d1",
+        "outcome": "ok",
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 2263,
+        "seconds": 0.58
+      },
+      {
+        "name": "ableton::process::tests::actual_worker_transfers_source_state_and_refuses_corruption_mutation_and_cancel",
+        "path": "target/app-backlog/scale-context-fifth-native-import-2.log",
+        "sha256": "d06a70514842dadefa3576d5e4c5d5f2c242a051f18bef6be16d8044606ffacb",
+        "outcome": "ok",
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 2263,
+        "seconds": 0.03
+      },
+      {
+        "name": "ableton::tests::private_saved_live_set_is_read_without_modification",
+        "path": "target/app-backlog/scale-context-fifth-native-import-3.log",
+        "sha256": "e49542d594705e603e718ec65517d5cdbc371743117bc8049246d29b84816c08",
+        "outcome": "ok",
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 2263,
+        "seconds": 0.03
+      },
+      {
+        "name": "producer_library::tests::native_pack_worker_checks_real_identity_and_stops_cancelled_or_mutated_reviews",
+        "path": "target/app-backlog/scale-context-fifth-native-import-4.log",
+        "sha256": "ddb02241f9c827786eb193d0582563acea2090c0b4437c97137f4c0d4775549a",
+        "outcome": "ok",
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 2263,
+        "seconds": 0.02
+      },
+      {
+        "name": "producer_library::tests::native_producer_scan_uses_current_mount_identity_and_keeps_source_bytes_unchanged",
+        "path": "target/app-backlog/scale-context-fifth-native-import-5.log",
+        "sha256": "4512bb8d45b5f9697e526ec7672e056118b81524c9d95231434427b799233534",
+        "outcome": "ok",
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 2263,
+        "seconds": 0.04
+      },
+      {
+        "name": "producer_library::tests::original_vst3_effect_user_preset_restores_exact_class_and_opaque_state",
+        "path": "target/app-backlog/scale-context-fifth-native-import-6.log",
+        "sha256": "df81a07fb1254ee365d59e1593ad7bc17559cfe20956461943fba8a078303496",
+        "outcome": "ok",
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 2263,
+        "seconds": 0.05
+      },
+      {
+        "name": "ui::ableton::library::tests::actual_library_pack_review_selection_preset_import_and_mutated_publication_preserve_session",
+        "path": "target/app-backlog/scale-context-fifth-native-import-7.log",
+        "sha256": "777852d24c526adbe92388d0511e3e75c114825a0fbbdc9e2797db5f94f4de7a",
+        "outcome": "ok",
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 2263,
+        "seconds": 0.22
+      },
+      {
+        "name": "ui::ableton::tests::actual_imported_device_relink_buttons_keep_the_running_document_and_publish_original_state",
+        "path": "target/app-backlog/scale-context-fifth-native-import-8.log",
+        "sha256": "cf683e31ec0dc3083f6d2c4667f6ab8f1022f37c2431b8a84c14f21fa5daa7c9",
+        "outcome": "ok",
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 2263,
+        "seconds": 0.26
+      },
+      {
+        "name": "ui::ableton::tests::actual_open_published_migration_preserves_unsaved_cancel_then_installs_stopped_source_state",
+        "path": "target/app-backlog/scale-context-fifth-native-import-9.log",
+        "sha256": "700ea683ae1d5320b084c121d2c09f1a3fa0d924a3a12eb268ffd7c38877afe5",
+        "outcome": "ok",
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 2263,
+        "seconds": 0.28
+      },
+      {
+        "name": "ui::ableton::tests::actual_render_attach_restore_and_publication_keep_the_running_set_and_editable_midi",
+        "path": "target/app-backlog/scale-context-fifth-native-import-10.log",
+        "sha256": "d8ae5f3735d18d2810f3611d34375048ddccd4d6308b9115505dd0ea609756db",
+        "outcome": "ok",
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 2263,
+        "seconds": 0.28
+      },
+      {
+        "name": "ui::ableton::tests::actual_review_publish_source_change_cancellation_and_existing_destination_preserve_session",
+        "path": "target/app-backlog/scale-context-fifth-native-import-11.log",
+        "sha256": "b847736f7b86ed4895542728f403a80ebb9a0ddef5595020b1155b4dfd2293cf",
+        "outcome": "ok",
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 2263,
+        "seconds": 0.22
+      },
+      {
+        "name": "ui::ableton::tests::actual_saved_archive_review_and_restore_do_not_require_the_original_live_files",
+        "path": "target/app-backlog/scale-context-fifth-native-import-12.log",
+        "sha256": "56ea7e7630c2fc6fad0e302185ba0a7c2636e1c7eb7a36eb209372d314d24344",
+        "outcome": "ok",
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 2263,
+        "seconds": 0.24
+      }
+    ],
+    "fixtures": {
+      "sourceHashes": {
+        "/home/michael/Projects/omatainer-work/producer-dj-completion/target/validation/combined-completion/Contract.vst3/Contents/aarch64-linux/Contract.so": "bd9f0ea2cb641f6bbd13ba64bcaa5c9d24d9598933a6bac1d7d7e11998bb0b5f",
+        "/home/michael/Projects/omatainer-work/producer-dj-completion/target/validation/combined-completion/ableton-private/Live11-default.als": "69019eafa2958fb61d8b641ecd292d51b5218fe7bf3b490e835c37d824bbac52"
+      },
+      "copiedHashes": {
+        "/home/michael/Projects/omatainer-work/hardware-resurrection/target/app-backlog/scale-context-fifth-native-fixtures/Contract.vst3/Contents/aarch64-linux/Contract.so": "bd9f0ea2cb641f6bbd13ba64bcaa5c9d24d9598933a6bac1d7d7e11998bb0b5f",
+        "/home/michael/Projects/omatainer-work/hardware-resurrection/target/app-backlog/scale-context-fifth-native-fixtures/Live11-default.als": "69019eafa2958fb61d8b641ecd292d51b5218fe7bf3b490e835c37d824bbac52"
+      },
+      "scope": "Read-only retained private Set smoke and original native SDK contract fixture; not an independently Live-authored musical comparison or a physical-device test."
+    }
+  },
+  "productionCheck": {
+    "path": "target/app-backlog/scale-context-fifth-production-check.log",
+    "sha256": "924fc6c60c72e6834fa6873f513e7137ae710403414eabc08f5e63710d45a4d6",
+    "passed": true
+  },
+  "node": {
+    "path": "target/app-backlog/scale-context-fifth-node.log",
+    "sha256": "7dc1ff0988ff919ebddd9d33409dbb50d0c5c18715ab835db8677ed72b7f41b6",
+    "passed": 17,
+    "failed": 0
+  },
+  "clockLoadRegression": {
+    "path": "target/app-backlog/scale-context-fifth-full-output-timing.json",
+    "sha256": "c01cfb6d00e6f18f0b9aea672607c2a3302b7c667c0370eb699654c8dbd3b664",
+    "physical_devices_opened": false,
+    "real_decode_egui_iterations": 5039,
+    "schema": 1,
+    "tempos": [
+      {
+        "bpm": 40,
+        "clocks": 24,
+        "delay_ns": [
+          48511,
+          7827,
+          72311,
+          750923,
+          92944,
+          24010,
+          56243,
+          117477,
+          81543,
+          16776,
+          126676,
+          134368,
+          6725,
+          71125,
+          69858,
+          57633,
+          148908,
+          19766,
+          96041,
+          59774,
+          151383,
+          15907,
+          3412368,
+          130665
+        ],
+        "max_delay_ns": 3412368
+      },
+      {
+        "bpm": 73,
+        "clocks": 24,
+        "delay_ns": [
+          64428,
+          102208,
+          15403,
+          51517,
+          27504,
+          93368,
+          59897,
+          148011,
+          24082,
+          62278,
+          50308,
+          116171,
+          393952,
+          141063,
+          42925,
+          70539,
+          151610,
+          867186,
+          116294,
+          139073,
+          35977,
+          6757,
+          148496,
+          33441
+        ],
+        "max_delay_ns": 867186
+      },
+      {
+        "bpm": 120,
+        "clocks": 24,
+        "delay_ns": [
+          159470,
+          96048,
+          48792,
+          39369,
+          27614,
+          125734,
+          51602,
+          111097,
+          100467,
+          51085,
+          90914,
+          130992,
+          85569,
+          86563,
+          112558,
+          92094,
+          16088,
+          70000,
+          82743,
+          19196,
+          30774,
+          126393,
+          71513,
+          62424
+        ],
+        "max_delay_ns": 159470
+      },
+      {
+        "bpm": 137,
+        "clocks": 24,
+        "delay_ns": [
+          137636,
+          146699,
+          4011,
+          37657,
+          32595,
+          52408,
+          4304,
+          109701,
+          32972,
+          78410,
+          15514,
+          125953,
+          88725,
+          150538,
+          157059,
+          103205,
+          34267,
+          105456,
+          119185,
+          108582,
+          133853,
+          2289470,
+          25978,
+          12207
+        ],
+        "max_delay_ns": 2289470
+      },
+      {
+        "bpm": 180,
+        "clocks": 24,
+        "delay_ns": [
+          29344,
+          113299,
+          115962,
+          145750,
+          41079,
+          127201,
+          74072,
+          33735,
+          19564,
+          73227,
+          17015,
+          22386,
+          97925,
+          150587,
+          36083,
+          45663,
+          84743,
+          151281,
+          608571,
+          111607,
+          22353,
+          100891,
+          25386,
+          124258
+        ],
+        "max_delay_ns": 608571
+      },
+      {
+        "bpm": 240,
+        "clocks": 24,
+        "delay_ns": [
+          88344,
+          28655,
+          105256,
+          128232,
+          5750,
+          29268,
+          29619,
+          26388,
+          99947,
+          13631,
+          158776,
+          77876,
+          116186,
+          80954,
+          118097,
+          145615,
+          5050,
+          11901,
+          117211,
+          23229,
+          78414,
+          74390,
+          69867,
+          87926
+        ],
+        "max_delay_ns": 158776
+      }
+    ]
+  },
+  "retainedArtifacts": [
+    {
+      "path": "target/app-backlog/scale-context-fifth-ableton-native.log",
+      "sha256": "9152f3f5623349800edc57f5dff32d5994b1d3955866779f744853c64fdf69e5"
+    },
+    {
+      "path": "target/app-backlog/scale-context-fifth-ableton.log",
+      "sha256": "3bef80e4095cc1946a0a63b525e22cbda49ca2f67c944a5e6830a27179462aad"
+    },
+    {
+      "path": "target/app-backlog/scale-context-fifth-audio.log",
+      "sha256": "2894a0e24a89dd9cb38d7ee348cc2de3444184f225c2f6ac537ea835813436df"
+    },
+    {
+      "path": "target/app-backlog/scale-context-fifth-background-jobs.log",
+      "sha256": "c1a5e382ee01823553291870e0991f20fbc210836b6f1ff8bf12672dbac65fe9"
+    },
+    {
+      "path": "target/app-backlog/scale-context-fifth-background-reproduction-1.log",
+      "sha256": "c1a5e382ee01823553291870e0991f20fbc210836b6f1ff8bf12672dbac65fe9"
+    },
+    {
+      "path": "target/app-backlog/scale-context-fifth-background-reproduction-10.log",
+      "sha256": "c1a5e382ee01823553291870e0991f20fbc210836b6f1ff8bf12672dbac65fe9"
+    },
+    {
+      "path": "target/app-backlog/scale-context-fifth-background-reproduction-11.log",
+      "sha256": "402f8b86c636f43306e648de44989e272e085186a495610132553d904b20b8d9"
+    },
+    {
+      "path": "target/app-backlog/scale-context-fifth-background-reproduction-12.log",
+      "sha256": "c1a5e382ee01823553291870e0991f20fbc210836b6f1ff8bf12672dbac65fe9"
+    },
+    {
+      "path": "target/app-backlog/scale-context-fifth-background-reproduction-13.log",
+      "sha256": "c1a5e382ee01823553291870e0991f20fbc210836b6f1ff8bf12672dbac65fe9"
+    },
+    {
+      "path": "target/app-backlog/scale-context-fifth-background-reproduction-14.log",
+      "sha256": "c1a5e382ee01823553291870e0991f20fbc210836b6f1ff8bf12672dbac65fe9"
+    },
+    {
+      "path": "target/app-backlog/scale-context-fifth-background-reproduction-15.log",
+      "sha256": "c1a5e382ee01823553291870e0991f20fbc210836b6f1ff8bf12672dbac65fe9"
+    },
+    {
+      "path": "target/app-backlog/scale-context-fifth-background-reproduction-16.log",
+      "sha256": "402f8b86c636f43306e648de44989e272e085186a495610132553d904b20b8d9"
+    },
+    {
+      "path": "target/app-backlog/scale-context-fifth-background-reproduction-17.log",
+      "sha256": "c1a5e382ee01823553291870e0991f20fbc210836b6f1ff8bf12672dbac65fe9"
+    },
+    {
+      "path": "target/app-backlog/scale-context-fifth-background-reproduction-18.log",
+      "sha256": "c1a5e382ee01823553291870e0991f20fbc210836b6f1ff8bf12672dbac65fe9"
+    },
+    {
+      "path": "target/app-backlog/scale-context-fifth-background-reproduction-19.log",
+      "sha256": "c1a5e382ee01823553291870e0991f20fbc210836b6f1ff8bf12672dbac65fe9"
+    },
+    {
+      "path": "target/app-backlog/scale-context-fifth-background-reproduction-2.log",
+      "sha256": "c1a5e382ee01823553291870e0991f20fbc210836b6f1ff8bf12672dbac65fe9"
+    },
+    {
+      "path": "target/app-backlog/scale-context-fifth-background-reproduction-20.log",
+      "sha256": "8e7fe7faad39464224143632df8ef756536deaae9254ac57cbcfae97719fa949"
+    },
+    {
+      "path": "target/app-backlog/scale-context-fifth-background-reproduction-3.log",
+      "sha256": "c1a5e382ee01823553291870e0991f20fbc210836b6f1ff8bf12672dbac65fe9"
+    },
+    {
+      "path": "target/app-backlog/scale-context-fifth-background-reproduction-4.log",
+      "sha256": "c1a5e382ee01823553291870e0991f20fbc210836b6f1ff8bf12672dbac65fe9"
+    },
+    {
+      "path": "target/app-backlog/scale-context-fifth-background-reproduction-5.log",
+      "sha256": "c1a5e382ee01823553291870e0991f20fbc210836b6f1ff8bf12672dbac65fe9"
+    },
+    {
+      "path": "target/app-backlog/scale-context-fifth-background-reproduction-6.log",
+      "sha256": "c1a5e382ee01823553291870e0991f20fbc210836b6f1ff8bf12672dbac65fe9"
+    },
+    {
+      "path": "target/app-backlog/scale-context-fifth-background-reproduction-7.log",
+      "sha256": "402f8b86c636f43306e648de44989e272e085186a495610132553d904b20b8d9"
+    },
+    {
+      "path": "target/app-backlog/scale-context-fifth-background-reproduction-8.log",
+      "sha256": "c1a5e382ee01823553291870e0991f20fbc210836b6f1ff8bf12672dbac65fe9"
+    },
+    {
+      "path": "target/app-backlog/scale-context-fifth-background-reproduction-9.log",
+      "sha256": "402f8b86c636f43306e648de44989e272e085186a495610132553d904b20b8d9"
+    },
+    {
+      "path": "target/app-backlog/scale-context-fifth-build.log",
+      "sha256": "e8fee5374f1ca2e49c83b5be4b0726c35c910f698ec8b21ba12055e8a0889d36"
+    },
+    {
+      "path": "target/app-backlog/scale-context-fifth-compiled-tests.log",
+      "sha256": "31f207839479d6e980473723e0134f66557d90f4fe5aa5627d47d48a9289fe64"
+    },
+    {
+      "path": "target/app-backlog/scale-context-fifth-compose.log",
+      "sha256": "f64717f3ea80cba83b104851291b1ab8cdb8f44c6685f41f8eb729b91babff65"
+    },
+    {
+      "path": "target/app-backlog/scale-context-fifth-context.log",
+      "sha256": "687f3371e986bd95fed42912ae1f452ba7312a1a8f12513f4264b55c76a59a23"
+    },
+    {
+      "path": "target/app-backlog/scale-context-fifth-dependencies.log",
+      "sha256": "f835e77533134ca5774da674ec4256a745c6ee0313b44e171e7c95f00470b8d0"
+    },
+    {
+      "path": "target/app-backlog/scale-context-fifth-duration-reproduction-1.log",
+      "sha256": "91595d48bc73a0b868b1ed4325eca9e797f08a9db09fdd3ebf1e81e84bdc0b05"
+    },
+    {
+      "path": "target/app-backlog/scale-context-fifth-duration-reproduction-10.log",
+      "sha256": "8a43cc2754d4b9ab6408ef27e111946d9b5fd7e8836b5ff686d384866365ebc0"
+    },
+    {
+      "path": "target/app-backlog/scale-context-fifth-duration-reproduction-2.log",
+      "sha256": "fc752982b0eca2ad1e8e8bdd521fc8e42f498d4b8a86b8c310a34441efb8e098"
+    },
+    {
+      "path": "target/app-backlog/scale-context-fifth-duration-reproduction-3.log",
+      "sha256": "90352caf6b5d3367c9e830bcd231e9983e3ab14e4dfddfd8da2e1a398165ff5b"
+    },
+    {
+      "path": "target/app-backlog/scale-context-fifth-duration-reproduction-4.log",
+      "sha256": "fc752982b0eca2ad1e8e8bdd521fc8e42f498d4b8a86b8c310a34441efb8e098"
+    },
+    {
+      "path": "target/app-backlog/scale-context-fifth-duration-reproduction-5.log",
+      "sha256": "d7654674abeeebfe060cf53a2d5e2141e08a29aa3e4415f7cf769402fdd221b5"
+    },
+    {
+      "path": "target/app-backlog/scale-context-fifth-duration-reproduction-6.log",
+      "sha256": "8a43cc2754d4b9ab6408ef27e111946d9b5fd7e8836b5ff686d384866365ebc0"
+    },
+    {
+      "path": "target/app-backlog/scale-context-fifth-duration-reproduction-7.log",
+      "sha256": "fc752982b0eca2ad1e8e8bdd521fc8e42f498d4b8a86b8c310a34441efb8e098"
+    },
+    {
+      "path": "target/app-backlog/scale-context-fifth-duration-reproduction-8.log",
+      "sha256": "583c65eb3eb6f6b102202b7f41b65c7220c9503dba9016b9cd3266eadf2e26e0"
+    },
+    {
+      "path": "target/app-backlog/scale-context-fifth-duration-reproduction-9.log",
+      "sha256": "8a43cc2754d4b9ab6408ef27e111946d9b5fd7e8836b5ff686d384866365ebc0"
+    },
+    {
+      "path": "target/app-backlog/scale-context-fifth-duration.log",
+      "sha256": "a03e0b14c648a24b6b57c997551e58c0cdd2823347a885735f70b359c0572009"
+    },
+    {
+      "path": "target/app-backlog/scale-context-fifth-focused-runner.log",
+      "sha256": "fd6152930fd241b3a5181581a068b72221e8c5ca3b107ee9ab4cd56e91741923"
+    },
+    {
+      "path": "target/app-backlog/scale-context-fifth-full-output-timing.json",
+      "sha256": "c01cfb6d00e6f18f0b9aea672607c2a3302b7c667c0370eb699654c8dbd3b664"
+    },
+    {
+      "path": "target/app-backlog/scale-context-fifth-full-runner.log",
+      "sha256": "e87e524368606c3bc9c4ffc8dfefd07263231e55afd71c4a53a9853391715b3d"
+    },
+    {
+      "path": "target/app-backlog/scale-context-fifth-full.log",
+      "sha256": "4eae84f64e548c0e7e4906e034630ec2c94e867820f93680d3dab95004948c3b"
+    },
+    {
+      "path": "target/app-backlog/scale-context-fifth-heap-fixture-accessibility.log",
+      "sha256": "3c1a55e8efd7925108f95f6c6a6cb9482369793e15dd6b4063f6d41c574982e1"
+    },
+    {
+      "path": "target/app-backlog/scale-context-fifth-heap-fixture-deck_time_tests.log",
+      "sha256": "bf0f07445916ab000a42886a76d17b127b1777c423101f889282659dda8097bd"
+    },
+    {
+      "path": "target/app-backlog/scale-context-fifth-heap-fixture-grid_editor.log",
+      "sha256": "e79b64b05a3936148d6e621602791c609881a465f627295379811e75e2e7897f"
+    },
+    {
+      "path": "target/app-backlog/scale-context-fifth-heap-fixture-help.log",
+      "sha256": "dde239e9572e52aa7f2332904bfca669d374ad15981b4b26c3fe54d9131812ca"
+    },
+    {
+      "path": "target/app-backlog/scale-context-fifth-heap-fixture-library_analysis.log",
+      "sha256": "bac07cdfbac4ea52a15f032d84d93362e520c63e5a3aa479d1c9a74a51cbd608"
+    },
+    {
+      "path": "target/app-backlog/scale-context-fifth-heap-fixture-library_annotations.log",
+      "sha256": "b2e45d7d5a3793bbc87c06da9a64092233f64fddc8d59da3dd3c7467e1702f76"
+    },
+    {
+      "path": "target/app-backlog/scale-context-fifth-heap-fixture-library_crates.log",
+      "sha256": "685a3b9c42c30c7dbf8356db0877a803033e6cacfc5b7fe134e193149bcbf522"
+    },
+    {
+      "path": "target/app-backlog/scale-context-fifth-heap-fixture-library_prepare.log",
+      "sha256": "a97c5ea0f42a89ae934aedb4988ee8e56a218d8c63178203f5edb5492e5a2838"
+    },
+    {
+      "path": "target/app-backlog/scale-context-fifth-heap-fixture-project.log",
+      "sha256": "d6f91934822629d636967591b3d2bb2a261ccb7873333fc8960cbc964bb6ac59"
+    },
+    {
+      "path": "target/app-backlog/scale-context-fifth-heap-fixture-recovery.log",
+      "sha256": "44fa35eec3360a36c64c1ac6be5d89c12109fe75396fb65acc7df1cf724dd085"
+    },
+    {
+      "path": "target/app-backlog/scale-context-fifth-heap-fixture-sampler_editor.log",
+      "sha256": "1e9ca7f6bae4de67e45ce7bde9de494d8be3063fd834f2ecde16b25f53556e00"
+    },
+    {
+      "path": "target/app-backlog/scale-context-fifth-heap-fixture-touch.log",
+      "sha256": "26365f1748585e9d51f327a35884446ff2930df48a29280351025bc62cb68437"
+    },
+    {
+      "path": "target/app-backlog/scale-context-fifth-heap-fixture-undo.log",
+      "sha256": "99788ca6f99f891578f6791015b4abe444ceb49f6f931875902f1f2037e38507"
+    },
+    {
+      "path": "target/app-backlog/scale-context-fifth-heap-fixture-video.log",
+      "sha256": "59a56a0112cdb4bb0895bd4ce6826de03ab73b6d86089ae7c6022dc03a1d220f"
+    },
+    {
+      "path": "target/app-backlog/scale-context-fifth-ignored-tests.log",
+      "sha256": "802cea0afd17082a87dd0bec6814ee38c802a57b5ff71e1841ef841206c59ec2"
+    },
+    {
+      "path": "target/app-backlog/scale-context-fifth-library-scan.log",
+      "sha256": "41ecc2b31c88ca44153ad79be1af196c6f7be5ba9bf7d39585f74bf626f17d80"
+    },
+    {
+      "path": "target/app-backlog/scale-context-fifth-library-view.log",
+      "sha256": "529b3027fffa78986aed3a0d4efe2f69bab9f5b76f11b63c8ac759314f03e040"
+    },
+    {
+      "path": "target/app-backlog/scale-context-fifth-licenses.log",
+      "sha256": "e7bdc6eea86634577978c0177d256fcb35bd2f553e60df056e5e9c1d5b338df3"
+    },
+    {
+      "path": "target/app-backlog/scale-context-fifth-media-analysis.log",
+      "sha256": "c65b5665c3cf6ebe7540e797396fa2c990a2733cb23d7b6fcda9e67d6b93779d"
+    },
+    {
+      "path": "target/app-backlog/scale-context-fifth-metronome.log",
+      "sha256": "4ebf980b8f423e87e049ead289abafc358fb99c58468f6148b6919a73f6ce56c"
+    },
+    {
+      "path": "target/app-backlog/scale-context-fifth-midi-edit.log",
+      "sha256": "85e6eb494c312506a3da225fbba3cc7a7eedce00c67134efe99dc51e20c48a9c"
+    },
+    {
+      "path": "target/app-backlog/scale-context-fifth-midi-interchange.log",
+      "sha256": "bcd93986c4eb240bc0ea6ccfc89b9afad0c6f3ee67e075d6196f5135d157b8f3"
+    },
+    {
+      "path": "target/app-backlog/scale-context-fifth-monitor-qualification.log",
+      "sha256": "cea1ea2c5c9539641fedb32d6bb85a000d6c638553ac711c4584dfd4196f5c22"
+    },
+    {
+      "path": "target/app-backlog/scale-context-fifth-native-fixtures.json",
+      "sha256": "700b7a3c2a46baf9e0bb5f45a773bd8a02f478e57383f3e72cbf06764212d674"
+    },
+    {
+      "path": "target/app-backlog/scale-context-fifth-native-import-1.log",
+      "sha256": "8381a2d2b673ec89d93c4ea41027067b7b6252869babf195e601ef2e4c0580d1"
+    },
+    {
+      "path": "target/app-backlog/scale-context-fifth-native-import-10.log",
+      "sha256": "d8ae5f3735d18d2810f3611d34375048ddccd4d6308b9115505dd0ea609756db"
+    },
+    {
+      "path": "target/app-backlog/scale-context-fifth-native-import-11.log",
+      "sha256": "b847736f7b86ed4895542728f403a80ebb9a0ddef5595020b1155b4dfd2293cf"
+    },
+    {
+      "path": "target/app-backlog/scale-context-fifth-native-import-12.log",
+      "sha256": "56ea7e7630c2fc6fad0e302185ba0a7c2636e1c7eb7a36eb209372d314d24344"
+    },
+    {
+      "path": "target/app-backlog/scale-context-fifth-native-import-2.log",
+      "sha256": "d06a70514842dadefa3576d5e4c5d5f2c242a051f18bef6be16d8044606ffacb"
+    },
+    {
+      "path": "target/app-backlog/scale-context-fifth-native-import-3.log",
+      "sha256": "e49542d594705e603e718ec65517d5cdbc371743117bc8049246d29b84816c08"
+    },
+    {
+      "path": "target/app-backlog/scale-context-fifth-native-import-4.log",
+      "sha256": "ddb02241f9c827786eb193d0582563acea2090c0b4437c97137f4c0d4775549a"
+    },
+    {
+      "path": "target/app-backlog/scale-context-fifth-native-import-5.log",
+      "sha256": "4512bb8d45b5f9697e526ec7672e056118b81524c9d95231434427b799233534"
+    },
+    {
+      "path": "target/app-backlog/scale-context-fifth-native-import-6.log",
+      "sha256": "df81a07fb1254ee365d59e1593ad7bc17559cfe20956461943fba8a078303496"
+    },
+    {
+      "path": "target/app-backlog/scale-context-fifth-native-import-7.log",
+      "sha256": "777852d24c526adbe92388d0511e3e75c114825a0fbbdc9e2797db5f94f4de7a"
+    },
+    {
+      "path": "target/app-backlog/scale-context-fifth-native-import-8.log",
+      "sha256": "cf683e31ec0dc3083f6d2c4667f6ab8f1022f37c2431b8a84c14f21fa5daa7c9"
+    },
+    {
+      "path": "target/app-backlog/scale-context-fifth-native-import-9.log",
+      "sha256": "700ea683ae1d5320b084c121d2c09f1a3fa0d924a3a12eb268ffd7c38877afe5"
+    },
+    {
+      "path": "target/app-backlog/scale-context-fifth-native-imports-runner.log",
+      "sha256": "38f8d89f5eb83157104639c369325e00df918b5cc7e65eac002ec521ab6fa4a3"
+    },
+    {
+      "path": "target/app-backlog/scale-context-fifth-native-imports.json",
+      "sha256": "1aebe2406e43149120c6b85ec563c308d91647d12d53762e773fef55a87dda54"
+    },
+    {
+      "path": "target/app-backlog/scale-context-fifth-native-worker-build.log",
+      "sha256": "fdabcd4239cfb346438155f22f28b0332a4f999d562159fe31889dbfdd812673"
+    },
+    {
+      "path": "target/app-backlog/scale-context-fifth-native-worker-runner.log",
+      "sha256": "eada74eb9bd2ab9a57437ffa8b4fa37d00a7a7cd8f3d44e2253314dde20d0be6"
+    },
+    {
+      "path": "target/app-backlog/scale-context-fifth-native-worker-source.json",
+      "sha256": "b851587408934752a4e645628dd97e3542e1c1af9fdbebb0d16bbe494e4a029c"
+    },
+    {
+      "path": "target/app-backlog/scale-context-fifth-native.log",
+      "sha256": "490adea8cffba0cd45e608381fad88dbdbdeba1a32eb529db235153f2d47e3b1"
+    },
+    {
+      "path": "target/app-backlog/scale-context-fifth-node.log",
+      "sha256": "7dc1ff0988ff919ebddd9d33409dbb50d0c5c18715ab835db8677ed72b7f41b6"
+    },
+    {
+      "path": "target/app-backlog/scale-context-fifth-piano.log",
+      "sha256": "51a61c6385d26d325268fa567d2dedfc03edb5b977b9279a9d9c8bf9ac13a8e0"
+    },
+    {
+      "path": "target/app-backlog/scale-context-fifth-play-history.log",
+      "sha256": "48f9ec496d271bf526e6751a1827d5818a4b957059b6b5ac95459b79807698b1"
+    },
+    {
+      "path": "target/app-backlog/scale-context-fifth-plugin-midi-storage.log",
+      "sha256": "b553cec4c8f798a641f81a98d3f646b7646c1f6152c84fa31e8cf3399e49ed7f"
+    },
+    {
+      "path": "target/app-backlog/scale-context-fifth-producer-library-native.log",
+      "sha256": "4e31c035f997f2a032a3e394890591900f33cc4de56e1f9106eb3c9b4a134f35"
+    },
+    {
+      "path": "target/app-backlog/scale-context-fifth-producer-library.log",
+      "sha256": "90315c3f279421c3541b37f334e4e862d0461e99d95a2cb4aa6896b9c662660d"
+    },
+    {
+      "path": "target/app-backlog/scale-context-fifth-production-check.log",
+      "sha256": "924fc6c60c72e6834fa6873f513e7137ae710403414eabc08f5e63710d45a4d6"
+    },
+    {
+      "path": "target/app-backlog/scale-context-fifth-project-timing.log",
+      "sha256": "843e0549f7d0066b7de6197e3c04fd0500eeb6b746849651ba4b3376fb467c48"
+    },
+    {
+      "path": "target/app-backlog/scale-context-fifth-project.log",
+      "sha256": "b773f786e1fcbe6213a377cf7024ad62bc16a67078f6701e90c6e09db4936ccb"
+    },
+    {
+      "path": "target/app-backlog/scale-context-fifth-recording.log",
+      "sha256": "8b8588b81b6c1997cd70908d25153f62f2bb0ba94c3699b5e4c367dc80b7a108"
+    },
+    {
+      "path": "target/app-backlog/scale-context-fifth-routing.log",
+      "sha256": "2d9d2b0bd2897bf1d0a13115046d6cac153d31534189764183a3d63f5a2a2193"
+    },
+    {
+      "path": "target/app-backlog/scale-context-fifth-sampler-editor.log",
+      "sha256": "b098e7ebb0b343685d71766049ad8530a54e1ec948a9990503c796ac01c6aea0"
+    },
+    {
+      "path": "target/app-backlog/scale-context-fifth-sampler-identity.log",
+      "sha256": "d76fc929a02d5d494604d6c477cc2390002692365fe30b2ed032fd1ac1cc2921"
+    },
+    {
+      "path": "target/app-backlog/scale-context-fifth-sampler-pads.log",
+      "sha256": "ec1b21d4616e76d61bf901eb48acd9ac5beb4766d876c80b0463b2455eb87f63"
+    },
+    {
+      "path": "target/app-backlog/scale-context-fifth-sampler-reproduction-1.log",
+      "sha256": "6e5ec6f62dc5ecf3e58732351ede998ef096469e53f635c8ae8778a7b165584f"
+    },
+    {
+      "path": "target/app-backlog/scale-context-fifth-sampler-reproduction-10.log",
+      "sha256": "6e5ec6f62dc5ecf3e58732351ede998ef096469e53f635c8ae8778a7b165584f"
+    },
+    {
+      "path": "target/app-backlog/scale-context-fifth-sampler-reproduction-2.log",
+      "sha256": "e0041979fb65bbfc42c3a2ae49f82174546eaf4bb364473eb2dd64e0f25f8b0c"
+    },
+    {
+      "path": "target/app-backlog/scale-context-fifth-sampler-reproduction-3.log",
+      "sha256": "1b0af1e1327206f5ecc09e58dba9d4c588f57dc9de5c402715235bad1198da56"
+    },
+    {
+      "path": "target/app-backlog/scale-context-fifth-sampler-reproduction-4.log",
+      "sha256": "6e5ec6f62dc5ecf3e58732351ede998ef096469e53f635c8ae8778a7b165584f"
+    },
+    {
+      "path": "target/app-backlog/scale-context-fifth-sampler-reproduction-5.log",
+      "sha256": "6e5ec6f62dc5ecf3e58732351ede998ef096469e53f635c8ae8778a7b165584f"
+    },
+    {
+      "path": "target/app-backlog/scale-context-fifth-sampler-reproduction-6.log",
+      "sha256": "1b0af1e1327206f5ecc09e58dba9d4c588f57dc9de5c402715235bad1198da56"
+    },
+    {
+      "path": "target/app-backlog/scale-context-fifth-sampler-reproduction-7.log",
+      "sha256": "6e5ec6f62dc5ecf3e58732351ede998ef096469e53f635c8ae8778a7b165584f"
+    },
+    {
+      "path": "target/app-backlog/scale-context-fifth-sampler-reproduction-8.log",
+      "sha256": "e0041979fb65bbfc42c3a2ae49f82174546eaf4bb364473eb2dd64e0f25f8b0c"
+    },
+    {
+      "path": "target/app-backlog/scale-context-fifth-sampler-reproduction-9.log",
+      "sha256": "6e5ec6f62dc5ecf3e58732351ede998ef096469e53f635c8ae8778a7b165584f"
+    },
+    {
+      "path": "target/app-backlog/scale-context-fifth-sampler-store.log",
+      "sha256": "90b221837dd9f1d5ba6f3fa98a43a61ce7530b72235abd5fb6fd34ffe9c79013"
+    },
+    {
+      "path": "target/app-backlog/scale-context-fifth-shared.log",
+      "sha256": "732bc1771946eaac0441d237a7e78809c00998510a2795fddc7727d6afff4e9c"
+    },
+    {
+      "path": "target/app-backlog/scale-context-fifth-snapshot.log",
+      "sha256": "28d7afbc53b88ad3a04f4a8c145ccb7316fdd9fe570c2822d55fd8aa369422c6"
+    },
+    {
+      "path": "target/app-backlog/scale-context-fifth-song-navigation.log",
+      "sha256": "c6b0dd0fff35188180bf4b980f01410afefd5391fc586fe8e0c2044cbc4839cf"
+    },
+    {
+      "path": "target/app-backlog/scale-context-fifth-source.json",
+      "sha256": "e118fb517d454e8143b9a0a807e199c6957899ca7aa7a2edc5adc46c866cbf09"
+    },
+    {
+      "path": "target/app-backlog/scale-context-fifth-transformation.log",
+      "sha256": "e477d5f6b87a6916dc72aad605c06a116286e0c77c15fa7aaf5049b24bee0322"
+    },
+    {
+      "path": "target/app-backlog/scale-context-fifth-undo.log",
+      "sha256": "8f156256b472b0710e1cb5d92c26d62eca51c253cf0aa4b41a3e826eaecc39fa"
+    },
+    {
+      "path": "target/app-backlog/scale-context-fifth-waveform.log",
+      "sha256": "c125b9641a893302915e4ca7b54dc2be2cdf08f9e805d2f5016c45d2eb890f48"
+    },
+    {
+      "path": "target/app-backlog/scale-context-fifth-workspace.log",
+      "sha256": "c14aad8d1a49e017507a30448d927465f1868e05638685407bc52432aff4b3d0"
+    },
+    {
+      "path": "target/app-backlog/scale-context-fifth-write-receipt.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "target/app-backlog/scale-context-first-ableton-native.log",
+      "sha256": "9152f3f5623349800edc57f5dff32d5994b1d3955866779f744853c64fdf69e5"
+    },
+    {
+      "path": "target/app-backlog/scale-context-first-ableton.log",
+      "sha256": "b8df53518a307c42b34a9227f414e5a02dd99f0bcaccffca532370bab764e169"
+    },
+    {
+      "path": "target/app-backlog/scale-context-first-build.log",
+      "sha256": "17b14cdbed4b4469bfa529cd49f6049e2f5f84eb09963db18621f5184080298a"
+    },
+    {
+      "path": "target/app-backlog/scale-context-first-compiled-tests.log",
+      "sha256": "31f207839479d6e980473723e0134f66557d90f4fe5aa5627d47d48a9289fe64"
+    },
+    {
+      "path": "target/app-backlog/scale-context-first-context.log",
+      "sha256": "824cf51ef29a149d550435bd225fc86dd1c5d4fb1c4275bdce018e3adaef9043"
+    },
+    {
+      "path": "target/app-backlog/scale-context-first-focused-runner.log",
+      "sha256": "e40f5f5c288f0c7490250f84199046935855d48d43dcf6245ffca2ceb34a4c3c"
+    },
+    {
+      "path": "target/app-backlog/scale-context-first-ignored-tests.log",
+      "sha256": "802cea0afd17082a87dd0bec6814ee38c802a57b5ff71e1841ef841206c59ec2"
+    },
+    {
+      "path": "target/app-backlog/scale-context-first-inventory.log",
+      "sha256": "aa1dc15a66e882fd84229df2a0369815c361971d59b79a86ad447ab50da91578"
+    },
+    {
+      "path": "target/app-backlog/scale-context-first-midi-edit.log",
+      "sha256": "ffa025e678b9d01178f8301ba6b0f493a5208d9e527562a430fba04963e58c95"
+    },
+    {
+      "path": "target/app-backlog/scale-context-first-midi-interchange.log",
+      "sha256": "7d8793cee9e1958d595d9022a99b7afb845b431789b6157cda17f205285d0862"
+    },
+    {
+      "path": "target/app-backlog/scale-context-first-native.log",
+      "sha256": "4eace7a1f606b414807149a76c2ae3a001e0a2b59bc887b609848b820e398b23"
+    },
+    {
+      "path": "target/app-backlog/scale-context-first-piano.log",
+      "sha256": "c682831edd70921d754619b5abb3a5ebee8a00fb2bd07154ac7d6c419bfcbda0"
+    },
+    {
+      "path": "target/app-backlog/scale-context-first-producer-library-native.log",
+      "sha256": "4e31c035f997f2a032a3e394890591900f33cc4de56e1f9106eb3c9b4a134f35"
+    },
+    {
+      "path": "target/app-backlog/scale-context-first-producer-library.log",
+      "sha256": "1b9fc9192059776b39ffdb6b81bf9d345d87ec2f65cf35c88198adde21de3aa7"
+    },
+    {
+      "path": "target/app-backlog/scale-context-first-production-check.log",
+      "sha256": "173034432ac133612543d3afa90a62a1bf899e6b4dd484c641dc6e082b6a69dd"
+    },
+    {
+      "path": "target/app-backlog/scale-context-first-project.log",
+      "sha256": "ad7c00d1b8a925cc01511952f55623a41cd1ed83893c737ce73fe14cdf252213"
+    },
+    {
+      "path": "target/app-backlog/scale-context-first-routing.log",
+      "sha256": "87addce148d8de38a77e582a2ec25fe91c488f4f6cac1842a52490ea33d18ba4"
+    },
+    {
+      "path": "target/app-backlog/scale-context-first-sampler-identity.log",
+      "sha256": "220f31abd7f7e9fd7878f79701753587bf197f06130c09fcf3fa3c295111b7e1"
+    },
+    {
+      "path": "target/app-backlog/scale-context-first-sampler-pads.log",
+      "sha256": "49a5fba0f22dfadcbff4684618ec3f9c2ca88598e4cdb7aa05a2ae4f8e6bf171"
+    },
+    {
+      "path": "target/app-backlog/scale-context-first-shared.log",
+      "sha256": "21a530f67894f66955462075e3bd79334964bc726e53f9bfcd7be357d466b34a"
+    },
+    {
+      "path": "target/app-backlog/scale-context-first-snapshot.log",
+      "sha256": "1787393ddd8e1867d896c99ad3599b841a79e8569f5510594fc25a748e6a5266"
+    },
+    {
+      "path": "target/app-backlog/scale-context-first-source.json",
+      "sha256": "687ec4a761c2d7727c035e5b732f83def1204c5f9ed895261c3f2d980f2d276c"
+    },
+    {
+      "path": "target/app-backlog/scale-context-first-transformation.log",
+      "sha256": "e477d5f6b87a6916dc72aad605c06a116286e0c77c15fa7aaf5049b24bee0322"
+    },
+    {
+      "path": "target/app-backlog/scale-context-first-undo.log",
+      "sha256": "01943693ad03a553afca944859509c35fb613ee2a891fefa808a097510539a13"
+    },
+    {
+      "path": "target/app-backlog/scale-context-first-workspace.log",
+      "sha256": "9020e50772d54ab64365a5b8658c4b0c2fd69cefea8c08400b96641fb867c561"
+    },
+    {
+      "path": "target/app-backlog/scale-context-fourth-build.log",
+      "sha256": "a99d0ac08495fbdd7600b81c33e5027aad20078b2cca297e8833b301ebd090bc"
+    },
+    {
+      "path": "target/app-backlog/scale-context-fourth-inventory.log",
+      "sha256": "ac2693eafe26a6db518dafd61089befbb287ff256ef775063d159fe18078e045"
+    },
+    {
+      "path": "target/app-backlog/scale-context-fourth-production-check.log",
+      "sha256": "2342bce6263cd4f4c384a1644493a65a0fb2c29150fadd5973312b3e78d3dd3e"
+    },
+    {
+      "path": "target/app-backlog/scale-context-fourth-source.json",
+      "sha256": "7f1d05a7a03b967b1e2de17f034454fb764d7687e65a16dfaad5e8d56ac88382"
+    },
+    {
+      "path": "target/app-backlog/scale-context-implementation-source-after-first.json",
+      "sha256": "d88ddbb367f308613714c32e09989688fb764e6229d6c9738ae6f53a49b77612"
+    },
+    {
+      "path": "target/app-backlog/scale-context-implementation-source-before-build.json",
+      "sha256": "2233b8336292a8e81d214e65f320ab6587f7bba201e02a9c82b85877ddbc423d"
+    },
+    {
+      "path": "target/app-backlog/scale-context-implementation-source-before-shared-fixtures.json",
+      "sha256": "ec9ecc8498d5ed67617e4716a0b8a343ff30fa6123f3fb410f4c976d7891a558"
+    },
+    {
+      "path": "target/app-backlog/scale-context-implementation-source-before-stack-fix.json",
+      "sha256": "75f9ac0bedd729cf35f5cdc01b61563a330275aad40e72d113da5585d153c4a8"
+    },
+    {
+      "path": "target/app-backlog/scale-context-implementation-source-before-transfer-fix.json",
+      "sha256": "aa661531012f9832a9c26ff3e407c1c749053ed67f6cb04c9329fc862b1a865c"
+    },
+    {
+      "path": "target/app-backlog/scale-context-implementation-source.json",
+      "sha256": "3de919c6a0bdf0afeb232ea8081c5e03e4a8537b1e704ce6434abc19dfdab48d"
+    },
+    {
+      "path": "target/app-backlog/scale-context-precommit-fetch.log",
+      "sha256": "46d5e882a5b2f0f170783eeae5aa90847a9b1a362d478bfc369e3ab8a6d71d7e"
+    },
+    {
+      "path": "target/app-backlog/scale-context-second-ableton-native.log",
+      "sha256": "9152f3f5623349800edc57f5dff32d5994b1d3955866779f744853c64fdf69e5"
+    },
+    {
+      "path": "target/app-backlog/scale-context-second-ableton.log",
+      "sha256": "b4ad3d769cb5cc7b0fe01d7a2ee97baccb31a33bc0a2fd0aecd6fe57375faa3a"
+    },
+    {
+      "path": "target/app-backlog/scale-context-second-audio.log",
+      "sha256": "2990f8cab7e63c32165ff792492b9766541b9130b3a391b8f6d676cf7de7b2a2"
+    },
+    {
+      "path": "target/app-backlog/scale-context-second-background-jobs.log",
+      "sha256": "1b1367e178ed91b1212d4c22c3e0e3a7a21705e2c3e3421e679f5e4f1a5329ac"
+    },
+    {
+      "path": "target/app-backlog/scale-context-second-background-reproduction-1.log",
+      "sha256": "45e90b79959c29aecfa69ae21f3f6596cbb9087e65b51eb0f840662e7c086c66"
+    },
+    {
+      "path": "target/app-backlog/scale-context-second-background-reproduction-10.log",
+      "sha256": "45e90b79959c29aecfa69ae21f3f6596cbb9087e65b51eb0f840662e7c086c66"
+    },
+    {
+      "path": "target/app-backlog/scale-context-second-background-reproduction-11.log",
+      "sha256": "45e90b79959c29aecfa69ae21f3f6596cbb9087e65b51eb0f840662e7c086c66"
+    },
+    {
+      "path": "target/app-backlog/scale-context-second-background-reproduction-12.log",
+      "sha256": "c1a5e382ee01823553291870e0991f20fbc210836b6f1ff8bf12672dbac65fe9"
+    },
+    {
+      "path": "target/app-backlog/scale-context-second-background-reproduction-13.log",
+      "sha256": "45e90b79959c29aecfa69ae21f3f6596cbb9087e65b51eb0f840662e7c086c66"
+    },
+    {
+      "path": "target/app-backlog/scale-context-second-background-reproduction-14.log",
+      "sha256": "c1a5e382ee01823553291870e0991f20fbc210836b6f1ff8bf12672dbac65fe9"
+    },
+    {
+      "path": "target/app-backlog/scale-context-second-background-reproduction-15.log",
+      "sha256": "45e90b79959c29aecfa69ae21f3f6596cbb9087e65b51eb0f840662e7c086c66"
+    },
+    {
+      "path": "target/app-backlog/scale-context-second-background-reproduction-16.log",
+      "sha256": "c1a5e382ee01823553291870e0991f20fbc210836b6f1ff8bf12672dbac65fe9"
+    },
+    {
+      "path": "target/app-backlog/scale-context-second-background-reproduction-17.log",
+      "sha256": "c1a5e382ee01823553291870e0991f20fbc210836b6f1ff8bf12672dbac65fe9"
+    },
+    {
+      "path": "target/app-backlog/scale-context-second-background-reproduction-18.log",
+      "sha256": "45e90b79959c29aecfa69ae21f3f6596cbb9087e65b51eb0f840662e7c086c66"
+    },
+    {
+      "path": "target/app-backlog/scale-context-second-background-reproduction-19.log",
+      "sha256": "45e90b79959c29aecfa69ae21f3f6596cbb9087e65b51eb0f840662e7c086c66"
+    },
+    {
+      "path": "target/app-backlog/scale-context-second-background-reproduction-2.log",
+      "sha256": "c1a5e382ee01823553291870e0991f20fbc210836b6f1ff8bf12672dbac65fe9"
+    },
+    {
+      "path": "target/app-backlog/scale-context-second-background-reproduction-20.log",
+      "sha256": "c1a5e382ee01823553291870e0991f20fbc210836b6f1ff8bf12672dbac65fe9"
+    },
+    {
+      "path": "target/app-backlog/scale-context-second-background-reproduction-3.log",
+      "sha256": "45e90b79959c29aecfa69ae21f3f6596cbb9087e65b51eb0f840662e7c086c66"
+    },
+    {
+      "path": "target/app-backlog/scale-context-second-background-reproduction-4.log",
+      "sha256": "c1a5e382ee01823553291870e0991f20fbc210836b6f1ff8bf12672dbac65fe9"
+    },
+    {
+      "path": "target/app-backlog/scale-context-second-background-reproduction-5.log",
+      "sha256": "c1a5e382ee01823553291870e0991f20fbc210836b6f1ff8bf12672dbac65fe9"
+    },
+    {
+      "path": "target/app-backlog/scale-context-second-background-reproduction-6.log",
+      "sha256": "45e90b79959c29aecfa69ae21f3f6596cbb9087e65b51eb0f840662e7c086c66"
+    },
+    {
+      "path": "target/app-backlog/scale-context-second-background-reproduction-7.log",
+      "sha256": "45e90b79959c29aecfa69ae21f3f6596cbb9087e65b51eb0f840662e7c086c66"
+    },
+    {
+      "path": "target/app-backlog/scale-context-second-background-reproduction-8.log",
+      "sha256": "c1a5e382ee01823553291870e0991f20fbc210836b6f1ff8bf12672dbac65fe9"
+    },
+    {
+      "path": "target/app-backlog/scale-context-second-background-reproduction-9.log",
+      "sha256": "45e90b79959c29aecfa69ae21f3f6596cbb9087e65b51eb0f840662e7c086c66"
+    },
+    {
+      "path": "target/app-backlog/scale-context-second-build.log",
+      "sha256": "69f8b1cc386e4aa3e0b1b67dd22f8d7d595da5fa250ab7ca1d3a6aaa592b8b8c"
+    },
+    {
+      "path": "target/app-backlog/scale-context-second-compiled-tests.log",
+      "sha256": "31f207839479d6e980473723e0134f66557d90f4fe5aa5627d47d48a9289fe64"
+    },
+    {
+      "path": "target/app-backlog/scale-context-second-compose.log",
+      "sha256": "a9a9a185f492d206cf82d06ea359264a51fc1d878b8265d55571f39b7dd2859c"
+    },
+    {
+      "path": "target/app-backlog/scale-context-second-context.log",
+      "sha256": "61b9fd12f27070c2a590727e2460d15736fc00a1e062d750671faec51a5daf4a"
+    },
+    {
+      "path": "target/app-backlog/scale-context-second-crash-backtrace.log",
+      "sha256": "ad00f9ec12206500feb4329777b8f42cbe48e18ddb23f199ce2935ae56b6bf9f"
+    },
+    {
+      "path": "target/app-backlog/scale-context-second-crash-extraction.log",
+      "sha256": "39941b388bbc1ec9fd28d64c705c5753c6861555e83af10ba7c0a9e849090da1"
+    },
+    {
+      "path": "target/app-backlog/scale-context-second-duration-reproduction-1.log",
+      "sha256": "583c65eb3eb6f6b102202b7f41b65c7220c9503dba9016b9cd3266eadf2e26e0"
+    },
+    {
+      "path": "target/app-backlog/scale-context-second-duration-reproduction-10.log",
+      "sha256": "f2f90c71d00b1f770aa051801a9575b2e19c332efa2eba684c2c9467c8d06f80"
+    },
+    {
+      "path": "target/app-backlog/scale-context-second-duration-reproduction-2.log",
+      "sha256": "fc752982b0eca2ad1e8e8bdd521fc8e42f498d4b8a86b8c310a34441efb8e098"
+    },
+    {
+      "path": "target/app-backlog/scale-context-second-duration-reproduction-3.log",
+      "sha256": "90352caf6b5d3367c9e830bcd231e9983e3ab14e4dfddfd8da2e1a398165ff5b"
+    },
+    {
+      "path": "target/app-backlog/scale-context-second-duration-reproduction-4.log",
+      "sha256": "583c65eb3eb6f6b102202b7f41b65c7220c9503dba9016b9cd3266eadf2e26e0"
+    },
+    {
+      "path": "target/app-backlog/scale-context-second-duration-reproduction-5.log",
+      "sha256": "fc752982b0eca2ad1e8e8bdd521fc8e42f498d4b8a86b8c310a34441efb8e098"
+    },
+    {
+      "path": "target/app-backlog/scale-context-second-duration-reproduction-6.log",
+      "sha256": "583c65eb3eb6f6b102202b7f41b65c7220c9503dba9016b9cd3266eadf2e26e0"
+    },
+    {
+      "path": "target/app-backlog/scale-context-second-duration-reproduction-7.log",
+      "sha256": "583c65eb3eb6f6b102202b7f41b65c7220c9503dba9016b9cd3266eadf2e26e0"
+    },
+    {
+      "path": "target/app-backlog/scale-context-second-duration-reproduction-8.log",
+      "sha256": "73a59eedb26def8a84d2c45217731fcbef0fa526a6051590d5fa4480e19cea45"
+    },
+    {
+      "path": "target/app-backlog/scale-context-second-duration-reproduction-9.log",
+      "sha256": "90352caf6b5d3367c9e830bcd231e9983e3ab14e4dfddfd8da2e1a398165ff5b"
+    },
+    {
+      "path": "target/app-backlog/scale-context-second-duration.log",
+      "sha256": "daf687228b8db2d37ec4f96ec2140aea1ebd8a20a8f751ed81b92e3e79890b26"
+    },
+    {
+      "path": "target/app-backlog/scale-context-second-focused-runner.log",
+      "sha256": "900aca9b7d218bc5a7d692e0f44cffe3537bebc6a4a604231ed830ecbf26caba"
+    },
+    {
+      "path": "target/app-backlog/scale-context-second-full-output-timing.json",
+      "sha256": "d729100e7aaf19203a4032cf19ac2d0a7a929d226c5df8c0b04a97b1a8713a21"
+    },
+    {
+      "path": "target/app-backlog/scale-context-second-full-runner.log",
+      "sha256": "dd197c42ce8391afa56ed1b0512cb88b92928c33b563737cbbf87145aa8f3f0b"
+    },
+    {
+      "path": "target/app-backlog/scale-context-second-full.log",
+      "sha256": "270f418d4e06f1791debfa815efe7ce8e5d75672efa0e1646489f63380694809"
+    },
+    {
+      "path": "target/app-backlog/scale-context-second-ignored-tests.log",
+      "sha256": "802cea0afd17082a87dd0bec6814ee38c802a57b5ff71e1841ef841206c59ec2"
+    },
+    {
+      "path": "target/app-backlog/scale-context-second-inventory.log",
+      "sha256": "aa1dc15a66e882fd84229df2a0369815c361971d59b79a86ad447ab50da91578"
+    },
+    {
+      "path": "target/app-backlog/scale-context-second-library-scan.log",
+      "sha256": "e85a979f1c47950817eb84837b89753ef1ce36b5a04650cf95fa7de3deffbfcb"
+    },
+    {
+      "path": "target/app-backlog/scale-context-second-library-view.log",
+      "sha256": "3996c4e95d9d6eb591242c550b503c800416b88a72793eea0afc1964ddf98411"
+    },
+    {
+      "path": "target/app-backlog/scale-context-second-licenses.log",
+      "sha256": "fdb7307c62fa193c04cca1bf69574c6f00a677b4e032242d9e02acc09beaab4b"
+    },
+    {
+      "path": "target/app-backlog/scale-context-second-media-analysis.log",
+      "sha256": "03b2e210628623b1e2d52296a790f6e0d24d0f74edf70c4b47a51ce40953d320"
+    },
+    {
+      "path": "target/app-backlog/scale-context-second-metronome.log",
+      "sha256": "f2ea52643e4cda24d9aabaec1cc48659f2d4a56c235c5a6b120922ff86c2a4f5"
+    },
+    {
+      "path": "target/app-backlog/scale-context-second-midi-edit.log",
+      "sha256": "41a94a96f71a080c21af795b687743146ef8b1d57a9f7c5e0c0b0d3e96727d72"
+    },
+    {
+      "path": "target/app-backlog/scale-context-second-midi-interchange.log",
+      "sha256": "a10e1884c529698ce264341a6042d15fb8ccaa879d9fb4edaec273e415fa209b"
+    },
+    {
+      "path": "target/app-backlog/scale-context-second-monitor-qualification.log",
+      "sha256": "42b0d2757b4248878d6e302fceb262899310ed8448cbcfac5d7eed93fb643d59"
+    },
+    {
+      "path": "target/app-backlog/scale-context-second-native-fixtures.json",
+      "sha256": "6f7595468de997af91ff4d374828e61dc2aa4d675ec5d42ec75884c80fde55c7"
+    },
+    {
+      "path": "target/app-backlog/scale-context-second-native-import-1.log",
+      "sha256": "912ba5775e172be95a9027439e49348e6d73144c8c306d2e2cbe150754c6296e"
+    },
+    {
+      "path": "target/app-backlog/scale-context-second-native-import-10.log",
+      "sha256": "40f75db936eec982f233eb5ea6daafb956cd32cb22e96ed6556e101cff34594f"
+    },
+    {
+      "path": "target/app-backlog/scale-context-second-native-import-11.log",
+      "sha256": "e4d35a86c022370c4bb9b98e8022894313f275706899ed1c168801a4eec0f76d"
+    },
+    {
+      "path": "target/app-backlog/scale-context-second-native-import-12.log",
+      "sha256": "db1615f1b42d688240221208ab76a7c20a088ee5b414012268d0020ff24b9b7e"
+    },
+    {
+      "path": "target/app-backlog/scale-context-second-native-import-2.log",
+      "sha256": "d06a70514842dadefa3576d5e4c5d5f2c242a051f18bef6be16d8044606ffacb"
+    },
+    {
+      "path": "target/app-backlog/scale-context-second-native-import-3.log",
+      "sha256": "18447e2790862bdc7b0d2afcf850087406514e65fb79325a147066c794a34ff6"
+    },
+    {
+      "path": "target/app-backlog/scale-context-second-native-import-4.log",
+      "sha256": "ddb02241f9c827786eb193d0582563acea2090c0b4437c97137f4c0d4775549a"
+    },
+    {
+      "path": "target/app-backlog/scale-context-second-native-import-5.log",
+      "sha256": "ac37ea04c31716bfa992967b71e9d8e94cc614906370896e59c6e951eeaa77ed"
+    },
+    {
+      "path": "target/app-backlog/scale-context-second-native-import-6.log",
+      "sha256": "df81a07fb1254ee365d59e1593ad7bc17559cfe20956461943fba8a078303496"
+    },
+    {
+      "path": "target/app-backlog/scale-context-second-native-import-7.log",
+      "sha256": "823cb4e4f343987807591e2a9219eda9c59a97035a18dba7107f96fef3fef1ac"
+    },
+    {
+      "path": "target/app-backlog/scale-context-second-native-import-8.log",
+      "sha256": "9a259a0cc7bdd2b6ee880418a136ec0de950bd65ba3194db5916791ef83fd0e0"
+    },
+    {
+      "path": "target/app-backlog/scale-context-second-native-import-9.log",
+      "sha256": "f8b6d0dd18bb0b5a86ff2c83c38f7b53420018bddf959b374a84e054bf7eb619"
+    },
+    {
+      "path": "target/app-backlog/scale-context-second-native-imports-runner-corrected.log",
+      "sha256": "382e589716312318ac21b9bb8f9fc739d6d6b2080d03fabccc8aa40d50d4bd72"
+    },
+    {
+      "path": "target/app-backlog/scale-context-second-native-imports-runner.log",
+      "sha256": "8790f67aad010810718bce1cb52762e3647c96db10725bb5cf7f0573c52ace3d"
+    },
+    {
+      "path": "target/app-backlog/scale-context-second-native-imports.json",
+      "sha256": "79b0ac7a4e928f71d2e62743a63d56c31dda026be186e6548f3a9fa346aa5e18"
+    },
+    {
+      "path": "target/app-backlog/scale-context-second-native-worker-build.log",
+      "sha256": "85eb079214a81ad441c74946791d91ce06cbf02b0e79b2a2e44eebb7c036bffd"
+    },
+    {
+      "path": "target/app-backlog/scale-context-second-native-worker-source.json",
+      "sha256": "08a60b30f083fd739beb1ff619bedaa03765719c8013861fd2edb4f2e73c40d2"
+    },
+    {
+      "path": "target/app-backlog/scale-context-second-native.log",
+      "sha256": "cbebf0f1b3b00d8cf9f387bdbfea7cee9e5d584a516504fedff8d98937b1175c"
+    },
+    {
+      "path": "target/app-backlog/scale-context-second-piano.log",
+      "sha256": "3d5f9a3b8956ba971ab6ef129035042ed28f71fd2b741790e875a277b96d5497"
+    },
+    {
+      "path": "target/app-backlog/scale-context-second-play-history.log",
+      "sha256": "814fa8e06c41210f9e5c3c84cae11948dd7aa46f9b2fa179a5ece6605f817045"
+    },
+    {
+      "path": "target/app-backlog/scale-context-second-plugin-midi-storage.log",
+      "sha256": "b553cec4c8f798a641f81a98d3f646b7646c1f6152c84fa31e8cf3399e49ed7f"
+    },
+    {
+      "path": "target/app-backlog/scale-context-second-producer-library-native.log",
+      "sha256": "4e31c035f997f2a032a3e394890591900f33cc4de56e1f9106eb3c9b4a134f35"
+    },
+    {
+      "path": "target/app-backlog/scale-context-second-producer-library.log",
+      "sha256": "e46456cc07caf79be6e61d182919a6960bcaf9def7a56efaec0f71b8e713b0c1"
+    },
+    {
+      "path": "target/app-backlog/scale-context-second-production-check.log",
+      "sha256": "de9ba99e728dd255dbd37ce6acbe4a6a28b20b071dfed0721b994541ad190d72"
+    },
+    {
+      "path": "target/app-backlog/scale-context-second-project-timing.log",
+      "sha256": "c079fc1cafd37ab12f3eea4d22846166cf449e187f41d342aaa0468d15177470"
+    },
+    {
+      "path": "target/app-backlog/scale-context-second-project.log",
+      "sha256": "c45732f4d83d08c4c0f26b6165c4c158c2e8f1cfad187148725c94881d226f88"
+    },
+    {
+      "path": "target/app-backlog/scale-context-second-recording.log",
+      "sha256": "f57744ea7c5909c4cf868b468edd290ec66727201c5cdb25450c3fa044717baa"
+    },
+    {
+      "path": "target/app-backlog/scale-context-second-routing.log",
+      "sha256": "a8cb78feffd3c07e90a6133ec71f43b2ce4fa8012c534018641efe07c4e9095c"
+    },
+    {
+      "path": "target/app-backlog/scale-context-second-sampler-editor.log",
+      "sha256": "c8a625388033a656cbf4aa19307b9340a7bce755e65c49003be0e6c6cabdc6b8"
+    },
+    {
+      "path": "target/app-backlog/scale-context-second-sampler-identity.log",
+      "sha256": "e225858e8fcb8c53da17bcbd3bbe38347d140e58bff7efcb2bc1c727d2ff4aba"
+    },
+    {
+      "path": "target/app-backlog/scale-context-second-sampler-pads.log",
+      "sha256": "b2b89c888ea1b081ae73efe0c966f6cd6a3a95f8cd84e2688817ab88c76ed945"
+    },
+    {
+      "path": "target/app-backlog/scale-context-second-sampler-reproduction-1.log",
+      "sha256": "1b0af1e1327206f5ecc09e58dba9d4c588f57dc9de5c402715235bad1198da56"
+    },
+    {
+      "path": "target/app-backlog/scale-context-second-sampler-reproduction-10.log",
+      "sha256": "948229981f45d32cd226ec6206e8f834aa625742dcec316e619432c3476b5515"
+    },
+    {
+      "path": "target/app-backlog/scale-context-second-sampler-reproduction-2.log",
+      "sha256": "df9451c39beb5f8b74a7e0ddfe8e7aea02aa36c604533844d204bfd18fb2dc76"
+    },
+    {
+      "path": "target/app-backlog/scale-context-second-sampler-reproduction-3.log",
+      "sha256": "6e5ec6f62dc5ecf3e58732351ede998ef096469e53f635c8ae8778a7b165584f"
+    },
+    {
+      "path": "target/app-backlog/scale-context-second-sampler-reproduction-4.log",
+      "sha256": "fafa2adc2279e32eb76283d12199ba4e749a7eed3286f625564bf15bcd56bea1"
+    },
+    {
+      "path": "target/app-backlog/scale-context-second-sampler-reproduction-5.log",
+      "sha256": "6e5ec6f62dc5ecf3e58732351ede998ef096469e53f635c8ae8778a7b165584f"
+    },
+    {
+      "path": "target/app-backlog/scale-context-second-sampler-reproduction-6.log",
+      "sha256": "df9451c39beb5f8b74a7e0ddfe8e7aea02aa36c604533844d204bfd18fb2dc76"
+    },
+    {
+      "path": "target/app-backlog/scale-context-second-sampler-reproduction-7.log",
+      "sha256": "8bc08923e1592ff617c180f59a71b97010da94362a6ad4cb2fa9c993611f17ea"
+    },
+    {
+      "path": "target/app-backlog/scale-context-second-sampler-reproduction-8.log",
+      "sha256": "6e5ec6f62dc5ecf3e58732351ede998ef096469e53f635c8ae8778a7b165584f"
+    },
+    {
+      "path": "target/app-backlog/scale-context-second-sampler-reproduction-9.log",
+      "sha256": "6e5ec6f62dc5ecf3e58732351ede998ef096469e53f635c8ae8778a7b165584f"
+    },
+    {
+      "path": "target/app-backlog/scale-context-second-sampler-store.log",
+      "sha256": "90b221837dd9f1d5ba6f3fa98a43a61ce7530b72235abd5fb6fd34ffe9c79013"
+    },
+    {
+      "path": "target/app-backlog/scale-context-second-shared.log",
+      "sha256": "ace1e7cac7ba90b347e8df22cb6c04a8170dedb2b7ba4e6f291280b48823551f"
+    },
+    {
+      "path": "target/app-backlog/scale-context-second-snapshot.log",
+      "sha256": "e8014ca2fad2a01b49ad17fa8e084accd9a8169b722282f4913b6fd9d52922e4"
+    },
+    {
+      "path": "target/app-backlog/scale-context-second-song-navigation.log",
+      "sha256": "88f03610060252b7409f668d057b934abe9e46a7a06a0d0a65d9403fbfedb4c7"
+    },
+    {
+      "path": "target/app-backlog/scale-context-second-source.json",
+      "sha256": "485fe6e624ef86d0351b61772c03309d86bb7c4dad31b9664d57f5e338bb2a55"
+    },
+    {
+      "path": "target/app-backlog/scale-context-second-transformation.log",
+      "sha256": "76568015876dd324565a281b1c37b0fde1f40d59fd0c14597b1d0c21657e5f27"
+    },
+    {
+      "path": "target/app-backlog/scale-context-second-undo.log",
+      "sha256": "59af797dc7b854067966a0cc9d3cb78f3cd36118ff5b1c424b810d3322ddb36c"
+    },
+    {
+      "path": "target/app-backlog/scale-context-second-waveform.log",
+      "sha256": "80fd0f7cac230888b3db5061d765bb30715b2cb313788d4456649a10a7664f50"
+    },
+    {
+      "path": "target/app-backlog/scale-context-second-workspace.log",
+      "sha256": "f0ca3bdace68bcf1b6f63977556da371ec38f1cb7fcae13c1ff43f2d92460293"
+    },
+    {
+      "path": "target/app-backlog/scale-context-third-ableton-native.log",
+      "sha256": "8e85cbeae4916723c4048541101448b04f4de870162f35703cdc068749616792"
+    },
+    {
+      "path": "target/app-backlog/scale-context-third-ableton.log",
+      "sha256": "b8df53518a307c42b34a9227f414e5a02dd99f0bcaccffca532370bab764e169"
+    },
+    {
+      "path": "target/app-backlog/scale-context-third-audio.log",
+      "sha256": "61208195c69434bb70f0ab5f9ccf7b4c171d83592f92413f975206aebbc59c9b"
+    },
+    {
+      "path": "target/app-backlog/scale-context-third-background-jobs.log",
+      "sha256": "c1a5e382ee01823553291870e0991f20fbc210836b6f1ff8bf12672dbac65fe9"
+    },
+    {
+      "path": "target/app-backlog/scale-context-third-background-reproduction-1.log",
+      "sha256": "c1a5e382ee01823553291870e0991f20fbc210836b6f1ff8bf12672dbac65fe9"
+    },
+    {
+      "path": "target/app-backlog/scale-context-third-background-reproduction-10.log",
+      "sha256": "402f8b86c636f43306e648de44989e272e085186a495610132553d904b20b8d9"
+    },
+    {
+      "path": "target/app-backlog/scale-context-third-background-reproduction-11.log",
+      "sha256": "c1a5e382ee01823553291870e0991f20fbc210836b6f1ff8bf12672dbac65fe9"
+    },
+    {
+      "path": "target/app-backlog/scale-context-third-background-reproduction-12.log",
+      "sha256": "30920175a0af533607ba5a87b6d630d90462942505afb4b34b7ed2aaa745c267"
+    },
+    {
+      "path": "target/app-backlog/scale-context-third-background-reproduction-13.log",
+      "sha256": "402f8b86c636f43306e648de44989e272e085186a495610132553d904b20b8d9"
+    },
+    {
+      "path": "target/app-backlog/scale-context-third-background-reproduction-14.log",
+      "sha256": "402f8b86c636f43306e648de44989e272e085186a495610132553d904b20b8d9"
+    },
+    {
+      "path": "target/app-backlog/scale-context-third-background-reproduction-15.log",
+      "sha256": "c1a5e382ee01823553291870e0991f20fbc210836b6f1ff8bf12672dbac65fe9"
+    },
+    {
+      "path": "target/app-backlog/scale-context-third-background-reproduction-16.log",
+      "sha256": "402f8b86c636f43306e648de44989e272e085186a495610132553d904b20b8d9"
+    },
+    {
+      "path": "target/app-backlog/scale-context-third-background-reproduction-17.log",
+      "sha256": "c1a5e382ee01823553291870e0991f20fbc210836b6f1ff8bf12672dbac65fe9"
+    },
+    {
+      "path": "target/app-backlog/scale-context-third-background-reproduction-18.log",
+      "sha256": "30920175a0af533607ba5a87b6d630d90462942505afb4b34b7ed2aaa745c267"
+    },
+    {
+      "path": "target/app-backlog/scale-context-third-background-reproduction-19.log",
+      "sha256": "c1a5e382ee01823553291870e0991f20fbc210836b6f1ff8bf12672dbac65fe9"
+    },
+    {
+      "path": "target/app-backlog/scale-context-third-background-reproduction-2.log",
+      "sha256": "c1a5e382ee01823553291870e0991f20fbc210836b6f1ff8bf12672dbac65fe9"
+    },
+    {
+      "path": "target/app-backlog/scale-context-third-background-reproduction-20.log",
+      "sha256": "c1a5e382ee01823553291870e0991f20fbc210836b6f1ff8bf12672dbac65fe9"
+    },
+    {
+      "path": "target/app-backlog/scale-context-third-background-reproduction-3.log",
+      "sha256": "8e7fe7faad39464224143632df8ef756536deaae9254ac57cbcfae97719fa949"
+    },
+    {
+      "path": "target/app-backlog/scale-context-third-background-reproduction-4.log",
+      "sha256": "c1a5e382ee01823553291870e0991f20fbc210836b6f1ff8bf12672dbac65fe9"
+    },
+    {
+      "path": "target/app-backlog/scale-context-third-background-reproduction-5.log",
+      "sha256": "8e7fe7faad39464224143632df8ef756536deaae9254ac57cbcfae97719fa949"
+    },
+    {
+      "path": "target/app-backlog/scale-context-third-background-reproduction-6.log",
+      "sha256": "30920175a0af533607ba5a87b6d630d90462942505afb4b34b7ed2aaa745c267"
+    },
+    {
+      "path": "target/app-backlog/scale-context-third-background-reproduction-7.log",
+      "sha256": "c1a5e382ee01823553291870e0991f20fbc210836b6f1ff8bf12672dbac65fe9"
+    },
+    {
+      "path": "target/app-backlog/scale-context-third-background-reproduction-8.log",
+      "sha256": "c1a5e382ee01823553291870e0991f20fbc210836b6f1ff8bf12672dbac65fe9"
+    },
+    {
+      "path": "target/app-backlog/scale-context-third-background-reproduction-9.log",
+      "sha256": "c1a5e382ee01823553291870e0991f20fbc210836b6f1ff8bf12672dbac65fe9"
+    },
+    {
+      "path": "target/app-backlog/scale-context-third-build.log",
+      "sha256": "b81040b3fd43ee8768751d6f5455466201210f22d4dc6b4f76b2d4aad9403dc0"
+    },
+    {
+      "path": "target/app-backlog/scale-context-third-compiled-tests.log",
+      "sha256": "31f207839479d6e980473723e0134f66557d90f4fe5aa5627d47d48a9289fe64"
+    },
+    {
+      "path": "target/app-backlog/scale-context-third-compose.log",
+      "sha256": "f64717f3ea80cba83b104851291b1ab8cdb8f44c6685f41f8eb729b91babff65"
+    },
+    {
+      "path": "target/app-backlog/scale-context-third-context.log",
+      "sha256": "5fab0bf08ac3b68790b57cdc4e4bd3ff7e35a28c79fcd0ccea1884dc7f7dd3e8"
+    },
+    {
+      "path": "target/app-backlog/scale-context-third-crash-backtrace.log",
+      "sha256": "631b68a81a486a25492c6c9088d74e29b1dc284144b2de7e889a608e87eb8515"
+    },
+    {
+      "path": "target/app-backlog/scale-context-third-crash-extraction.log",
+      "sha256": "848ad047a3fea6e47918cc52d259d7086a92f8df2e745cb5b30d062337c4453b"
+    },
+    {
+      "path": "target/app-backlog/scale-context-third-dependencies.log",
+      "sha256": "2c918da4fe57b61d9aa133aac8a5632e39c5a35e2768ccc0752565db863e792d"
+    },
+    {
+      "path": "target/app-backlog/scale-context-third-duration-reproduction-1.log",
+      "sha256": "fc752982b0eca2ad1e8e8bdd521fc8e42f498d4b8a86b8c310a34441efb8e098"
+    },
+    {
+      "path": "target/app-backlog/scale-context-third-duration-reproduction-10.log",
+      "sha256": "583c65eb3eb6f6b102202b7f41b65c7220c9503dba9016b9cd3266eadf2e26e0"
+    },
+    {
+      "path": "target/app-backlog/scale-context-third-duration-reproduction-2.log",
+      "sha256": "8a43cc2754d4b9ab6408ef27e111946d9b5fd7e8836b5ff686d384866365ebc0"
+    },
+    {
+      "path": "target/app-backlog/scale-context-third-duration-reproduction-3.log",
+      "sha256": "fc752982b0eca2ad1e8e8bdd521fc8e42f498d4b8a86b8c310a34441efb8e098"
+    },
+    {
+      "path": "target/app-backlog/scale-context-third-duration-reproduction-4.log",
+      "sha256": "8a43cc2754d4b9ab6408ef27e111946d9b5fd7e8836b5ff686d384866365ebc0"
+    },
+    {
+      "path": "target/app-backlog/scale-context-third-duration-reproduction-5.log",
+      "sha256": "f2f90c71d00b1f770aa051801a9575b2e19c332efa2eba684c2c9467c8d06f80"
+    },
+    {
+      "path": "target/app-backlog/scale-context-third-duration-reproduction-6.log",
+      "sha256": "f2f90c71d00b1f770aa051801a9575b2e19c332efa2eba684c2c9467c8d06f80"
+    },
+    {
+      "path": "target/app-backlog/scale-context-third-duration-reproduction-7.log",
+      "sha256": "f2f90c71d00b1f770aa051801a9575b2e19c332efa2eba684c2c9467c8d06f80"
+    },
+    {
+      "path": "target/app-backlog/scale-context-third-duration-reproduction-8.log",
+      "sha256": "f2f90c71d00b1f770aa051801a9575b2e19c332efa2eba684c2c9467c8d06f80"
+    },
+    {
+      "path": "target/app-backlog/scale-context-third-duration-reproduction-9.log",
+      "sha256": "f2f90c71d00b1f770aa051801a9575b2e19c332efa2eba684c2c9467c8d06f80"
+    },
+    {
+      "path": "target/app-backlog/scale-context-third-duration.log",
+      "sha256": "ba18751f3c5b9350cfecc7870478eb930dd5b1185d6b8273d00bd8f28b36b876"
+    },
+    {
+      "path": "target/app-backlog/scale-context-third-focused-runner.log",
+      "sha256": "796cedd32d3b629540d279ce767efd8722aa3fe34e91b22c7047057fc43f9102"
+    },
+    {
+      "path": "target/app-backlog/scale-context-third-full-output-timing.json",
+      "sha256": "ebdba284572129a0d38bab9faa9979353d91db2da701d39e766dec32de708870"
+    },
+    {
+      "path": "target/app-backlog/scale-context-third-full-runner.log",
+      "sha256": "a4cbb91ff8f63fd727e6f0abfe86e3f4376204264d45cb49160eed733cce058b"
+    },
+    {
+      "path": "target/app-backlog/scale-context-third-full.log",
+      "sha256": "2d2dc4b0a81f008889cb4ccdb7c64a6b20b57a202a0ba10bac2f2b03f6bad022"
+    },
+    {
+      "path": "target/app-backlog/scale-context-third-ignored-tests.log",
+      "sha256": "802cea0afd17082a87dd0bec6814ee38c802a57b5ff71e1841ef841206c59ec2"
+    },
+    {
+      "path": "target/app-backlog/scale-context-third-inventory.log",
+      "sha256": "ac2693eafe26a6db518dafd61089befbb287ff256ef775063d159fe18078e045"
+    },
+    {
+      "path": "target/app-backlog/scale-context-third-library-scan.log",
+      "sha256": "af4361662cde6b5b168261257f9c2f97de9bde8a5b06d155975a55f66eed343a"
+    },
+    {
+      "path": "target/app-backlog/scale-context-third-library-view.log",
+      "sha256": "1ba220e6462d4a8d6063ac11c6a27d72ba526153e95de9b14cc2c61af3ffdbca"
+    },
+    {
+      "path": "target/app-backlog/scale-context-third-licenses.log",
+      "sha256": "8ad41a1a1af4d45d611015fd399a2601c5e3c05ea50f3790720c064e5c29dcd9"
+    },
+    {
+      "path": "target/app-backlog/scale-context-third-media-analysis.log",
+      "sha256": "f17deaa5eaa30598fd169f07a5f7cc52b2f2e18036e24538a6b3683b914d12fc"
+    },
+    {
+      "path": "target/app-backlog/scale-context-third-metronome.log",
+      "sha256": "5faf32efdb1721692cde62c7414efba0706039d6cec54796f558fcafab0e452b"
+    },
+    {
+      "path": "target/app-backlog/scale-context-third-midi-edit.log",
+      "sha256": "1f91b74cd46e4295d0f78bea9a94a28c7899b552cf468ed96060c8bba8f87693"
+    },
+    {
+      "path": "target/app-backlog/scale-context-third-midi-interchange.log",
+      "sha256": "bfa028f14aa225da563506f36d639903353008a0ee8455240bfa4dcf2b0d0f87"
+    },
+    {
+      "path": "target/app-backlog/scale-context-third-monitor-qualification.log",
+      "sha256": "144befbccd96618bedb57667cdece503759cbe2389607024e8ec906b9f4c5063"
+    },
+    {
+      "path": "target/app-backlog/scale-context-third-native-fixtures.json",
+      "sha256": "b59a743eb723408dee1245bb38c4691884ef0b774d8e6d4ec83906b005860ccc"
+    },
+    {
+      "path": "target/app-backlog/scale-context-third-native-import-1.log",
+      "sha256": "0b479873edd720548125496a3273e7c9b6d95683a990215b456f9e7831b0c24f"
+    },
+    {
+      "path": "target/app-backlog/scale-context-third-native-import-10.log",
+      "sha256": "707ba0522e4de73a8e4f38e4118be75fba7ff5cabf07a99cd16fd439efc69e87"
+    },
+    {
+      "path": "target/app-backlog/scale-context-third-native-import-11.log",
+      "sha256": "b847736f7b86ed4895542728f403a80ebb9a0ddef5595020b1155b4dfd2293cf"
+    },
+    {
+      "path": "target/app-backlog/scale-context-third-native-import-12.log",
+      "sha256": "f04d1e2b85a003f5dc83409d3903723216908467ccec6b5f3f27c5e06520ef79"
+    },
+    {
+      "path": "target/app-backlog/scale-context-third-native-import-2.log",
+      "sha256": "d06a70514842dadefa3576d5e4c5d5f2c242a051f18bef6be16d8044606ffacb"
+    },
+    {
+      "path": "target/app-backlog/scale-context-third-native-import-3.log",
+      "sha256": "31daa6a1eea7a6eedd2debe47230494a07e609e5c0e67e39e8f1a1503c6eedcf"
+    },
+    {
+      "path": "target/app-backlog/scale-context-third-native-import-4.log",
+      "sha256": "ddb02241f9c827786eb193d0582563acea2090c0b4437c97137f4c0d4775549a"
+    },
+    {
+      "path": "target/app-backlog/scale-context-third-native-import-5.log",
+      "sha256": "ebe2d8c71c48c7b6b36d0615b147e5e9dfcf9c00a640da3498af9bc86fc1d0ae"
+    },
+    {
+      "path": "target/app-backlog/scale-context-third-native-import-6.log",
+      "sha256": "5b35d2bcdf05484919c0e3185cf78b24ea0f43982390c9ce589311aeda3a2544"
+    },
+    {
+      "path": "target/app-backlog/scale-context-third-native-import-7.log",
+      "sha256": "3b81ac04a27d16fb4bc353ad3f1fd95572ab7e7013acab495df65f8c445c5c4a"
+    },
+    {
+      "path": "target/app-backlog/scale-context-third-native-import-8.log",
+      "sha256": "140859e8210e6e49a83f50d948a3314bf336d9a8c8ca26999f41aacefc0dbb16"
+    },
+    {
+      "path": "target/app-backlog/scale-context-third-native-import-9.log",
+      "sha256": "2b968991a2c5eca5317bfe001e047289948376a9853fac770dd3c5a3361e7a4d"
+    },
+    {
+      "path": "target/app-backlog/scale-context-third-native-imports-runner.log",
+      "sha256": "0d41392d458c0b12e3a9f4b52c13fbe8bbd62ace4071ff8defd692eabae9ad6d"
+    },
+    {
+      "path": "target/app-backlog/scale-context-third-native-imports.json",
+      "sha256": "e0340f41507296ad992efd7b2f935ba1c1f4ab0a0e590589082af5d8de6dafd9"
+    },
+    {
+      "path": "target/app-backlog/scale-context-third-native-worker-build.log",
+      "sha256": "3a20f3275919b53aa7819d1c53aac11f2c28c63f8f20f1b4b84f2fa7b23fae06"
+    },
+    {
+      "path": "target/app-backlog/scale-context-third-native-worker-runner.log",
+      "sha256": "0b5d8bff0d8de8ee18bce91698bd50b5b08f109276986ec59aec6659105e896d"
+    },
+    {
+      "path": "target/app-backlog/scale-context-third-native-worker-source.json",
+      "sha256": "767f6f02b2f1fec9891d1ea729af9cae014df728e47a8d3274f1214cfc5cf1f6"
+    },
+    {
+      "path": "target/app-backlog/scale-context-third-native.log",
+      "sha256": "7905935e7e04c0433ac9f4ed1d62b00d82ba5594d2570b98be1df9ea71731ce5"
+    },
+    {
+      "path": "target/app-backlog/scale-context-third-piano.log",
+      "sha256": "37177cbd2625e160a7a06172ebaeee260c232cee7b9db28590ec8ee74de5d77a"
+    },
+    {
+      "path": "target/app-backlog/scale-context-third-play-history.log",
+      "sha256": "9df16c251296e0664c372612d55eea808734bc12addf1c5d2a6c89f19aead9a5"
+    },
+    {
+      "path": "target/app-backlog/scale-context-third-plugin-midi-storage.log",
+      "sha256": "b553cec4c8f798a641f81a98d3f646b7646c1f6152c84fa31e8cf3399e49ed7f"
+    },
+    {
+      "path": "target/app-backlog/scale-context-third-producer-library-native.log",
+      "sha256": "7097abb9a94d5022513ff9ca002cfa78fa635c86477240454fc57ff45ad9fe72"
+    },
+    {
+      "path": "target/app-backlog/scale-context-third-producer-library.log",
+      "sha256": "5a0f920c4e106f50ae939506b0919c206f6b3e8ae9a318602ab8cce3cfa0fbcc"
+    },
+    {
+      "path": "target/app-backlog/scale-context-third-production-check.log",
+      "sha256": "372c7021c07ecf646eca1c0833713804a3b5f2455b4c04e3eb86ec7fa0e34337"
+    },
+    {
+      "path": "target/app-backlog/scale-context-third-project-timing.log",
+      "sha256": "24300f530feacd8833ccec1b3f8be6b4dfcfa19d257ef8f3b41e3ff787cbca10"
+    },
+    {
+      "path": "target/app-backlog/scale-context-third-project.log",
+      "sha256": "1349ebfd99c4e54b34fcb81734724c4eb7ba9a28a1f2ec55f99ff8e67c447c91"
+    },
+    {
+      "path": "target/app-backlog/scale-context-third-recording.log",
+      "sha256": "0427f87fbfdf8edb2dca1cc557866e6372a76c5bf3c895b36e68c58cd55f42f0"
+    },
+    {
+      "path": "target/app-backlog/scale-context-third-routing.log",
+      "sha256": "da271f3146300c98286ba15f16d37e5e222f9117299d9f6c272aac1bb282508f"
+    },
+    {
+      "path": "target/app-backlog/scale-context-third-sampler-editor.log",
+      "sha256": "4edefc95ee0a90811db12f62f9e1aa43a7042295e891c4764a901b51018b0ffc"
+    },
+    {
+      "path": "target/app-backlog/scale-context-third-sampler-identity.log",
+      "sha256": "1164609678ad99194f226a273d8ea26dafbe1989ca2cfc8dd8fa9e8969f48da1"
+    },
+    {
+      "path": "target/app-backlog/scale-context-third-sampler-pads.log",
+      "sha256": "5af7f20b5d8967859dde497da94c5d253d841428b96fddb50834762746b32736"
+    },
+    {
+      "path": "target/app-backlog/scale-context-third-sampler-reproduction-1.log",
+      "sha256": "6e5ec6f62dc5ecf3e58732351ede998ef096469e53f635c8ae8778a7b165584f"
+    },
+    {
+      "path": "target/app-backlog/scale-context-third-sampler-reproduction-10.log",
+      "sha256": "6e5ec6f62dc5ecf3e58732351ede998ef096469e53f635c8ae8778a7b165584f"
+    },
+    {
+      "path": "target/app-backlog/scale-context-third-sampler-reproduction-2.log",
+      "sha256": "75668818aba137d8fa18a73fcaa427a9cbb89b7ad6a77eda0e0eb582fafe7022"
+    },
+    {
+      "path": "target/app-backlog/scale-context-third-sampler-reproduction-3.log",
+      "sha256": "47031d4ee20164ef52ab3f6e763ff548c38fc2a02d5603cae1315ce243c56d11"
+    },
+    {
+      "path": "target/app-backlog/scale-context-third-sampler-reproduction-4.log",
+      "sha256": "75668818aba137d8fa18a73fcaa427a9cbb89b7ad6a77eda0e0eb582fafe7022"
+    },
+    {
+      "path": "target/app-backlog/scale-context-third-sampler-reproduction-5.log",
+      "sha256": "fafa2adc2279e32eb76283d12199ba4e749a7eed3286f625564bf15bcd56bea1"
+    },
+    {
+      "path": "target/app-backlog/scale-context-third-sampler-reproduction-6.log",
+      "sha256": "47031d4ee20164ef52ab3f6e763ff548c38fc2a02d5603cae1315ce243c56d11"
+    },
+    {
+      "path": "target/app-backlog/scale-context-third-sampler-reproduction-7.log",
+      "sha256": "6e5ec6f62dc5ecf3e58732351ede998ef096469e53f635c8ae8778a7b165584f"
+    },
+    {
+      "path": "target/app-backlog/scale-context-third-sampler-reproduction-8.log",
+      "sha256": "e0041979fb65bbfc42c3a2ae49f82174546eaf4bb364473eb2dd64e0f25f8b0c"
+    },
+    {
+      "path": "target/app-backlog/scale-context-third-sampler-reproduction-9.log",
+      "sha256": "75668818aba137d8fa18a73fcaa427a9cbb89b7ad6a77eda0e0eb582fafe7022"
+    },
+    {
+      "path": "target/app-backlog/scale-context-third-sampler-store.log",
+      "sha256": "90b221837dd9f1d5ba6f3fa98a43a61ce7530b72235abd5fb6fd34ffe9c79013"
+    },
+    {
+      "path": "target/app-backlog/scale-context-third-shared.log",
+      "sha256": "ea2c920df7f216c80de122a14620c3342e4926fc4d63fbb55e5f4bc83dabb118"
+    },
+    {
+      "path": "target/app-backlog/scale-context-third-snapshot.log",
+      "sha256": "1899bd858d912f4358990daa16cc4150179f40bfdfed4b5d7edb50c87d51764b"
+    },
+    {
+      "path": "target/app-backlog/scale-context-third-song-navigation.log",
+      "sha256": "2337f3e5ba2674bc20f81da712705b2c36568d67a34cf5a0d9cbff4c3eb9b5d2"
+    },
+    {
+      "path": "target/app-backlog/scale-context-third-source.json",
+      "sha256": "42c68d2ed67b5dc6ddac0301c6b3547376eed6962551be02f39827257fa383c1"
+    },
+    {
+      "path": "target/app-backlog/scale-context-third-transformation.log",
+      "sha256": "467935941ae8c06f861d11c6965f0cd0b03ebfd094ebb35a96c27e90f89c30e4"
+    },
+    {
+      "path": "target/app-backlog/scale-context-third-undo.log",
+      "sha256": "5c38ded8cd7507714bbdec9d437a7ef97e845fd486ba9bc834e25addf8891cc1"
+    },
+    {
+      "path": "target/app-backlog/scale-context-third-waveform.log",
+      "sha256": "b0f0e025a38aa276cd43d89801ae672a1cd5b2996b459e7d8a6a38640da5c8d5"
+    },
+    {
+      "path": "target/app-backlog/scale-context-third-workspace.log",
+      "sha256": "1c24911c092f79b1855067513bc8d737979d91d6a6ef4009db5494a7c0ec48b0"
+    }
+  ],
+  "limits": "Linux ARM64 software qualification; no physical ports, capture, OS GUI or listening check. Native schema 33 stores an optional song key, optional per-clip override and explicit instrument participation. Thirteen validated scales use tonic 0–11 and absolute MIDI pitches 0–127; degree edits refuse out-of-range results. Existing chromatic notes stay unchanged unless explicitly included. Current context, captured owner metadata, note/lane bounds and cancellation guard every preview and atomic Apply. Harmony preserves originals and copies uniquely owned poly-pressure; MPE member-channel harmony refuses overlapping additional voices. Instrument participation affects newly pressed pads and retains the original pitch for held releases. Concurrent clips with differing contexts display a conflict without rewriting the song key or notes. This does not implement per-note expression curve editing, note chance, MIDI 2.0 or complete Live-authored migration comparison. Twelve isolated native import workflows were qualified separately; the retained private saved Live Set is a read-only format smoke check."
+}

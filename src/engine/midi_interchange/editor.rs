@@ -30,7 +30,7 @@ impl Request {
                 return Err("The same clip appears twice in the combined edit".into());
             }
             let layout = captured.state.session.as_ref().unwrap();
-            if base.epoch != epoch
+            if base.song_context != captured.state.musical_context || base.epoch != epoch
                 || base
                     .track_identity
                     .is_none_or(|r| !layout.resolves(session::Axis::Track, base.track as usize, r))
@@ -56,15 +56,17 @@ impl Request {
                 || old.region != base.region
                 || old.notes != base.notes
                 || old.lanes != base.lanes
+                || old.properties.context != base.context
             {
                 return Err("A captured MIDI clip changed; no combined edit was prepared".into());
             }
-            let (_, _, document) = super::super::midi_edit::Request::with_lanes(
+            let (_, _, document) = super::super::midi_edit::Request::with_context(
                 base.clone(),
                 edit.name.clone(),
                 edit.region,
                 edit.notes.clone(),
                 edit.lanes.clone(),
+                edit.context,
             )?;
             next.push(document);
             if edit.unchanged() {
@@ -73,7 +75,7 @@ impl Request {
             let reserved_lane_bytes = old.lanes.as_ref().map_or(0, |l| l.bytes())
                 + edit.lanes.as_ref().map_or(0, |l| l.bytes());
             let replacement = Clip {
-                properties: old.properties,
+                properties: super::super::clip_management::Properties { context: edit.context, ..old.properties },
                 audio_region: None,
                 lanes: edit.lanes.clone(),
                 region: Some(edit.region),
@@ -90,6 +92,7 @@ impl Request {
             old.bars = (edit.region.end / 4.0) as f32;
             old.notes = edit.notes;
             old.lanes = edit.lanes;
+            old.properties.context = edit.context;
             targets.push(Target {
                 baseline: edit.baseline,
                 replacement,

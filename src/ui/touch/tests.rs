@@ -21,7 +21,7 @@ fn native_deck_pad_touch_contacts_preserve_both_decks_and_release_outside_after_
 
 struct Gui {
     app: App,
-    rt: RtEngine,
+    rt: Box<RtEngine>,
     ctx: egui::Context,
     nodes: Vec<(NodeId, Node)>,
     time: f64,
@@ -40,7 +40,7 @@ impl Gui {
         ctx.enable_accesskit();
         let mut gui = Self {
             app: App::with_loader(engine, Theme::default(), None),
-            rt,
+            rt: Box::new(rt),
             ctx,
             nodes: Vec::new(),
             time: 0.0,

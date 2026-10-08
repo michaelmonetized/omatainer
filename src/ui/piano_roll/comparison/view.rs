@@ -31,6 +31,7 @@ fn detail(ui: &mut Ui, draft: &Draft, offset: f64, tuning: f32, role: &str) {
         draft.notes.len(),
         draft.selected.len()
     ));
+    ui.label(format!("Saved key: {}", scale::description(draft.resolved_context())));
     ui.label(format!(
         "Source {:.6}–{:.6} beats · loop {:.6}–{:.6} · shared start {:.6} · A4 {:.3} Hz",
         draft.region.start,

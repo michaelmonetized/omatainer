@@ -626,6 +626,8 @@ impl RtEngine {
             | Command::SamplerEdit(_)
             | Command::SamplerInst(_)
             | Command::SamplerOct(_)
+            | Command::SongContext(_)
+            | Command::SamplerScale(_)
             | Command::FxAdd(_)
             | Command::FxToggle(_)
             | Command::FxMix { .. }

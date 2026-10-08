@@ -37,7 +37,7 @@ struct Native {
 }
 struct Gui {
     app: App,
-    rt: RtEngine,
+    rt: Box<RtEngine>,
     ctx: egui::Context,
     native: Rc<RefCell<Native>>,
     time: f64,
@@ -124,7 +124,7 @@ impl Gui {
         });
         let mut gui = Self {
             app,
-            rt,
+            rt: Box::new(rt),
             ctx,
             native,
             time: 0.0,

@@ -59,6 +59,8 @@ pub(crate) enum Kind {
     Stretch,
     Reverse,
     Warp,
+    ScaleTranspose,
+    Harmony,
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum Property {
@@ -109,6 +111,9 @@ pub(crate) struct Parameters {
     pub phase: f64,
     pub velocity: [u8; 2],
     pub expression: Expression,
+    pub context: Option<super::musical_context::Context>,
+    pub degrees: i16,
+    pub include_chromatic: bool,
 }
 impl Default for Parameters {
     fn default() -> Self {
@@ -132,6 +137,9 @@ impl Default for Parameters {
             phase: 0.0,
             velocity: [32, 112],
             expression: Expression::PolyPressure,
+            context: None,
+            degrees: 2,
+            include_chromatic: false,
         }
     }
 }
@@ -162,6 +170,12 @@ impl Parameters {
             && self.velocity[0] <= self.velocity[1]
             && self.velocity[1] <= 127
             && self.expression.valid()
+            && (-128..=128).contains(&self.degrees)
+            && self
+                .context
+                .is_none_or(super::musical_context::Context::valid)
+            && (!matches!(self.kind, Kind::ScaleTranspose | Kind::Harmony)
+                || self.context.is_some())
     }
     fn integral(&self, phase: f64) -> f64 {
         let integrate = |width: f64, a: f64, b: f64, part: f64| {
@@ -623,6 +637,9 @@ pub(crate) fn prepare(
     params: &Parameters,
     cancel: &AtomicBool,
 ) -> Result<Prepared, String> {
+    if params.kind == Kind::Harmony {
+        return scale::harmonize(original, selected, params, cancel);
+    }
     cancelled(cancel)?;
     if original.lane_bytes() > super::midi_data::MAX_LANE_BYTES
         || original.end_tick > u64::from(original.ppqn) * 262144
@@ -715,6 +732,13 @@ pub(crate) fn prepare(
         let mut new_start = start;
         let mut new_end = start + length;
         match params.kind {
+            Kind::ScaleTranspose => {
+                n.pitch = params
+                    .context
+                    .ok_or("Choose a saved scale before transposing")?
+                    .transpose(n.pitch, params.degrees, params.include_chromatic)?;
+            }
+            Kind::Harmony => unreachable!("Harmony uses the bounded copy preparation path"),
             Kind::Quantize => {
                 let snap =
                     |v: f64| v + ((v / params.grid).round() * params.grid - v) * params.strength;
@@ -884,3 +908,5 @@ pub(crate) fn prepare(
 
 #[cfg(test)]
 mod tests;
+
+mod scale;

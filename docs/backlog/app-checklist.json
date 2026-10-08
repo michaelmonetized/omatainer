@@ -2348,9 +2348,12 @@
       "dependencies": [
         110
       ],
-      "state": "planned",
+      "state": "implemented",
       "prs": [],
-      "evidence": []
+      "evidence": [
+        "docs/validation/saved-musical-context.md",
+        "docs/validation/saved-musical-context-receipt.json"
+      ]
     },
     {
       "issue": 169,

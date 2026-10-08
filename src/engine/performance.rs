@@ -664,6 +664,8 @@ fn destructive(command: &Command) -> bool {
         | Command::SamplerBank(_)
         | Command::SamplerInst(_)
         | Command::SamplerOct(_)
+        | Command::SongContext(_)
+        | Command::SamplerScale(_)
         | Command::OpenFxTrack(_)
         | Command::OpenFxScene(_)
         | Command::CloseFx

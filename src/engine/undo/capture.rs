@@ -46,6 +46,8 @@ impl Plan {
             }
             MicAuxConfigure(_) => (Target::Global,Name::MicAux,30),
             MicAuxControl(c) => (Target::Global,Name::MicAux,31+u64::from(c.role)),
+            SongContext(_) => (Target::Global, Name::MusicalContext, 32),
+            SamplerScale(_) => (Target::Global, Name::Sampler, 33),
             SamplerBank(_) | SamplerInst(_) | SamplerOct(_) => (Target::Global, Name::Sampler, 20),
             SamplerEdit(edit) => (Target::Sampler(rt.sampler_edit_index(edit)?), Name::Sampler, 21),
             TrackGain { track, .. }

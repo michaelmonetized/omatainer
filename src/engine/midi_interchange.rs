@@ -354,6 +354,8 @@ impl Request {
                 region: old.region,
                 notes: old.notes.clone(),
                 lanes: old.lanes.clone(),
+                context: old.properties.context,
+                song_context: captured.state.musical_context,
             });
             let reserved_lane_bytes = old.lanes.as_ref().map_or(0, |l| l.bytes()) + lanes.bytes();
             targets.push(Target {
@@ -536,7 +538,8 @@ impl Request {
 }
 impl RtEngine {
     pub(super) fn midi_import_current(&self, request: &Request) -> bool {
-        if request
+        if request.targets.iter().any(|target| target.baseline.song_context != self.musical_context || self.tracks.get(target.baseline.track as usize).and_then(|track| track.clips.get(target.baseline.scene as usize)).is_none_or(|clip| clip.properties.context != target.baseline.context))
+            || request
             .metadata_baseline
             .is_some_and(|baseline| baseline != self.undo.checkpoint())
             || request

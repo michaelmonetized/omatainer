@@ -371,6 +371,11 @@ impl Frame {
         target.navigation_pending = rt.navigation.pending.map(|p|[p.beat,p.when]);
         target.navigation_error = rt.navigation.error;
         target.file_conductor = rt.conductor.is_some();
+        target.musical_context = rt.musical_context;
+        target.active_scale = musical_context::active(rt.musical_context, rt.tracks.iter().filter(|_| rt.playing).filter_map(|track| track.playing.map(|launch| track.clips[launch.scene as usize].properties.context)));
+        target.sampler_scale = rt.sampler_scale;
+        let owner = rt.compose_target.unwrap_or(ComposeTarget { track: rt.selected_track, scene: rt.selected_scene });
+        target.sampler_context = musical_context::resolve(rt.tracks.get(owner.track).and_then(|track| track.clips.get(owner.scene)).and_then(|clip| clip.properties.context), rt.musical_context).context;
         target.count_in_remaining = rt.count_in.as_ref().map_or(0.0, |count| count.remaining());
         if let Some(conductor) = &rt.conductor {
             let (bar, beat, meter) = conductor.position(rt.precise_midi_beat());
