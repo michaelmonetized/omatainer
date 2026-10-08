@@ -5,6 +5,35 @@ mod gain_tests;
 mod dependency_tests;
 mod template_tests;
 #[test]
+fn channel_effects_native_archive_reopen_rate_change_and_legacy_migration_preserve_both_decks() {
+    let mut original = rt();
+    original.decks[0].channel_effect = channel_fx::Kind::Echo;
+    original.decks[0].filter_amt = 0.18;
+    original.decks[1].channel_effect = channel_fx::Kind::Room;
+    original.decks[1].filter_amt = 0.83;
+    let saved = captured(&original);
+    let directory = std::env::temp_dir().join(format!("omatainer-channel-effects-{}", std::process::id()));
+    std::fs::create_dir_all(&directory).unwrap();
+    let path = directory.join("two-decks.omat");
+    let cancelled = AtomicBool::new(false);
+    let outcome = crate::project_file::save(&path, &crate::project_file::Bundle { state: saved.state.clone(), media: saved.media.clone() }, crate::project_file::Overwrite::Never, &Default::default(), &cancelled).unwrap();
+    assert_eq!(outcome, crate::project_file::SaveOutcome::Durable);
+    let loaded = crate::project_file::load::<State>(&path, &Default::default(), &cancelled).unwrap();
+    for rate in [44100, 48000, 96000] {
+        let reopened = Prepared::from_state(loaded.state.clone(), loaded.media.clone(), rate).unwrap();
+        for deck in 0..2 { assert_eq!(reopened.rt.decks[deck].channel_effect, original.decks[deck].channel_effect); assert_eq!(reopened.rt.decks[deck].filter_amt, original.decks[deck].filter_amt); }
+    }
+    let mut legacy = serde_json::to_value(captured(&rt()).state).unwrap();
+    legacy["version"] = 34.into();
+    assert!(legacy["decks"].as_array().unwrap().iter().all(|deck| deck.get("channel_effect").is_none()));
+    let migrated: State = serde_json::from_value(legacy.clone()).unwrap();
+    assert!(migrated.decks.iter().all(|deck| deck.channel_effect == channel_fx::Kind::Filter));
+    for field in [serde_json::Value::Null, serde_json::json!("filter"), serde_json::json!("echo")] { let mut invalid = legacy.clone(); invalid["decks"][0]["channel_effect"] = field; assert!(serde_json::from_value::<State>(invalid).is_err()); }
+    legacy["version"] = STATE_VERSION.into(); legacy["decks"][0]["channel_effect"] = "unknown".into();
+    assert!(serde_json::from_value::<State>(legacy).is_err());
+    println!("CHANNEL_EFFECT_PROJECT {{\"native_archive\":true,\"three_output_rates\":true,\"legacy_filter_migration\":true,\"physical_devices_opened\":false}}");
+}
+#[test]
 fn named_controller_lanes_roundtrip_in_schema_fifteen_and_reject_legacy_or_invalid_labels() {
     let mut original = rt();
     let lanes = midi_data::Lanes::named(960, 15360, vec![crate::midi_file::Message { tick: 120, order: 1, bytes: [0xbf,74,99], length: 3 }], vec![], vec![midi_data::Label { channel: 15, control: midi_data::ControlKind::Cc { controller: 74 }, name: "Filter cutoff".into() }]).unwrap();

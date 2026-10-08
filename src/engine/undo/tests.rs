@@ -2,6 +2,26 @@ use super::*;
 fn fixture() -> (Engine, RtEngine) {
     Engine::headless_for_test(48000, 256)
 }
+#[test]
+fn channel_effect_selection_is_dirty_exact_deck_undoable_and_rejected_before_invalid_admission() {
+    let (engine, mut rt) = fixture();
+    let revision = rt.project.revision();
+    let other = rt.decks[1].channel_effect;
+    engine.send(Command::DeckChannelEffect { deck: 0, effect: channel_fx::Kind::Room }).unwrap();
+    assert_eq!(test_alloc::measure(|| rt.process(&mut [])), test_alloc::Counts::default());
+    assert_eq!(rt.decks[0].channel_effect, channel_fx::Kind::Room);
+    assert_eq!(rt.decks[1].channel_effect, other); assert!(rt.project.revision() > revision);
+    for (command, expected) in [(Command::Undo, channel_fx::Kind::Filter), (Command::Redo, channel_fx::Kind::Room)] {
+        engine.send(command).unwrap();
+        assert_eq!(test_alloc::measure(|| rt.process(&mut [])), test_alloc::Counts::default());
+        assert_eq!(rt.decks[0].channel_effect, expected); assert_eq!(rt.decks[1].channel_effect, other);
+    }
+    for deck in [2, 3, 255] { assert_eq!(engine.send(Command::DeckChannelEffect { deck, effect: channel_fx::Kind::Echo }), Err(control::SubmissionError::InvalidTarget)); }
+    rt.publish_for_test();
+    let snapshot = serde_json::to_value(engine.snapshot()).unwrap();
+    assert_eq!(snapshot["decks"][0]["channel_effect"], "room");
+    assert_eq!(snapshot["decks"][1]["channel_effect"], "filter");
+}
 fn tick(rt: &mut RtEngine) {
     rt.process(&mut [0.0; 128]);
 }

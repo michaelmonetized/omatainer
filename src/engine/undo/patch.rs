@@ -173,6 +173,7 @@ pub(super) struct DeckControls {
     eq_solo: i8,
     eq_store: [f32; 4],
     filter: f32,
+    channel_effect: super::super::channel_fx::Kind,
     pfl: bool,
     vinyl: bool,
     keylock: bool,
@@ -201,6 +202,7 @@ impl DeckControls {
             eq_solo: deck.eq_solo,
             eq_store: deck.eq_store,
             filter: deck.filter_amt,
+            channel_effect: deck.channel_effect,
             pfl: deck.pfl,
             vinyl: deck.vinyl,
             keylock: deck.keylock,
@@ -238,6 +240,7 @@ impl DeckControls {
             [eq.low_g, eq.mid_g, eq.high_g] = self.eq;
         }
         deck.filter_amt = self.filter;
+        deck.channel_effect = self.channel_effect;
         deck.pfl = self.pfl;
         deck.vinyl = self.vinyl;
         deck.keylock = self.keylock;

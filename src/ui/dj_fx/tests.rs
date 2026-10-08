@@ -7,6 +7,8 @@ struct Gui {
     ctx: egui::Context,
     nodes: Vec<(NodeId, Node)>,
     time: f64,
+    reference: Option<Box<crate::engine::RtEngine>>,
+    independent_blocks: usize,
 }
 impl Gui {
     fn new() -> Self {
@@ -18,6 +20,8 @@ impl Gui {
             ctx,
             nodes: Vec::new(),
             time: 1.0,
+            reference: None,
+            independent_blocks: 0,
         };
         gui.fixture.app.dj_fx_open = true;
         gui.frame(vec![]);
@@ -38,7 +42,13 @@ impl Gui {
             |ctx| self.fixture.app.dj_fx_ui(ctx),
         );
         self.nodes = output.platform_output.accesskit_update.unwrap().nodes;
-        self.fixture.rt.process(&mut [0.0; 512]);
+        let mut actual = [0.0; 512];
+        self.fixture.rt.process(&mut actual);
+        if let Some(reference) = &mut self.reference {
+            let mut expected = [0.0; 512]; reference.process(&mut expected);
+            assert_eq!(actual, expected, "Native channel controls changed the independent playing deck");
+            if actual.iter().any(|sample| *sample != 0.0) { self.independent_blocks += 1; }
+        }
         self.fixture.rt.publish_for_test();
         self.fixture.app.snap = self.fixture.app.engine.snapshot();
     }
@@ -79,6 +89,34 @@ impl Gui {
     fn settings(&self, bank: usize) -> crate::engine::surface_controls::EffectBank {
         self.fixture.app.engine.snapshot().surfaces.fx[bank]
     }
+}
+
+#[test]
+fn native_channel_types_knob_center_confirmed_feedback_and_undo_preserve_independent_playing_pcm() {
+    use crate::engine::{channel_fx::Kind, dsp::Sample};
+    let mut gui = Gui::new(); let mut reference = Fixture::new(256).rt;
+    reference.process(&mut [0.0; 512]);
+    let audio = std::sync::Arc::new(Sample { spectrum: None, name: "Independent stereo".into(), sr: 48000, ch: 2, data: (0..960000).map(|i| (i as f32 * if i % 2 == 0 { 0.03 } else { 0.09 }).sin() * 0.1).collect(), peaks: vec![].into(), bpm: 120.0, path: String::new() });
+    for rt in [&mut *gui.fixture.rt, &mut *reference] {
+        rt.apply(Command::DeckAudio { deck: 1, audio: audio.clone() }); rt.decks[1].playing = true; rt.decks[1].rate = 1.0;
+        rt.decks[0].playing = false; rt.master = 1.0; rt.xfader = 1.0;
+    }
+    gui.reference = Some(reference); gui.frame(vec![]);
+    for (kind, label) in [(Kind::Echo, "Echo"), (Kind::Room, "Room"), (Kind::Filter, "Filter")] {
+        gui.click(&format!("Channel effect Deck A: {label}"));
+        assert_eq!(gui.fixture.app.snap.decks[0].channel_effect, kind);
+        assert_eq!(gui.node(&format!("Channel effect Deck A: {label}")).1.toggled(), Some(egui::accesskit::Toggled::True));
+        for value in [0.0, 0.25, 0.5, 0.75, 1.0] { gui.value("Channel effect Deck A: Knob", value); assert_eq!(gui.fixture.app.snap.decks[0].filter, value as f32); }
+        gui.click("Channel effect Deck A: Center"); assert_eq!(gui.fixture.app.snap.decks[0].filter, 0.5);
+        for _ in 0..20 { gui.frame(vec![]); }
+    }
+    gui.click("Channel effect Deck A: Echo");
+    gui.fixture.app.engine.send(Command::Undo).unwrap(); gui.frame(vec![]);
+    assert_eq!(gui.fixture.app.snap.decks[0].channel_effect, Kind::Filter);
+    gui.fixture.app.engine.send(Command::Redo).unwrap(); gui.frame(vec![]);
+    assert_eq!(gui.fixture.app.snap.decks[0].channel_effect, Kind::Echo);
+    assert!(gui.independent_blocks >= 100);
+    println!("CHANNEL_EFFECT_NATIVE {{\"native_egui_accesskit\":true,\"confirmed_type_and_knob\":true,\"undo_redo\":true,\"exact_independent_pcm_blocks\":{},\"physical_devices_opened\":false}}", gui.independent_blocks);
 }
 
 #[test]

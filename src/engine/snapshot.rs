@@ -315,6 +315,8 @@ impl Frame {
             out.gain = deck.gain;
             out.eq = [deck.eq[0].low_g, deck.eq[0].mid_g, deck.eq[0].high_g];
             out.filter = deck.filter_amt;
+            out.channel_effect = deck.channel_effect;
+            out.channel_effect_feedback = midi::ChannelEffectFeedback::applied(index as u8, deck.channel_effect, deck.filter_amt);
             out.vinyl = deck.vinyl;
             out.sync = deck.sync;
             out.sync_mode = deck.sync_mode();

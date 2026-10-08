@@ -124,6 +124,7 @@ impl Prepared {
                 gain,
                 filter_morph,
                 filter_amt,
+                channel_effect,
                 pfl,
                 loop_on,
                 loop_start,

@@ -107,6 +107,7 @@ impl Plan {
             | DeckGain { deck, .. }
             | DeckEq { deck, .. }
             | DeckFilter { deck, .. }
+            | DeckChannelEffect { deck, .. }
             | DeckPfl { deck }
             | DeckLoop { deck, .. }
             | DeckLoopIn { deck }

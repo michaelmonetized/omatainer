@@ -64,6 +64,7 @@ impl MidiMap {
                 Action::DeckPad => binding.deck < 2 && binding.kind == MsgKind::Note && binding.extra < 8,
                 Action::DeckPadMode => binding.deck < 2 && binding.kind == MsgKind::Note && binding.extra < crate::engine::deck_pads::Mode::CHOICES.len() as u16,
                 Action::DeckSyncMode => binding.deck < 2 && binding.kind == MsgKind::Note && binding.extra < 4,
+                Action::DeckChannelEffect => binding.deck < 2 && binding.kind == MsgKind::Note && crate::engine::channel_fx::Kind::from_id(binding.extra).is_some(),
                 Action::DeckSyncLeader => binding.deck == 0 && binding.kind == MsgKind::Note && binding.extra < 3,
                 Action::DeckPadParameterLeft | Action::DeckPadParameterRight | Action::DeckPadParameterShiftLeft | Action::DeckPadParameterShiftRight => binding.deck < 2 && binding.kind == MsgKind::Note && binding.extra == 0,
                 Action::DeckSavedLoopRecall | Action::DeckSavedLoopSave | Action::DeckSavedLoopDelete => binding.deck < 2 && binding.kind == MsgKind::Note && binding.extra < 8,

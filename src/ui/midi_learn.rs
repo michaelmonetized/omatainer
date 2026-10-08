@@ -47,7 +47,8 @@ fn label(action: Action) -> &'static str {
         Action::DeckEqHi => "Deck high EQ",
         Action::DeckEqMid => "Deck mid EQ",
         Action::DeckEqLow => "Deck low EQ",
-        Action::DeckFilter => "Deck filter",
+        Action::DeckFilter => "Deck channel effect knob",
+        Action::DeckChannelEffect => "Deck channel effect type",
         Action::DeckPfl => "Deck headphone cue",
         Action::DeckHotCue => "Deck hot cue",
         Action::DeckLoop4 => "Deck four-beat loop",
@@ -105,6 +106,10 @@ fn label(action: Action) -> &'static str {
     }
 }
 fn description(mapping: &learn::Mapping) -> String {
+    if mapping.binding.action == Action::DeckChannelEffect {
+        let target = crate::engine::channel_fx::Kind::from_id(mapping.binding.extra).map_or("Invalid effect", |kind| kind.name());
+        return format!("{} / {} · channel {} · {:?} {} → Deck {} channel effect {target}", mapping.endpoint.name, mapping.endpoint.id, mapping.binding.ch + 1, mapping.binding.kind, mapping.binding.data, (b'A' + mapping.binding.deck) as char);
+    }
     if learn::sync_mode(mapping.binding.action) {
         let target = if mapping.binding.action == Action::DeckSyncLeader {
             crate::engine::deck_sync::Leader::from_id(mapping.binding.extra).map_or("Invalid leader".into(), |leader| format!("Shared leader {}", leader.label()))
@@ -246,6 +251,17 @@ impl App {
                 let mode = crate::engine::deck_pads::Mode::from_index(binding.extra as u8).unwrap_or(crate::engine::deck_pads::Mode::HotCue);
                 egui::ComboBox::from_label("MIDI pad mode").selected_text(mode.label()).show_ui(ui, |ui| {
                     for mode in crate::engine::deck_pads::Mode::CHOICES { ui.selectable_value(&mut binding.extra, u16::from(mode.index()), mode.label()); }
+                });
+            }
+            if binding.action == Action::DeckChannelEffect {
+                use crate::engine::channel_fx::Kind;
+                let kind = Kind::from_id(binding.extra).unwrap_or_default();
+                egui::ComboBox::from_label("MIDI channel effect").selected_text(kind.name()).show_ui(ui, |ui| {
+                    for (id, kind) in Kind::ALL.into_iter().enumerate() {
+                        let choice = ui.selectable_value(&mut binding.extra, id as u16, kind.name());
+                        accessibility::button(ui, &choice, &format!("MIDI channel effect {}", kind.name()), None);
+                        if choice.clicked() { ui.close(); }
+                    }
                 });
             }
             if binding.action == Action::DeckSyncMode {
