@@ -373,6 +373,7 @@ impl History {
     }
     /// Retain the current source sample once for every downstream consumer.
     /// Takes the native channel frame and original continuity; writes exactly this history's prepared width.
+    #[inline]
     pub(super) fn push(&mut self, frame: &[f32], valid: bool) {
         self.head += 1;
         if self.head == self.frames { self.head = 0; }
@@ -383,6 +384,7 @@ impl History {
     }
     /// Read a causal source sample without advancing its shared history.
     /// Takes a channel and bounded delay; returns silence while that original sample has not reached this history.
+    #[inline]
     pub(super) fn sample(&self, channel: usize, delay: u32) -> f32 {
         if channel >= self.width || delay >= self.filled || delay as usize >= self.frames {
             return 0.0;
@@ -392,17 +394,20 @@ impl History {
     }
     /// Read the original continuity of a retained sample.
     /// Takes its causal delay; returns false for unavailable or incomplete source history.
+    #[inline]
     pub(super) fn valid(&self, delay: u32) -> bool {
         delay < self.filled
             && (delay as usize) < self.frames
             && self.valid[self.frame(delay)]
     }
+    #[inline]
     fn frame(&self, delay: u32) -> usize {
         let delay = delay as usize;
         if delay <= self.head { self.head - delay } else { self.frames - (delay - self.head) }
     }
     /// Read one original sample and its continuity together.
     /// Takes a channel and causal delay; returns silence and unavailable continuity outside the filled history.
+    #[inline]
     fn read(&self, channel: usize, delay: u32) -> (f32, bool) {
         if channel >= self.width || delay >= self.filled || delay as usize >= self.frames { return (0.0, false); }
         let frame = self.frame(delay);
@@ -410,6 +415,7 @@ impl History {
     }
     /// Resolve a settled delay or a changing pair of original samples.
     /// Takes a channel, old/new causal delays and transition gain; returns their audio and original continuity without reading unused history.
+    #[inline]
     fn blended(&self, channel: usize, old: u32, delay: u32, mix: f32) -> (f32, bool) {
         if mix >= 1.0 || old == delay { return self.read(channel, delay); }
         if mix <= 0.0 { return self.read(channel, old); }
@@ -526,8 +532,9 @@ impl Runtime {
         self.remaining = self.remaining.saturating_sub(1);
         self.processed = self.processed.saturating_add(1);
     }
+    #[inline]
     fn blend(&self) -> f32 {
-        1.0 - self.remaining as f32 / self.transition_frames as f32
+        if self.remaining == 0 { 1.0 } else { 1.0 - self.remaining as f32 / self.transition_frames as f32 }
     }
     /// Retain every required tap after its original node renders.
     /// Takes exact source index, channel frames and continuity; pushes each used history once.
@@ -545,6 +552,7 @@ impl Runtime {
     }
     /// Read one sample with causal alignment into its downstream destination.
     /// Takes source/tap, destination and channel; returns the bounded old/new delay blend and retained continuity.
+    #[inline]
     pub(super) fn routed(
         &self,
         source: usize,
@@ -560,6 +568,7 @@ impl Runtime {
             self.prior.inputs[destination],
         )
     }
+    #[inline]
     fn routed_at(
         &self,
         source: usize,
