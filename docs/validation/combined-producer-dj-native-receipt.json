@@ -2087,6 +2087,637 @@
     {
       "name": "native-ui/49-post-routed-53-restored-status.json",
       "sha256": "e47464b9394ffc93570c6f55212aa822525a3a5fcd8498b67ced44bc208c6907"
+    },
+    {
+      "name": "profiles-qualified/54/provenance.json",
+      "sha256": "7ad7c43a44e46b6c96a31afe107193deb9b27862a710dacf72b4fdb6861a5220"
+    },
+    {
+      "name": "profiles-qualified/55/provenance.json",
+      "sha256": "0411c7cf5ec9fd9789e38b91d49a1a35ba722fcd675cff2d263c99c46172ffc5"
+    },
+    {
+      "name": "profiles-qualified/55/routed-callback-timing.json",
+      "sha256": "0b1c182d7b0042ae3627e9f97456a88c13c665ad29c7774b85773aeae88d1c5a"
+    },
+    {
+      "name": "profiles-qualified/56/provenance.json",
+      "sha256": "a37b8d0e232ff07c27c9ae51567dec9280b56bddeda28b14e0aa35d1e3691b88"
+    },
+    {
+      "name": "profiles-qualified/56/routed-callback-timing.json",
+      "sha256": "30a8defe117289ee16e880101b86a13690ffaa7bc3e11f02d0c70b9962ffe658"
+    },
+    {
+      "name": "qualification-56-release-results.json",
+      "sha256": "3d8cf7bcce76d1c3c1418f51c800c1ba0ec3ec4c78a544b6c5039e5c31e4686d"
+    },
+    {
+      "name": "profiles-qualified/56-release/provenance.json",
+      "sha256": "1d3fe00acf11c2fc52f81edffb8669e4b9ce515f33362a8d8e454069a1dfa484"
+    },
+    {
+      "name": "profiles-qualified/56-release/routed-callback-timing.log",
+      "sha256": "31be667dfbf6e09438d965d6767b136a1792935eeb35f44cd74f572f8c405388"
+    },
+    {
+      "name": "profiles-qualified/56-release/ns7-routed-transition.log",
+      "sha256": "00dbbf8668b564b276dcbf7635f065d2876fef127a44d3419fae180fa92b8060"
+    },
+    {
+      "name": "cpu-budget/native-ns7-56-release/ns7-cpu-recovery.json",
+      "sha256": "5abbc16608f460d27d6bb5b140c6a0ce4c1dc44b9783ab61fc3e7aa6c4231faa"
+    },
+    {
+      "name": "qualification-57-release-results.json",
+      "sha256": "151cf57f53e4d7c57b62a3073298097e6c476b451f48bdc7f4c8baf5d2e19032"
+    },
+    {
+      "name": "qualification-57-physical-final.json",
+      "sha256": "21957aadc3a9199ca168473e9b9000513ccd722e40ba57ba84ef89b20bace994"
+    },
+    {
+      "name": "profiles-qualified/57-release/provenance.json",
+      "sha256": "b8d6a2424c8e280d1f7ea061326285532105d774dae206ec178f83c31a4b3465"
+    },
+    {
+      "name": "profiles-qualified/57-release/routed-positions.log",
+      "sha256": "4649c20e9a86000325da1088c6634427c0e44685534f83188a4207d53b08a74e"
+    },
+    {
+      "name": "profiles-qualified/57-release/routed-callback-timing.log",
+      "sha256": "cda04feceed91cfd855fe5dbfad66d805e79be1f973eb53e4dde19e34f1f6df2"
+    },
+    {
+      "name": "profiles-qualified/57-release/ns7-routed-transition.log",
+      "sha256": "09467ed02e06637fa5397eee65f1b5ceb593c04a04b638d7df0149d01e0f6270"
+    },
+    {
+      "name": "profiles-qualified/57-release/physical-usb-recovery.log",
+      "sha256": "88b5d2395460f85eeaf013ccffc157e8a8663e77f0facec967c7c79433465ae5"
+    },
+    {
+      "name": "profiles-qualified/58-release/provenance.json",
+      "sha256": "91c19ed5876d32c18e0d6c54f42f8cef16e2cf67e0bd1c531cb13b7e93e7bf4f"
+    },
+    {
+      "name": "profiles-qualified/58-release/focused-results.json",
+      "sha256": "43cae9d957d1f3e78d3f921e9675c48b2dbc058372f06615f51a87b016c84580"
+    },
+    {
+      "name": "profiles-qualified/58-release/focused-rest-results.json",
+      "sha256": "e47f088b5dfa8c6f85d84c15d564e39cd5c932d723bbdd4128ee48f9fd435698"
+    },
+    {
+      "name": "profiles-qualified/58-release/routed-positions.log",
+      "sha256": "277f0b4be3d7837066bb4f9b1e6bb7c11c5fe790508e4ebe35e543942c8944f3"
+    },
+    {
+      "name": "profiles-qualified/58-release/routed-callback-timing.log",
+      "sha256": "5392cfaa404424b5a0421c9d90c873da19349727324e4973a9dc0cc8694de3d9"
+    },
+    {
+      "name": "profiles-qualified/58-release/routed-callback-timing.json",
+      "sha256": "51bd7f215cee51840af5c1a271e3fcf126b33bcba088e88f6ee37cbd64191d52"
+    },
+    {
+      "name": "profiles-qualified/58-release/ns7-routed-transition.log",
+      "sha256": "915f8c1a51f393c4bc1d2d725b6799634d7eba09f970e534653a93e9d15d12f4"
+    },
+    {
+      "name": "ns7-routed-native-58-release/failure-fade-admission-1.json",
+      "sha256": "fb0df6dcc8f168bae0839a95011ab6e6f4a4a68c96989bcdacb58002b3201b1e"
+    },
+    {
+      "name": "profiles-qualified/58-release/gprofng-collection.log",
+      "sha256": "64268cee5329c14fdace39e18099d635ecc413a02979585d863a2756cf0e339e"
+    },
+    {
+      "name": "profiles-qualified/58-release/gprofng-cpu-sorted.txt",
+      "sha256": "10882d42f96a4edb81c65099d408513706890cc7ef2e230e51fb64ee812ed980"
+    },
+    {
+      "name": "native-ui/pre-routed-58-backup-proof.json",
+      "sha256": "ef86790e124c25f29ee4d9218ab5a70ced1c7e2aa576199f0d00258597ca983b"
+    },
+    {
+      "name": "native-ui/49-after-release-58-restored-ui.json",
+      "sha256": "6744b66ab4301bd01f9caae8a8074f0caf7a93af693f7f71c3fcc959cbda9396"
+    },
+    {
+      "name": "native-ui/49-after-release-58-status.json",
+      "sha256": "05693f7f522e9b12182eea0799ff4cc114a520ac92434954b0ab1af95fba8ebf"
     }
-  ]
+  ],
+  "routedQualificationThrough58": {
+    "source54": {
+      "source_revision": "f2ec9553df137387507151e109da9f6f1f469408",
+      "test_sha256": "a6285287e20d11771cd562317cd5abc8fdfddd1cb9840af5c8fbec316f1eb9b0",
+      "inventory_sha256": "59f1b27afa9428e137d429e832d364b215f62d41a0f41147ba123a05699a3e17",
+      "build_log_sha256": "c62e2bbf31f322bb07020f362f8b69dd0598c151285df3ee0dd6c8c4cca245bf"
+    },
+    "source55": {
+      "provenance": {
+        "source_revision": "fb47000192054e8d8a9d5dac6794b210c68437f7",
+        "test_sha256": "ff423ea65460a6e2baadf29858a26023d9a444354567f3ec522d332b903b42df",
+        "inventory_sha256": "8eb11e4adb08745f4f9b42036b03189d83df314294ccdaf7c56eff208e49ab07",
+        "build_log_sha256": "d3d368f9a9ba4b9e2a8fd501221fcb96da0dee233b5b10bd41c78327980d9e8c"
+      },
+      "profile": "test opt-level1, debug0",
+      "localTiming": {
+        "callback_budget_ns": 5804988,
+        "callbacks_per_phase": 128,
+        "channels": 4,
+        "deadline_pass": false,
+        "frames": 256,
+        "heap_pass": true,
+        "launched_clip_tracks": 8,
+        "reported_deck_processing_micros": 20000,
+        "sample_rate": 44100,
+        "schema": 1,
+        "scope": "Local production callback startup, two-graph cue and two-graph fade. No native scheduler, hardware, maximum-polyphony or stage-duration claim.",
+        "stored_notes_per_graph": 32768,
+        "stored_tracks": 64,
+        "trials": [
+          {
+            "phase": "startup",
+            "maximum_cpu_ns": 3002083,
+            "maximum_wall_ns": 3071023,
+            "rust_allocations": 0,
+            "rust_frees": 0
+          },
+          {
+            "phase": "cue",
+            "maximum_cpu_ns": 5987670,
+            "maximum_wall_ns": 6145048,
+            "rust_allocations": 0,
+            "rust_frees": 0
+          },
+          {
+            "phase": "transition",
+            "maximum_cpu_ns": 5954585,
+            "maximum_wall_ns": 6125464,
+            "rust_allocations": 0,
+            "rust_frees": 0
+          }
+        ]
+      },
+      "nativeRoutedRun": false
+    },
+    "source56": {
+      "opt1": {
+        "source_revision": "839b77f2b68f9608659a08db223f9fd90f9a9b8e",
+        "test_sha256": "b901720c1f194d9205c38596abab797e9549755cb5abc057cbbcb7afe2906c04",
+        "inventory_sha256": "f141c3fa9b795317e8bf3e5a90c45e5bcf6759b2a14f4038d74f95d1323f26de",
+        "build_log_sha256": "5568d017b8c62821e685c9ec3c9be583690ac2616c10ff578a385fcbe2c04010"
+      },
+      "opt1Timing": {
+        "callback_budget_ns": 5804988,
+        "callbacks_per_phase": 128,
+        "channels": 4,
+        "deadline_pass": false,
+        "frames": 256,
+        "heap_pass": true,
+        "launched_clip_tracks": 8,
+        "reported_deck_processing_micros": 20000,
+        "sample_rate": 44100,
+        "schema": 1,
+        "scope": "Local production callback startup, two-graph cue and two-graph fade. No native scheduler, hardware, maximum-polyphony or stage-duration claim.",
+        "stored_notes_per_graph": 32768,
+        "stored_tracks": 64,
+        "trials": [
+          {
+            "phase": "startup",
+            "maximum_cpu_ns": 3010959,
+            "maximum_wall_ns": 3110545,
+            "rust_allocations": 0,
+            "rust_frees": 0
+          },
+          {
+            "phase": "cue",
+            "maximum_cpu_ns": 5939458,
+            "maximum_wall_ns": 6112047,
+            "rust_allocations": 0,
+            "rust_frees": 0
+          },
+          {
+            "phase": "transition",
+            "maximum_cpu_ns": 5933624,
+            "maximum_wall_ns": 6138005,
+            "rust_allocations": 0,
+            "rust_frees": 0
+          }
+        ]
+      },
+      "release": {
+        "source_revision": "839b77f2b68f9608659a08db223f9fd90f9a9b8e",
+        "compiler_profile": "release tests, opt-level3, codegen-units4, debug0, test unwind",
+        "compiler_flags": [
+          "opt-level=3",
+          "codegen-units=4"
+        ],
+        "test_sha256": "96006aaa8e4cbc7cfc0fa697043c98f23705316a6cf9032b121085614baf0d6a",
+        "inventory_sha256": "f141c3fa9b795317e8bf3e5a90c45e5bcf6759b2a14f4038d74f95d1323f26de",
+        "build_log_sha256": "5e8e4bf6330273ddfbe7ac196cfab8b6bc4e352702f9dc441c01dbf2670c8956"
+      },
+      "localTiming": {
+        "status": "failed",
+        "budget_ns": 5804988,
+        "heap_pass": true,
+        "trials": [
+          {
+            "phase": "startup",
+            "max_cpu_ns": 2562753,
+            "max_wall_ns": 2621516,
+            "first_two_cpu_ns": 5012919,
+            "allocations": 0,
+            "frees": 0
+          },
+          {
+            "phase": "cue",
+            "max_cpu_ns": 5097119,
+            "max_wall_ns": 5267863,
+            "first_two_cpu_ns": 9999291,
+            "allocations": 0,
+            "frees": 0
+          },
+          {
+            "phase": "transition",
+            "max_cpu_ns": 5155165,
+            "max_wall_ns": 5922993,
+            "first_two_cpu_ns": 10105004,
+            "allocations": 0,
+            "frees": 0
+          }
+        ]
+      },
+      "nativeForcedCpuFault": {
+        "status": "passed",
+        "injected_cpu_ms": 30,
+        "recorded_notes": 1,
+        "explicit_reviewed_fallback": true,
+        "unverifiable_serial_refused": true,
+        "playing_after_reconnect": false,
+        "audio": {
+          "backend_errors": 0,
+          "callbacks": 35,
+          "cpu_budget_exhaustions": 1,
+          "deadline_overruns": 1,
+          "device_lost": 0,
+          "dropped_buffers": null,
+          "last_callback": {
+            "budget_ns": 5804988,
+            "channels": 4,
+            "elapsed_ns": 236377,
+            "frames": 256,
+            "output_latency_ns": 5804989,
+            "overrun_ns": 0,
+            "render_cpu_ns": 227833,
+            "sample_rate": 44100
+          },
+          "max_elapsed_ns": 32235648,
+          "max_overrun_ns": 26430660,
+          "realtime_denied": 0,
+          "xruns": 1
+        }
+      },
+      "nativeRouted": {
+        "status": "failed",
+        "seconds": 2.26,
+        "failing_line": "src/engine/audio_live_set_tests/native.rs:150",
+        "reason": "Fade admission refused by performance protection after cue. Audio phase and counters were not captured at this refusal; its cause remains unverified. Diagnostic collection is added in source57."
+      }
+    },
+    "source57": {
+      "provenance": {
+        "source_revision": "57300a264757fb2e925b1cea3fd61cc6466bbe73",
+        "compiler_profile": "release tests, opt-level3, codegen-units4, debug0, test unwind",
+        "compiler_flags": [
+          "opt-level=3",
+          "codegen-units=4"
+        ],
+        "test_sha256": "791ca65892f2c15b0a90a6367beeb9e79080650b16d0b2f04c1ae95d188b1b21",
+        "inventory_sha256": "6fc6753a13c71e8c08551f2dd3e33330e1e0e7c4c707ec265c93486ade06af05",
+        "build_log_sha256": "030c1a18d9fbb4cf8053d04d07fa3b1c194d450f45d1ae5b2b0185671be8594b"
+      },
+      "focused": {
+        "source_positions": {
+          "passed": 5,
+          "failed": 2,
+          "fixture_corrections": "The ambiguity fixture used equal actual delays; corrected to compare Deck0 PreFx and PostFx. Heap measurement constructed boxed producer commands inside the callback scope; corrected to construct commands before measurement. Corrections are not yet compiled."
+        },
+        "svf": {
+          "passed": 4,
+          "failed": 0
+        },
+        "voice": {
+          "passed": 4,
+          "failed": 0,
+          "ignored": 1
+        },
+        "audible": {
+          "passed": 2,
+          "failed": 0
+        },
+        "latency": {
+          "passed": 12,
+          "failed": 0
+        },
+        "live_set": {
+          "passed": 13,
+          "failed": 0
+        }
+      },
+      "localTiming": {
+        "passed": true,
+        "heap_pass": true,
+        "budget_ns": 5804988,
+        "trials": [
+          {
+            "phase": "startup",
+            "maximum_cpu_ns": 2629957,
+            "maximum_wall_ns": 2637181,
+            "rust_allocations": 0,
+            "rust_frees": 0
+          },
+          {
+            "phase": "cue",
+            "maximum_cpu_ns": 5023167,
+            "maximum_wall_ns": 5034361,
+            "rust_allocations": 0,
+            "rust_frees": 0
+          },
+          {
+            "phase": "transition",
+            "maximum_cpu_ns": 4855291,
+            "maximum_wall_ns": 4868610,
+            "rust_allocations": 0,
+            "rust_frees": 0
+          }
+        ]
+      },
+      "nativeRouted": {
+        "status": "failed",
+        "seconds": 2.25,
+        "phase": "after cue preview, before fade",
+        "remaining_priming_seconds": 0.008390022675736962,
+        "counters_not_captured": true,
+        "correction": "Replace the bare priming assertion with a phase/status wait that retains native faults; pending validation."
+      },
+      "physicalUsb": {
+        "source_revision": "57300a264757fb2e925b1cea3fd61cc6466bbe73",
+        "test": "engine::audio::physical_recovery_tests::native_physical_usb_recording_recovery_and_two_controller_reconnections",
+        "passed": 0,
+        "failed": 1,
+        "seconds": 303.35,
+        "reason": "Timed out waiting for first actual NS7 USB removal. No physical detach was observed. No physical recovery pass is established.",
+        "action_marker": "physical-recovery-57-release/action.json is stale after fixture termination.",
+        "owner": "mct-powered-hub-test.service restored, native saved title pre-routed-57-current.omatainer. Later status playing true, decks false, recording false, four MIDI feedback outputs and zero feedback failures.",
+        "log": "profiles-qualified/57-release/physical-usb-recovery.log"
+      }
+    },
+    "source58": {
+      "provenance": {
+        "source_revision": "cd2c9ca258bb7ab9d39561434430b764da36d075",
+        "compiler_profile": "release tests, opt-level3, codegen-units4, debug0, test unwind",
+        "compiler_flags": [
+          "opt-level=3",
+          "embed-bitcode=no",
+          "codegen-units=4",
+          "metadata=ccce059c87a51535",
+          "extra-filename=-552c0e61ca670d04",
+          "strip=debuginfo"
+        ],
+        "test_sha256": "51e51d12a266685e47fc7facc242e867d1457385aff2093df5862b9e359de5b7",
+        "inventory_sha256": "f8cb33483a7026a6707528372bb0f69c80d126c891b7bdb7da5ac1692a03555b",
+        "build_log_sha256": "3f82f699eb80486a214d832e931b1fd68979a35a4351a7677f97769df34861db"
+      },
+      "sourcePositions": [
+        {
+          "name": "routed-positions",
+          "selector": "engine::audio::routing::positions::tests::",
+          "exit": 101,
+          "signal": null,
+          "passed": 6,
+          "failed": 1,
+          "ignored": 0,
+          "seconds": 0.03,
+          "log_sha256": "277f0b4be3d7837066bb4f9b1e6bb7c11c5fe790508e4ebe35e543942c8944f3"
+        }
+      ],
+      "otherFocused": [
+        {
+          "name": "svf-fidelity",
+          "selector": "engine::svf_tests::",
+          "exit": 0,
+          "signal": null,
+          "passed": 4,
+          "failed": 0,
+          "ignored": 0,
+          "seconds": 1.22,
+          "log_sha256": "4cb8baaae3069ab6b7251f8bb80e4739721cecc6589fd0f54f4cfccb5946e850"
+        },
+        {
+          "name": "voice-fidelity",
+          "selector": "engine::dsp::voice_pitch_tests::",
+          "exit": 0,
+          "signal": null,
+          "passed": 5,
+          "failed": 0,
+          "ignored": 1,
+          "seconds": 0.47,
+          "log_sha256": "1b3d6c3a67e15b629b71f514ccd9882ee89adf977b5903fd39d522074fb6fb9d"
+        },
+        {
+          "name": "audible-fidelity",
+          "selector": "engine::audio::audible_tests::",
+          "exit": 0,
+          "signal": null,
+          "passed": 2,
+          "failed": 0,
+          "ignored": 0,
+          "seconds": 0.69,
+          "log_sha256": "cb704f5ab29bd271ce454fa12684ef8bd272d19b71a5ee8bd7be3df6724328a8"
+        },
+        {
+          "name": "latency-fidelity",
+          "selector": "engine::audio::routing::latency::tests::",
+          "exit": 0,
+          "signal": null,
+          "passed": 12,
+          "failed": 0,
+          "ignored": 0,
+          "seconds": 0.64,
+          "log_sha256": "f98bface29b16a0ef7fe79cdcd142a13c4b446ddd377c0ff4ab1d8633b1b6b4f"
+        },
+        {
+          "name": "live-set-fidelity",
+          "selector": "engine::live_set::tests::",
+          "exit": 0,
+          "signal": null,
+          "passed": 13,
+          "failed": 0,
+          "ignored": 0,
+          "seconds": 2.79,
+          "log_sha256": "011dad02a222f3eb1ca68cb4f86d26cb9d26e9338f8db787474e9f26951411af"
+        },
+        {
+          "name": "waveform-ui",
+          "selector": "ui::waveform::tests::",
+          "exit": 0,
+          "signal": null,
+          "passed": 5,
+          "failed": 0,
+          "ignored": 0,
+          "seconds": 0.37,
+          "log_sha256": "0b9a1e408bec6664652a6baf74523a99df74b992a3a42a78399b18878d211ad4"
+        }
+      ],
+      "localTiming": {
+        "callback_budget_ns": 5804988,
+        "callbacks_per_phase": 128,
+        "channels": 4,
+        "deadline_pass": true,
+        "frames": 256,
+        "heap_pass": true,
+        "launched_clip_tracks": 8,
+        "reported_deck_processing_micros": 20000,
+        "sample_rate": 44100,
+        "schema": 1,
+        "scope": "Local production callback startup, two-graph cue and two-graph fade. No native scheduler, hardware, maximum-polyphony or stage-duration claim.",
+        "stored_notes_per_graph": 32768,
+        "stored_tracks": 64,
+        "trials": [
+          {
+            "phase": "startup",
+            "maximum_cpu_ns": 2152542,
+            "maximum_wall_ns": 2158055,
+            "rust_allocations": 0,
+            "rust_frees": 0
+          },
+          {
+            "phase": "cue",
+            "maximum_cpu_ns": 4221959,
+            "maximum_wall_ns": 4240734,
+            "rust_allocations": 0,
+            "rust_frees": 0
+          },
+          {
+            "phase": "transition",
+            "maximum_cpu_ns": 4240459,
+            "maximum_wall_ns": 4255943,
+            "rust_allocations": 0,
+            "rust_frees": 0
+          }
+        ]
+      },
+      "nativeRouted": {
+        "passed": 0,
+        "failed": 1,
+        "seconds": 5.62,
+        "failure": {
+          "audio": {
+            "backend_errors": 0,
+            "callbacks": 798,
+            "cpu_budget_exhaustions": 1,
+            "deadline_overruns": 2,
+            "device_lost": 0,
+            "dropped_buffers": null,
+            "last_callback": {
+              "budget_ns": 5804988,
+              "channels": 4,
+              "elapsed_ns": 4208527,
+              "frames": 256,
+              "output_latency_ns": 5804989,
+              "overrun_ns": 0,
+              "render_cpu_ns": 4122795,
+              "sample_rate": 44100
+            },
+            "max_elapsed_ns": 7103752,
+            "max_overrun_ns": 1298764,
+            "realtime_denied": 0,
+            "xruns": 2
+          },
+          "error": "Performance protection: this destructive action was not applied. Leave performance mode deliberately to edit it.",
+          "message": "Audio output exceeded its real-time CPU limit and was stopped. Your project and recorded notes are retained. Reconnect the previous output or preview and confirm another output. Release keys, pads and platters before resuming. Save and Close remain available.",
+          "output_phase": "Offline",
+          "performance": {
+            "changing": false,
+            "deck_load_locked": [
+              false,
+              false
+            ],
+            "last_rejection": "protected",
+            "nonfinite_tail": false,
+            "observation_complete": false,
+            "observed_frames": 0,
+            "optional_active": 0,
+            "output_muted": false,
+            "protected": false,
+            "quiet_frames": 0,
+            "recovery": true,
+            "rejected": 1,
+            "safety_applied": 1,
+            "safety_requested": 1,
+            "stopped": true
+          },
+          "playing": false,
+          "status": "failed",
+          "trial": 1,
+          "waiting_for": "fade admission"
+        }
+      },
+      "profileDiagnostic": {
+        "tool": "GNU gprofng 2.46 PC sampling, 1 ms",
+        "includesSetupAndRetirement": true,
+        "qualification": false
+      }
+    },
+    "ownerRestored": {
+      "installedSource": "dd1ef555d1004803a11ae8ad67a0bd0c403e2ffb",
+      "nativeSavedCopy": {
+        "path": "/home/michael/Projects/omatainer-work/producer-dj-completion/target/validation/combined-completion/native-ui/session-backup/pre-routed-58-current.omatainer",
+        "bytes": 162883214,
+        "sha256": "b1f5bac5fd4075aa794b046d8e84af2c3b09a1654f359e0252a559832ac28485",
+        "nativeSaveAcknowledged": true,
+        "currentTitle": "pre-routed-57-current.omatainer · saved"
+      },
+      "title": "pre-routed-58-current.omatainer · saved",
+      "playing": true,
+      "recording": false,
+      "decks": [
+        false,
+        false
+      ],
+      "midiFeedback": {
+        "connected": 4,
+        "failed": 0,
+        "sent": 532
+      },
+      "audio": {
+        "backend_errors": 0,
+        "callbacks": 96601,
+        "cpu_budget_exhaustions": 0,
+        "deadline_overruns": 0,
+        "device_lost": 0,
+        "dropped_buffers": null,
+        "last_callback": {
+          "budget_ns": 5804988,
+          "channels": 4,
+          "elapsed_ns": 281710,
+          "frames": 256,
+          "output_latency_ns": 4875283,
+          "overrun_ns": 0,
+          "render_cpu_ns": 247791,
+          "sample_rate": 44100
+        },
+        "max_elapsed_ns": 4026900,
+        "max_overrun_ns": 0,
+        "realtime_denied": 0,
+        "xruns": 0
+      }
+    },
+    "status": "Native routed deadline/XRUN/CPU-limit failure retained; implementation and qualification continue. Full final-suite, physical detach/suspend, authored Live10/11, captured waveform and extended loaded performance remain unqualified.",
+    "nextImplementation": "Uncompiled: remove unused Analog sine evaluation, retain zero history frames without PCM writes while preserving exact signed samples and continuity, inline bounded history reads, and advance the position-generation fixture through its initial demo load fade."
+  }
 }

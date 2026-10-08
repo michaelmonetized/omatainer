@@ -2,6 +2,58 @@ use super::*;
 use crate::engine::audio::routing::{model::*, prepared::Prepared};
 use std::sync::Arc;
 
+#[test]
+fn retained_zero_frames_keep_original_validity_signed_samples_and_wrapped_delays_without_heap_work() {
+    for width in [1, 2, 16, MAX_PORT_CHANNELS] {
+        let mut history = History::new(width, 16);
+        let mut reference = vec![[0.0_f32; MAX_PORT_CHANNELS]; 17];
+        let mut valid = [false; 17];
+        let mut frame = [0.0; MAX_PORT_CHANNELS];
+        let counts = crate::engine::test_alloc::measure(|| {
+            for index in 0..1000 {
+                frame.fill(0.0);
+                if index % 101 < 3 {
+                    for (channel, sample) in frame[..width].iter_mut().enumerate() {
+                        *sample = match channel % 4 {
+                            0 => index as f32 * 0.001 + 0.1,
+                            1 => -0.0,
+                            2 => f32::from_bits(1),
+                            _ => -0.25,
+                        };
+                    }
+                }
+                let present = index % 13 != 0;
+                history.push(&frame, present);
+                reference[index % 17] = frame;
+                valid[index % 17] = present;
+                for delay in [0, 1, 8, 16, 17] {
+                    let available = delay <= index && delay < 17;
+                    let slot = (index + 17 - delay.min(17)) % 17;
+                    for channel in 0..=width {
+                        let expected = if available && channel < width { reference[slot][channel] } else { 0.0 };
+                        let continuity = available && channel < width && valid[slot];
+                        assert_eq!(history.sample(channel, delay as u32).to_bits(), expected.to_bits());
+                        let (sample, complete) = history.read(channel, delay as u32);
+                        assert_eq!(sample.to_bits(), expected.to_bits());
+                        assert_eq!(complete, continuity);
+                        for mix in [0.0, 0.3, 1.0] {
+                            let old = if channel < width { reference[index % 17][channel] } else { 0.0 };
+                            let expected = if delay == 0 || mix >= 1.0 { expected } else if mix <= 0.0 { old } else { old * (1.0 - mix) + expected * mix };
+                            let (sample, complete) = history.blended(channel, 0, delay as u32, mix);
+                            assert_eq!(sample.to_bits(), expected.to_bits());
+                            let old_valid = channel < width && present;
+                            assert_eq!(complete, if delay == 0 || mix >= 1.0 { continuity } else if mix <= 0.0 { old_valid } else { old_valid && continuity });
+                        }
+                    }
+                    assert_eq!(history.valid(delay as u32), available && valid[slot]);
+                }
+            }
+        });
+        assert_eq!(counts, crate::engine::test_alloc::Counts::default());
+        assert_eq!(history.storage_bytes(), 17 * (width * 4 + 1));
+    }
+}
+
 fn model() -> (Model, Layout) {
     let layout = Layout::fresh(["Instrument".into()], 1);
     let mut model = Model::default();

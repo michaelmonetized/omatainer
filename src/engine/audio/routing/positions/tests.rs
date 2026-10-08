@@ -306,6 +306,8 @@ fn admitted_routing_edits_and_metadata_undo_bind_the_final_generation() {
     assert_eq!(ack.state(), Outcome::Applied);
     rt.decks[0].history_key = 11;
     rt.decks[1].history_key = 12;
+    rt.process(&mut [0.0; 64]);
+    assert!(rt.decks.iter().all(|deck| deck.transition_remaining == 0));
     let check = |rt: &mut crate::engine::RtEngine| {
         let mut graph = rt.routing.take().unwrap();
         let result = graph.source_positions(rt, 2);

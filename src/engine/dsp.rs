@@ -441,12 +441,19 @@ impl Voice {
         let phase = self.phase2 + self.detuned_increment;
         self.phase2 = if (0.0..1.0).contains(&phase) { phase } else { phase % 1.0 };
         let saw = self.phase * 2.0 - 1.0;
-        let sq = if self.phase < 0.5 { 0.7 } else { -0.7 };
-        let sine = (self.phase * std::f32::consts::TAU).sin();
         let osc = match self.kind {
-            SynthInstrument::Analog => saw * 0.7 + sq * 0.3,
-            SynthInstrument::Keys => saw * 0.35 + sine * 0.65,
-            SynthInstrument::Pad => sine * 0.6 + (self.phase2 * 2.0 - 1.0) * 0.4,
+            SynthInstrument::Analog => {
+                let square = if self.phase < 0.5 { 0.7 } else { -0.7 };
+                saw * 0.7 + square * 0.3
+            }
+            SynthInstrument::Keys => {
+                let sine = (self.phase * std::f32::consts::TAU).sin();
+                saw * 0.35 + sine * 0.65
+            }
+            SynthInstrument::Pad => {
+                let sine = (self.phase * std::f32::consts::TAU).sin();
+                sine * 0.6 + (self.phase2 * 2.0 - 1.0) * 0.4
+            }
         };
         let e = self.env.tick();
         let cf = (cutoff + e * 1800.0).clamp(80.0, sr * 0.42);

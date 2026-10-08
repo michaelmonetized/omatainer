@@ -351,7 +351,7 @@ impl Plan {
 #[derive(Clone, Debug)]
 pub(super) struct History {
     data: Box<[f32]>,
-    valid: Box<[bool]>,
+    flags: Box<[u8]>,
     width: usize,
     head: usize,
     filled: u32,
@@ -365,7 +365,7 @@ impl History {
         let frames = reserve as usize + 1;
         Self {
             data: vec![0.0; frames * width].into_boxed_slice(),
-            valid: vec![false; frames].into_boxed_slice(),
+            flags: vec![0; frames].into_boxed_slice(),
             width,
             head: frames - 1,
             filled: 0,
@@ -374,49 +374,53 @@ impl History {
     }
     /// Retain the current source sample once for every downstream consumer.
     /// Takes the native channel frame and original continuity; writes exactly this history's prepared width.
-    #[inline]
+    #[inline(always)]
     pub(super) fn push(&mut self, frame: &[f32], valid: bool) {
         self.head += 1;
         if self.head == self.frames { self.head = 0; }
-        self.data[self.head * self.width..(self.head + 1) * self.width]
-            .copy_from_slice(&frame[..self.width]);
-        self.valid[self.head] = valid;
+        let source = &frame[..self.width];
+        let zero = source.iter().all(|sample| sample.to_bits() == 0);
+        if !zero {
+            self.data[self.head * self.width..(self.head + 1) * self.width]
+                .copy_from_slice(source);
+        }
+        self.flags[self.head] = u8::from(valid) | (u8::from(zero) << 1);
         self.filled = self.filled.saturating_add(1).min(self.frames as u32);
     }
     /// Read a causal source sample without advancing its shared history.
     /// Takes a channel and bounded delay; returns silence while that original sample has not reached this history.
-    #[inline]
+    #[inline(always)]
     pub(super) fn sample(&self, channel: usize, delay: u32) -> f32 {
         if channel >= self.width || delay >= self.filled || delay as usize >= self.frames {
             return 0.0;
         }
         let frame = self.frame(delay);
-        self.data[frame * self.width + channel]
+        if self.flags[frame] & 2 != 0 { 0.0 } else { self.data[frame * self.width + channel] }
     }
     /// Read the original continuity of a retained sample.
     /// Takes its causal delay; returns false for unavailable or incomplete source history.
-    #[inline]
+    #[inline(always)]
     pub(super) fn valid(&self, delay: u32) -> bool {
         delay < self.filled
             && (delay as usize) < self.frames
-            && self.valid[self.frame(delay)]
+            && self.flags[self.frame(delay)] & 1 != 0
     }
-    #[inline]
+    #[inline(always)]
     fn frame(&self, delay: u32) -> usize {
         let delay = delay as usize;
         if delay <= self.head { self.head - delay } else { self.frames - (delay - self.head) }
     }
     /// Read one original sample and its continuity together.
     /// Takes a channel and causal delay; returns silence and unavailable continuity outside the filled history.
-    #[inline]
+    #[inline(always)]
     fn read(&self, channel: usize, delay: u32) -> (f32, bool) {
         if channel >= self.width || delay >= self.filled || delay as usize >= self.frames { return (0.0, false); }
         let frame = self.frame(delay);
-        (self.data[frame * self.width + channel], self.valid[frame])
+        (if self.flags[frame] & 2 != 0 { 0.0 } else { self.data[frame * self.width + channel] }, self.flags[frame] & 1 != 0)
     }
     /// Resolve a settled delay or a changing pair of original samples.
     /// Takes a channel, old/new causal delays and transition gain; returns their audio and original continuity without reading unused history.
-    #[inline]
+    #[inline(always)]
     fn blended(&self, channel: usize, old: u32, delay: u32, mix: f32) -> (f32, bool) {
         if mix >= 1.0 || old == delay { return self.read(channel, delay); }
         if mix <= 0.0 { return self.read(channel, old); }
@@ -427,7 +431,7 @@ impl History {
     /// Count prepared sample storage for admission and retained Undo budgets.
     /// Takes this history; returns its complete owned heap bytes.
     pub(super) fn bytes(&self) -> usize {
-        self.data.len() * std::mem::size_of::<f32>() + self.valid.len()
+        self.data.len() * std::mem::size_of::<f32>() + self.flags.len()
     }
     /// Transfer compatible history during an applied latency change.
     /// Takes the prior history; swaps existing buffers only when rate, width and reserve geometry agree.
