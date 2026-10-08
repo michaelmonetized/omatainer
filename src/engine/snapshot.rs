@@ -48,6 +48,7 @@ impl Publisher {
                         next.midi = std::mem::take(&mut current.midi);
                         next.midi_feedback = current.midi_feedback;
                         next.midi_input = current.midi_input;
+        next.midi_profiles = std::mem::take(&mut current.midi_profiles);
                         *current = next;
                         worker_published.store(frame.sequence, Ordering::Release);
                     } else {
@@ -524,6 +525,7 @@ impl RtEngine {
         next.midi = std::mem::take(&mut current.midi);
         next.midi_feedback = current.midi_feedback;
         next.midi_input = current.midi_input;
+                        next.midi_profiles = std::mem::take(&mut current.midi_profiles);
         *current = next;
     }
 

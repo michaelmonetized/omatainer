@@ -430,3 +430,37 @@ fn target_bound_tempo_meter_groups_and_pre_fader_returns_preserve_native_routing
     )
     .is_err());
 }
+
+#[test]
+fn live_10_scene_names_table_preserves_attribute_names_and_refuses_conflicting_tables() {
+    let fixture = Fixture::new();
+    let original = document(10);
+    let source = original.replace("<Scenes><Scene Id=\"3\"><Name Value=\"Scene Ω\"/></Scene></Scenes>", "<SceneNames><Scene Id=\"3\" Value=\"Intro Ω\"><ColorIndex Value=\"8\"/></Scene></SceneNames>");
+    let imported = load(
+        &fixture.set(&source),
+        &Options::default(),
+        &AtomicBool::new(false),
+    )
+    .unwrap();
+    assert_eq!(
+        imported.state.session.as_ref().unwrap().scenes[0].name,
+        "Intro Ω"
+    );
+    assert_eq!(imported.state.tracks[0].clips[0].notes.len(), 1);
+    assert!(imported.state.migration.as_ref().unwrap().sources[0]
+        .differences
+        .iter()
+        .any(|d| d.item == "scene:3" && d.feature == "Color"));
+    let conflict = source.replace(
+        "</SceneNames>",
+        "</SceneNames><Scenes><Scene Id=\"3\"/></Scenes>",
+    );
+    assert!(load(
+        &fixture.set(&conflict),
+        &Options::default(),
+        &AtomicBool::new(false)
+    )
+    .err()
+    .unwrap()
+    .contains("repeats its scene table"));
+}

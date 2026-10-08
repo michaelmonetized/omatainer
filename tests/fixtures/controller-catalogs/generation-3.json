@@ -1,0 +1,6 @@
+{
+  "schema": 1,
+  "signer": "ed25519-v1",
+  "payload": "{\"schema\":1,\"generation\":3,\"version\":\"1.0.2\",\"release\":\"controller-profiles-1.0.2\",\"profiles\":[{\"id\":\"akai-apc40-mkii\",\"version\":\"1.0.0\",\"file\":\"akai-apc40-mkii-1.0.0.json\",\"sha256\":\"46682fb61abca2df01a4035a6b24a816ed2df91496e51ba3d7b45d27d630b175\",\"bytes\":10184},{\"id\":\"akai-mpd232-livelite\",\"version\":\"1.0.0\",\"file\":\"akai-mpd232-livelite-1.0.0.json\",\"sha256\":\"bcddb28407043229a65b6627d52232c24fa14063c7ba185b0138ddd6ae9268cf\",\"bytes\":13383},{\"id\":\"numark-ns7-original\",\"version\":\"1.0.0\",\"file\":\"numark-ns7-original-1.0.0.json\",\"sha256\":\"c6143e33fe9a82b7f0a81a1eb53c4d7d0322f71434fa14e9f0295378ef65f814\",\"bytes\":8361},{\"id\":\"pioneer-ddj-sp1\",\"version\":\"1.0.0\",\"file\":\"pioneer-ddj-sp1-1.0.0.json\",\"sha256\":\"24bce6d2cfa82ce9a5f72fc7237e898acfdfa1b59bf63c5b43a8235fe86baa3a\",\"bytes\":10787}]}",
+  "signature": "972d790bafb1b1ed881eac922876f773947f1610360a69dbc0a30baded0d40a9b071eb07be167dd3bddc12247a90b41280f3d230b3abf08dc1568b4629ce2303"
+}

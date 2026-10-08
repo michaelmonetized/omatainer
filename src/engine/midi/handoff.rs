@@ -21,6 +21,7 @@ struct Event {
     routing: u64,
     learning: u64,
     clock: u64,
+    capture:u64,
     len: u16,
     bytes: [u8; EVENT_BYTES],
 }
@@ -34,6 +35,7 @@ impl Event {
             routing: 0,
             learning: 0,
             clock: 0,
+            capture:0,
             len: bytes.len() as u16,
             bytes: [0; EVENT_BYTES],
         };
@@ -94,6 +96,7 @@ struct Shared {
     enabled: AtomicBool,
     counters: Arc<InputCounters>,
     routing: Arc<super::routing::Shared>,
+    capture:Arc<AtomicU64>,
 }
 
 struct Rules {
@@ -201,11 +204,12 @@ pub(super) struct InputSink {
     sequence: u64,
 }
 impl InputSink {
-    fn overflow(&mut self, bytes: &[u8]) {
+    fn overflow(&mut self, bytes: &[u8], capture: u64) {
         self.shared.counters.dropped.fetch_add(1, Relaxed);
         if self.pending_cc.take().is_some() {
             self.shared.counters.dropped.fetch_add(1, Relaxed);
         }
+        if capture & 1 != 0 {self.shared.epoch.fetch_add(1,Release);return;}
         if bytes.iter().take(EVENT_BYTES).any(|&byte|byte==0xfc) {self.shared.clock.request_stop(self.shared.source,self.shared.clock.generation());}
         self.shared.clock.retire(self.shared.source,super::clock_input::Loss::Overflow);
         if bytes.len() > EVENT_BYTES && !self.shared.clock.enabled() || self.shared.learning.ordered.load(Acquire) || bytes.len() <= EVENT_BYTES && self.rules.has_stop(bytes,!self.shared.clock.enabled()) {
@@ -226,15 +230,16 @@ impl InputSink {
             self.shared.counters.dropped.fetch_add(1, Relaxed);
             return;
         }
+        let capture = self.shared.capture.load(Acquire);
         if bytes.len() > EVENT_BYTES {
             self.shared.counters.oversized.fetch_add(1, Relaxed);
-            self.overflow(bytes); // Never scans/copies an unbounded callback payload.
+            self.overflow(bytes, capture); // Never scans/copies an unbounded callback payload.
             return;
         }
         let epoch = self.shared.epoch.load(Acquire);
         self.sequence = self.sequence.wrapping_add(1);
         let mut event = Event::new(epoch, self.sequence, bytes);
-        event.at=at;event.clock=self.shared.clock.generation();
+        event.at=at;event.clock=self.shared.clock.generation();event.capture=capture;
         event.safety = self.shared.performance.input_epoch();
         event.routing = self.shared.routing.generation.load(Acquire);
         event.learning = self.shared.learning.revision.load(Acquire);
@@ -253,7 +258,7 @@ impl InputSink {
         if let Some(pending) = self.pending_cc.take() {
             if self.producer.push(pending).is_err() {
                 self.shared.counters.dropped.fetch_add(1, Relaxed);
-                self.overflow(bytes);
+                self.overflow(bytes, capture);
                 return;
             }
         }
@@ -265,7 +270,7 @@ impl InputSink {
                 self.pending_cc.publish(event);
                 self.shared.counters.queued.fetch_add(1, Relaxed);
             }
-            Err(_) => self.overflow(bytes),
+            Err(_) => self.overflow(bytes, capture),
         }
     }
 }
@@ -290,6 +295,8 @@ struct InputWorker {
     shift: Arc<Mutex<[bool; 4]>>,
     name: String,
     port_id: String,
+    profile:Option<(Arc<super::catalog::runtime::Registry>,String)>,
+    guide_revision:u64,
 }
 impl InputWorker {
     fn reset(&mut self) {
@@ -301,6 +308,7 @@ impl InputWorker {
         self.shared.counters.resets.fetch_add(1, Relaxed);
     }
     fn step(&mut self) -> bool {
+        let revision=self.shared.capture.load(Acquire);if revision!=self.guide_revision{self.reset();self.guide_revision=revision;}
         let learning = self.shared.learning.revision.load(Acquire);
         if learning != self.learning_revision { self.reset(); self.learning_revision = learning; }
         let routing = self.shared.routing.generation.load(Acquire);
@@ -319,8 +327,10 @@ impl InputWorker {
         let Some(event) = self.next_event() else {
             return reset;
         };
-        if event.epoch == self.shared.epoch.load(Acquire) && event.epoch == self.epoch && event.safety == safety && event.learning == learning {
+        if event.epoch == self.shared.epoch.load(Acquire) && event.epoch == self.epoch && event.safety == safety && event.learning == learning && event.capture==self.guide_revision {
             let cmd=self.cmd.for_input_epoch(event.safety).for_midi_context([event.epoch,learning,routing]);
+            let observed = self.profile.as_ref().is_some_and(|(registry,id)|registry.observe(id,event.bytes()));
+            if event.capture & 1 != 0 || observed {self.shared.counters.dispatched.fetch_add(1, Relaxed);return true;}
             let packet_ticks=super::routing::packet::frames(event.bytes()).filter(|frame|matches!(frame,super::routing::packet::Frame::Realtime(0xf8))).count() as u16;
             for frame in super::routing::packet::frames(event.bytes()) {
                 let mut paired = super::controls::PairValues::default();
@@ -360,7 +370,7 @@ impl InputWorker {
             }
             self.shared.counters.dispatched.fetch_add(1, Relaxed);
         } else {
-            if event.learning != learning && Rules::new(&self.map).has_stop(event.bytes(),!self.shared.clock.enabled()) { let _=self.cmd.send(Command::Stop); }
+            if event.capture & 1 == 0 && event.learning != learning && Rules::new(&self.map).has_stop(event.bytes(),!self.shared.clock.enabled()) { let _=self.cmd.send(Command::Stop); }
             self.shared.counters.dropped.fetch_add(1, Relaxed);
         }
         true
@@ -410,8 +420,10 @@ impl InputWorker {
         let rules = Rules::new(&self.map);
         let mut stop = self.shared.stop_pending.swap(false, AcqRel);
         while let Some(event) = self.next_event() {
-            if event.bytes().contains(&0xfc) {self.shared.clock.request_stop(self.source,event.clock);}
-            stop |= rules.has_stop(event.bytes(),!self.shared.clock.enabled());
+            if event.capture & 1 == 0 {
+                if event.bytes().contains(&0xfc) {self.shared.clock.request_stop(self.source,event.clock);}
+                stop |= rules.has_stop(event.bytes(),!self.shared.clock.enabled());
+            }
             self.shared.counters.dropped.fetch_add(1, Relaxed);
         }
         let _ = self.pending_cc.take();
@@ -451,6 +463,9 @@ fn channel(
     port_id:String,
     counters: Arc<InputCounters>,
 ) -> std::io::Result<(InputSink, InputWorker)> {
+    channel_with_capture(capacity,source,map,cmd,log,name,port_id,counters,Arc::new(AtomicU64::new(0)))
+}
+fn channel_with_capture(capacity:usize,source:u64,map:MidiMap,cmd:CommandPort,log:Arc<Mutex<Vec<String>>>,name:String,port_id:String,counters:Arc<InputCounters>,capture:Arc<AtomicU64>)->std::io::Result<(InputSink,InputWorker)>{
     let routing=cmd.midi_routing().clone();
     let sources=routing.register(source,&name,&port_id)?;
     let (producer, consumer) = rtrb::RingBuffer::new(capacity);
@@ -465,6 +480,7 @@ fn channel(
         enabled: AtomicBool::new(true),
         counters,
         routing,
+        capture,
     });
     shared.learning.connected_modes(source,&name,&port_id, if map.name.contains("DDJ-SP1") { 255 } else { 0 });
     let rules = Rules::new(&map);
@@ -497,6 +513,7 @@ fn channel(
             shift: Arc::new(Mutex::new([false; 4])),
             port_id,
             name,
+            profile:None,guide_revision:0,
         },
     ))
 }
@@ -543,7 +560,15 @@ pub(super) fn start_on_port(
     source:u64,map:MidiMap,cmd:CommandPort,log:Arc<Mutex<Vec<String>>>,
     name:String,id:String,counters:Arc<InputCounters>,enabled:bool,completed:impl FnOnce()+Send+'static,
 ) -> std::io::Result<(InputSink,InputGuard)> {
-    let (sink, worker) = channel(EVENTS, source, map, cmd, log,  name, id, counters)?;
+    start_profile(source,map,cmd,log,name,id,None,counters,enabled,completed)
+}
+pub(super) fn start_profile(
+    source:u64,map:MidiMap,cmd:CommandPort,log:Arc<Mutex<Vec<String>>>,name:String,id:String,
+    profile:Option<(Arc<super::catalog::runtime::Registry>,String)>,counters:Arc<InputCounters>,enabled:bool,completed:impl FnOnce()+Send+'static,
+)->std::io::Result<(InputSink,InputGuard)> {
+    let capture=profile.as_ref().map_or_else(||Arc::new(AtomicU64::new(0)),|(r,id)|r.capture_state(id));
+    let (sink, mut worker) = channel_with_capture(EVENTS, source, map, cmd, log, name, id, counters,capture)?;
+    worker.profile=profile;
     sink.shared.enabled.store(enabled, Release);
     let shared = sink.shared.clone();
     let worker = std::thread::Builder::new()
@@ -570,3 +595,8 @@ impl Drop for InputWorker {
 
 #[cfg(test)]
 mod tests;
+
+#[cfg(test)]
+pub(super) fn paused_profile_for_test(source:u64,map:MidiMap,cmd:CommandPort,registry:Arc<super::catalog::runtime::Registry>,id:String,counters:Arc<InputCounters>)->std::io::Result<(InputSink,impl FnMut()->bool)>{
+    let capture=registry.capture_state(&id);let(sink,mut worker)=channel_with_capture(EVENTS,source,map,cmd,Arc::new(Mutex::new(Vec::new())),id.clone(),id.clone(),counters,capture)?;worker.profile=Some((registry,id));Ok((sink,move||worker.step()))
+}

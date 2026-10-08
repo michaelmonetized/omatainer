@@ -103,6 +103,7 @@ impl SmallStatus {
 
 #[derive(Default, Serialize)]
 struct Metadata {
+    midi_profiles: Value,
     midi: Vec<String>,
     #[serde(rename = "deckA")]
     deck_a: String,
@@ -129,7 +130,7 @@ impl Metadata {
         let truncated = active.len() < s.scene_name(false).len() || queued.len() < s.scene_name(true).len() || s.midi.len() > 8
             || s.midi.iter().take(8).any(|s| ipc_transport::short_json_text(s, ipc_transport::STATUS_MIDI_NAME_BYTES).len() < s.len())
             || s.decks.iter().take(2).any(|d| ipc_transport::short_json_text(&d.title, ipc_transport::STATUS_DECK_TITLE_BYTES).len() < d.title.len());
-        let changed = self.active_scene_name != active || self.queued_scene_name != queued || self.deck_a != a
+        let changed = self.midi_profiles != s.midi_profiles || self.active_scene_name != active || self.queued_scene_name != queued || self.deck_a != a
             || self.deck_b != b
             || self.state_truncated != truncated
             || self.midi.len() != s.midi.len().min(8)
@@ -139,6 +140,7 @@ impl Metadata {
                 .zip(&s.midi)
                 .any(|(a, b)| a != ipc_transport::short_json_text(b, ipc_transport::STATUS_MIDI_NAME_BYTES));
         if changed {
+            self.midi_profiles = s.midi_profiles.clone();
             self.active_scene_name.clear(); self.active_scene_name.push_str(active);
             self.queued_scene_name.clear(); self.queued_scene_name.push_str(queued);
             self.deck_a.clear();

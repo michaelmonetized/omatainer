@@ -17,7 +17,11 @@ pub(super) fn convert(
     {
         return Err("Live Set needs 1–128 recognized tracks".into());
     }
-    let scenes = set.one("Scenes")?;
+    let scenes = match (child(set, "Scenes")?, child(set, "SceneNames")?) {
+        (Some(scenes), None) | (None, Some(scenes)) => scenes,
+        (Some(_), Some(_)) => return Err("Live Set repeats its scene table".into()),
+        (None, None) => return Err("Live Set has no scene table".into()),
+    };
     let scene_count = scenes.children.len().max(1);
     if scene_count > session::MAX_SCENES || scenes.children.iter().any(|s| s.name != "Scene") {
         return Err("Live Set exceeds 512 scenes or contains an unknown scene record".into());
@@ -61,7 +65,11 @@ pub(super) fn convert(
         if id < 0 || !scene_ids.insert(id) {
             return Err("Live Set repeats or has an invalid scene identity".into());
         }
-        let name = value(node, &["Name"])?;
+        let name = if node.attr("Value").is_empty() {
+            value(node, &["Name"])?
+        } else {
+            node.attr("Value")
+        };
         if !name.is_empty() {
             layout.scenes[index].name = name.into();
         }
@@ -104,7 +112,7 @@ pub(super) fn convert(
             native: reference,
             role: node.name.clone(),
             parent: parent as i64,
-            color_index: number(node, &["Color"], -1.)? as i32,
+            color_index: number(node, &["Color"], number(node, &["ColorIndex"], -1.)?)? as i32,
         });
         color(
             node,
@@ -113,7 +121,16 @@ pub(super) fn convert(
             &format!("track:{id}"),
         )?;
         dependencies::inventory(node, id, &mut source, cancel)?;
-        dependencies::resolve_inventory(node,id,&mut source,options,&snapshot,&mut media,&mut pcm,cancel)?;
+        dependencies::resolve_inventory(
+            node,
+            id,
+            &mut source,
+            options,
+            &snapshot,
+            &mut media,
+            &mut pcm,
+            cancel,
+        )?;
         if let Some(chain) = child(node, "DeviceChain")? {
             for kind in ["AudioInputRouting", "MidiInputRouting", "MidiOutputRouting"] {
                 if let Some(route) = child(chain, kind)? {
@@ -255,7 +272,7 @@ pub(super) fn convert(
     navigation(set, &mut state)?;
     source.difference("project","Device fidelity","Ableton stock engines, racks, MIDI effects, AU and unsupported plugins remain retained dependencies. MIDI tracks are silent until an instrument or an aligned render is explicitly resolved")?;
     state.migration = Some(Arc::new(Migration {
-        schema: if source.libraries.is_empty(){1}else{2},
+        schema: if source.libraries.is_empty() { 1 } else { 2 },
         sources: vec![source],
     }));
     state.validate(&media)?;

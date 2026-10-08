@@ -39,17 +39,21 @@ fn snapshot_publication_preserves_controller_worker_counters() {
     let mut rt = engine();
     let feedback = midi::FeedbackStats { sent: 90, failed: 2, connected: 3 };
     let input = midi::InputStats { received: 7, dispatched: 4, ..Default::default() };
+    let profiles=serde_json::json!({"schema":1,"input_open":3,"physical_qualification":"pending"});
     {
         let mut snapshot = rt.snap.lock();
         snapshot.midi_feedback = feedback;
         snapshot.midi_input = input;
+        snapshot.midi_profiles = profiles.clone();
     }
     rt.publish_initial();
     assert_eq!(rt.snap.lock().midi_feedback, feedback);
     assert_eq!(rt.snap.lock().midi_input, input);
+    assert_eq!(rt.snap.lock().midi_profiles, profiles);
     rt.publish_for_test();
     assert_eq!(rt.snap.lock().midi_feedback, feedback);
     assert_eq!(rt.snap.lock().midi_input, input);
+    assert_eq!(rt.snap.lock().midi_profiles, profiles);
 }
 
 #[test]

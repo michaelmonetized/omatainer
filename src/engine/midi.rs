@@ -7,6 +7,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Instant;
 
 mod connections;
+pub(crate) mod catalog;
 mod policy;
 mod profile;
 mod handoff;
@@ -160,6 +161,7 @@ pub enum UnmappedNotes {
 }
 
 pub struct MidiHub {
+    profiles:Option<Arc<catalog::runtime::Registry>>,
     feedback: Option<feedback::Manager>,
     connections: Option<connections::Manager>,
     input_counters: Arc<handoff::InputCounters>,
@@ -233,6 +235,7 @@ impl MidiHub {
     /// Explicit safe startup: no manager, discovery or OS port construction.
     pub(super) fn without_devices() -> Self {
         Self {
+            profiles:None,
             feedback: None,
             connections: None,
             input_counters: Arc::new(handoff::InputCounters::default()),
@@ -260,15 +263,25 @@ impl MidiHub {
         let log = Arc::new(Mutex::new(Vec::new()));
         let input_counters = Arc::new(handoff::InputCounters::default());
         let routing=Some(routing::Manager::start(cmd.clone(),routes).map_err(anyhow::Error::msg)?);
+        let directory=crate::startup::Paths::environment()?.preferences.parent().ok_or_else(||anyhow::anyhow!("MIDI preferences directory absent"))?.join("midi/controller-profiles");
+        let profiles=catalog::runtime::Registry::start(directory).map_err(anyhow::Error::msg)?;
         let connections = connections::Manager::start_with_policy(
-            connections::MidirBackend,
+            connections::MidirBackend::new(profiles.clone(),Arc::downgrade(&snapshot),cmd.clone(),surface::mpd232::configured()?),
             &snapshot, cmd.clone(), maps, log.clone(),  input_counters.clone(), policy,
         )?;
         let clock=Some(clock::Manager::start(cmd.clone(),clocks).map_err(anyhow::Error::msg)?);
-        let feedback = Some(feedback::Manager::start(Arc::downgrade(&snapshot), cmd, input_counters.clone(), connections.policy_reader())?);
-        Ok(Self { feedback, connections: Some(connections), input_counters, routing, clock, log })
+        let feedback = Some(feedback::Manager::start(Arc::downgrade(&snapshot), cmd, input_counters.clone(), connections.policy_reader(),profiles.clone())?);
+        Ok(Self { profiles:Some(profiles),feedback, connections: Some(connections), input_counters, routing, clock, log })
     }
 
+    pub(crate) fn profiles(&self)->Option<&Arc<catalog::runtime::Registry>>{self.profiles.as_ref()}
+    pub(crate) fn apply_profiles(&self,rollback:bool,snapshot:&super::Snapshot)->Result<(),String>{
+        let profiles=self.profiles.as_ref().ok_or("Controller registry unavailable")?;
+        let manager=self.connections.as_ref().ok_or("MIDI connection owner unavailable")?;
+        let policy=manager.policy_status().requested_policy.as_ref().clone();let mut error=None;
+        let result=manager.configure_prepared(policy,||profiles.request_apply(rollback,snapshot).map_err(|e|{error=Some(e);PolicyError::Invalid("Controller change failed review")}));
+        if let Err(e)=result{profiles.abandon_apply();return Err(error.unwrap_or_else(||e.to_string()));}Ok(())
+    }
     pub(crate) fn configure_clock(&self,config:clock::Config)->Result<(),String>{self.clock.as_ref().ok_or("MIDI clock output owner unavailable")?.configure(config)}
     pub(crate) fn clock_status(&self)->Option<Arc<clock::Status>>{self.clock.as_ref().map(clock::Manager::status)}
     pub(crate) fn cancel_clock(&self)->bool{self.clock.as_ref().is_some_and(clock::Manager::cancel)}

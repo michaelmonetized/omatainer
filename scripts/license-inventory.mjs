@@ -60,7 +60,7 @@ for(const p of meta.packages.filter(p=>p.name!=='omatainer'&&nodes.has(p.id)).so
 cargo.sort((a,b)=>a.name<b.name?-1:a.name>b.name?1:a.version<b.version?-1:a.version>b.version?1:0);
 const packageFiles=['contrib','plugin','vendor'].flatMap(walk).sort();
 if(stable(packageFiles)!==stable(Object.keys(policy.package).sort()))throw Error('Unmanifested integration or vendor assets');
-const source=new Set([...Object.keys(policy.package),'LICENSE','Cargo.toml','Cargo.lock','licenses/assets.json','licenses/supplements.json','benchmarks/policy.json','README.md','CONTRACT.md','docs/manual.md','docs/capability-matrix.md',...walk('docs/backlog'),...walk('scripts').filter(p=>/\.(py|sh|mjs)$/.test(p)),...['src','tests','benchmarks','vendor','locales'].flatMap(walk)]);
+const source=new Set([...Object.keys(policy.package),'LICENSE','Cargo.toml','Cargo.lock','licenses/assets.json','licenses/supplements.json','benchmarks/policy.json','README.md','CONTRACT.md','docs/manual.md','docs/capability-matrix.md',...walk('docs/backlog'),...walk('scripts').filter(p=>/\.(py|sh|mjs)$/.test(p)),...['src','tests','benchmarks','vendor','locales','profiles'].flatMap(walk)]);
 if(fs.existsSync('build.rs'))source.add('build.rs');
 const used=new Set(entries.flatMap(e=>e.notices.map(n=>n.sha256)));
 const retained=Object.fromEntries([...used].sort().map(h=>{if(sha(Buffer.from(notes[h]??''))!==h)throw Error(`Missing or altered notice: ${h}`);return[h,notes[h]];}));

@@ -1,0 +1,747 @@
+{
+  "schema": 1,
+  "preset_version": 6,
+  "id": "akai-mpd232-livelite",
+  "version": "1.0.0",
+  "model": "Akai MPD232 (LiveLite)",
+  "variant": "User-owned LiveLite preset",
+  "minimum_app": [
+    0,
+    1,
+    0
+  ],
+  "driver": "mpd232",
+  "required_capabilities": [
+    "midi1-binding-v6",
+    "mpd232-v1"
+  ],
+  "usb": [
+    {
+      "vendor": 2536,
+      "product": 54,
+      "minimum_release": null,
+      "maximum_release": null
+    }
+  ],
+  "protocol": "mpd232-v1",
+  "firmware_constraint": "No firmware-wide claim; record USB release and actual inquiry response during qualification",
+  "ports": {
+    "input": 0,
+    "output": 0,
+    "role": "performance",
+    "other_roles": [
+      "Port B: explicit sequencer role",
+      "DIN A: explicit external role",
+      "DIN B: explicit external role"
+    ]
+  },
+  "initialization": "inquiry",
+  "feedback": "mpd232",
+  "layer": "factory_overlay",
+  "unmapped_notes_live": true,
+  "bindings": [
+    {
+      "kind": "Cc",
+      "ch": 255,
+      "data": 117,
+      "action": "Stop",
+      "deck": 0,
+      "extra": 0,
+      "relative": null
+    },
+    {
+      "kind": "Cc",
+      "ch": 255,
+      "data": 118,
+      "action": "Play",
+      "deck": 0,
+      "extra": 0,
+      "relative": null
+    },
+    {
+      "kind": "Cc",
+      "ch": 255,
+      "data": 119,
+      "action": "Record",
+      "deck": 0,
+      "extra": 0,
+      "relative": null
+    },
+    {
+      "kind": "Cc",
+      "ch": 0,
+      "data": 22,
+      "action": "TrackPan",
+      "deck": 0,
+      "extra": 0,
+      "relative": null
+    },
+    {
+      "kind": "Cc",
+      "ch": 0,
+      "data": 12,
+      "action": "TrackFader",
+      "deck": 0,
+      "extra": 0,
+      "relative": null
+    },
+    {
+      "kind": "Cc",
+      "ch": 0,
+      "data": 32,
+      "action": "TrackMute",
+      "deck": 0,
+      "extra": 0,
+      "relative": null
+    },
+    {
+      "kind": "Cc",
+      "ch": 0,
+      "data": 23,
+      "action": "TrackPan",
+      "deck": 0,
+      "extra": 1,
+      "relative": null
+    },
+    {
+      "kind": "Cc",
+      "ch": 0,
+      "data": 13,
+      "action": "TrackFader",
+      "deck": 0,
+      "extra": 1,
+      "relative": null
+    },
+    {
+      "kind": "Cc",
+      "ch": 0,
+      "data": 33,
+      "action": "TrackMute",
+      "deck": 0,
+      "extra": 1,
+      "relative": null
+    },
+    {
+      "kind": "Cc",
+      "ch": 0,
+      "data": 24,
+      "action": "TrackPan",
+      "deck": 0,
+      "extra": 2,
+      "relative": null
+    },
+    {
+      "kind": "Cc",
+      "ch": 0,
+      "data": 14,
+      "action": "TrackFader",
+      "deck": 0,
+      "extra": 2,
+      "relative": null
+    },
+    {
+      "kind": "Cc",
+      "ch": 0,
+      "data": 34,
+      "action": "TrackMute",
+      "deck": 0,
+      "extra": 2,
+      "relative": null
+    },
+    {
+      "kind": "Cc",
+      "ch": 0,
+      "data": 25,
+      "action": "TrackPan",
+      "deck": 0,
+      "extra": 3,
+      "relative": null
+    },
+    {
+      "kind": "Cc",
+      "ch": 0,
+      "data": 15,
+      "action": "TrackFader",
+      "deck": 0,
+      "extra": 3,
+      "relative": null
+    },
+    {
+      "kind": "Cc",
+      "ch": 0,
+      "data": 35,
+      "action": "TrackMute",
+      "deck": 0,
+      "extra": 3,
+      "relative": null
+    },
+    {
+      "kind": "Cc",
+      "ch": 0,
+      "data": 26,
+      "action": "TrackPan",
+      "deck": 0,
+      "extra": 4,
+      "relative": null
+    },
+    {
+      "kind": "Cc",
+      "ch": 0,
+      "data": 16,
+      "action": "TrackFader",
+      "deck": 0,
+      "extra": 4,
+      "relative": null
+    },
+    {
+      "kind": "Cc",
+      "ch": 0,
+      "data": 36,
+      "action": "TrackMute",
+      "deck": 0,
+      "extra": 4,
+      "relative": null
+    },
+    {
+      "kind": "Cc",
+      "ch": 0,
+      "data": 27,
+      "action": "TrackPan",
+      "deck": 0,
+      "extra": 5,
+      "relative": null
+    },
+    {
+      "kind": "Cc",
+      "ch": 0,
+      "data": 17,
+      "action": "TrackFader",
+      "deck": 0,
+      "extra": 5,
+      "relative": null
+    },
+    {
+      "kind": "Cc",
+      "ch": 0,
+      "data": 37,
+      "action": "TrackMute",
+      "deck": 0,
+      "extra": 5,
+      "relative": null
+    },
+    {
+      "kind": "Cc",
+      "ch": 0,
+      "data": 28,
+      "action": "TrackPan",
+      "deck": 0,
+      "extra": 6,
+      "relative": null
+    },
+    {
+      "kind": "Cc",
+      "ch": 0,
+      "data": 18,
+      "action": "TrackFader",
+      "deck": 0,
+      "extra": 6,
+      "relative": null
+    },
+    {
+      "kind": "Cc",
+      "ch": 0,
+      "data": 38,
+      "action": "TrackMute",
+      "deck": 0,
+      "extra": 6,
+      "relative": null
+    },
+    {
+      "kind": "Cc",
+      "ch": 0,
+      "data": 29,
+      "action": "TrackPan",
+      "deck": 0,
+      "extra": 7,
+      "relative": null
+    },
+    {
+      "kind": "Cc",
+      "ch": 0,
+      "data": 19,
+      "action": "TrackFader",
+      "deck": 0,
+      "extra": 7,
+      "relative": null
+    },
+    {
+      "kind": "Cc",
+      "ch": 0,
+      "data": 39,
+      "action": "TrackMute",
+      "deck": 0,
+      "extra": 7,
+      "relative": null
+    },
+    {
+      "kind": "Cc",
+      "ch": 1,
+      "data": 22,
+      "action": "TrackSendA",
+      "deck": 0,
+      "extra": 0,
+      "relative": null
+    },
+    {
+      "kind": "Cc",
+      "ch": 1,
+      "data": 12,
+      "action": "TrackFader",
+      "deck": 0,
+      "extra": 0,
+      "relative": null
+    },
+    {
+      "kind": "Cc",
+      "ch": 1,
+      "data": 32,
+      "action": "TrackSolo",
+      "deck": 0,
+      "extra": 0,
+      "relative": null
+    },
+    {
+      "kind": "Cc",
+      "ch": 1,
+      "data": 23,
+      "action": "TrackSendA",
+      "deck": 0,
+      "extra": 1,
+      "relative": null
+    },
+    {
+      "kind": "Cc",
+      "ch": 1,
+      "data": 13,
+      "action": "TrackFader",
+      "deck": 0,
+      "extra": 1,
+      "relative": null
+    },
+    {
+      "kind": "Cc",
+      "ch": 1,
+      "data": 33,
+      "action": "TrackSolo",
+      "deck": 0,
+      "extra": 1,
+      "relative": null
+    },
+    {
+      "kind": "Cc",
+      "ch": 1,
+      "data": 24,
+      "action": "TrackSendA",
+      "deck": 0,
+      "extra": 2,
+      "relative": null
+    },
+    {
+      "kind": "Cc",
+      "ch": 1,
+      "data": 14,
+      "action": "TrackFader",
+      "deck": 0,
+      "extra": 2,
+      "relative": null
+    },
+    {
+      "kind": "Cc",
+      "ch": 1,
+      "data": 34,
+      "action": "TrackSolo",
+      "deck": 0,
+      "extra": 2,
+      "relative": null
+    },
+    {
+      "kind": "Cc",
+      "ch": 1,
+      "data": 25,
+      "action": "TrackSendA",
+      "deck": 0,
+      "extra": 3,
+      "relative": null
+    },
+    {
+      "kind": "Cc",
+      "ch": 1,
+      "data": 15,
+      "action": "TrackFader",
+      "deck": 0,
+      "extra": 3,
+      "relative": null
+    },
+    {
+      "kind": "Cc",
+      "ch": 1,
+      "data": 35,
+      "action": "TrackSolo",
+      "deck": 0,
+      "extra": 3,
+      "relative": null
+    },
+    {
+      "kind": "Cc",
+      "ch": 1,
+      "data": 26,
+      "action": "TrackSendA",
+      "deck": 0,
+      "extra": 4,
+      "relative": null
+    },
+    {
+      "kind": "Cc",
+      "ch": 1,
+      "data": 16,
+      "action": "TrackFader",
+      "deck": 0,
+      "extra": 4,
+      "relative": null
+    },
+    {
+      "kind": "Cc",
+      "ch": 1,
+      "data": 36,
+      "action": "TrackSolo",
+      "deck": 0,
+      "extra": 4,
+      "relative": null
+    },
+    {
+      "kind": "Cc",
+      "ch": 1,
+      "data": 27,
+      "action": "TrackSendA",
+      "deck": 0,
+      "extra": 5,
+      "relative": null
+    },
+    {
+      "kind": "Cc",
+      "ch": 1,
+      "data": 17,
+      "action": "TrackFader",
+      "deck": 0,
+      "extra": 5,
+      "relative": null
+    },
+    {
+      "kind": "Cc",
+      "ch": 1,
+      "data": 37,
+      "action": "TrackSolo",
+      "deck": 0,
+      "extra": 5,
+      "relative": null
+    },
+    {
+      "kind": "Cc",
+      "ch": 1,
+      "data": 28,
+      "action": "TrackSendA",
+      "deck": 0,
+      "extra": 6,
+      "relative": null
+    },
+    {
+      "kind": "Cc",
+      "ch": 1,
+      "data": 18,
+      "action": "TrackFader",
+      "deck": 0,
+      "extra": 6,
+      "relative": null
+    },
+    {
+      "kind": "Cc",
+      "ch": 1,
+      "data": 38,
+      "action": "TrackSolo",
+      "deck": 0,
+      "extra": 6,
+      "relative": null
+    },
+    {
+      "kind": "Cc",
+      "ch": 1,
+      "data": 29,
+      "action": "TrackSendA",
+      "deck": 0,
+      "extra": 7,
+      "relative": null
+    },
+    {
+      "kind": "Cc",
+      "ch": 1,
+      "data": 19,
+      "action": "TrackFader",
+      "deck": 0,
+      "extra": 7,
+      "relative": null
+    },
+    {
+      "kind": "Cc",
+      "ch": 1,
+      "data": 39,
+      "action": "TrackSolo",
+      "deck": 0,
+      "extra": 7,
+      "relative": null
+    },
+    {
+      "kind": "Cc",
+      "ch": 2,
+      "data": 22,
+      "action": "TrackSendB",
+      "deck": 0,
+      "extra": 0,
+      "relative": null
+    },
+    {
+      "kind": "Cc",
+      "ch": 2,
+      "data": 12,
+      "action": "TrackFader",
+      "deck": 0,
+      "extra": 0,
+      "relative": null
+    },
+    {
+      "kind": "Cc",
+      "ch": 2,
+      "data": 32,
+      "action": "TrackArm",
+      "deck": 0,
+      "extra": 0,
+      "relative": null
+    },
+    {
+      "kind": "Cc",
+      "ch": 2,
+      "data": 23,
+      "action": "TrackSendB",
+      "deck": 0,
+      "extra": 1,
+      "relative": null
+    },
+    {
+      "kind": "Cc",
+      "ch": 2,
+      "data": 13,
+      "action": "TrackFader",
+      "deck": 0,
+      "extra": 1,
+      "relative": null
+    },
+    {
+      "kind": "Cc",
+      "ch": 2,
+      "data": 33,
+      "action": "TrackArm",
+      "deck": 0,
+      "extra": 1,
+      "relative": null
+    },
+    {
+      "kind": "Cc",
+      "ch": 2,
+      "data": 24,
+      "action": "TrackSendB",
+      "deck": 0,
+      "extra": 2,
+      "relative": null
+    },
+    {
+      "kind": "Cc",
+      "ch": 2,
+      "data": 14,
+      "action": "TrackFader",
+      "deck": 0,
+      "extra": 2,
+      "relative": null
+    },
+    {
+      "kind": "Cc",
+      "ch": 2,
+      "data": 34,
+      "action": "TrackArm",
+      "deck": 0,
+      "extra": 2,
+      "relative": null
+    },
+    {
+      "kind": "Cc",
+      "ch": 2,
+      "data": 25,
+      "action": "TrackSendB",
+      "deck": 0,
+      "extra": 3,
+      "relative": null
+    },
+    {
+      "kind": "Cc",
+      "ch": 2,
+      "data": 15,
+      "action": "TrackFader",
+      "deck": 0,
+      "extra": 3,
+      "relative": null
+    },
+    {
+      "kind": "Cc",
+      "ch": 2,
+      "data": 35,
+      "action": "TrackArm",
+      "deck": 0,
+      "extra": 3,
+      "relative": null
+    },
+    {
+      "kind": "Cc",
+      "ch": 2,
+      "data": 26,
+      "action": "TrackSendB",
+      "deck": 0,
+      "extra": 4,
+      "relative": null
+    },
+    {
+      "kind": "Cc",
+      "ch": 2,
+      "data": 16,
+      "action": "TrackFader",
+      "deck": 0,
+      "extra": 4,
+      "relative": null
+    },
+    {
+      "kind": "Cc",
+      "ch": 2,
+      "data": 36,
+      "action": "TrackArm",
+      "deck": 0,
+      "extra": 4,
+      "relative": null
+    },
+    {
+      "kind": "Cc",
+      "ch": 2,
+      "data": 27,
+      "action": "TrackSendB",
+      "deck": 0,
+      "extra": 5,
+      "relative": null
+    },
+    {
+      "kind": "Cc",
+      "ch": 2,
+      "data": 17,
+      "action": "TrackFader",
+      "deck": 0,
+      "extra": 5,
+      "relative": null
+    },
+    {
+      "kind": "Cc",
+      "ch": 2,
+      "data": 37,
+      "action": "TrackArm",
+      "deck": 0,
+      "extra": 5,
+      "relative": null
+    },
+    {
+      "kind": "Cc",
+      "ch": 2,
+      "data": 28,
+      "action": "TrackSendB",
+      "deck": 0,
+      "extra": 6,
+      "relative": null
+    },
+    {
+      "kind": "Cc",
+      "ch": 2,
+      "data": 18,
+      "action": "TrackFader",
+      "deck": 0,
+      "extra": 6,
+      "relative": null
+    },
+    {
+      "kind": "Cc",
+      "ch": 2,
+      "data": 38,
+      "action": "TrackArm",
+      "deck": 0,
+      "extra": 6,
+      "relative": null
+    },
+    {
+      "kind": "Cc",
+      "ch": 2,
+      "data": 29,
+      "action": "TrackSendB",
+      "deck": 0,
+      "extra": 7,
+      "relative": null
+    },
+    {
+      "kind": "Cc",
+      "ch": 2,
+      "data": 19,
+      "action": "TrackFader",
+      "deck": 0,
+      "extra": 7,
+      "relative": null
+    },
+    {
+      "kind": "Cc",
+      "ch": 2,
+      "data": 39,
+      "action": "TrackArm",
+      "deck": 0,
+      "extra": 7,
+      "relative": null
+    }
+  ],
+  "fixtures": [
+    {
+      "bytes": [
+        176,
+        12,
+        77
+      ],
+      "action": "TrackFader",
+      "deck": 0,
+      "extra": 0,
+      "evidence": "Owned LiveLite preset and captured bank-A CC12 address"
+    }
+  ],
+  "provenance": {
+    "license": "MIT",
+    "authored_by": "Omatainer original native mappings",
+    "manufacturer_documents": [
+      "https://cdn.inmusicbrands.com/akai/attachments/MPD232/MPD232-User_Guide-v1.1.pdf"
+    ],
+    "licensed_sources": [
+      "https://github.com/michaelmonetized/omatainer/blob/stack/app-completion/LICENSE"
+    ],
+    "synthetic_fixture_claim": "Schema and message decoding only; does not promote current physical qualification",
+    "physical_receipts": [
+      "https://github.com/michaelmonetized/omatainer/blob/a4020338a805ce2efd690da34f898892806d6e32/docs/validation/powered-hub-controller-qualification.md"
+    ],
+    "current_physical_qualification": false
+  }
+}
