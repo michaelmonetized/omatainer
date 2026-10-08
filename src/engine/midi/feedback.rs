@@ -9,6 +9,25 @@ use std::sync::{
 };
 use std::time::{Duration, Instant};
 
+#[derive(Clone, Copy, Debug, PartialEq, serde::Serialize)]
+pub(crate) struct ChannelEffect {
+    pub deck: u8,
+    pub kind: crate::engine::channel_fx::Kind,
+    pub name: &'static str,
+    pub knob: f32,
+    pub neutral: bool,
+}
+impl ChannelEffect {
+    /// Expose the applied deck assignment and label to controller feedback consumers.
+    /// Takes renderer-confirmed deck, type and knob; returns fixed feedback data without sending a device command.
+    pub(crate) fn applied(deck: u8, kind: crate::engine::channel_fx::Kind, knob: f32) -> Self {
+        Self { deck, kind, name: kind.name(), knob, neutral: (0.47..=0.53).contains(&knob) }
+    }
+}
+impl Default for ChannelEffect {
+    fn default() -> Self { Self::applied(0, crate::engine::channel_fx::Kind::Filter, 0.5) }
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Surface {
     Sp1,
@@ -438,6 +457,22 @@ impl Drop for Manager {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn channel_effect_feedback_exposes_actual_assignment_name_position_and_detent_without_wire_commands() {
+        use crate::engine::{channel_fx::Kind, Command, Engine};
+        let (engine, mut renderer) = Engine::headless_for_test(48000, 128);
+        for (deck, kind, knob) in [(0, Kind::Echo, 0.12), (1, Kind::Room, 0.51)] {
+            engine.send(Command::DeckChannelEffect { deck, effect: kind }).unwrap();
+            engine.send(Command::DeckFilter { deck, value: knob }).unwrap();
+        }
+        renderer.process(&mut []); renderer.publish_for_test(); let snapshot = engine.snapshot();
+        for (deck, kind, knob) in [(0, Kind::Echo, 0.12), (1, Kind::Room, 0.51)] {
+            let frame = snapshot.decks[deck].channel_effect_feedback;
+            assert_eq!(frame.deck, deck as u8); assert_eq!(frame.kind, kind); assert_eq!(frame.name, kind.name()); assert_eq!(frame.knob, knob); assert_eq!(frame.neutral, deck == 1);
+            let json = serde_json::to_value(frame).unwrap(); assert_eq!(json["name"], kind.name());
+        }
+        assert_eq!(snapshot.midi_feedback.connected, 0); assert_eq!(snapshot.midi_feedback.sent, 0);
+    }
     #[test]
     fn ns7_controls_feedback_tracks_keylock_hotcues_loop_and_hardware_switches() {
         let mut snapshot = Snapshot::default(); snapshot.decks = vec![Default::default(), Default::default()];

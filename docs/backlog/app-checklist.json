@@ -3344,9 +3344,12 @@
       "dependencies": [
         187
       ],
-      "state": "planned",
+      "state": "implemented",
       "prs": [],
-      "evidence": []
+      "evidence": [
+        "docs/validation/channel-effects.md",
+        "docs/validation/channel-effects-receipt.json"
+      ]
     },
     {
       "issue": 233,

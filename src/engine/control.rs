@@ -772,6 +772,7 @@ impl CommandPort {
         {
             return fail(SubmissionError::InvalidTarget);
         }
+        if matches!(&command, Command::DeckChannelEffect { deck, .. } if usize::from(*deck) >= super::DECKS) { return fail(SubmissionError::InvalidTarget); }
         if matches!(&command,Command::RoutedNoteOn {track,ch,note,vel,..} if usize::from(*track)>=super::session::MAX_TRACKS || *ch>15 || *note>127 || *vel>127) {
             return fail(SubmissionError::InvalidTarget);
         }
@@ -1267,6 +1268,7 @@ fn parameter_key(command: &Command) -> Option<(u8, usize, usize)> {
         Command::DeckGain { deck, .. } => Some((7, deck as usize, 0)),
         Command::DeckEq { deck, band, .. } => Some((8, deck as usize, band as usize)),
         Command::DeckFilter { deck, .. } => Some((9, deck as usize, 0)),
+        Command::DeckChannelEffect { deck, .. } => Some((28, deck as usize, 0)),
         Command::FxWet { slot, .. } => Some((10, slot as usize, 0)),
         Command::FxMix { slot, .. } => Some((11, slot, 0)),
         Command::FxParam { slot, p, .. } => Some((12, slot, p as usize)),

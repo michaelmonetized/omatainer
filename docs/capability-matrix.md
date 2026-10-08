@@ -396,6 +396,18 @@ Native headless UI and renderer qualification on Linux aarch64. Installed native
 
 Linux ARM64 software qualification; no physical ports, capture, OS GUI or listening check. Native schema 33 stores an optional song key, optional per-clip override and explicit instrument participation. Thirteen validated scales use tonic 0–11 and absolute MIDI pitches 0–127; degree edits refuse out-of-range results. Existing chromatic notes stay unchanged unless explicitly included. Current context, captured owner metadata, note/lane bounds and cancellation guard every preview and atomic Apply. Harmony preserves originals and copies uniquely owned poly-pressure; MPE member-channel harmony refuses overlapping additional voices. Instrument participation affects newly pressed pads and retains the original pitch for held releases. Concurrent clips with differing contexts display a conflict without rewriting the song key or notes. This does not implement per-note expression curve editing, note chance, MIDI 2.0 or complete Live-authored migration comparison. Twelve isolated native import workflows were qualified separately; the retained private saved Live Set is a read-only format smoke check.
 
+### Issue #170: implemented
+
+- storage report and compacted copy: [src/project_versions/storage.rs](../src/project_versions/storage.rs) — Read-only chosen folders, shared slices and all-version storage; exact reviewed no-overwrite archive copy
+- reversible cleanup ownership: [src/project_versions/cleanup.rs](../src/project_versions/cleanup.rs) — Private native records, descriptor-bound quarantine, partial recovery, full file proof and byte-exact index restore
+- existing single version worker: [src/ui/project_versions/worker.rs](../src/ui/project_versions/worker.rs) — Shared work admission and memory ownership outside GUI and audio; small review IDs and explicit Apply
+- native storage review and recovery: [src/ui/project_versions.rs](../src/ui/project_versions.rs) — Inspect, reviewed compacted copy, pruning review, cancellation and reopen/restore controls
+- Acceptance fixtures: `project_versions::cleanup::tests`, `project_versions::storage::tests`, `ui::project_versions::tests`.
+- Evidence: [docs/validation/project-storage.md](../docs/validation/project-storage.md).
+- Evidence: [docs/validation/project-storage-receipt.json](../docs/validation/project-storage-receipt.json).
+
+Linux aarch64 software qualification uses actual local files, exact hashes and inode identities, native bundle save/reopen, actual egui/AccessKit controls and independently compared playing PCM. No physical audio/MIDI port or new OS GUI was opened. Storage totals are sampled, and explicitly chosen shared folders may include other projects or overlap. Original recording/render provenance is not inferred from filenames. Inventories stop at 65536 entries, 16 folder levels and 64 GiB. Native archives retain the existing 1 GiB PCM/64 MiB metadata limits. Compaction saves only a reviewed new copy and preserves metadata-sensitive identities; it never replaces the source archive or changes the active renderer. Quarantine retains disk bytes and private durable recovery records. At most 128 recovery batches are inspected. Restore newest first with unchanged version indexes, retained dependencies and owned bytes; occupied paths or later edits refuse restoration without discarding the last copy. Partial moves, failed or uncertain publications keep recoverable files and records. Permanent purge and cross-filesystem destructive moves are not offered. The running app/session are preserved; installation is deferred while the independent GUI remains open. This milestone does not complete the remaining nonhardware backlog or qualify physical controller behavior.
+
 ### Issue #176: implemented
 
 - separate monitor bus: [src/engine/monitor.rs](../src/engine/monitor.rs) — Pre-fader PFL, independent level/blend/split, explicit pair and finite routing tone
@@ -787,6 +799,18 @@ Software qualification: five-minute 12 kHz reference and 44.1/48/96 kHz referenc
 
 Software qualification: atomic whole-scene tempo/meter and clip switches at exact sample boundaries; independent timestamp/downbeat oracles at 8/44.1/48 kHz and clock oracles additionally at 96 kHz, callbacks 31/257, continuing tracks under Keep, exact Stop releases, disabled/additive/legato semantics, selected-track and held-input ownership, actual recording completion, native odd-meter count-in/rate change, full native meter inheritance including 255/128 and pickup, guarded metadata Undo/Redo/cancellation/stale identity, deletion/reuse/reorder, safety/seek/project replacement, native state 23 real-container reopen and old-header injection refusal, native egui/AccessKit editing/duplication/launch/cancel, bounded consistent socket/follow status and zero unchanged cache heap work. A selected scene tempo/meter replaces future conductor automation with the current flat clock; historical conductor mapping is not retained. Pending launches/active identities never resume on reopen. No physical controller display or new live hardware/audio qualification; independent stage application unchanged. No ticket acceptance or issue closure claimed.
 
+### Issue #232: implemented
+
+- bounded stereo channel processing: [src/engine/channel_fx.rs](../src/engine/channel_fx.rs) — Filter/Echo/Room, dry detent, tempo-aware sides, exact five-millisecond transitions and eased independent histories
+- native selection and feedback: [src/ui/dj_fx.rs](../src/ui/dj_fx.rs) — Per-deck confirmed selection, knob and center controls in the existing DJ FX panel
+- portable controller assignment: [src/engine/midi/learn.rs](../src/engine/midi/learn.rs) — Explicit learned selection alongside existing mapped knob controls; compatible immutable signed factory catalog
+- project and undo ownership: [src/engine/project/model.rs](../src/engine/project/model.rs) — Version 35 native persistence, Filter migration, dirty tracking and exact deck Undo/Redo
+- Acceptance fixtures: `engine::channel_fx::tests`, `ui::dj_fx::tests`, `engine::midi::feedback::tests::channel_effect_feedback_exposes_actual_assignment_name_position_and_detent_without_wire_commands`, `engine::midi::learn::tests::channel_effect_assignment_applies_only_pressed_selected_deck_and_existing_knob_controls_it`, `preferences::worker::midi_presets_tests::channel_effect_assignments_preserve_names_and_targets_in_portable_presets_and_real_preferences`, `engine::project::tests::channel_effects_native_archive_reopen_rate_change_and_legacy_migration_preserve_both_decks`, `engine::undo::tests::channel_effect_selection_is_dirty_exact_deck_undoable_and_rejected_before_invalid_admission`, `engine::midi::catalog::tests::immutable_signed_factory_version_is_independent_of_newer_portable_learn_assignments`.
+- Evidence: [docs/validation/channel-effects.md](../docs/validation/channel-effects.md).
+- Evidence: [docs/validation/channel-effects-receipt.json](../docs/validation/channel-effects-receipt.json).
+
+Linux aarch64 software qualification uses actual native egui/AccessKit controls, MIDI dispatch workers without OS ports, durable project and preset file I/O, independently compared playing PCM, bounded stereo histories and fixed renderer transitions. Controller feedback exposes the renderer-confirmed deck assignment, effect name, knob and neutral flag in status; physical display behavior is unqualified. Existing signed factory profiles remain version 6 and unchanged. Portable learned selections use version 7, preferences version 26 and project state version 35. Echo history is capped at two seconds and the neutral detent clears previous side histories. The active app, follower and session remain preserved. This milestone does not complete the remaining software checklist or establish physical controller/audio acceptance.
+
 ### Issue #236: implemented
 
 - shared held roll renderer: [src/engine/deck_controls/slicer.rs](../src/engine/deck_controls/slicer.rs) — Immediate/current-source or deck-quantized onset, original pending owner, latest-held fallback and advancing release root
@@ -919,7 +943,7 @@ Music source: FreeToUse public keyless API. Michael excludes other third-party p
 | [#167](https://github.com/michaelmonetized/omatainer/issues/167) | Generate editable rhythmic and Euclidean MIDI patterns | implemented |
 | [#168](https://github.com/michaelmonetized/omatainer/issues/168) | Make keys and scales shared musical context for editing and devices | implemented |
 | [#169](https://github.com/michaelmonetized/omatainer/issues/169) | Exchange editable sessions using an open DAW interchange format | planned |
-| [#170](https://github.com/michaelmonetized/omatainer/issues/170) | Inspect project storage and safely clean unused media | planned |
+| [#170](https://github.com/michaelmonetized/omatainer/issues/170) | Inspect project storage and safely clean unused media | implemented |
 | [#171](https://github.com/michaelmonetized/omatainer/issues/171) | Integrate Apple Music only through an authorized DJ playback path | excluded from release |
 | [#172](https://github.com/michaelmonetized/omatainer/issues/172) | Integrate Spotify only if an authorized DJ service agreement is available | excluded from release |
 | [#173](https://github.com/michaelmonetized/omatainer/issues/173) | Support negotiated MIDI 2.0 and high-resolution expression | planned |
@@ -981,7 +1005,7 @@ Music source: FreeToUse public keyless API. Michael excludes other third-party p
 | [#229](https://github.com/michaelmonetized/omatainer/issues/229) | Export aligned stems, track groups and delivery versions in batches | planned |
 | [#230](https://github.com/michaelmonetized/omatainer/issues/230) | Expose a clean performance audio feed for OBS and broadcast tools | planned |
 | [#231](https://github.com/michaelmonetized/omatainer/issues/231) | Validate loudness, true peaks and metadata before delivery | planned |
-| [#232](https://github.com/michaelmonetized/omatainer/issues/232) | Add selectable one-knob channel effects | planned |
+| [#232](https://github.com/michaelmonetized/omatainer/issues/232) | Add selectable one-knob channel effects | implemented |
 | [#233](https://github.com/michaelmonetized/omatainer/issues/233) | Add DVS signal calibration and diagnostics | planned |
 | [#234](https://github.com/michaelmonetized/omatainer/issues/234) | Save and share DJ effect presets and unit layouts | planned |
 | [#235](https://github.com/michaelmonetized/omatainer/issues/235) | Add instant doubles and deck transfer | planned |

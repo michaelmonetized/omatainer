@@ -584,6 +584,7 @@ fn destructive(command: &Command) -> bool {
         | Command::DeckGain { .. }
         | Command::DeckEq { .. }
         | Command::DeckFilter { .. }
+        | Command::DeckChannelEffect { .. }
         | Command::DeckPfl { .. }
         | Command::DeckHotCue { del: false, .. }
         | Command::DeckCuePoint { del: false, .. }

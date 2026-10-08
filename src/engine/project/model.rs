@@ -2,7 +2,7 @@
 //! physical key ownership, worker handles and device connections.
 use super::super::*;
 
-pub const STATE_VERSION: u32 = 34;
+pub const STATE_VERSION: u32 = 35;
 pub const MAX_BANKS: usize = 16;
 pub const MAX_FX_PER_RACK: usize = 128;
 pub const MAX_NOTES_PER_CLIP: usize = 8192;
@@ -127,6 +127,9 @@ impl<'de> Deserialize<'de> for State {
         let raw = serde_json::Value::deserialize(deserializer)?;
         midi_edit::reject_legacy_fields(&raw).map_err(serde::de::Error::custom)?;
         let version = raw["version"].as_u64().unwrap_or(0);
+        if version < 35 && raw.get("decks").and_then(serde_json::Value::as_array).is_some_and(|decks| decks.iter().any(|deck| deck.get("channel_effect").is_some())) {
+            return Err(serde::de::Error::custom("Selectable channel effects require project state version 35"));
+        }
         if version < 31
             && raw
                 .get("arrangement")
@@ -426,6 +429,8 @@ pub struct Deck {
     pub source_gain: crate::track_gain::Policy,
     pub filter_morph: f32,
     pub filter_amt: f32,
+    #[serde(default, skip_serializing_if = "channel_fx::Kind::is_filter")]
+    pub(crate) channel_effect: channel_fx::Kind,
     pub pfl: bool,
     pub hotcues: [Option<f64>; HOTCUES],
     #[serde(default)]
@@ -568,6 +573,7 @@ impl State {
                 eq: [1.0; 3],
                 filter_morph: 0.5,
                 filter_amt: 0.5,
+                channel_effect: channel_fx::Kind::Filter,
                 pfl: false,
                 hotcues: [None; HOTCUES],
                 cue_styles: [crate::engine::cue_metadata::Style::default(); HOTCUES],

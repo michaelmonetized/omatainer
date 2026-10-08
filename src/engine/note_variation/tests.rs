@@ -112,7 +112,7 @@ fn native_schema_keeps_full_width_seed_and_refuses_future_note_fields_in_older_p
     state.note_seed = u64::MAX;
     let bytes = serde_json::to_vec(&state).unwrap();
     let decoded: State = serde_json::from_slice(&bytes).unwrap();
-    assert_eq!(decoded.version, 34);
+    assert_eq!(decoded.version, crate::engine::project::STATE_VERSION);
     assert_eq!(decoded.note_seed, u64::MAX);
     let clip = serde_json::json!({"notes":[{"variation":null}]});
     assert!(has_future_note_fields(&clip));

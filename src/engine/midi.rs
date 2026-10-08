@@ -31,6 +31,7 @@ pub use policy::{InputPolicy, PolicyError, PolicyStatus};
 pub(crate) use connections::test_support as connection_test_support;
 pub use relative::RelativeSpec;
 pub use feedback::Stats as FeedbackStats;
+pub(crate) use feedback::ChannelEffect as ChannelEffectFeedback;
 pub(crate) use relative::RelativeEncoding;
 #[cfg(test)]
 mod profile_tests;
@@ -90,6 +91,7 @@ pub enum Action {
     DeckEqMid,
     DeckEqLow,
     DeckFilter,
+    DeckChannelEffect,
     DeckPfl,
     DeckHotCue,
     DeckLoop4,
@@ -577,6 +579,9 @@ fn dispatch_value_key(
         }
         Action::DeckFilter => {
             let _ = send(Command::DeckFilter { deck, value: rel });
+        }
+        Action::DeckChannelEffect if pressed => {
+            if let Some(effect) = super::channel_fx::Kind::from_id(b.extra) { let _ = send(Command::DeckChannelEffect { deck, effect }); }
         }
         Action::DeckPfl if pressed => {
             let _ = send(Command::DeckPfl { deck });

@@ -43,6 +43,7 @@ pub(crate) fn actions() -> &'static [Action] {
         Action::DeckEqMid,
         Action::DeckEqLow,
         Action::DeckFilter,
+        Action::DeckChannelEffect,
         Action::DeckPfl,
         Action::DeckHotCue,
         Action::DeckLoop4,

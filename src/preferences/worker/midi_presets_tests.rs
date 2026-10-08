@@ -6,6 +6,35 @@ use crate::engine::midi::{
 use std::time::{Duration, Instant};
 
 #[test]
+fn channel_effect_assignments_preserve_names_and_targets_in_portable_presets_and_real_preferences() {
+    use crate::engine::midi::learn::{Config, Endpoint, Mapping};
+    let files = Files::new();
+    let endpoint = Endpoint { name: "Channel effects".into(), id: "private-controller-fixture".into() };
+    let config = Config { mappings: (0..3).map(|id| Mapping { endpoint: endpoint.clone(), binding: Binding { kind: MsgKind::Note, ch: 1, data: 60 + id as u8, action: Action::DeckChannelEffect, deck: 1, extra: id, relative: None, controls: None, pair_order: None } }).collect() };
+    let preset = Preset::capture("Deck B effects".into(), String::new(), &endpoint, &config).unwrap();
+    let path = files.0.join("channel-effects.json");
+    let mut worker = Worker::with_discovery(files.0.join("unused.json"), || Err("No discovery".into())).unwrap();
+    worker.request(Job::ExportMidiPreset { path: path.clone(), preset: preset.clone() }).unwrap();
+    assert!(matches!(wait(&mut worker), Event::MidiPresetExported(_)));
+    worker.request(Job::ImportMidiPreset { path, token: 232 }).unwrap();
+    assert!(matches!(wait(&mut worker), Event::MidiPresetImported { token: 232, preset: loaded } if loaded == preset));
+    for version in 1..7 { let mut old = serde_json::to_value(&preset).unwrap(); old["version"] = version.into(); assert!(Preset::decode(&serde_json::to_vec(&old).unwrap()).is_err()); }
+    let mut preferences = super::super::Preferences::defaults(&files.0);
+    let profile = preferences.profiles.get_mut(&preferences.active).unwrap(); profile.midi_learn = config; profile.midi_presets = vec![preset];
+    let path = files.0.join("actual-channel-preferences.json"); let cancelled = AtomicBool::new(false);
+    super::storage::save(&path, &preferences, super::storage::Overwrite::Exact(None), &cancelled).unwrap();
+    assert_eq!(super::storage::load(&path, &cancelled).unwrap().preferences, preferences);
+    for learned_only in [false, true] { let mut old = serde_json::to_value(&preferences).unwrap(); old["version"] = 25.into(); if learned_only { old["profiles"][&preferences.active]["midi_presets"] = serde_json::json!([]); } assert!(super::storage::decode(&serde_json::to_vec(&old).unwrap()).is_err()); }
+    let mut legacy = super::super::Preferences::defaults(&files.0); legacy.version = 25;
+    let (migrated, changed) = super::storage::decode(&serde_json::to_vec(&legacy).unwrap()).unwrap();
+    assert!(changed); assert_eq!(migrated.version, super::super::VERSION);
+    let mut previous = preferences; previous.profiles.get_mut(&previous.active).unwrap().midi_learn.mappings.clear();
+    let preset = &mut previous.profiles.get_mut(&previous.active).unwrap().midi_presets[0];
+    preset.version = 6; preset.bindings.iter_mut().for_each(|binding| { binding.action = Action::DeckSyncMode; });
+    preset.validate().unwrap();
+}
+
+#[test]
 fn sync_mode_presets_and_preferences_preserve_explicit_targets_and_refuse_older_headers() {
     use crate::engine::midi::learn::{Config, Endpoint, Mapping};
     let files = Files::new();
@@ -23,7 +52,7 @@ fn sync_mode_presets_and_preferences_preserve_explicit_targets_and_refuse_older_
     worker.request(Job::ImportMidiPreset { path: path.clone(), token: 193 }).unwrap();
     assert!(matches!(wait(&mut worker), Event::MidiPresetImported { token: 193, preset: loaded } if loaded == preset));
     let portable = serde_json::to_value(&preset).unwrap();
-    for version in 1..crate::engine::midi::presets::VERSION { let mut old = portable.clone(); old["version"] = version.into(); assert!(Preset::decode(&serde_json::to_vec(&old).unwrap()).is_err()); }
+    for version in 1..6 { let mut old = portable.clone(); old["version"] = version.into(); assert!(Preset::decode(&serde_json::to_vec(&old).unwrap()).is_err()); }
     let mut preferences = super::super::Preferences::defaults(&files.0);
     let profile = preferences.profiles.get_mut(&preferences.active).unwrap();
     profile.midi_learn = config;
@@ -55,7 +84,7 @@ fn deck_pad_presets_export_import_and_real_preferences_reopen_preserve_fixed_mod
     let path=files.0.join("deck-pads.json");let mut worker=Worker::with_discovery(files.0.join("prefs.json"),||Err("No device discovery".into())).unwrap();
     worker.request(Job::ExportMidiPreset{path:path.clone(),preset:preset.clone()}).unwrap();assert!(matches!(wait(&mut worker),Event::MidiPresetExported(_)));
     worker.request(Job::ImportMidiPreset{path:path.clone(),token:192}).unwrap();assert!(matches!(wait(&mut worker),Event::MidiPresetImported{token:192,preset:p} if p==preset));
-    let bytes=std::fs::read(&path).unwrap();for version in 1..crate::engine::midi::presets::VERSION {let mut old=serde_json::from_slice::<serde_json::Value>(&bytes).unwrap();old["version"]=version.into();assert!(Preset::decode(&serde_json::to_vec(&old).unwrap()).is_err());}
+    let bytes=std::fs::read(&path).unwrap();for version in 1..6 {let mut old=serde_json::from_slice::<serde_json::Value>(&bytes).unwrap();old["version"]=version.into();assert!(Preset::decode(&serde_json::to_vec(&old).unwrap()).is_err());}
     let mut preferences=super::super::Preferences::defaults(&files.0);let profile=preferences.profiles.get_mut(&preferences.active).unwrap();profile.midi_learn=config.clone();profile.midi_presets=vec![preset];
     let cancelled=AtomicBool::new(false);
     let prefs_path=files.0.join("actual-preferences.json");super::storage::save(&prefs_path,&preferences,super::storage::Overwrite::Exact(None),&cancelled).unwrap();

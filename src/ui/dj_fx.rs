@@ -16,6 +16,37 @@ impl App {
             accessibility::scope(ui, "DJ FX", |ui| {
                 ui.label("Each unit can process Deck A, Deck B, a selected sampler destination, and Master. Assigning several sources applies the unit separately to each; assigning a deck and Master applies it twice along that path.");
                 let scroll=egui::ScrollArea::vertical().max_height((ctx.screen_rect().height()-180.0).max(120.0)).show(ui, |ui| {
+                    ui.heading("Channel effects");
+                    ui.label("The center detent is dry. Type changes blend over five milliseconds; crossing the center clears the previous side's echo or room history.");
+                    for deck in 0..2 {
+                        let Some(settings) = self.snap.decks.get(deck) else { continue; };
+                        let effect = settings.channel_effect;
+                        let original = settings.filter;
+                        let scope = format!("Channel effect Deck {}", (b'A' + deck as u8) as char);
+                        accessibility::scope(ui, &scope, |ui| {
+                            ui.horizontal_wrapped(|ui| {
+                                ui.label(format!("Deck {} · {}", (b'A' + deck as u8) as char, settings.channel_effect_feedback.name));
+                                for kind in crate::engine::channel_fx::Kind::ALL {
+                                    let response = ui.selectable_label(effect == kind, kind.name());
+                                    accessibility::button(ui, &response, kind.name(), Some(effect == kind));
+                                    help::annotate(ui, &response, HelpControl::DjFx);
+                                    if response.clicked() { self.send(Command::DeckChannelEffect { deck: deck as u8, effect: kind }); }
+                                }
+                                let mut amount = original;
+                                let response = ui.add(egui::Slider::new(&mut amount, 0.0..=1.0).text("Knob"));
+                                let alternate = accessibility::numeric(ui, &response, "Knob", original, 0.0, 1.0, 0.01, "");
+                                if let Some(value) = alternate { amount = value; }
+                                if response.changed() || alternate.is_some() { self.send(Command::DeckFilter { deck: deck as u8, value: amount }); }
+                                let response = ui.button("Center");
+                                accessibility::button(ui, &response, "Center", None);
+                                if response.clicked() { self.send(Command::DeckFilter { deck: deck as u8, value: 0.5 }); }
+                            });
+                            let description = effect.description();
+                            let response = ui.label(description);
+                            accessibility::status(ui, &response, description);
+                        });
+                    }
+                    ui.separator();
                     for bank in 0..2 {
                         let settings = self.snap.surfaces.fx[bank];
                         let scope=format!("Unit {}", (b'A'+bank as u8) as char);

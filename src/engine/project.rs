@@ -578,6 +578,7 @@ impl RtEngine {
             | Command::DeckGain { .. }
             | Command::DeckEq { .. }
             | Command::DeckFilter { .. }
+            | Command::DeckChannelEffect { .. }
             | Command::DeckPfl { .. }
             | Command::DeckLoop { .. }
             | Command::DeckLoopIn { .. }

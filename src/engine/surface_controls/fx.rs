@@ -203,6 +203,7 @@ impl State {
     /// Retire DJ FX histories when the unique audio owner stops its stream.
     /// Takes no data; clears fixed history generations without allocation while keeping reviewed source assignments and controls.
     pub(in crate::engine) fn reset_fx_histories(&mut self) {
+        for channel in &mut self.channel_fx { channel.reset(); }
         for bank in 0..2 {
             for source in &mut self.deck_fx[bank] {
                 for (slot, processor) in source.iter_mut().enumerate() {

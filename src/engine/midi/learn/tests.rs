@@ -1,4 +1,22 @@
 use super::*;
+#[test]
+fn channel_effect_assignment_applies_only_pressed_selected_deck_and_existing_knob_controls_it() {
+    let (engine, mut rt) = crate::engine::Engine::headless_for_test(48000, 128);
+    let hub = super::super::MidiHub::without_devices();
+    let mut selected = binding(Action::DeckChannelEffect); selected.deck = 1; selected.extra = 2;
+    let mut knob = binding(Action::DeckFilter); knob.deck = 1; knob.data = 61;
+    let mapping = map(vec![selected, knob]);
+    let mut input = hub.open_for_test(&engine.cmd, 881, mapping, "effect controls", "private-test-only");
+    input.push(&[0x90, 60, 127]); rt.process(&mut []);
+    assert_eq!(rt.decks[1].channel_effect, crate::engine::channel_fx::Kind::Room);
+    assert_eq!(rt.decks[0].channel_effect, crate::engine::channel_fx::Kind::Filter);
+    input.push(&[0xb0, 61, 100]); rt.process(&mut []);
+    assert_eq!(rt.decks[1].filter_amt, 100.0 / 127.0);
+    let revision = rt.project.revision();
+    input.push(&[0x80, 60, 0]); rt.process(&mut []);
+    assert_eq!(rt.project.revision(), revision);
+    for invalid in [Binding { extra: 3, ..selected }, Binding { deck: 2, ..selected }, Binding { kind: MsgKind::Cc, ..selected }] { assert!(validate_binding(&invalid).is_err()); }
+}
 
 fn binding(action: Action) -> Binding {
     let kind = kind(action);

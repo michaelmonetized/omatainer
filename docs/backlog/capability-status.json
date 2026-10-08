@@ -2341,6 +2341,46 @@
       ],
       "limits": "Software qualification: atomic whole-scene tempo/meter and clip switches at exact sample boundaries; independent timestamp/downbeat oracles at 8/44.1/48 kHz and clock oracles additionally at 96 kHz, callbacks 31/257, continuing tracks under Keep, exact Stop releases, disabled/additive/legato semantics, selected-track and held-input ownership, actual recording completion, native odd-meter count-in/rate change, full native meter inheritance including 255/128 and pickup, guarded metadata Undo/Redo/cancellation/stale identity, deletion/reuse/reorder, safety/seek/project replacement, native state 23 real-container reopen and old-header injection refusal, native egui/AccessKit editing/duplication/launch/cancel, bounded consistent socket/follow status and zero unchanged cache heap work. A selected scene tempo/meter replaces future conductor automation with the current flat clock; historical conductor mapping is not retained. Pending launches/active identities never resume on reopen. No physical controller display or new live hardware/audio qualification; independent stage application unchanged. No ticket acceptance or issue closure claimed."
     },
+    "232": {
+      "status": "implemented",
+      "paths": [
+        {
+          "kind": "bounded stereo channel processing",
+          "file": "src/engine/channel_fx.rs",
+          "entry": "Filter/Echo/Room, dry detent, tempo-aware sides, exact five-millisecond transitions and eased independent histories"
+        },
+        {
+          "kind": "native selection and feedback",
+          "file": "src/ui/dj_fx.rs",
+          "entry": "Per-deck confirmed selection, knob and center controls in the existing DJ FX panel"
+        },
+        {
+          "kind": "portable controller assignment",
+          "file": "src/engine/midi/learn.rs",
+          "entry": "Explicit learned selection alongside existing mapped knob controls; compatible immutable signed factory catalog"
+        },
+        {
+          "kind": "project and undo ownership",
+          "file": "src/engine/project/model.rs",
+          "entry": "Version 35 native persistence, Filter migration, dirty tracking and exact deck Undo/Redo"
+        }
+      ],
+      "fixtures": [
+        "engine::channel_fx::tests",
+        "ui::dj_fx::tests",
+        "engine::midi::feedback::tests::channel_effect_feedback_exposes_actual_assignment_name_position_and_detent_without_wire_commands",
+        "engine::midi::learn::tests::channel_effect_assignment_applies_only_pressed_selected_deck_and_existing_knob_controls_it",
+        "preferences::worker::midi_presets_tests::channel_effect_assignments_preserve_names_and_targets_in_portable_presets_and_real_preferences",
+        "engine::project::tests::channel_effects_native_archive_reopen_rate_change_and_legacy_migration_preserve_both_decks",
+        "engine::undo::tests::channel_effect_selection_is_dirty_exact_deck_undoable_and_rejected_before_invalid_admission",
+        "engine::midi::catalog::tests::immutable_signed_factory_version_is_independent_of_newer_portable_learn_assignments"
+      ],
+      "evidence": [
+        "docs/validation/channel-effects.md",
+        "docs/validation/channel-effects-receipt.json"
+      ],
+      "limits": "Linux aarch64 software qualification uses actual native egui/AccessKit controls, MIDI dispatch workers without OS ports, durable project and preset file I/O, independently compared playing PCM, bounded stereo histories and fixed renderer transitions. Controller feedback exposes the renderer-confirmed deck assignment, effect name, knob and neutral flag in status; physical display behavior is unqualified. Existing signed factory profiles remain version 6 and unchanged. Portable learned selections use version 7, preferences version 26 and project state version 35. Echo history is capped at two seconds and the neutral detent clears previous side histories. The active app, follower and session remain preserved. This milestone does not complete the remaining software checklist or establish physical controller/audio acceptance."
+    },
     "236": {
       "status": "implemented",
       "paths": [

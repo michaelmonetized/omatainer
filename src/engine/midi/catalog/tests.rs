@@ -5,7 +5,7 @@ fn owned_profiles_are_bounded_and_select_compiled_capabilities_without_current_p
     assert_eq!(profiles.len(), 4);
     for profile in profiles {
         assert!(!profile.provenance.current_physical_qualification);
-        assert_eq!(profile.preset_version, super::super::presets::VERSION);
+        assert_eq!(profile.preset_version, PROFILE_PRESET_VERSION);
         let bytes = serde_json::to_vec_pretty(&profile).unwrap();
         assert!(bytes.len() <= MAX_PROFILE);
         let decoded = Profile::decode(&bytes).unwrap();
@@ -13,6 +13,20 @@ fn owned_profiles_are_bounded_and_select_compiled_capabilities_without_current_p
         assert_eq!(decoded.map().name, profile.driver.name());
         assert!(!decoded.provenance.physical_receipts.is_empty());
     }
+}
+#[test]
+fn immutable_signed_factory_version_is_independent_of_newer_portable_learn_assignments() {
+    assert_eq!(PROFILE_PRESET_VERSION, 6);
+    assert_eq!(super::super::presets::VERSION, 7);
+    let profile = bundled().unwrap().remove(0);
+    let mut invalid = profile.clone(); invalid.preset_version = super::super::presets::VERSION;
+    assert!(invalid.validate().is_err());
+    let mut invalid = profile.clone(); invalid.bindings[0].action = Action::DeckChannelEffect; invalid.bindings[0].extra = 0;
+    assert!(invalid.validate().is_err());
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("profiles/1.0.0");
+    let signed = std::fs::read(root.join("catalog.json")).unwrap();
+    let catalog = Catalog::decode(&signed, 1).unwrap();
+    for entry in &catalog.profiles { let profile = catalog.profile(entry, &std::fs::read(root.join(&entry.file)).unwrap()).unwrap(); assert_eq!(profile.preset_version, PROFILE_PRESET_VERSION); }
 }
 #[test]
 fn untrusted_profile_cannot_choose_arbitrary_driver_model_code_or_partial_bindings() {

@@ -28,6 +28,7 @@ mod video_transport;
 pub(crate) mod provider_preview;
 mod arp;
 mod deck_filter;
+pub(crate) mod channel_fx;
 #[cfg(test)]
 mod deck_filter_tests;
 
@@ -406,6 +407,7 @@ pub struct DeckRt {
     filter_position: f32,
     pub filter_morph: f32, // 0.5 = bypass-ish, 0 LP 1 HP. 0.5 + offset
     pub filter_amt: f32,   // 0.5 = noon
+    pub(crate) channel_effect: channel_fx::Kind,
     pub pfl: bool,
     pub hotcues: [HotCue; HOTCUES],
     pub cue_styles: [cue_metadata::Style; HOTCUES],
@@ -495,6 +497,7 @@ impl DeckRt {
             filter_position: 0.5,
             filter_morph: 0.5,
             filter_amt: 0.5,
+            channel_effect: channel_fx::Kind::Filter,
             pfl: false,
             cue_styles: [cue_metadata::Style::default(); HOTCUES],
             grid: None,
@@ -850,6 +853,8 @@ pub struct DeckSnap {
     pub source_gain_active: bool,
     pub source_level: Option<crate::track_gain::Level>,
     pub filter: f32,
+    pub(crate) channel_effect: channel_fx::Kind,
+    pub(crate) channel_effect_feedback: midi::ChannelEffectFeedback,
     pub vinyl: bool,
     pub sync: bool,
     pub sync_mode: deck_sync::Mode,
@@ -1151,6 +1156,7 @@ pub enum Command {
     DeckGain { deck: u8, value: f32 },
     DeckEq { deck: u8, band: u8, value: f32 },
     DeckFilter { deck: u8, value: f32 },
+    DeckChannelEffect { deck: u8, effect: channel_fx::Kind },
     DeckPfl { deck: u8 },
     DeckHotCue { deck: u8, pad: u8, del: bool },
     DeckGrid { deck: u8, grid: Option<beatgrid::Grid>, receipt: load_receipt::Receipt, ack: beatgrid::GridEditAck },
@@ -2370,8 +2376,8 @@ impl RtEngine {
         let deck = &mut self.decks[di];
         deck.filter_position = deck_filter::slew(deck.filter_position, deck.filter_amt, self.sr);
         let curve = deck_filter::Curve::at(deck.filter_position, self.sr);
-        l = deck.filter[0].process(l, curve);
-        r = deck.filter[1].process(r, curve);
+        let filtered = [deck.filter[0].process(l, curve), deck.filter[1].process(r, curve)];
+        [l, r] = self.surface.channel_fx[di].process([l, r], filtered, deck.channel_effect, deck.filter_position, f64::from(self.sr) * 60.0 / f64::from(self.bpm.max(1.0)), self.sr);
         [l, r] = self.surface.deck(di, [l, r], f64::from(self.sr) * 60.0 / f64::from(self.bpm.max(1.0)));
         [l, r] = self.decks[di].transition_output([l, r]);
         self.decks[di].meter = self.decks[di].meter * 0.9 + ((l.abs() + r.abs()) * 0.5) * 0.1;
@@ -2876,6 +2882,9 @@ impl RtEngine {
                 if value.is_finite() {
                     self.decks[deck as usize % DECKS].filter_amt = value.clamp(0.0, 1.0);
                 }
+            }
+            Command::DeckChannelEffect { deck, effect } => {
+                if let Some(deck) = self.decks.get_mut(usize::from(deck)) { deck.channel_effect = effect; }
             }
             Command::DeckPfl { deck } => {
                 let d = &mut self.decks[deck as usize % DECKS];

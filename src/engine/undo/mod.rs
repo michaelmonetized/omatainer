@@ -870,6 +870,7 @@ pub(crate) fn is_gesture_edit(command: &Command) -> bool {
             | Command::DeckGain { .. }
             | Command::DeckEq { .. }
             | Command::DeckFilter { .. }
+            | Command::DeckChannelEffect { .. }
             | Command::DeckSync { .. }
             | Command::DeckSyncMode { .. }
             | Command::DeckSyncLeader(_)

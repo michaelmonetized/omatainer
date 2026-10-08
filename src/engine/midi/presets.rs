@@ -5,7 +5,7 @@ use super::{
 };
 use serde::{Deserialize, Serialize};
 
-pub(crate) const VERSION: u32 = 6;
+pub(crate) const VERSION: u32 = 7;
 pub(crate) const MAX_PRESETS: usize = 32;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -95,6 +95,7 @@ impl Preset {
             return Err("Keep at most 256 assignments per preset".into());
         }
         for binding in &self.bindings {
+            if self.version < 7 && binding.action == super::Action::DeckChannelEffect { return Err("Channel effect selection requires MIDI preset version 7".into()); }
             if self.version < 6 && binding.action == super::Action::DeckPadMode && binding.extra == 8 { return Err("Chromatic cue pads require MIDI preset version 6".into()); }
             if self.version < 6 && super::learn::sync_mode(binding.action) { return Err("Explicit sync modes require MIDI preset version 6".into()); }
             if self.version < 5 && super::learn::deck_pad(binding.action) { return Err("Deck pad modes require MIDI preset version 5".into()); }
