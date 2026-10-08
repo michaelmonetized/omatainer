@@ -40,49 +40,46 @@ pub(super) fn install() -> Result<(), String> {
         .clone()
 }
 
+/// Stop owned real-time callbacks after Linux's process-wide watchdog signal.
+/// Takes the kernel signal information; demotes registered FIFO/RR callbacks or forwards unrelated signals to their original handler.
 extern "C" fn exhausted(signal: i32, info: *mut libc::siginfo_t, context: *mut libc::c_void) {
     let errno = Errno::save();
-    let tid = unsafe { libc::syscall(libc::SYS_gettid) } as i32;
-    if !info.is_null() && unsafe { (*info).si_code } == libc::SI_KERNEL {
+    #[cfg(test)]
+    tests::SIGNAL_TID.store(
+        unsafe { libc::syscall(libc::SYS_gettid) } as i32,
+        Ordering::Release,
+    );
+    if !info.is_null() && unsafe { (*info).si_code } == libc::SI_KERNEL && realtime_limit_raised() {
+        let mut recovered = false;
         for slot in &CALLBACKS {
-            if slot.tid.load(Ordering::Acquire) != tid {
+            let tid = slot.tid.load(Ordering::Acquire);
+            if tid <= 0 {
                 continue;
             }
-            let mut cpu_limit: libc::rlimit = unsafe { std::mem::zeroed() };
-            if unsafe {
-                libc::syscall(
-                    libc::SYS_prlimit64,
-                    0,
-                    libc::RLIMIT_CPU,
-                    std::ptr::null::<libc::rlimit>(),
-                    &mut cpu_limit,
-                )
-            } != 0
-                || cpu_limit.rlim_cur != libc::RLIM_INFINITY
-            {
-                break;
-            }
-            let policy = unsafe { libc::syscall(libc::SYS_sched_getscheduler, 0) } as i32;
+            let policy = unsafe { libc::syscall(libc::SYS_sched_getscheduler, tid) } as i32;
             if !matches!(
                 policy & !libc::SCHED_RESET_ON_FORK,
                 libc::SCHED_FIFO | libc::SCHED_RR
             ) {
-                break;
+                continue;
             }
             let priority = libc::sched_param { sched_priority: 0 };
-            if unsafe {
-                libc::syscall(
-                    libc::SYS_sched_setscheduler,
-                    0,
-                    libc::SCHED_OTHER,
-                    &priority,
-                )
-            } == 0
+            if slot.tid.load(Ordering::Acquire) == tid
+                && unsafe {
+                    libc::syscall(
+                        libc::SYS_sched_setscheduler,
+                        tid,
+                        libc::SCHED_OTHER,
+                        &priority,
+                    )
+                } == 0
             {
                 slot.exceeded.store(true, Ordering::Release);
-                return;
+                recovered = true;
             }
-            break;
+        }
+        if recovered {
+            return;
         }
     }
     let handler = PREVIOUS_HANDLER.load(Ordering::Acquire);
@@ -109,6 +106,33 @@ extern "C" fn exhausted(signal: i32, info: *mut libc::siginfo_t, context: *mut l
         let previous: extern "C" fn(i32) = unsafe { std::mem::transmute(handler) };
         previous(signal);
     }
+}
+
+/// Recognize the process-wide real-time watchdog notification.
+/// Takes no arguments; returns true only with unlimited ordinary CPU time and the kernel-raised finite RT limit.
+fn realtime_limit_raised() -> bool {
+    let mut cpu: libc::rlimit = unsafe { std::mem::zeroed() };
+    let mut realtime: libc::rlimit = unsafe { std::mem::zeroed() };
+    for (resource, limit) in [
+        (libc::RLIMIT_CPU, &mut cpu),
+        (libc::RLIMIT_RTTIME, &mut realtime),
+    ] {
+        if unsafe {
+            libc::syscall(
+                libc::SYS_prlimit64,
+                0,
+                resource,
+                std::ptr::null::<libc::rlimit>(),
+                limit,
+            )
+        } != 0
+        {
+            return false;
+        }
+    }
+    cpu.rlim_cur == libc::RLIM_INFINITY
+        && realtime.rlim_max != libc::RLIM_INFINITY
+        && realtime.rlim_cur > realtime.rlim_max
 }
 
 struct Errno {

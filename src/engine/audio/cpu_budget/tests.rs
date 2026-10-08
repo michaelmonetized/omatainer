@@ -40,6 +40,7 @@ fn owned_callback_registration_is_bounded_reusable_and_allocation_free() {
 }
 
 static FORWARDED: AtomicUsize = AtomicUsize::new(0);
+pub(super) static SIGNAL_TID: AtomicI32 = AtomicI32::new(0);
 extern "C" fn previous(_: i32, _: *mut libc::siginfo_t, _: *mut libc::c_void) {
     FORWARDED.fetch_add(1, Ordering::Relaxed);
 }
@@ -62,14 +63,27 @@ fn native_kernel_cpu_limit_demotes_only_owned_audio_threads() {
             );
         }
         install().unwrap();
-        let mut guard = Guard::new();
-        assert!(!guard.exceeded());
-        if scenario != "budget" {
+        let mut guard = (scenario != "foreign").then(Guard::new);
+        if let Some(guard) = &mut guard {
+            assert!(!guard.exceeded());
+        }
+        if !matches!(scenario.as_str(), "budget" | "budget-blocked" | "foreign") {
             assert_eq!(unsafe { libc::raise(libc::SIGXCPU) }, 0);
             assert_eq!(scenario, "previous", "default SIGXCPU returned");
             assert_eq!(FORWARDED.load(Ordering::Relaxed), 1);
-            assert!(!guard.exceeded());
+            assert!(!guard.as_mut().unwrap().exceeded());
             return;
+        }
+        if scenario == "budget-blocked" {
+            let mut mask: libc::sigset_t = unsafe { std::mem::zeroed() };
+            unsafe {
+                libc::sigemptyset(&mut mask);
+                libc::sigaddset(&mut mask, libc::SIGXCPU);
+            }
+            assert_eq!(
+                unsafe { libc::pthread_sigmask(libc::SIG_BLOCK, &mask, std::ptr::null_mut()) },
+                0
+            );
         }
         let limit = libc::rlimit {
             rlim_cur: 5804,
@@ -97,7 +111,7 @@ fn native_kernel_cpu_limit_demotes_only_owned_audio_threads() {
         assert!(matches!(initial_policy, libc::SCHED_FIFO | libc::SCHED_RR));
         let cpu_before = crate::engine::audio_metrics::thread_cpu_ns().unwrap();
         let deadline = Instant::now() + Duration::from_millis(500);
-        while !guard.exceeded() {
+        while !guard.as_mut().is_some_and(|guard| guard.exceeded()) {
             assert!(Instant::now() < deadline, "kernel budget was not enforced");
             std::hint::black_box(std::hint::black_box(1.2345_f64).sin());
         }
@@ -105,16 +119,21 @@ fn native_kernel_cpu_limit_demotes_only_owned_audio_threads() {
         let recovered_policy = unsafe { libc::sched_getscheduler(0) } & !libc::SCHED_RESET_ON_FORK;
         assert_eq!(recovered_policy, libc::SCHED_OTHER);
         assert!(cpu_ns >= 5_804_000);
+        let signal_tid = SIGNAL_TID.load(Ordering::Acquire);
+        assert_ne!(signal_tid, 0);
+        if scenario == "budget-blocked" {
+            assert_ne!(signal_tid as i64, tid);
+        }
         let directory =
             std::path::PathBuf::from(std::env::var_os("OMATAINER_CPU_BUDGET_DIR").unwrap());
         assert!(directory.starts_with("/home"));
         std::fs::create_dir_all(&directory).unwrap();
         std::fs::write(
-            directory.join("kernel-budget.json"),
+            directory.join(format!("kernel-{scenario}.json")),
             serde_json::to_vec_pretty(&serde_json::json!({
-                "pid":std::process::id(),"tid":tid,"soft_limit_us":5804,"hard_limit_us":200000,
+                "pid":std::process::id(),"tid":tid,"signal_tid":signal_tid,"signal_blocked_on_owned_thread":scenario=="budget-blocked","soft_limit_us":5804,"hard_limit_us":200000,
                 "cpu_ns":cpu_ns,"initial_policy":initial_policy,"recovered_policy":recovered_policy,
-                "guard_exceeded":guard.exceeded(),"physical_devices_opened":false,
+                "guard_exceeded":guard.as_mut().unwrap().exceeded(),"physical_devices_opened":false,
             }))
             .unwrap(),
         )
@@ -127,7 +146,7 @@ fn native_kernel_cpu_limit_demotes_only_owned_audio_threads() {
     assert!(directory.starts_with("/home"));
     std::fs::create_dir_all(&directory).unwrap();
     let selector = "engine::audio::cpu_budget::tests::native_kernel_cpu_limit_demotes_only_owned_audio_threads";
-    for scenario in ["budget", "previous", "default"] {
+    for scenario in ["budget", "budget-blocked", "previous", "default", "foreign"] {
         let log = std::fs::File::create(directory.join(format!("{scenario}.log"))).unwrap();
         let status = Command::new("timeout")
             .args(["--signal=TERM", "--kill-after=2", "15"])
@@ -144,7 +163,7 @@ fn native_kernel_cpu_limit_demotes_only_owned_audio_threads() {
             .stderr(log)
             .status()
             .unwrap();
-        if scenario == "default" {
+        if matches!(scenario, "default" | "foreign") {
             assert_eq!(status.signal(), Some(libc::SIGXCPU));
         } else {
             assert!(status.success(), "{scenario}: {status}");

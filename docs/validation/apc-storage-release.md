@@ -1,0 +1,5 @@
+# APC40 mkII restored-session check
+
+The installed storage release passed Michael's physical SENDS → USER → PAN → SCENE LAUNCH 1 → STOP ALL CLIPS → MASTER → DEVICE ON/OFF → Track 1 REC ARM twice sequence. Michael reported “Everything worked.” The ALSA capture contains all nine presses and nine releases in order; the app received, queued and dispatched all 18 messages, with zero drops, resets or disconnects. Software sent 57 additional LED messages, with four connected outputs and zero feedback failures.
+
+The [receipt](apc-storage-release-receipt.json) binds source `399ed43d3d8792cb0e4e65a0a0148270d7e0c53d`, the installed executable, application and capture invocations, raw events, and before/after status hashes. The current Set was preserved separately before subsequent audio tests. This check covers the named controls and user-observed lights/app behavior. It does not establish USB endpoint-IN capture, the rest of the controller, headphone routing or extended live performance. The downloaded profile catalog remains marked pending for its full physical qualification.

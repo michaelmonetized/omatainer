@@ -1,0 +1,234 @@
+{
+  "schema": 1,
+  "recordedAt": "2026-10-08T10:22:58.057Z",
+  "status": "qualified_sequence",
+  "sourceRevision": "399ed43d3d8792cb0e4e65a0a0148270d7e0c53d",
+  "installedExecutableSha256": "f54fe26efd2b4e67664cf9a2bbfe5615b1b9e11a767eeb0244fceac5efc802d1",
+  "applicationPid": 3123229,
+  "applicationInvocation": "d64d2b5637214bfba82212c545773cfa",
+  "captureInvocation": "60fb141aa5ba4369a687d658376d25e5",
+  "port": "APC40 mkII MIDI 1 28:0",
+  "controls": [
+    {
+      "control": "SENDS",
+      "channel": 0,
+      "note": 88
+    },
+    {
+      "control": "USER",
+      "channel": 0,
+      "note": 89
+    },
+    {
+      "control": "PAN",
+      "channel": 0,
+      "note": 87
+    },
+    {
+      "control": "SCENE LAUNCH 1",
+      "channel": 0,
+      "note": 82
+    },
+    {
+      "control": "STOP ALL CLIPS",
+      "channel": 0,
+      "note": 81
+    },
+    {
+      "control": "MASTER",
+      "channel": 0,
+      "note": 80
+    },
+    {
+      "control": "DEVICE ON/OFF",
+      "channel": 0,
+      "note": 62
+    },
+    {
+      "control": "Track 1 REC ARM",
+      "channel": 0,
+      "note": 48
+    },
+    {
+      "control": "Track 1 REC ARM",
+      "channel": 0,
+      "note": 48
+    }
+  ],
+  "events": [
+    {
+      "event": "on",
+      "channel": 0,
+      "note": 88,
+      "velocity": 127
+    },
+    {
+      "event": "off",
+      "channel": 0,
+      "note": 88,
+      "velocity": 127
+    },
+    {
+      "event": "on",
+      "channel": 0,
+      "note": 89,
+      "velocity": 127
+    },
+    {
+      "event": "off",
+      "channel": 0,
+      "note": 89,
+      "velocity": 127
+    },
+    {
+      "event": "on",
+      "channel": 0,
+      "note": 87,
+      "velocity": 127
+    },
+    {
+      "event": "off",
+      "channel": 0,
+      "note": 87,
+      "velocity": 127
+    },
+    {
+      "event": "on",
+      "channel": 0,
+      "note": 82,
+      "velocity": 127
+    },
+    {
+      "event": "off",
+      "channel": 0,
+      "note": 82,
+      "velocity": 0
+    },
+    {
+      "event": "on",
+      "channel": 0,
+      "note": 81,
+      "velocity": 127
+    },
+    {
+      "event": "off",
+      "channel": 0,
+      "note": 81,
+      "velocity": 127
+    },
+    {
+      "event": "on",
+      "channel": 0,
+      "note": 80,
+      "velocity": 127
+    },
+    {
+      "event": "off",
+      "channel": 0,
+      "note": 80,
+      "velocity": 127
+    },
+    {
+      "event": "on",
+      "channel": 0,
+      "note": 62,
+      "velocity": 127
+    },
+    {
+      "event": "off",
+      "channel": 0,
+      "note": 62,
+      "velocity": 127
+    },
+    {
+      "event": "on",
+      "channel": 0,
+      "note": 48,
+      "velocity": 127
+    },
+    {
+      "event": "off",
+      "channel": 0,
+      "note": 48,
+      "velocity": 127
+    },
+    {
+      "event": "on",
+      "channel": 0,
+      "note": 48,
+      "velocity": 127
+    },
+    {
+      "event": "off",
+      "channel": 0,
+      "note": 48,
+      "velocity": 127
+    }
+  ],
+  "inputDelta": {
+    "received": 18,
+    "queued": 18,
+    "dispatched": 18,
+    "dropped": 0,
+    "resets": 0,
+    "disconnected": 0
+  },
+  "feedbackDelta": 57,
+  "feedback": {
+    "connected": 4,
+    "failed": 0,
+    "sent": 588
+  },
+  "profiles": {
+    "busy": false,
+    "cached_generation": 1,
+    "control_check": null,
+    "initialization_sent": 2,
+    "input_open": 4,
+    "output_failures": 0,
+    "output_open": 4,
+    "physical_inputs": 7,
+    "physical_qualification": "pending",
+    "previous_generation": 0,
+    "profiled_inputs": 4,
+    "ready": true,
+    "schema": 1
+  },
+  "physicalObservation": "Michael: Everything worked.",
+  "sourceFiles": [
+    {
+      "name": "apc-storage-release-alsa.txt",
+      "sha256": "7e2b41ba0e9a2ea3c720f8f4dbbf7c4c67a2d4be97465f199cbaa9c359aaa3c3"
+    },
+    {
+      "name": "apc-storage-release-before.json",
+      "sha256": "cef7520bc8ece27dacd586dc1843422a934c40143890374e51c53cc2626b970d"
+    },
+    {
+      "name": "apc-storage-release-after.json",
+      "sha256": "6cc051ca3b20ec5da72e8adfb9487fa224da14f28d31400da8f770fe4f4b2548"
+    }
+  ],
+  "audioAtAfter": {
+    "backend_errors": 0,
+    "callbacks": 95188,
+    "deadline_overruns": 0,
+    "device_lost": 0,
+    "dropped_buffers": null,
+    "last_callback": {
+      "budget_ns": 5804988,
+      "channels": 4,
+      "elapsed_ns": 252961,
+      "frames": 256,
+      "output_latency_ns": 5623583,
+      "overrun_ns": 0,
+      "render_cpu_ns": 239042,
+      "sample_rate": 44100
+    },
+    "max_elapsed_ns": 4369059,
+    "max_overrun_ns": 0,
+    "realtime_denied": 0,
+    "xruns": 0
+  },
+  "scope": "Exact nine physical presses and releases, ALSA source capture, matching native receive/dispatch counts and user-observed lights/app controls. No USB endpoint-IN capture, headphone route, extended soak or all controller controls claim."
+}

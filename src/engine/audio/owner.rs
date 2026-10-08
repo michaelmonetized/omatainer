@@ -216,6 +216,7 @@ struct Active<S> {
     fault: Arc<AtomicBool>,
     plan: config::Plan,
     callback_floor: u64,
+    cpu_budget_floor: u64,
     identity: Option<String>,
     telemetry: Arc<crate::engine::audio_metrics::Telemetry>,
     watchdog: recovery::Watchdog,
@@ -291,6 +292,7 @@ impl<B: Backend> Owner<B> {
         let enabled = Arc::new(AtomicBool::new(false));
         let fault = Arc::new(AtomicBool::new(false));
         let callback_floor = graph.telemetry.read().callbacks;
+        let cpu_budget_floor = graph.telemetry.read().cpu_budget_exhaustions;
         let telemetry = graph.telemetry.clone();
         graph.cmd_rx.set_audio_offline(false);
         graph.monitor.output(&plan);
@@ -347,6 +349,7 @@ impl<B: Backend> Owner<B> {
             fault,
             plan,
             callback_floor,
+            cpu_budget_floor,
             identity,
             telemetry,
             watchdog,
@@ -564,7 +567,7 @@ impl<B: Backend> Owner<B> {
             if self.active.as_mut().is_some_and(|active| active.fault.load(Ordering::Acquire)
                 || recovery::boot_time().is_some_and(|now| active.watchdog.lost(now, active.telemetry.read().callbacks)))
             {
-                let cpu_exhausted = self.active.as_ref().is_some_and(|active| active.telemetry.read().cpu_budget_exhaustions > 0);
+                let cpu_exhausted = self.active.as_ref().is_some_and(|active| active.telemetry.read().cpu_budget_exhaustions > active.cpu_budget_floor);
                 self.recovery = self.active.as_ref().map(|active| recovery::Target {
                     plan: active.plan.clone(), identity: active.identity.clone(),
                 });

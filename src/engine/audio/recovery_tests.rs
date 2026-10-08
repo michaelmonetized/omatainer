@@ -111,6 +111,13 @@ fn retained_recording(cpu_exhausted: bool) {
     wait(|| engine.snapshot().playing);
     let after = engine.project.capture(&AtomicBool::new(false)).unwrap();
     assert_eq!(after.state.tracks[4].clips[3].notes, notes);
+    if cpu_exhausted {
+        fault(&audio, &controls);
+        assert!(!audio.handle.status().message.contains("exceeded its real-time CPU limit"));
+        let retained = engine.project.capture(&AtomicBool::new(false)).unwrap();
+        assert_eq!(retained.state.tracks[4].clips[3].notes, notes);
+        assert_eq!(engine.cmd.audio_metrics().cpu_budget_exhaustions, 1);
+    }
 }
 
 #[test]
