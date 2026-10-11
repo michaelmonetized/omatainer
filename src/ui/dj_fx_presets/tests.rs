@@ -15,6 +15,12 @@ impl Gui {
         self.fixture.rt.publish_for_test(); self.fixture.app.snap = self.fixture.app.engine.snapshot();
     }
     fn click(&mut self, label: &str) {
+        for _ in 0..2 {
+            if let Some(events) = test_support::workspace_menu_events(&self.nodes, label) {
+                self.frame(events);
+                self.frame(vec![]);
+            } else { break; }
+        }
         let target = self.nodes.iter().find(|(_, node)| node.label().is_some_and(|actual| actual == label || actual.ends_with(&format!(": {label}")))).map(|(id, _)| *id).unwrap_or_else(|| panic!("Missing {label}: {:?}", self.nodes.iter().filter_map(|(_, node)| node.label()).collect::<Vec<_>>()));
         self.frame(vec![egui::Event::AccessKitActionRequest(ActionRequest { action: Action::Click, target, data: None })]); self.frame(vec![]);
     }

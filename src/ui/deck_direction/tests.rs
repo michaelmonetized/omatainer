@@ -69,6 +69,12 @@ impl Gui {
             })
     }
     fn action(&mut self, label: &str, action: Action, data: Option<ActionData>) {
+        for _ in 0..2 {
+            if let Some(events) = test_support::workspace_menu_events(&self.nodes, label) {
+                self.frame(events);
+                self.frame(vec![]);
+            } else { break; }
+        }
         self.frame(vec![]);
         let target = self.target(label);
         self.frame(vec![egui::Event::AccessKitActionRequest(ActionRequest {

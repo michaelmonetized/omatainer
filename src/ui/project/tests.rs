@@ -385,7 +385,13 @@ impl Gui {
     }
     fn click_label(&mut self, label: &str) -> egui::FullOutput {
         self.frame(vec![]);
-        let out = self.frame(vec![]);
+        let mut out = self.frame(vec![]);
+        if let Some(menu) = test_support::workspace_menu(label) {
+            if !out.shapes.iter().any(|shape| matches!(&shape.shape, egui::epaint::Shape::Text(text) if text.galley.text() == label)) {
+                self.click_label(menu);
+                out = self.frame(vec![]);
+            }
+        }
         self.click(test_support::label_center(&out, label))
     }
     fn menu(&mut self, label: &str) {
@@ -697,7 +703,7 @@ fn malformed_unsupported_and_missing_projects_leave_engine_and_view_untouched() 
             .starts_with("Project operation failed:"));
         gui.frame(vec![]);
         let output = gui.frame(vec![]);
-        assert!(output.shapes.iter().any(|shape| matches!(&shape.shape, egui::epaint::Shape::Text(text) if text.galley.text().starts_with("Project operation failed:"))));
+        assert!(output.shapes.iter().any(|shape| matches!(&shape.shape, egui::epaint::Shape::Text(text) if text.galley.text() == "Project needs attention")));
     }
 }
 

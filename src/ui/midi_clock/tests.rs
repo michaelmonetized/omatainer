@@ -48,6 +48,12 @@ impl Editor {
         self.nodes = output.platform_output.accesskit_update.unwrap().nodes;
     }
     fn action(&mut self, label: &str, action: Action, data: Option<ActionData>) {
+        for _ in 0..2 {
+            if let Some(events) = test_support::workspace_menu_events(&self.nodes, label) {
+                self.frame(events);
+                self.frame(vec![]);
+            } else { break; }
+        }
         let target = self
             .nodes
             .iter()
@@ -70,6 +76,12 @@ impl Editor {
         self.frame(vec![]);
     }
     fn click(&mut self, label: &str) {
+        for _ in 0..2 {
+            if let Some(events) = test_support::workspace_menu_events(&self.nodes, label) {
+                self.frame(events);
+                self.frame(vec![]);
+            } else { break; }
+        }
         self.action(label, Action::Click, None);
     }
 }

@@ -943,22 +943,38 @@ impl App {
         }
 
         self.support_ui(ctx);
-        // Collapsing four tall rows preserves the performance viewport when text is large.
-        let compact = ctx.screen_rect().height() < self.theme.text_size(12.0) * 16.0 + 160.0
-            || ctx.screen_rect().width() < self.theme.text_size(12.0) * 26.0;
-        if compact {
-            egui::TopBottomPanel::top("compact-controls").show(ctx, |ui| {
-                ui.horizontal_wrapped(|ui| {
-                    self.performance_controls(ctx, Some(ui));
-                    self.project_controls(ctx, Some(ui));
-                    self.setup_controls(ctx, Some(ui));
-                    self.master_controls(ctx, Some(ui));
-                });
+        let compact = ctx.screen_rect().width() < 600.0 || ctx.screen_rect().height() < 320.0;
+        egui::TopBottomPanel::top("compact-controls").show(ctx, |ui| {
+            ui.horizontal_wrapped(|ui| {
+                self.project_controls(ctx, Some(ui));
+                self.undo_menu(ui);
+                self.setup_controls(ctx, Some(ui));
+                self.master_controls(ctx, Some(ui));
+                self.performance_controls(ctx, Some(ui));
+                accessibility::action_button(ui);
+                self.project_progress(ui);
+                if !compact {
+                ui.separator();
+                ui.weak(self.recovery_project_path().as_ref()
+                    .and_then(|path| path.file_name())
+                    .map(|name| name.to_string_lossy().into_owned())
+                    .unwrap_or_else(|| "Untitled".into()));
+                if self.project_dirty() { ui.weak(tr!("· unsaved")); }
+                }
+                let recovery = self.recovery_toolbar_text();
+                if matches!(recovery.as_str(), "Recovery warning" | "Recovery unavailable")
+                    && ui.button(crate::localization::text_dynamic(&recovery)).help(ui, HelpControl::RecoveryOpen).clicked() {
+                    self.recovery.open = true;
+                }
+                if !self.audio_settings.open {
+                    if let Some((label, message)) = self.audio_settings.notice() {
+                        if ui.button(crate::localization::text_dynamic(label)).help_detail(ui, HelpControl::AudioNotice, &message).clicked() {
+                            self.audio_settings.open = true;
+                        }
+                    }
+                }
             });
-        } else {
-            self.performance_ui(ctx);
-            self.project_toolbar(ctx);
-        }
+        });
         self.library_close_ui(ctx);
         self.library_store_ui(ctx);
         self.library_backup_ui(ctx);
@@ -997,7 +1013,6 @@ impl App {
         self.smart_crates_ui(ctx);
         self.session_history_ui(ctx);
         self.load_status(ctx);
-        if !compact { self.audio_status(ctx); self.master_fx_status(ctx); }
         self.workspace_ui(ctx);
         self.background_jobs_ui(ctx);
 
@@ -1016,7 +1031,7 @@ impl App {
         self.help_panel(ctx);
         if let Some(profiles)=self.engine.midi.profiles(){profiles.finish_when_unsafe(&self.snap,self.midi_open);}
         if self.midi_open {
-            egui::Window::new(tr!("midi")).id(egui::Id::new("midi")).vscroll(true).max_height(self.theme.window_height(ctx)).show(ctx, |ui| {
+            egui::Window::new(tr!("MIDI")).id(egui::Id::new("midi")).vscroll(true).max_height(self.theme.window_height(ctx)).show(ctx, |ui| {
                 let busy = self.engine.midi.connections_busy();
                 if ui.add_enabled(!busy && self.engine.midi.connections_available(), egui::Button::new(tr!("Retry / rescan MIDI"))).help(ui, HelpControl::MidiRetry).clicked() {
                     match self.engine.midi.retry_connections() {
@@ -1033,11 +1048,12 @@ impl App {
                 } else if !self.engine.midi.connections_available() {
                     ui.label(tr!("MIDI connection worker unavailable; restart to retry."));
                 }
-                ui.label(tr!("Keyboard and mouse remain available. Retry checks current ports."));
+                ui.collapsing(tr!("Connection details"), |ui| {
                 let input = self.engine.midi.input_stats();
                 ui.label({ let __omatainer_args = (&(input.received),&(input.queued),&(input.dispatched),); crate::localization::format("Input: {} received · {} queued · {} handled", &[format!("{}", __omatainer_args.0), format!("{}", __omatainer_args.1), format!("{}", __omatainer_args.2)]) });
                 ui.label({ let __omatainer_args = (&(input.coalesced),&(input.dropped),&(input.resets),); crate::localization::format("Overload: {} coalesced · {} discarded · {} source resets", &[format!("{}", __omatainer_args.0), format!("{}", __omatainer_args.1), format!("{}", __omatainer_args.2)]) });
                 ui.label({ let __omatainer_args = (&(input.oversized),&(input.disconnected),); crate::localization::format("{} oversized · {} disconnected", &[format!("{}", __omatainer_args.0), format!("{}", __omatainer_args.1)]) });
+                });
                 for d in &self.snap.midi {
                     ui.label(d);
                 }
@@ -1992,11 +2008,11 @@ fn fmt_len(seconds: Option<f64>) -> String {
 fn toolbar(ctx: &egui::Context, parent: Option<&mut Ui>, id: &'static str, title: &str, draw: impl FnOnce(&mut Ui)) {
     if let Some(ui) = parent {
         let menu = ui.menu_button(title, |ui| {
-            egui::ScrollArea::both().id_salt(id).auto_shrink([false,true])
-                .max_width((ctx.screen_rect().width()-32.0).max(80.0))
+            egui::ScrollArea::both().id_salt(id).auto_shrink([true,true])
+                .max_width((ctx.screen_rect().width()-32.0).clamp(80.0, if id == "master-fx-status" { 680.0 } else { 380.0 }))
                 .max_height((ctx.screen_rect().height()*0.7).max(80.0)).show(ui, draw);
         });
-        help::annotate(ui, &menu.response, HelpControl::DisplayLayout);
+        help::annotate(ui, &menu.response, if id == "project-toolbar" { HelpControl::ProjectMenu } else { HelpControl::DisplayLayout });
     } else { egui::TopBottomPanel::top(id).resizable(false).show(ctx, draw); }
 }
 /// Compute coherent deck geometry for readable controls.

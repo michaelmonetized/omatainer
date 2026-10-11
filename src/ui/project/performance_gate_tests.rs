@@ -97,6 +97,12 @@ impl Gui {
         })
     }
     fn action(&mut self, label: &str, action: Action, data: Option<ActionData>) {
+        for _ in 0..2 {
+            if let Some(events) = test_support::workspace_menu_events(&self.nodes, label) {
+                self.frame(events);
+                self.frame(vec![]);
+            } else { break; }
+        }
         let event = self.event(label, action, data);
         self.frame(vec![event]);
         self.frame(vec![]);

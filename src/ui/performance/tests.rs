@@ -67,6 +67,11 @@ impl Gui {
         self.frame(vec![]);
     }
     fn click_once(&mut self, label: &str) {
+        if !self.nodes.iter().any(|(_, node)| node.label() == Some(label) && node.supports_action(Action::Click)) {
+            let status = self.fixture.app.engine.cmd.performance().status();
+            let menu = if status.output_muted { "Output muted" } else if status.recovery { "Controls paused" } else { "Performance" };
+            if label != menu { self.click_once(menu); self.frame(vec![]); }
+        }
         let target = self
             .nodes
             .iter()
@@ -104,43 +109,43 @@ fn localized_safety_decisions_keep_cancel_acknowledgment_and_latched_mute() {
         gui.fixture.app.settings.applied.profiles.get_mut(&active).unwrap().appearance.locale = locale;
         gui.frame(vec![]);
         let translated = |key| { let _locale = localization::scope(locale); localization::text(key) };
-        gui.click(translated("Enable performance mode"));
-        gui.click(translated("Leave performance mode…"));
-        assert_ne!(translated("Leave protection deliberately. Playing deck replacement, destructive edits and optional background work will become available. Emergency mute, if present, stays latched."), "Leave protection deliberately. Playing deck replacement, destructive edits and optional background work will become available. Emergency mute, if present, stays latched.");
-        assert!(gui.has(translated("Leave protection deliberately. Playing deck replacement, destructive edits and optional background work will become available. Emergency mute, if present, stays latched.")));
-        gui.click(translated("Keep current safety state"));
+        gui.click(translated("Turn on performance mode"));
+        gui.click(translated("Turn off performance mode…"));
+        assert_ne!(translated("Turn off performance mode? Playing decks and device settings can be changed again. Muted output stays muted."), "Turn off performance mode? Playing decks and device settings can be changed again. Muted output stays muted.");
+        assert!(gui.has(translated("Turn off performance mode? Playing decks and device settings can be changed again. Muted output stays muted.")));
+        gui.click(translated("Cancel"));
         assert!(gui.fixture.app.engine.cmd.performance().status().protected);
-        gui.click(translated("Leave performance mode…"));
-        gui.click(translated("Leave protection"));
+        gui.click(translated("Turn off performance mode…"));
+        gui.click(translated("Turn off performance mode"));
         assert!(!gui.fixture.app.engine.cmd.performance().status().protected);
-        gui.click(translated("Safe stop…"));
-        assert_ne!(translated("Stop session and both decks, finalize recorded holds, disarm compose and release all input-owned synth gates. Finite hits and effect tails continue naturally. Recovery needs your explicit input-release acknowledgment."), "Stop session and both decks, finalize recorded holds, disarm compose and release all input-owned synth gates. Finite hits and effect tails continue naturally. Recovery needs your explicit input-release acknowledgment.");
-        assert!(gui.has(translated("Stop session and both decks, finalize recorded holds, disarm compose and release all input-owned synth gates. Finite hits and effect tails continue naturally. Recovery needs your explicit input-release acknowledgment.")));
-        gui.click(translated("Stop all transports and release notes"));
+        gui.click(translated("Stop everything…"));
+        assert_ne!(translated("Stop both decks and the session, finish recording and release held notes. Effect tails may continue. Release your controls before using them again."), "Stop both decks and the session, finish recording and release held notes. Effect tails may continue. Release your controls before using them again.");
+        assert!(gui.has(translated("Stop both decks and the session, finish recording and release held notes. Effect tails may continue. Release your controls before using them again.")));
+        gui.click(translated("Stop everything"));
         assert!(gui.fixture.app.engine.cmd.performance().status().recovery);
         gui.frame(vec![]);
-        gui.click(translated("Recover inputs…"));
-        assert_ne!(translated("Release physical keys, pads and platter touch controls first. Your confirmation is a user report, not a hardware check. This only reopens controls after queued pre-stop work drains; playback stays stopped and emergency output mute stays latched."), "Release physical keys, pads and platter touch controls first. Your confirmation is a user report, not a hardware check. This only reopens controls after queued pre-stop work drains; playback stays stopped and emergency output mute stays latched.");
-        assert!(gui.has(translated("Release physical keys, pads and platter touch controls first. Your confirmation is a user report, not a hardware check. This only reopens controls after queued pre-stop work drains; playback stays stopped and emergency output mute stays latched.")));
-        let label = translated("Inputs released — keep playback stopped");
+        gui.click(translated("Resume controls…"));
+        assert_ne!(translated("Release all keys, pads and platter touches, then resume controls. Playback stays stopped. Muted output stays muted."), "Release all keys, pads and platter touches, then resume controls. Playback stays stopped. Muted output stays muted.");
+        assert!(gui.has(translated("Release all keys, pads and platter touches, then resume controls. Playback stays stopped. Muted output stays muted.")));
+        let label = translated("Resume controls");
         assert!(gui.nodes.iter().find(|(_,node)| node.label()==Some(label)).unwrap().1.is_disabled());
-        gui.click(translated("I have released the physical inputs"));
+        gui.click(translated("All controls are released"));
         gui.click(label);
         assert!(!gui.fixture.app.engine.cmd.performance().status().recovery);
         assert!(!gui.fixture.rt.playing);
-        gui.click(translated("Emergency silence…"));
-        assert_ne!(translated("Finalize captured holds, stop session and both decks, release all notes and ramp output to silence over 2 ms. Output stays muted until a deliberate stopped DSP reset. This does not claim the device or physical controls are healthy."), "Finalize captured holds, stop session and both decks, release all notes and ramp output to silence over 2 ms. Output stays muted until a deliberate stopped DSP reset. This does not claim the device or physical controls are healthy.");
-        assert!(gui.has(translated("Finalize captured holds, stop session and both decks, release all notes and ramp output to silence over 2 ms. Output stays muted until a deliberate stopped DSP reset. This does not claim the device or physical controls are healthy.")));
-        gui.click(translated("Keep current safety state"));
+        gui.click(translated("Mute output…"));
+        assert_ne!(translated("Stop playback and recording, release held notes and mute output. Reset audio when you are ready to unmute."), "Stop playback and recording, release held notes and mute output. Reset audio when you are ready to unmute.");
+        assert!(gui.has(translated("Stop playback and recording, release held notes and mute output. Reset audio when you are ready to unmute.")));
+        gui.click(translated("Cancel"));
         assert!(!gui.fixture.app.engine.cmd.performance().status().output_muted);
-        gui.click(translated("Emergency silence…"));
-        gui.click(translated("Confirm emergency silence"));
+        gui.click(translated("Mute output…"));
+        gui.click(translated("Mute output"));
         gui.frame(vec![]);
         assert!(gui.fixture.app.engine.cmd.performance().status().output_muted);
-        gui.click(translated("Recover inputs…"));
-        let label = translated("Inputs released — keep output muted");
+        gui.click(translated("Resume controls…"));
+        let label = translated("Resume controls");
         assert!(gui.nodes.iter().find(|(_,node)| node.label()==Some(label)).unwrap().1.is_disabled());
-        gui.click(translated("I have released the physical inputs"));
+        gui.click(translated("All controls are released"));
         gui.click(label);
         let status = gui.fixture.app.engine.cmd.performance().status();
         assert!(!status.recovery && status.output_muted);
@@ -151,32 +156,32 @@ fn localized_safety_decisions_keep_cancel_acknowledgment_and_latched_mute() {
 #[test]
 fn actual_safety_controls_require_deliberate_decisions_and_keep_emergency_mute() {
     let mut gui = Gui::new();
-    gui.click("Enable performance mode");
+    gui.click("Turn on performance mode");
     assert!(gui.fixture.app.engine.cmd.performance().status().protected);
-    gui.click("Emergency silence…");
+    gui.click("Mute output…");
     assert!(!gui.fixture.app.engine.cmd.performance().status().recovery);
-    gui.click("Keep current safety state");
+    gui.click("Cancel");
     assert!(!gui.fixture.app.engine.cmd.performance().status().recovery);
-    gui.click("Emergency silence…");
-    gui.click("Confirm emergency silence");
+    gui.click("Mute output…");
+    gui.click("Mute output");
     let status = gui.fixture.app.engine.cmd.performance().status();
     assert!(status.recovery && status.stopped && status.output_muted);
     gui.frame(vec![]); // let egui resize the newly expanded safety panel
-    assert!(gui.has("EMERGENCY OUTPUT MUTE"));
-    gui.click("Recover inputs…");
+    assert!(gui.has("Output muted"));
+    gui.click("Resume controls…");
     let recovery = gui
         .nodes
         .iter()
-        .find(|(_, node)| node.label() == Some("Inputs released — keep output muted"))
+        .find(|(_, node)| node.label() == Some("Resume controls"))
         .unwrap();
     assert!(recovery.1.is_disabled());
-    gui.click("I have released the physical inputs");
-    gui.click("Inputs released — keep output muted");
+    gui.click("All controls are released");
+    gui.click("Resume controls");
     let status = gui.fixture.app.engine.cmd.performance().status();
     assert!(!status.recovery && status.output_muted && status.protected);
-    gui.click("Leave performance mode…");
+    gui.click("Turn off performance mode…");
     assert!(gui.fixture.app.engine.cmd.performance().status().protected);
-    gui.click("Leave protection");
+    gui.click("Turn off performance mode");
     assert!(!gui.fixture.app.engine.cmd.performance().status().protected);
     assert!(
         gui.fixture
@@ -205,7 +210,7 @@ fn midi_load_and_late_decode_cannot_replace_playing_media_but_stopped_deck_load_
         .engine
         .send(Command::DeckPlay { deck: 0 })
         .unwrap();
-    gui.click("Enable performance mode");
+    gui.click("Turn on performance mode");
     gui.fixture.app.engine.midi.receive_for_test(
         &gui.fixture.app.engine.cmd,
         41,
@@ -260,7 +265,7 @@ fn midi_load_and_late_decode_cannot_replace_playing_media_but_stopped_deck_load_
 fn destructive_shortcuts_and_project_open_are_guarded_while_recording_and_save_capture_remain_available(
 ) {
     let mut gui = Gui::new();
-    gui.click("Enable performance mode");
+    gui.click("Turn on performance mode");
     let before = gui.fixture.app.engine.undo.checkpoint();
     let modifiers = egui::Modifiers {
         ctrl: true,
@@ -318,7 +323,7 @@ fn destructive_shortcuts_and_project_open_are_guarded_while_recording_and_save_c
 #[test]
 fn renderer_rejected_load_retires_its_playback_watch_without_adding_history() {
     let mut gui = Gui::new();
-    gui.click("Enable performance mode");
+    gui.click("Turn on performance mode");
     let watches = gui.fixture.app.playback_watches.len();
     let original = gui.fixture.rt.decks[0].audio.clone().unwrap();
     gui.fixture
@@ -438,4 +443,13 @@ fn studio_deck_lock_reviews_keyboard_and_drop_and_rejects_midi_before_decoding()
     assert!(gui.fixture.rt.decks[0].playing);
     assert!(gui.fixture.rt.decks[0].pos > position);
     assert!(Arc::ptr_eq(gui.fixture.rt.decks[0].audio.as_ref().unwrap(), &original));
+}
+
+#[test]
+fn resting_workspace_keeps_recovery_actions_in_menus() {
+    let gui = Gui::new();
+    for label in ["Performance", "Tools", "FX", "Project"] { assert!(gui.has(label), "missing {label}"); }
+    for label in ["Stop everything…", "Mute output…", "Resume controls…", "Journal current edits now", "Render CPU:"] {
+        assert!(!gui.has(label), "routine workspace exposes {label}");
+    }
 }

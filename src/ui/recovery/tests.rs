@@ -103,6 +103,12 @@ impl Gui {
             })
     }
     fn action(&mut self, label: &str, action: Action) {
+        for _ in 0..2 {
+            if let Some(events) = test_support::workspace_menu_events(&self.nodes, label) {
+                self.frame(events);
+                self.frame(vec![]);
+            } else { break; }
+        }
         let target = self.node(label);
         self.frame(vec![egui::Event::AccessKitActionRequest(ActionRequest {
             target,
@@ -112,6 +118,12 @@ impl Gui {
         self.frame(vec![]);
     }
     fn click(&mut self, label: &str) {
+        for _ in 0..2 {
+            if let Some(events) = test_support::workspace_menu_events(&self.nodes, label) {
+                self.frame(events);
+                self.frame(vec![]);
+            } else { break; }
+        }
         self.action(label, Action::Click);
     }
     fn text(&mut self, label: &str, value: &str) {

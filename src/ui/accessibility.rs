@@ -25,14 +25,10 @@ pub(super) fn action_button(ui: &mut Ui) {
     let viewport = ui.ctx().viewport_id();
     let target = ui.data(|data| data.get_temp::<ActionTarget>(viewport_key(viewport, ACTION_TARGET)));
     let Some(target) = target else {
-        ui.add_enabled(false, egui::Button::new(tr!("Control actions: focus a control"))).help(ui, HelpControl::Actions);
+        ui.add_enabled(false, egui::Button::new("⋯")).help(ui, HelpControl::Actions);
         return;
     };
-    let mut visible = target.label.chars().take(48).collect::<String>();
-    if visible.len() < target.label.len() {
-        visible.push('…');
-    }
-    let menu = ui.menu_button(crate::localization::format("Actions for {visible}", &[format!("{}", visible)]), |ui| {
+    let menu = ui.menu_button("⋯", |ui| {
         keyboard::block_for_dialog(ui.ctx());
         for (index, label) in target.actions.iter().enumerate() {
             if ui.button(label).help(ui, HelpControl::Actions).clicked() {

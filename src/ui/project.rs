@@ -1006,6 +1006,32 @@ impl App {
         (self.project.current_path.clone(), self.project_dirty(), self.project.busy() || self.project.committing())
     }
 
+    /// Show active project work where it can be cancelled immediately.
+    /// Takes the menu-bar UI; returns no value and retains the captured operation identity.
+    pub(super) fn project_progress(&mut self, ui: &mut Ui) {
+        if self.project.awaiting_snapshot.is_some() {
+            ui.label(tr!("Waiting for project display…"));
+        }
+        if let Some(active) = &self.project.active {
+            ui.label(match active.operation {
+                Operation::Save { .. } => tr!("Saving…"),
+                Operation::Prepare {
+                    committing: true, ..
+                } => tr!("Applying project…"),
+                Operation::Prepare { .. } => tr!("Preparing project…"),
+                Operation::CloseCheck { .. } => tr!("Checking pending edits…"),
+            });
+            let cancel = ui.button(tr!("Cancel project operation"));
+            help::annotate(ui, &cancel, help::Control::ProjectCancel);
+            if cancel.clicked() || cancel.is_pointer_button_down_on() {
+                active.cancel.store(true, Ordering::Release);
+            }
+        }
+        if let Some(message) = self.project.message.as_ref().filter(|message| message.starts_with("Project operation failed:")) {
+            ui.colored_label(ui.visuals().warn_fg_color, tr!("Project needs attention")).on_hover_text(message);
+        }
+    }
+
     pub(super) fn project_toolbar(&mut self, ctx: &egui::Context) { self.project_controls(ctx, None); }
     pub(super) fn project_controls(&mut self, ctx: &egui::Context, parent: Option<&mut Ui>) {
         let dirty = self.project_dirty();
@@ -1023,15 +1049,61 @@ impl App {
         }
         let mut action = None;
         let mut save = None;
-        toolbar(ctx, parent, "project-toolbar", if dirty { "File *" } else { "File" }, |ui| {
-            ui.horizontal_wrapped(|ui| {
+        toolbar(ctx, parent, "project-toolbar", if ctx.screen_rect().width() < 600.0 || ctx.screen_rect().height() < 320.0 { "File" } else { tr!("Project") }, |ui| {
+            ui.vertical(|ui| {
                 ui.add_enabled_ui(
                     !self.project.busy()
                         && !self.project.committing()
                         && self.project.dialog.is_none(),
                     |ui| {
-                        self.undo_menu(ui);
-                        let menu = ui.menu_button(tr!("Project"), |ui| {
+                        let response = ui.button(tr!("New project"));
+                        help::annotate(ui, &response, help::Control::ProjectNew);
+                        if response.clicked() {
+                            action = Some(Action::New);
+                            ui.close();
+                        }
+                        let response = ui.button(tr!("Open project…"));
+                        help::annotate(ui, &response, help::Control::ProjectOpen);
+                        if response.clicked() {
+                            action = Some(Action::OpenDialog);
+                            ui.close();
+                        }
+                        let recent = ui.menu_button(tr!("Open recent"), |ui| {
+                            if let Some(warning) = &self.project.recent_warning {
+                                ui.label(warning);
+                            }
+                            if self.project.recent.is_empty() {
+                                ui.label(tr!("No recent projects"));
+                            }
+                            for path in &self.project.recent {
+                                let response = ui.button(path.display().to_string());
+                                help::annotate(ui, &response, help::Control::ProjectRecent);
+                                if response.clicked() {
+                                    action = Some(Action::Open(path.clone()));
+                                    ui.close();
+                                }
+                            }
+                        });
+                        help::annotate(ui, &recent.response, help::Control::ProjectRecent);
+                        ui.separator();
+                        for (label, kind) in [
+                            ("Save project", SaveKind::Save),
+                            ("Save project as…", SaveKind::As),
+                            ("Save project copy…", SaveKind::Copy),
+                        ] {
+                            let response = ui.button(label);
+                            help::annotate(ui, &response, match kind {
+                                SaveKind::Save => help::Control::ProjectSave,
+                                SaveKind::As => help::Control::ProjectSaveAs,
+                                SaveKind::Copy => help::Control::ProjectSaveCopy,
+                            });
+                            if response.clicked() {
+                                save = Some(kind);
+                                ui.close();
+                            }
+                        }
+                        ui.separator();
+                        ui.menu_button(tr!("Project tools"), |ui| {
                             if ui.button(tr!("Next live set…")).help(ui, HelpControl::LiveSetOpen).clicked() { self.project.live.open = true; ui.close(); }
                             if ui.button(tr!("Support and crash reports…")).help(ui,HelpControl::SupportOpen).clicked(){self.support.open=true;ui.close();}
                             let recovery = ui.button(tr!("Autosave and recovery…"));
@@ -1049,54 +1121,7 @@ impl App {
                             if ui.button("Import Ableton Live Set…").clicked() {self.ableton.open=true;ui.close();}
                             if ui.button("DJ FX…").help(ui,HelpControl::DjFx).clicked() { self.dj_fx_open=true;ui.close(); }
                             if ui.button(tr!("Tempo and meter…")).help(ui, HelpControl::TimingOpen).clicked() { self.open_timing(); ui.close(); }
-                            let response = ui.button(tr!("New project"));
-                            help::annotate(ui, &response, help::Control::ProjectNew);
-                            if response.clicked() {
-                                action = Some(Action::New);
-                                ui.close();
-                            }
-                            let response = ui.button(tr!("Open project…"));
-                            help::annotate(ui, &response, help::Control::ProjectOpen);
-                            if response.clicked() {
-                                action = Some(Action::OpenDialog);
-                                ui.close();
-                            }
-                            let recent = ui.menu_button(tr!("Open recent"), |ui| {
-                                if let Some(warning) = &self.project.recent_warning {
-                                    ui.label(warning);
-                                }
-                                if self.project.recent.is_empty() {
-                                    ui.label(tr!("No recent projects"));
-                                }
-                                for path in &self.project.recent {
-                                    let response = ui.button(path.display().to_string());
-                                    help::annotate(ui, &response, help::Control::ProjectRecent);
-                                    if response.clicked() {
-                                        action = Some(Action::Open(path.clone()));
-                                        ui.close();
-                                    }
-                                }
-                            });
-                            help::annotate(ui, &recent.response, help::Control::ProjectRecent);
-                            ui.separator();
-                            for (label, kind) in [
-                                ("Save project", SaveKind::Save),
-                                ("Save project as…", SaveKind::As),
-                                ("Save project copy…", SaveKind::Copy),
-                            ] {
-                                let response = ui.button(label);
-                                help::annotate(ui, &response, match kind {
-                                    SaveKind::Save => help::Control::ProjectSave,
-                                    SaveKind::As => help::Control::ProjectSaveAs,
-                                    SaveKind::Copy => help::Control::ProjectSaveCopy,
-                                });
-                                if response.clicked() {
-                                    save = Some(kind);
-                                    ui.close();
-                                }
-                            }
                         });
-                        help::annotate(ui, &menu.response, help::Control::ProjectMenu);
                     },
                 );
                 ui.label({ let __omatainer_args = (&(if dirty {
@@ -1111,26 +1136,7 @@ impl App {
                     ui.label({ let __omatainer_args = (&(self.snap.meter_numerator),&(self.snap.meter_denominator),&(self.snap.bar),&(self.snap.beat_in_bar + 1.0),); crate::localization::format("Musical timeline · {}/{} · bar {} beat {:.2}", &[format!("{}", __omatainer_args.0), format!("{}", __omatainer_args.1), format!("{}", __omatainer_args.2), format!("{:.2}", __omatainer_args.3)]) });
                 }
                 if self.snap.count_in_remaining > 0.0 { ui.label({ let __omatainer_args = (&(self.snap.count_in_remaining),); crate::localization::format("Count-in · {:.1} s", &[format!("{:.1}", __omatainer_args.0)]) }); }
-                let recovery_text = self.recovery_toolbar_text();
-                if ui.button(recovery_text).help(ui, HelpControl::RecoveryOpen).clicked() { self.recovery.open = true; }
-                if self.project.awaiting_snapshot.is_some() {
-                    ui.label(tr!("Waiting for project display…"));
-                }
-                if let Some(active) = &self.project.active {
-                    ui.label(match active.operation {
-                        Operation::Save { .. } => tr!("Saving…"),
-                        Operation::Prepare {
-                            committing: true, ..
-                        } => tr!("Applying project…"),
-                        Operation::Prepare { .. } => tr!("Preparing project…"),
-                        Operation::CloseCheck { .. } => tr!("Checking pending edits…"),
-                    });
-                    let cancel = ui.button(tr!("Cancel project operation"));
-                    help::annotate(ui, &cancel, help::Control::ProjectCancel);
-                    if cancel.clicked() || cancel.is_pointer_button_down_on() {
-                        active.cancel.store(true, Ordering::Release);
-                    }
-                }
+
             });
             if let Some(message) = &self.project.message {
                 ui.horizontal_wrapped(|ui| {

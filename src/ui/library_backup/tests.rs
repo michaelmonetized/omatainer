@@ -168,6 +168,12 @@ impl Gui {
             .unwrap_or_else(|| panic!("Missing {name}"))
     }
     fn action(&mut self, name: &str, action: NativeAction) {
+        for _ in 0..2 {
+            if let Some(events) = test_support::workspace_menu_events(&self.nodes, name) {
+                self.frame(events);
+                self.frame(vec![]);
+            } else { break; }
+        }
         let target = self.node(name);
         self.frame(vec![egui::Event::AccessKitActionRequest(ActionRequest {
             action,
