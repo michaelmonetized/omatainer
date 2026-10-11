@@ -246,7 +246,7 @@ impl Panel {
 impl App {
     pub(super) fn performance_reset_button(&mut self, ui: &mut Ui) {
         let available = self.audio_settings.handle.is_some() && !self.audio_settings.busy();
-        if ui.add_enabled(available, egui::Button::new(tr!("Reset stopped DSP and unmute…"))).help(ui, HelpControl::PerformanceReset).clicked() {
+        if ui.add_enabled(available, egui::Button::new(tr!("Reset audio and unmute…"))).help(ui, HelpControl::PerformanceReset).clicked() {
             self.audio_settings.open = true;
             self.audio_settings.confirm = Some(Confirm::Reset);
         }
@@ -312,6 +312,7 @@ impl App {
         let mut open = true;
         egui::Window::new(tr!("Audio devices and latency")).id(egui::Id::new("audio-devices-window")).open(&mut open).default_width(730.0).default_height(650.0).vscroll(true).show(ctx,|ui|{
             // Keep one parent slot regardless of asynchronous status details.
+            ui.collapsing(tr!("Audio details"), |ui| {
             ui.push_id("audio-live-status", |ui| {
             ui.label(crate::localization::format("Saved profile: {profile}. Save edits in Preferences before previewing.", &[format!("{}", profile)]));
             if let Some(handle)=&panel.handle {
@@ -333,6 +334,7 @@ impl App {
                 } else {ui.label(tr!("Measured loopback return unavailable for the current preview; no physical measurement is inferred.")).help(ui, HelpControl::AudioMeasurement);}
             }else{ui.label(tr!("No audio owner in this session"));}
             });
+            });
             ui.label(&panel.message).help(ui, HelpControl::AudioNotice);
             ui.push_id("audio-notice-actions", |ui| {
             if !panel.busy() && !panel.message.is_empty() && audio_action(ui, "Dismiss audio notice", true).help(ui, HelpControl::AudioNotice).clicked(){panel.message.clear();}
@@ -344,7 +346,7 @@ impl App {
                     if let Some(target)=&status.recovery {
                         ui.label(crate::localization::format("Retained output: {} / {} · {}",&[target.plan.backend.clone(),target.plan.device.clone(),target.plan.route()])).help(ui,HelpControl::AudioNotice);
                         if target.identity.is_some() {
-                            if audio_action(ui,"Reconnect retained output…",true).help(ui,HelpControl::AudioReconnect).clicked(){panel.confirm=Some(Confirm::Reconnect(status.generation));}
+                            if audio_action(ui,"Reconnect output…",true).help(ui,HelpControl::AudioReconnect).clicked(){panel.confirm=Some(Confirm::Reconnect(status.generation));}
                         } else {ui.label(tr!("This output has no verifiable physical identity. Preview saved audio or choose a fallback in Preferences, then confirm it explicitly."));}
                     }
                 }
@@ -374,14 +376,14 @@ impl App {
                     ui.push_id(("audio-confirmation", confirm), |ui| {
                     ui.separator();
                     match confirm {
-                        Confirm::Reset => { ui.label(tr!("Stop all sources, reclaim the graph on the audio-owner worker, clear voice/effect/filter histories and reopen the current output. Only a successful reset removes emergency mute. Playback remains stopped; input acknowledgment is still required if recovery is latched.")); },
-                        Confirm::Reconnect(_) => {ui.label(tr!("Reconnect only the retained output and exact routes. Graph outputs follow their retained server clock; ALSA keeps the accepted configuration. No fallback opens. Playback stays stopped and emergency mute stays latched. Release physical inputs and acknowledge recovery before pressing Play; transport starts use a 2 ms output ramp."));},
-                        Confirm::Switch(_)=>{ui.label(tr!("Stop decks, clips, recording and held notes, then change output? Previous output will be restored if opening fails. Playback will remain stopped; press Play explicitly when ready."));},
+                        Confirm::Reset => { ui.label(tr!("Clear held notes and effect tails, then reopen the current output. A successful reset unmutes audio. Playback stays stopped; paused controls must be resumed separately.")); },
+                        Confirm::Reconnect(_) => {ui.label(tr!("Reconnect the same output and routes. Playback stays stopped and muted output stays muted. Release your controls, then resume them before pressing Play."));},
+                        Confirm::Switch(_)=>{ui.label(tr!("Stop playback and recording, then change output? If it fails, the previous output will be restored. Press Play when ready."));},
                         Confirm::Calibrate(_)=>{ui.label(tr!("Connect the chosen LINE output to the chosen LINE input using a suitable cable/interface loopback. Disable input monitoring, use line level (not a speaker output), and turn down external speakers. This stops performance, emits three short low-level coded probes on the chosen output, captures up to 3 seconds, and restores the session output without resuming playback."));if let Some(request)=panel.preview.as_ref().and_then(|p|p.calibration.as_ref().ok()){ui.label({ let __omatainer_args = (&(request.output.device),&(request.output_channel+1),&(request.input.device),&(request.input_channel+1),&(request.level_db),); crate::localization::format("Confirm route: {} output {} → {} input {}; level {} dBFS", &[format!("{}", __omatainer_args.0), format!("{}", __omatainer_args.1), format!("{}", __omatainer_args.2), format!("{}", __omatainer_args.3), format!("{}", __omatainer_args.4)]) });}},
                     }
                     ui.horizontal(|ui|{
-                        if audio_action(ui, match confirm{Confirm::Reset=>"Confirm stopped DSP reset and unmute",Confirm::Reconnect(_)=>"Confirm retained output reconnect",Confirm::Switch(_)=>"Stop and change output",Confirm::Calibrate(_)=>"Cable ready: stop and measure"}, true).help(ui,match confirm{Confirm::Reset=>HelpControl::PerformanceReset,Confirm::Switch(_)|Confirm::Reconnect(_)=>HelpControl::AudioConfirm,Confirm::Calibrate(_)=>HelpControl::AudioProbeConfirm}).clicked(){if matches!(confirm, Confirm::Reset) { panel.request(Job::Reset); } else if let Confirm::Reconnect(generation)=confirm {panel.request(Job::Reconnect(generation));} else if let Some(preview)=panel.preview.clone(){panel.request(match confirm{Confirm::Switch(_)=>Job::Apply(preview),Confirm::Calibrate(_)=>Job::Calibrate(preview),Confirm::Reset|Confirm::Reconnect(_)=>unreachable!()});}panel.confirm=None;}
-                        if audio_action(ui, "Keep current audio", true).help(ui, HelpControl::AudioKeep).clicked(){panel.confirm=None;}
+                        if audio_action(ui, match confirm{Confirm::Reset=>"Reset and unmute",Confirm::Reconnect(_)=>"Reconnect output",Confirm::Switch(_)=>"Stop and change output",Confirm::Calibrate(_)=>"Cable ready: stop and measure"}, true).help(ui,match confirm{Confirm::Reset=>HelpControl::PerformanceReset,Confirm::Switch(_)|Confirm::Reconnect(_)=>HelpControl::AudioConfirm,Confirm::Calibrate(_)=>HelpControl::AudioProbeConfirm}).clicked(){if matches!(confirm, Confirm::Reset) { panel.request(Job::Reset); } else if let Confirm::Reconnect(generation)=confirm {panel.request(Job::Reconnect(generation));} else if let Some(preview)=panel.preview.clone(){panel.request(match confirm{Confirm::Switch(_)=>Job::Apply(preview),Confirm::Calibrate(_)=>Job::Calibrate(preview),Confirm::Reset|Confirm::Reconnect(_)=>unreachable!()});}panel.confirm=None;}
+                        if audio_action(ui, "Cancel", true).help(ui, HelpControl::AudioKeep).clicked(){panel.confirm=None;}
                     });
                     });
                 }

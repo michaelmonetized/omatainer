@@ -353,18 +353,18 @@ impl App {
             if ui.button(tr!("Stop session")).clicked() {
                 self.send(Command::Stop);
             }
-            if ui.button(tr!("Emergency silence…")).clicked() {
+            if ui.button(tr!("Mute output…")).clicked() {
                 self.performance_panel.silence();
             }
         });
         ui.strong(if status.output_muted {
-            tr!("EMERGENCY OUTPUT MUTE")
+            tr!("Output muted")
         } else if status.recovery {
-            tr!("RECOVERY · playback stopped")
+            tr!("Controls paused")
         } else if status.protected {
             tr!("PERFORMANCE · protected")
         } else {
-            tr!("Studio · protection off")
+            tr!("Performance mode off")
         });
         if self.engine.safe_mode() {
             ui.colored_label(

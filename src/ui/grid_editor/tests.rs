@@ -84,6 +84,12 @@ impl Gui {
             })
     }
     pub(in crate::ui) fn action(&mut self, name: &str, action: Action, data: Option<ActionData>) -> egui::FullOutput {
+        for _ in 0..2 {
+            if let Some(events) = test_support::workspace_menu_events(&self.nodes, name) {
+                self.frame(events);
+                self.frame(vec![]);
+            } else { break; }
+        }
         let target = self.node(name).0;
         self.frame(vec![egui::Event::AccessKitActionRequest(ActionRequest {
             action,
@@ -93,6 +99,12 @@ impl Gui {
         self.frame(vec![])
     }
     pub(in crate::ui) fn click(&mut self, name: &str) -> egui::FullOutput {
+        for _ in 0..2 {
+            if let Some(events) = test_support::workspace_menu_events(&self.nodes, name) {
+                self.frame(events);
+                self.frame(vec![]);
+            } else { break; }
+        }
         self.action(name, Action::Click, None)
     }
     fn key(&mut self, key: Key, modifiers: egui::Modifiers) {

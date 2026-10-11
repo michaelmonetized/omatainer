@@ -51,7 +51,13 @@ impl Gui {
     }
     fn click(&mut self, label: &str) {
         self.frame(vec![]);
-        let output = self.frame(vec![]);
+        let mut output = self.frame(vec![]);
+        if let Some(menu) = test_support::workspace_menu(label) {
+            if !output.shapes.iter().any(|shape| matches!(&shape.shape, egui::epaint::Shape::Text(text) if text.galley.text() == label)) {
+                self.click(menu);
+                output = self.frame(vec![]);
+            }
+        }
         let pos = test_support::label_center(&output, label);
         for pressed in [true, false] {
             self.frame(vec![

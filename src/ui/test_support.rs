@@ -117,3 +117,36 @@ pub(super) fn click(ctx: &egui::Context, app: &mut App, pos: Pos2, time: f64) {
         );
     }
 }
+
+/// Find the menu that contains a moved workspace control.
+/// Takes its visible label; returns the menu to open before exercising the real widget.
+pub(super) fn workspace_menu(label: &str) -> Option<&'static str> {
+    match label {
+        "Help" | "MIDI" | "Background jobs" | "Diagnostics" | "Content & licenses" | "Music providers" | "Video" | "Audio export & recording" | "Session clips" | "Arrangement timeline" | "Audio clip" | "Automation" | "Preferences" | "Workspaces" | "Touch & pen" | "Mic & aux" | "Audio routing" | "Audio devices and latency" | "Saved audio pending" | "Setup notice" | "Audio operation pending" | "Audio operation failed" => Some("Tools"),
+        "Turn on performance mode" | "Turn off performance mode…" | "Stop everything…" | "Mute output…" | "Resume controls…" | "Reset audio and unmute…" => Some("Performance"),
+        "Cancel project operation" | "History" | "History · recording" => Some("Project"),
+        "Next live set…" | "Support and crash reports…" | "Autosave and recovery…" | "Import MIDI file…" | "Export MIDI file…" | "Project dependencies…" | "Portable project…" | "Project and track templates…" | "Named versions…" | "Import from another project…" | "Import Ableton Live Set…" | "DJ FX…" | "Tempo and meter…" => Some("Project tools"),
+        label if label.starts_with("Commands") => Some("Tools"),
+        label if label.starts_with("Master effect ") || label.starts_with("1: ") || label.starts_with("2: ") || label.starts_with("3: ") => Some("FX"),
+        _ => None,
+    }
+}
+
+/// Open a workspace menu through its actual accessibility action.
+/// Takes current nodes and the desired control label; returns input events only when that control is hidden.
+pub(super) fn workspace_menu_events(nodes: &[(egui::accesskit::NodeId, egui::accesskit::Node)], label: &str) -> Option<Vec<egui::Event>> {
+    if nodes.iter().any(|(_, node)| node.label() == Some(label)) { return None; }
+    let menu = workspace_menu(label)?;
+    let menu = if menu == "Project tools" && !nodes.iter().any(|(_, node)| node.label().is_some_and(|label| label.starts_with(menu))) { "Project" } else { menu };
+    let target = nodes.iter().find_map(|(id, node)| {
+        let matches = (node.label() == Some(menu) || (menu == "Project tools" && node.label().is_some_and(|label| label.starts_with(menu)))) || (menu == "Performance" && matches!(node.label(), Some("Output muted" | "Controls paused" | "Live" | "Muted" | "Paused"))) || (menu == "Project" && node.label() == Some("File"));
+        if matches && menu == "Project tools" { return node.bounds().map(|bounds| (
+            *id, Some(egui::pos2(((bounds.x0 + bounds.x1) / 2.0) as f32, ((bounds.y0 + bounds.y1) / 2.0) as f32))
+        )); }
+        (matches && node.supports_action(egui::accesskit::Action::Click)).then_some((*id, None))
+    })?;
+    if let Some(pos) = target.1 { return Some(vec![egui::Event::PointerMoved(pos)]); }
+    Some(vec![egui::Event::AccessKitActionRequest(egui::accesskit::ActionRequest {
+        target: target.0, action: egui::accesskit::Action::Click, data: None,
+    })])
+}

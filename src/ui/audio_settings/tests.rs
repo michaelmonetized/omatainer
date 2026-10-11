@@ -88,6 +88,12 @@ impl Gui {
         self.nodes = output.platform_output.accesskit_update.unwrap().nodes;
     }
     fn click(&mut self, name: &str) {
+        for _ in 0..2 {
+            if let Some(events) = test_support::workspace_menu_events(&self.nodes, name) {
+                self.frame(events);
+                self.frame(vec![]);
+            } else { break; }
+        }
         let target = self
             .nodes
             .iter()
@@ -127,6 +133,7 @@ impl Gui {
         self.click("Preferences");
         self.click("Audio devices and latency");
         assert!(self.app.audio_settings.open);
+        self.click("Audio details");
     }
     fn preview(&mut self) {
         self.click("Preview saved audio");
@@ -207,7 +214,7 @@ fn private_native_graph_profile_preview_apply_cancel_and_reopen() {
     gui.click("Audio devices and latency"); gui.preview();
     assert_eq!(gui.app.audio_settings.preview.as_ref().unwrap().inventory.backend, "JACK");
     let before = handle.status().generation;
-    gui.click("Use saved audio now"); gui.click("Keep current audio");
+    gui.click("Use saved audio now"); gui.click("Cancel");
     assert_eq!(handle.status().generation, before);
     gui.apply();
     assert!(handle.status().generation > before);
@@ -238,18 +245,18 @@ fn native_reconnect_confirmation_cancel_and_resume_keep_saved_settings_and_final
         gui.frame(vec![]);assert!(Instant::now()<deadline);std::thread::sleep(Duration::from_millis(1));
     }
     gui.frame(vec![]);let opens=gui.controls.opens.load(Ordering::Acquire);
-    gui.click("Reconnect retained output…");gui.click("Keep current audio");
+    gui.click("Reconnect output…");gui.click("Cancel");
     assert_eq!(gui.controls.opens.load(Ordering::Acquire),opens);
     gui.controls.device_renamed.store(true,Ordering::Release);
-    gui.click("Reconnect retained output…");gui.click("Confirm retained output reconnect");gui.wait();
+    gui.click("Reconnect output…");gui.click("Reconnect output");gui.wait();
     assert_eq!(handle.status().phase,owner::Phase::Running);
     assert_eq!(handle.status().active.as_ref().unwrap().plan.device,"Renumbered fixture");
     assert!(!gui.app.engine.snapshot().playing);
     assert!(gui.app.engine.cmd.performance().status().recovery);
     assert!(gui.app.engine.cmd.send(Command::Play).is_err());
     gui.app.audio_settings.open=false;gui.app.settings.open=false;gui.frame(vec![]);
-    gui.click("Recover inputs…");gui.click("I have released the physical inputs");
-    gui.click("Inputs released — keep playback stopped");
+    gui.click("Resume controls…");gui.click("All controls are released");
+    gui.click("Resume controls");
     let deadline=Instant::now()+Duration::from_secs(3);
     while gui.app.engine.cmd.performance().status().recovery {gui.frame(vec![]);assert!(Instant::now()<deadline);std::thread::sleep(Duration::from_millis(1));}
     gui.app.engine.cmd.send(Command::Play).unwrap();
@@ -263,11 +270,11 @@ fn native_reconnect_failure_and_stale_consent_never_open_a_different_output() {
     while handle.status().phase!=owner::Phase::Offline {gui.frame(vec![]);assert!(Instant::now()<deadline);std::thread::sleep(Duration::from_millis(1));}
     gui.frame(vec![]);let opens=gui.controls.opens.load(Ordering::Acquire);
     gui.controls.alternate_device.store(true,Ordering::Release);
-    gui.click("Reconnect retained output…");gui.click("Confirm retained output reconnect");gui.wait();
+    gui.click("Reconnect output…");gui.click("Reconnect output");gui.wait();
     assert_eq!(handle.status().phase,owner::Phase::Offline);
     assert_eq!(gui.controls.opens.load(Ordering::Acquire),opens);
     assert!(gui.app.audio_settings.message.contains("unavailable"));
-    gui.click("Reconnect retained output…");
+    gui.click("Reconnect output…");
     owner::tests::publish_phase_for_ui_test(&handle,owner::Phase::Running);gui.frame(vec![]);
     assert!(gui.app.audio_settings.confirm.is_none());
     assert_eq!(gui.controls.opens.load(Ordering::Acquire),opens);
@@ -280,7 +287,7 @@ fn real_ui_requires_confirmation_preserves_cancel_and_reopens_saved_supported_ra
         gui.preview();
         assert_eq!(gui.app.engine.sr(), 48000);
         gui.click("Use saved audio now");
-        gui.click("Keep current audio");
+        gui.click("Cancel");
         assert_eq!(gui.controls.opens.load(Ordering::Acquire), 1);
         gui.apply();
         assert_eq!(gui.app.engine.sr(), rate);
@@ -552,8 +559,8 @@ fn actual_audio_confirmations_expose_canonical_help_without_starting_an_operatio
     ] { described(&gui.nodes, name, control); }
     gui.click("Use saved audio now");
     described(&gui.nodes, "Stop and change output", HelpControl::AudioConfirm);
-    described(&gui.nodes, "Keep current audio", HelpControl::AudioKeep);
-    gui.click("Keep current audio");
+    described(&gui.nodes, "Cancel", HelpControl::AudioKeep);
+    gui.click("Cancel");
     gui.click("Measure loopback");
     described(&gui.nodes, "Cable ready: stop and measure", HelpControl::AudioProbeConfirm);
     // Focus + real F1 handling must display the exact confirmation's context.

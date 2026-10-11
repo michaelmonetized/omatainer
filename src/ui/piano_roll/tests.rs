@@ -117,6 +117,12 @@ impl Gui {
             })
     }
     pub(crate) fn action(&mut self, label: &str, action: Action, data: Option<ActionData>) {
+        for _ in 0..2 {
+            if let Some(events) = test_support::workspace_menu_events(&self.nodes, label) {
+                self.frame(events);
+                self.frame(vec![]);
+            } else { break; }
+        }
         let target = self.node(label).0;
         self.frame(vec![egui::Event::AccessKitActionRequest(ActionRequest {
             action,
@@ -126,6 +132,12 @@ impl Gui {
         self.frame(vec![]);
     }
     pub(crate) fn click(&mut self, label: &str) {
+        for _ in 0..2 {
+            if let Some(events) = test_support::workspace_menu_events(&self.nodes, label) {
+                self.frame(events);
+                self.frame(vec![]);
+            } else { break; }
+        }
         self.action(label, Action::Click, None);
     }
     pub(crate) fn number(&mut self, label: &str, value: f64) {
@@ -158,6 +170,12 @@ impl Gui {
         ]);
     }
     pub(crate) fn click_text(&mut self, text: &str) {
+        for _ in 0..2 {
+            if let Some(events) = test_support::workspace_menu_events(&self.nodes, text) {
+                self.frame(events);
+                self.frame(vec![]);
+            } else { break; }
+        }
         let output = self.frame(vec![]);
         let pos = test_support::label_center(&output, text);
         self.pointer(pos, true);

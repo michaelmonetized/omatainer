@@ -64,6 +64,12 @@ impl Gui {
         self.callback.render(&mut [0.0_f32; 512]);
     }
     fn click(&mut self, label: &str) {
+        for _ in 0..2 {
+            if let Some(events) = test_support::workspace_menu_events(&self.nodes, label) {
+                self.frame(events);
+                self.frame(vec![]);
+            } else { break; }
+        }
         let target = self
             .nodes
             .iter()

@@ -196,6 +196,12 @@ impl Gui {
         self.frame(Vec::new());
     }
     fn click(&mut self, label: &str) {
+        for _ in 0..2 {
+            if let Some(events) = test_support::workspace_menu_events(&self.nodes, label) {
+                self.frame(events);
+                self.frame(vec![]);
+            } else { break; }
+        }
         self.action(self.node(label), Action::Click);
     }
     fn text(&mut self, label: &str, value: &str) {

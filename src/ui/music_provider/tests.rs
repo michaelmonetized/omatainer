@@ -45,6 +45,12 @@ impl Gui {
         self.fixture.rt.publish_for_test();
     }
     fn click(&mut self, name: &str) {
+        for _ in 0..2 {
+            if let Some(events) = test_support::workspace_menu_events(&self.nodes, name) {
+                self.frame(events);
+                self.frame(vec![]);
+            } else { break; }
+        }
         let target = self
             .nodes
             .iter()

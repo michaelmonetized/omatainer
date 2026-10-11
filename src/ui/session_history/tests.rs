@@ -31,7 +31,10 @@ impl Gui {
     fn node(&self, label: &str) -> NodeId { self.nodes.iter().find(|(_, n)| n.label() == Some(label)).map(|(id, _)| *id)
         .unwrap_or_else(|| panic!("missing {label}: {:?}", self.nodes.iter().filter_map(|(_, n)| n.label()).collect::<Vec<_>>())) }
     fn action(&mut self, target: NodeId, action: Action) { self.frame(vec![egui::Event::AccessKitActionRequest(ActionRequest { target, action, data: None })]); self.frame(vec![]); }
-    fn click(&mut self, label: &str) { self.action(self.node(label), Action::Click); }
+    fn click(&mut self, label: &str) {
+        if let Some(events) = test_support::workspace_menu_events(&self.nodes, label) { self.frame(events); self.frame(vec![]); }
+        self.action(self.node(label), Action::Click);
+    }
     fn text(&mut self, label: &str, value: &str) {
         self.action(self.node(label), Action::Focus);
         self.frame(vec![egui::Event::Key { key: Key::A, physical_key: None, pressed: true, repeat: false, modifiers: egui::Modifiers { ctrl: true, command: true, ..Default::default() } }, egui::Event::Text(value.into())]); self.frame(vec![]);

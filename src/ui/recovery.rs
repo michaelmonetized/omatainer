@@ -318,7 +318,8 @@ impl App {
         let busy = self.recovery.pending.is_some() || self.recovery_project_busy();
         let status = self.recovery.worker.as_ref().map(Worker::status);
         egui::Window::new(tr!("Autosave and recovery")).id(egui::Id::new("Autosave and recovery")).open(&mut open).default_width(570.0).default_height(700.0).vscroll(true).show(ctx, |ui| {
-            ui.label(tr!("Recovery keeps batched edit-state copies, including untitled projects. It does not save or overwrite your explicit .omat file."));
+            ui.label(tr!("Autosave keeps recovery copies. Use Save to update your project file."));
+            ui.collapsing(tr!("Autosave details"), |ui| {
             ui.label(tr!("Dirty state is normally captured about every 2 seconds. Capture, queue pressure and storage I/O can increase the loss window; only the confirmed durable time below is evidence of recovery coverage."));
             if let Some(path) = &self.recovery.root { ui.label({ let __omatainer_args = (&(path.display()),); crate::localization::format("Storage: {}", &[format!("{}", __omatainer_args.0)]) }); }
             // Dynamic labels/spinners stay in one scope. Their auto-ID count
@@ -343,6 +344,7 @@ impl App {
                 if unsaved { ui.label(tr!("Newer current state or recovery metadata is not yet confirmed durable.")); }
                 if status.busy { ui.spinner(); }
             }
+            });
             });
             ui.horizontal(|ui| {
                 if ui.add_enabled(!busy, egui::Button::new(tr!("Refresh recovery list"))).help(ui, HelpControl::RecoveryRefresh).clicked() { refresh = true; }

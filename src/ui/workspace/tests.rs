@@ -356,7 +356,7 @@ fn native_windows_keep_transport_safety_warnings_and_one_shared_controller_targe
         for required in [
             "Play / stop session",
             "Stop session",
-            "Emergency silence…",
+            "Mute output…",
             "Audio output unavailable",
             "Controller target: deck B, track 3",
         ] {
@@ -373,8 +373,8 @@ fn native_windows_keep_transport_safety_warnings_and_one_shared_controller_targe
     assert!(!gui.rt.playing);
     assert_eq!(gui.rt.selected_deck, 1);
     assert_eq!(gui.rt.selected_track, selected);
-    gui.click(Panel::Sampler, "Emergency silence…");
-    gui.click(Panel::Sampler, "Confirm emergency silence");
+    gui.click(Panel::Sampler, "Mute output…");
+    gui.click(Panel::Sampler, "Mute output");
     assert!(gui.app.engine.cmd.performance().status().output_muted);
     for panel in [Panel::Sampler, Panel::Session] {
         assert!(gui.native.borrow().windows[&panel]
@@ -383,7 +383,7 @@ fn native_windows_keep_transport_safety_warnings_and_one_shared_controller_targe
             .any(|(_, node)| node
                 .label()
                 .or_else(|| node.value())
-                .is_some_and(|label| label.contains("EMERGENCY OUTPUT MUTE"))));
+                .is_some_and(|label| label.contains("Output muted"))));
     }
 }
 
