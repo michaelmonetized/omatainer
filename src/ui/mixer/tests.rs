@@ -37,7 +37,11 @@ impl Gui {
                 ..Default::default()
             },
             |ctx| {
+                self.app
+                    .undo_history
+                    .begin_frame(ctx, &self.app.engine.undo);
                 egui::CentralPanel::default().show(ctx, |ui| self.app.mixer_panel(ui));
+                self.app.undo_history.end_frame(ctx);
             },
         );
         self.nodes = output
@@ -177,4 +181,103 @@ fn stale_selection_never_retargets_replaced_tracks() {
     gui.frame(Vec::new());
     assert!(gui.app.mixer.selection.as_ref().unwrap().is_empty());
     assert!(gui.app.mixer.message.contains("changed"));
+}
+
+#[test]
+fn focused_track_field_keyboard_edit_and_error_keep_typed_undo() {
+    let mut gui = Gui::new();
+    gui.select(&[0]);
+    let before = gui.rt.tracks[0].gain;
+    gui.action("Track gain", Action::Focus, None);
+    gui.frame(vec![egui::Event::Key {
+        key: Key::ArrowUp,
+        physical_key: None,
+        pressed: true,
+        repeat: false,
+        modifiers: Default::default(),
+    }]);
+    gui.frame(vec![egui::Event::Key {
+        key: Key::ArrowUp,
+        physical_key: None,
+        pressed: false,
+        repeat: false,
+        modifiers: Default::default(),
+    }]);
+    assert_ne!(gui.rt.tracks[0].gain, before);
+    gui.rt.apply(Command::Undo);
+    assert_eq!(gui.rt.tracks[0].gain, before);
+    gui.app
+        .submission_error
+        .set(Some(crate::engine::SubmissionError::InvalidTarget));
+    let output = gui.frame(Vec::new());
+    assert!(output.shapes.iter().any(|shape| matches!(&shape.shape, egui::Shape::Text(text) if text.galley.text().contains("target"))));
+}
+
+#[test]
+fn inspector_track_values_survive_native_project_save_and_reopen() {
+    use crate::engine::project::{Prepared, State};
+    use std::sync::atomic::AtomicBool;
+    let mut gui = Gui::new();
+    gui.select(&[0, 1]);
+    gui.action(
+        "Track gain",
+        Action::SetValue,
+        Some(ActionData::NumericValue(63.0)),
+    );
+    gui.action(
+        "Track pan",
+        Action::SetValue,
+        Some(ActionData::NumericValue(25.0)),
+    );
+    let handle = gui.app.engine.project.clone();
+    let worker = std::thread::spawn(move || handle.capture(&AtomicBool::new(false)));
+    let deadline = Instant::now() + std::time::Duration::from_secs(5);
+    while !worker.is_finished() {
+        gui.rt.process(&mut []);
+        assert!(Instant::now() < deadline);
+        std::thread::sleep(std::time::Duration::from_millis(1));
+    }
+    let captured = worker.join().unwrap().unwrap();
+    let file =
+        std::env::temp_dir().join(format!("omatainer-inspector-{}.omat", std::process::id()));
+    let bundle = crate::project_file::Bundle {
+        state: captured.state,
+        media: captured.media,
+    };
+    crate::project_file::save(
+        &file,
+        &bundle,
+        crate::project_file::Overwrite::Never,
+        &crate::project_file::Limits::default(),
+        &AtomicBool::new(false),
+    )
+    .unwrap();
+    let reopened = crate::project_file::load::<State>(
+        &file,
+        &crate::project_file::Limits::default(),
+        &AtomicBool::new(false),
+    )
+    .unwrap();
+    let prepared = Prepared::from_state(reopened.state, reopened.media, 48_000).unwrap();
+    let (engine, mut restored) = Engine::headless_for_test(48_000, 256);
+    let revision = engine.project.revision();
+    let handle = engine.project.clone();
+    let worker =
+        std::thread::spawn(move || handle.install(prepared, revision, &AtomicBool::new(false)));
+    let deadline = Instant::now() + std::time::Duration::from_secs(5);
+    while !worker.is_finished() {
+        restored.process(&mut []);
+        assert!(Instant::now() < deadline);
+        std::thread::sleep(std::time::Duration::from_millis(1));
+    }
+    worker.join().unwrap().unwrap();
+    assert_eq!(
+        (restored.tracks[0].gain, restored.tracks[1].gain),
+        (0.63, 0.63)
+    );
+    assert_eq!(
+        (restored.tracks[0].pan, restored.tracks[1].pan),
+        (0.25, 0.25)
+    );
+    std::fs::remove_file(file).unwrap();
 }
