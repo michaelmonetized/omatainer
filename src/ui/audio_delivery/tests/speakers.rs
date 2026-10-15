@@ -1,6 +1,7 @@
 use super::*;
 use crate::engine::audio::routing::speakers::tests::fixture;
 use sha2::{Digest, Sha256};
+use std::path::Path;
 
 fn independent(path: &Path, tools: &serde_json::Value) -> Vec<f32> {
     let result = std::process::Command::new(tools["ffmpeg"]["path"].as_str().unwrap())
