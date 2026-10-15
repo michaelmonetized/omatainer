@@ -45,7 +45,7 @@ fn reference(path: &Path) -> String {
         .arg(path)
         .args([
             "-af",
-            "ebur128=peak=true:framelog=verbose",
+            "ebur128=peak=true:metadata=1:framelog=verbose,ametadata=print:key=lavfi.r128.true_peak",
             "-f",
             "null",
             "-",
@@ -69,18 +69,39 @@ fn summary(text: &str, key: &str) -> f64 {
         })
         .unwrap_or_else(|| panic!("Missing{key}: {text}"))
 }
+fn reference_peak(text: &str) -> (f64, serde_json::Value) {
+    let linear = text
+        .lines()
+        .filter_map(|line| {
+            line.split_once("lavfi.r128.true_peak=")
+                .and_then(|(_, v)| v.trim().parse::<f64>().ok())
+        })
+        .fold(0_f64, f64::max);
+    assert!(
+        linear > 0.,
+        "Missing positive rawlinear peak metadata: {text}"
+    );
+    let db = 20. * linear.log10();
+    let lower = 20. * (linear - 0.0005).max(f64::MIN_POSITIVE).log10();
+    let upper = 20. * (linear + 0.0005).log10();
+    (
+        db,
+        serde_json::json!({"source":"FFmpeg lavfi.r128.true_peak frame metadata","linear":linear,"linear_decimal_precision":0.001,"linear_rounding_interval":[linear-0.0005,linear+0.0005],"dbtp_from_rounded_linear":db,"dbtp_interval":[lower,upper],"summary_decimal_precision_db":0.1,"infinitely_precise":false}),
+    )
+}
 fn retain(case: &str, input: &Path, report: &Report, reference: &str) {
     if let Some(root) = std::env::var_os("OMATAINER_DELIVERY_RECEIPTS") {
         let root = PathBuf::from(root);
         assert!(root.is_absolute() && root.starts_with("/home"));
         std::fs::create_dir_all(&root).unwrap();
         let mut receipt = serde_json::json!({"schema":1,"case":case,"source_revision":std::env::var("OMATAINER_DELIVERY_REVISION").ok(),"status":"passed","input_sha256":process::sha256(input).unwrap(),"input_bytes":std::fs::metadata(input).unwrap().len(),"report":report,"independent_reference":{"implementation":"FFmpeg ebur128 filter; independent from bundled libebur128","tool":report.decoder,"raw":reference},"boundaries":["headless native software only","no device/listening/desktop","not full long-session endurance"]});
+        receipt["independent_reference"]["peak_metadata"] = reference_peak(reference).1;
         if case.ends_with("characterization") {
             receipt["status"] = serde_json::json!("characterized");
             receipt["strict_agreement_qualified"] = serde_json::json!(false);
-            receipt["reference_true_peak_dbtp"] = serde_json::json!(summary(reference, "Peak:"));
+            receipt["reference_true_peak_dbtp"] = serde_json::json!(reference_peak(reference).0);
             receipt["true_peak_difference_db"] =
-                serde_json::json!(report.true_peak_dbtp.unwrap() - summary(reference, "Peak:"));
+                serde_json::json!(report.true_peak_dbtp.unwrap() - reference_peak(reference).0);
             receipt["boundaries"].as_array_mut().unwrap().push(serde_json::json!("Abrupt-edge finite-interpolator difference retained; not a strict conformance or certified-peak claim"));
         }
         std::fs::write(
@@ -112,7 +133,7 @@ fn bs1770_calibrated_tone_and_dynamic_lra_match_independent_ffmpeg() {
         let oracle = reference(&path);
         let integrated = summary(&oracle, "I:");
         let range = summary(&oracle, "LRA:");
-        let peak = summary(&oracle, "Peak:");
+        let peak = reference_peak(&oracle).0;
         assert!(
             (report.integrated_lufs.unwrap() - integrated).abs() < 0.15,
             "{report:?}\n{oracle}"
@@ -159,7 +180,7 @@ fn true_peak_intersample_silence_nonfinite_and_layout_targets_are_explicit() {
         "{report:?} analytic{analytic}\n{oracle}"
     );
     assert!(
-        (report.true_peak_dbtp.unwrap() - summary(&oracle, "Peak:")).abs() < 0.15,
+        (report.true_peak_dbtp.unwrap() - reference_peak(&oracle).0).abs() < 0.15,
         "{report:?}\n{oracle}"
     );
     let targets = Targets {
@@ -179,7 +200,7 @@ fn true_peak_intersample_silence_nonfinite_and_layout_targets_are_explicit() {
     let edge = measure(&abrupt, 48000, 1, Some(4), &AtomicBool::new(false)).unwrap();
     let edge_reference = reference(&abrupt);
     assert!(edge.true_peak_dbtp.unwrap() > edge.sample_peak_dbfs.unwrap() + 2.);
-    assert!(summary(&edge_reference, "Peak:") > edge.sample_peak_dbfs.unwrap() + 2.);
+    assert!(reference_peak(&edge_reference).0 > edge.sample_peak_dbfs.unwrap() + 2.);
     retain(
         "bs1770-abrupt-edge-interpolator-characterization",
         &abrupt,
@@ -258,7 +279,7 @@ fn final_lossy_measurement_binds_decoded_file_and_can_differ_from_source_peak() 
     let oracle = reference(&path);
     assert!(r.measured_final_encoded_audio);
     assert!((r.integrated_lufs.unwrap() - summary(&oracle, "I:")).abs() < 0.15);
-    assert!((r.true_peak_dbtp.unwrap() - summary(&oracle, "Peak:")).abs() < 0.5);
+    assert!((r.true_peak_dbtp.unwrap() - reference_peak(&oracle).0).abs() < 0.5);
     assert_ne!(r.decoded_pcm_sha256, process::sha256(&raw).unwrap());
     retain("post-mp3-encoded-measurement", &path, &r, &oracle);
 }
