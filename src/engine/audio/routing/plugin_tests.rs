@@ -17,7 +17,7 @@ pub(crate) fn probe(bundle:PathBuf,instrument:bool)->(Class,Saved){
     (class,saved)
 }
 fn instance(class:&Class,saved:Saved,track:Option<engine::session::Id>)->Instance{
-    Instance{id:2,name:"Contract".into(),saved,inputs:class.layout.inputs.iter().map(|b|b.channel_count as u8).collect(),outputs:class.layout.outputs.iter().map(|b|b.channel_count as u8).collect(),midi_track:track,scene_track:None,instrument:class.info.category.contains("Instrument"),bypass:false,latency:class.latency+768,parameters:vec![],automation:vec![],unavailable:None}
+    Instance{id:2,name:"Contract".into(),saved,inputs:class.layout.inputs.iter().map(|b|b.channel_count as u8).collect(),outputs:class.layout.outputs.iter().map(|b|b.channel_count as u8).collect(),midi_track:track,scene_track:None,return_bus:None,instrument:class.info.category.contains("Instrument"),bypass:false,latency:class.latency+768,parameters:vec![],automation:vec![],unavailable:None}
 }
 fn link(source:Group,destination:Group,map:&[(u8,u8,f32)])->Connection{
     Connection{source:Source{group:source,tap:Tap::PostMixer},destination,map:map.iter().map(|(source,destination,gain)|ChannelMap{source:*source,destination:*destination,gain:*gain}).collect()}
@@ -67,7 +67,7 @@ fn native_graph_buses_context_bypass_latency_and_callback_storage(){
 #[ignore="requires the freshly compiled native worker and original SDK contract fixture"]
 fn native_parallel_null_and_dynamic_latency_keep_exact_offline_output_time(){
     let (class,saved)=fixture(false);let (_,mut rt)=Engine::headless_for_test(48000,256);let mut model=effect(&class,saved,&rt);
-    model.buses.push(Bus{id:5,alias:"Parallel difference".into(),channels:1,gain:1.,mute:false});
+    model.buses.push(Bus{mixer:Default::default(),id:5,alias:"Parallel difference".into(),channels:1,gain:1.,mute:false});
     model.connections.retain(|c|c.destination!=Group::Output(1));
     model.connections.extend([link(Group::Plugin(2),Group::Bus(5),&[(0,0,1.)]),link(Group::Input(3),Group::Bus(5),&[(0,0,-0.5),(2,0,-1.)]),link(Group::Bus(5),Group::Output(1),&[(0,0,1.)])]);
     let mut graph=Prepared::at_rate(Arc::new(model),&rt.session,48000).unwrap();graph.offline();let floor=graph.output_delay(1);assert_eq!(floor,4800);
@@ -172,7 +172,7 @@ fn native_editor_refusal_preserves_the_running_processor_and_its_state() {
 fn encoded_plugin_states_refuse_json_expansion_before_graph_install() {
     let binary=plugin_host::BinaryIdentity {bundle:"/missing/Contract.vst3".into(),binary:"/missing/Contract.so".into(),sha256:"0".repeat(64),arch:"aarch64".into()};
     let saved=Saved {schema:1,binary,class_id:"0".repeat(32),plugin_version:"1.0.0".into(),state_codec:"vst3-host-0.9-state".into(),state:vec![255;8*1024*1024]};
-    let p=Instance {id:2,name:"Large state".into(),saved,inputs:vec![],outputs:vec![2],midi_track:None,scene_track:None,instrument:false,bypass:false,latency:768,parameters:vec![],automation:vec![],unavailable:None};
+    let p=Instance {id:2,name:"Large state".into(),saved,inputs:vec![],outputs:vec![2],midi_track:None,scene_track:None,return_bus:None,instrument:false,bypass:false,latency:768,parameters:vec![],automation:vec![],unavailable:None};
     let mut model=Model::default();model.version=3;model.next_id=3;model.plugins.push(p);
     let layout=engine::session::Layout::legacy((0..8).map(|n|format!("Track {n}")),8);
     assert!(model.order(&layout).unwrap_err().contains("after encoding"));
@@ -207,6 +207,6 @@ fn clap_modulation_lane_container_reopen_and_legacy_default() {
     let lane=Automation {id:7,points:vec![[0.,-0.5],[2.,0.5]],modulation:true};assert_eq!(lane.at(1.),0.);
     let (engine,mut rt)=Engine::headless_for_test(48000,256);let mut captured=capture(&engine,&mut rt);let mut model=Model::default();model.version=3;model.next_id=3;
     let saved=Saved {schema:1,binary:plugin_host::BinaryIdentity {bundle:"/home/missing/Processor.clap".into(),binary:"/home/missing/Processor.clap".into(),sha256:"a".repeat(64),arch:std::env::consts::ARCH.into()},class_id:"clap:org.omatainer.retained".into(),plugin_version:"1".into(),state_codec:"clap-state-1".into(),state:vec![1,2,3]};
-    model.plugins.push(Instance {id:2,name:"Retained CLAP processor".into(),saved,inputs:vec![2],outputs:vec![2],midi_track:None,scene_track:None,instrument:false,bypass:false,latency:768,parameters:vec![],automation:vec![lane.clone()],unavailable:Some("Binary unavailable; state retained".into())});model.order(&rt.session).unwrap();captured.state.routing=Some(Arc::new(model));
+    model.plugins.push(Instance {id:2,name:"Retained CLAP processor".into(),saved,inputs:vec![2],outputs:vec![2],midi_track:None,scene_track:None,return_bus:None,instrument:false,bypass:false,latency:768,parameters:vec![],automation:vec![lane.clone()],unavailable:Some("Binary unavailable; state retained".into())});model.order(&rt.session).unwrap();captured.state.routing=Some(Arc::new(model));
     let root=std::env::temp_dir().join(format!("clap-modulation-project-{}",crate::sampler_bank::BankId::new().unwrap()));std::fs::create_dir_all(&root).unwrap();let path=root.join("modulation.omatainer");let bundle=crate::project_file::Bundle {state:captured.state,media:captured.media};let cancel=AtomicBool::new(false);crate::project_file::save(&path,&bundle,crate::project_file::Overwrite::Never,&Default::default(),&cancel).unwrap();let reopened:crate::project_file::Bundle<project::State>=crate::project_file::load(&path,&Default::default(),&cancel).unwrap();assert_eq!(reopened.state.routing.as_ref().unwrap().plugins[0].automation,[lane]);assert_eq!(reopened.state.routing.as_ref().unwrap().plugins[0].saved.state,[1,2,3]);std::fs::remove_dir_all(root).unwrap();
 }
