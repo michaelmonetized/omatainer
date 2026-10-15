@@ -48,7 +48,7 @@ pub(crate) fn identify(path: &Path) -> Result<BinaryIdentity, String> {
         return Err("Choose an absolute VST3 bundle path without parent traversal".into());
     }
     if path.extension().and_then(|s| s.to_str()) != Some("vst3") {
-        return Err("Native Linux VST3 bundles are supported; AU, VST2 and Windows bundles require an explicit compatible installation or rendered audio".into());
+        return Err(format_diagnostic(path).into());
     }
     let meta = std::fs::symlink_metadata(path).map_err(|e| format!("Plugin unavailable: {e}"))?;
     if meta.is_symlink() || !meta.is_dir() {
@@ -159,6 +159,16 @@ pub(crate) fn identify(path: &Path) -> Result<BinaryIdentity, String> {
         sha256: format!("{:x}", digest.finalize()),
         arch: arch.into(),
     })
+}
+
+/// Explain an unsupported plugin format. Args: candidate path. Returns the native replacement and rendered-audio migration path without loading foreign code.
+fn format_diagnostic(path: &Path) -> &'static str {
+    match path.extension().and_then(|s|s.to_str()) {
+        Some("component" | "aupreset") => "Audio Units require a qualified macOS host; this Linux build cannot load AU code or AU presets. Install the matching native VST3, CLAP or LV2 edition, or import an aligned rendered stem while retaining the original device state",
+        Some("dll") => "Windows plugin binaries cannot run in this native Linux host. No Windows bridge is bundled. Install the matching Linux VST3, CLAP or LV2 edition, or import an aligned rendered stem",
+        Some("so" | "vst" | "vst2" | "fxp" | "fxb") => "Legacy VST2/shared-library hosting and preset conversion are unavailable; no VST2 SDK or compatibility bridge is bundled. Install the matching native VST3, CLAP or LV2 edition, or import an aligned rendered stem while retaining the original device state",
+        _ => "Choose a native Linux VST3 bundle, CLAP module or LV2 bundle for this CPU, or import an aligned rendered stem",
+    }
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]

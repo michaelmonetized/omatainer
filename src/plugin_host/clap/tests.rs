@@ -424,3 +424,18 @@ fn native_expression_offsets_identity_state_latency_and_process_crash_recovery()
     drop(recovered);
     std::fs::remove_dir_all(root).unwrap();
 }
+
+#[test]
+fn unavailable_platform_and_legacy_formats_have_specific_migration_diagnostics() {
+    for (file, reason) in [
+        ("Legacy.so", "Legacy VST2"),
+        ("Windows.dll", "Windows plugin"),
+        ("Mac.component", "Audio Units"),
+        ("Mac.aupreset", "Audio Units"),
+    ] {
+        let path = Path::new("/home/fixtures").join(file);
+        let message = super::super::identify(&path).unwrap_err();
+        assert!(message.contains(reason));
+        assert!(message.contains("rendered stem"));
+    }
+}

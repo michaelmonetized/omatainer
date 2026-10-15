@@ -484,6 +484,13 @@
       "version": "0.2.2"
     },
     {
+      "checksum": "a76abbdb2907f6fd97fb6bc0b7be96b77d328f2dd9669d1075cc03369ed22154",
+      "features": [],
+      "license": "MIT/Apache-2.0",
+      "name": "clap-sys",
+      "version": "0.5.0"
+    },
+    {
       "checksum": "fe6d2e5af09e8c8ad56c969f2157a3d4238cebc7c55f0a517728c38f7b200f81",
       "features": [
         "std",
@@ -5305,6 +5312,32 @@
         {
           "location": "https://static.crates.io/crates/cfg-if/cfg-if-1.0.5.crate",
           "sha256": "4e7648175b45a9a48536d676f68d918270699102aa8dab5496df06904c914600"
+        }
+      ]
+    },
+    {
+      "category": "rust-component",
+      "commercial_use": "The supplied MIT or Apache-2.0 license permits commercial use subject to its terms.",
+      "delivery": "resolved Linux build/runtime dependency; not a claim that every module is linked",
+      "id": "crate:clap-sys@0.5.0",
+      "license": "MIT/Apache-2.0",
+      "members": [],
+      "name": "clap-sys 0.5.0",
+      "notices": [
+        {
+          "location": "https://static.crates.io/crates/clap-sys/clap-sys-0.5.0.crate#LICENSE-APACHE",
+          "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+        },
+        {
+          "location": "https://static.crates.io/crates/clap-sys/clap-sys-0.5.0.crate#LICENSE-MIT",
+          "sha256": "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3"
+        }
+      ],
+      "redistribution": "Retain the supplied copyright, license and required notices. The Cargo legacy slash notation records a choice of MIT or Apache-2.0 terms.",
+      "sources": [
+        {
+          "location": "https://static.crates.io/crates/clap-sys/clap-sys-0.5.0.crate",
+          "sha256": "a76abbdb2907f6fd97fb6bc0b7be96b77d328f2dd9669d1075cc03369ed22154"
         }
       ]
     },
@@ -12986,8 +13019,8 @@
   "scope": "Native Linux executable and supplied Omarchy integration. Factory sounds are procedural originals. The source tree also contains separately licensed, test-only VocalSet and Groove MIDI Dataset recordings; these are not factory assets or production embedded media. The resolved Cargo inventory includes build-time and optional-feature dependencies conservatively; it is not a binary linker map. No reference-product sounds, projects, models or proprietary SDKs are supplied.",
   "source_files": {
     "CONTRACT.md": "a2b448e195c0e4990912a7dd65ef15506800ea3481fb8f0a30fcf83944a4106d",
-    "Cargo.lock": "8350ce258d4dab06759b21499ed8c57a5879c777295065bf980cce6f5103fa5b",
-    "Cargo.toml": "c10359d706095971353e889a561185e106b98e0912e46dda1a8e0378f414182b",
+    "Cargo.lock": "3bd7cb7ce07d7b62e72d389021d7125f3cfeb42a97951dbd6a48fb10a9ca30c3",
+    "Cargo.toml": "5fa7802ebb71028c744f256debe2fa5537465686a3ac42345b7c65e99068f928",
     "LICENSE": "63b79db05f159e96dc02773307e5911c95bb851fd3adceda0d977e1adf79aa1e",
     "README.md": "abab5cb8b9a15a180652402e983142ce2a3baf21f5272fe1c4e9079a5083143f",
     "benchmarks/keylock-show-policy.json": "c0606e0ae958cbd9a45921d67f051797b8a9991f787119dbcd9c09a63226f431",
@@ -13075,7 +13108,7 @@
     "src/ableton/clips.rs": "d207e05c4ff874bc3bb49eaf5f722917e7a21d709249cbde035450328f0b4eca",
     "src/ableton/convert.rs": "d14ef032fe228ed0090183191b1f8bc27af539833adb3ab9ac86dd4e82b7c74d",
     "src/ableton/dependencies.rs": "127c5129792b6e503861752841fb4898617cc64de4e62ace2a216f96948ca0e1",
-    "src/ableton/plugins.rs": "290c970e001128327a568f5919835bc0855fd607ac67a6c7909a10500546cc1a",
+    "src/ableton/plugins.rs": "c6da563a874a69753c3767be445c64449a42d7bf8277222a81f8289ae4a5a3dc",
     "src/ableton/presets.rs": "8f4501308b0bea0d5e7ad0053d02cd197715b9c337b50ab7032cc040641a6200",
     "src/ableton/process.rs": "fd0e9d28eb8c4a6b3c17982029618c1d61699087909f406a7f5d4c1ff456c2f4",
     "src/ableton/renders.rs": "4882f3747738bf829b1a1adf8ec3f41e72ae84102b2d90f52c3c0d330d1a87e4",
@@ -13130,8 +13163,8 @@
     "src/engine/audio/routing/model.rs": "5b8578a225f99a8c04f0203a81a855d384f05243b4498c74c45f888b90b89940",
     "src/engine/audio/routing/native_tests.rs": "e31857b77f5ef6d9af47cc6082a4b6c57e79d8585179656e312c5485bdf96ee9",
     "src/engine/audio/routing/ns7_native_tests.rs": "a45e852f08abb8fdc016b7bd614d140aecafb0adf8365014ec3f2cfb23601c77",
-    "src/engine/audio/routing/plugin_tests.rs": "150a4067c655696432b54e40699e48d16b2aeb742ace68f3a53636dc3dd3b81d",
-    "src/engine/audio/routing/plugins.rs": "d5317d28ac034da28019cc3cd2b3e664caefca7d543d52960e1c752e6895c96f",
+    "src/engine/audio/routing/plugin_tests.rs": "3d0baf4f0e74b9241f28b0b9109e64f37a76c7cded4896bc5cf062c277872756",
+    "src/engine/audio/routing/plugins.rs": "d6cefee908c01d41d6a1a2204371e4469a3f6cecbea753d15e7492e622e7036e",
     "src/engine/audio/routing/positions.rs": "0cddec0729fa084a1235d828a61035d31e360d23438542f66b20847c3b09e29e",
     "src/engine/audio/routing/positions/tests.rs": "d83ce9d98c18ad4c8ed791282b92be763f9854d1688d59c65d409d66a8cdf493",
     "src/engine/audio/routing/prepared.rs": "c2efff57a606c8323fefbcfafb0a26252354d763363a2a3944932e9c9ba1d022",
@@ -13142,7 +13175,7 @@
     "src/engine/audio/routing/record/placement.rs": "fdf524a9449d95c4e9af1044609d964e2cadef5b0e4e83209318ea608163302e",
     "src/engine/audio/routing/record/placement/tests.rs": "654492e4d4e5db9e5efb212a9655e7833467bc2dd0b5891f105272e5241fd4be",
     "src/engine/audio/routing/render.rs": "710cb7191a48abfb25728937af95a201a97fffc3d466af7d8db15e360d29d5fe",
-    "src/engine/audio/routing/render_plugins.rs": "30aa10e76adc47b93a4098c05083559d6a0cad7c4bb63cf2c5791dbb83aeae32",
+    "src/engine/audio/routing/render_plugins.rs": "140d7e2e10091b846e4747d52a344449e4e584c737d02ebcb7c9f69964526cd4",
     "src/engine/audio/routing/tests.rs": "12c22b35b52f7f99387c9c03b2c9464ee7ea4db4542d83d1c7979fefc884ed75",
     "src/engine/audio/scheduling.rs": "905c79d1b3ae5e23e5cdfa5120d2df247e417dc28363c3084865826aa527908b",
     "src/engine/audio_clip.rs": "4fbc9351fe820cde34e7cc432ffa702f4a8240910d6a1752e8a0175acdb77606",
@@ -13515,13 +13548,25 @@
     "src/playlist_import/plist.rs": "3f3329805022bd851a1cb760e65648ea9056b16885e18eb50601f95e23e0c931",
     "src/playlist_import/serato.rs": "5bbc071aef68a4624dcb8cba347329b998c4de4650d4d2277110884b2508fc9d",
     "src/playlist_import/tests.rs": "9e09118cbc792c4a268473f79870adef9e9e4bc21469ea41744bdc9b3e807cae",
-    "src/plugin_host/mod.rs": "cecd7fb3e61b89b2ad39c7ed96fa8d70642242b257f614acb55327d50cebeac6",
-    "src/plugin_host/process.rs": "909da22f3562d700ee7f004d70f3d74f9779ecc39554532809b79adbcb81ebe5",
-    "src/plugin_host/realtime.rs": "9c2f6e52460f82d1434bc3c97e40a6c2b5ff8853196ff04078b0ee050c1e6461",
-    "src/plugin_host/realtime/tests.rs": "3a0132150867a4b7f267c1faedadfc1381f7a3704ce5f3b337e2b45f5e057dad",
-    "src/plugin_host/scanner.rs": "265e3b8807da896870b7283459a9d88b005a386479edaaa9e8df302c7d63eefd",
-    "src/plugin_host/scanner/tests.rs": "32959659ff6275738d58e927886bbf1e3ae998ef45fbca2f990141bfda73a6ed",
-    "src/plugin_host/worker.rs": "66de7dafc6fdb9482909c31e1ddea5b6993c248faea4226983fa25804f93aa21",
+    "src/plugin_host/clap/callbacks.rs": "501dd73899fd156d09637d20b55daecccf687391b2e3eff59c027607292a66a8",
+    "src/plugin_host/clap/editor.rs": "3e44f1585ef8b7dde6efd4ba246bfa7b8ebf39b576e9fd930a4429a2cd46a928",
+    "src/plugin_host/clap/events.rs": "a6803f6828e594f125fe7aa92024fdf854e7d632d6fdd7c9ff347ed39af4bd07",
+    "src/plugin_host/clap/expression.rs": "5dd5f478d30175a51ecc0948698727d5d38c1b814e73d6e6033d47380c7b20d1",
+    "src/plugin_host/clap/mod.rs": "cc9dbaba9297acad92f52a36540182dca81117dbc0eb9b3d33ab558e0eb4cd2a",
+    "src/plugin_host/clap/tests.rs": "0cec5641db943824997c9b5ebaf84dcda8b3f429c8d4416d9ae061e600cd9458",
+    "src/plugin_host/lv2/api.rs": "013b87e80e006ebe9af4e404d0af246e20fab0de0ee5afad13770b4f71b33d20",
+    "src/plugin_host/lv2/editor.rs": "c3b1a88527e0d2b8bd2187c84e8fd24750227cdaa42a6d7dc491076b7f99f564",
+    "src/plugin_host/lv2/features.rs": "11c2b5904b06b706c76a8383c1be03dcea812b4e8e5b353093c427d1daa1f5a0",
+    "src/plugin_host/lv2/mod.rs": "afce7888ebbd8322629eb8388e07ea4dac8590fcc42dcf2198d2f0033dc75bd6",
+    "src/plugin_host/lv2/state.rs": "178e886ad45c4244206b519c9104fdefb226ed7b3c00dbb900c4273efbc39ad0",
+    "src/plugin_host/lv2/tests.rs": "d5eb9971cb04533ed724809ef79258a90f3364b4bda92fe4978f17373e42e0f0",
+    "src/plugin_host/mod.rs": "a19cd808622a10120fd7584892852986829d8a63a7b1ac91248df85e4e60a8bb",
+    "src/plugin_host/process.rs": "32de7d143e3046531323ee5691f102925abc0786c432441606ff0f6e3797364e",
+    "src/plugin_host/realtime.rs": "c923da7cac64caeb421c533e4fe9f2e2f457bf442905216c06a598130e2b51ee",
+    "src/plugin_host/realtime/tests.rs": "935bd6c594252bea08395950e05519ec174e125339e3e865e74829405ffe56d9",
+    "src/plugin_host/scanner.rs": "d17cafcfae531a559367bea9a6b1a62c73858da6ed12aaf28499d116d140d725",
+    "src/plugin_host/scanner/tests.rs": "a10aa186b5112c7b97a4ebaf5a01532d3eb9e7b280f6e3a30c05901450766d64",
+    "src/plugin_host/worker.rs": "a8a8bcc089fe2e2191c7455eacd0e59b8763887158a852014a00abba7e7df334",
     "src/portable_project.rs": "9e774b7a3e960d71347ecc11bd270f71dd20c7df879679bfca3ed1c8bcb4b6b6",
     "src/portable_project/tests.rs": "a795e2cb9c8df18d91108e83a0e2225e0e1c2ccaa1f16e43d583417909f81955",
     "src/preferences/library_layout.rs": "9dd711a97024f3ae5c939e794504f651413a9880c2a37096b6a65bb51e375753",
@@ -13608,7 +13653,7 @@
     "src/ui/audio_delivery.rs": "d2130366afe7feed309131b7978ae5777a2c2ef0c4e67444d3f6e4615cc3f574",
     "src/ui/audio_delivery/tests.rs": "1486f7d7fb15e9b87436b57050228749fdf930289fca7beb9fca2334b478d869",
     "src/ui/audio_fades.rs": "52794a5ecdd89197f6f12e8a23c1466b2531ac3dfc3faf332d56c8b283607999",
-    "src/ui/audio_routing.rs": "7e9377633c89007ed5732593387bdc95b56b9b7a62e80d9d5dfe387d65d6cc51",
+    "src/ui/audio_routing.rs": "5e903f200cd111a91da94830e03a24ac8c4df9c74335e4b51f8e1a58b0df28c6",
     "src/ui/audio_routing/latency.rs": "ef97a9b23a498366f4d84b258b8dced481cd689ada62f1e057ce60c86f62df9a",
     "src/ui/audio_routing/tests.rs": "b93c1cb03d101c688cbb4e1373cab169d93e274f76cdf3842168a22d578ca818",
     "src/ui/audio_routing/worker.rs": "d092fd72ba15ad8ee3718812eca73612d6c2670fd43fe06e5978ac227b7b48a9",
@@ -13802,7 +13847,7 @@
     "src/ui/play_history/tests.rs": "066860494e5432b71834648c8e5eaf9868c46723a9162936e844fdd9caf62041",
     "src/ui/play_time.rs": "eaf2fd3ee53933472c3972ea5f6ea186f2036c73b17195c33c35013fa022fe03",
     "src/ui/play_time/tests.rs": "17be78ff09807826c993a70213973164f1addd8370243396a30e97fad597dfa5",
-    "src/ui/plugins.rs": "05bc9319167aa7f4b1c1577e983532c821ab0ecb9db6edcc8e28f5fd9056b9ca",
+    "src/ui/plugins.rs": "7eae9df319ea4e40561d44124da664eb46b70faf893141aef401b948b5c290fc",
     "src/ui/plugins/tests.rs": "88296fcc5e0da5f336aac605428f30d1ec7a7f13ecd2b838238c40eb17cae402",
     "src/ui/portability.rs": "52af93271305fc08620bb14aeb91dc6fe500d5ebf4d420903624767d5f1e56d6",
     "src/ui/portability/tests.rs": "43afa46d34adfb5f903cc910e8be0b293b2b1abfe8e34cd37a4d178ab2bf8a03",
@@ -13895,6 +13940,7 @@
     "tests/fixtures/beatgrid/README.md": "aae4aef775d0f9deffebc03009afd8f126c4de8500c0c925184152baf7ecdfcb",
     "tests/fixtures/beatgrid/additional-sources.json": "424a9185db789463d40ee3dfa05d07bf5de42ad40aca1959fa77e77db4c01e66",
     "tests/fixtures/beatgrid/sources.json": "04df228b01a61d1b208da34e1631a2b84f6e828d2823dee71fb0a8489baa0124",
+    "tests/fixtures/clap-expression.c": "2bd682af9c5e24d9f06153dafb5fc0f96e37c4e504e04a7d9149c596d336a167",
     "tests/fixtures/controller-catalogs/changed-ns7.json": "c6143e33fe9a82b7f0a81a1eb53c4d7d0322f71434fa14e9f0295378ef65f814",
     "tests/fixtures/controller-catalogs/generation-2.json": "fd7d6d70f732ecaad8fc287f034718e741aecfd7a567143ca6b7fd74e7cabe23",
     "tests/fixtures/controller-catalogs/generation-3.json": "5a313551c76d1058550cb35655de7e2c89793292d85c92174519879ff553c03a",
@@ -13903,6 +13949,8 @@
     "tests/fixtures/keylock/f1_arpeggios_c_slow_forte_i.wav": "23f8c61eca9ffb533806eeb58dab979013650c3d4331c1e916b3f627a0253c1b",
     "tests/fixtures/keylock/m1_arpeggios_c_slow_forte_i.wav": "8c25832b5e2aeeff6e2f93ff283015865c80cb32483a5931ab89da7074c6affa",
     "tests/fixtures/keylock/sources.json": "84c53b13a5f2c143c6f6345cea892d1e8a94037488f555b041dc339fda8fd1ac",
+    "tests/fixtures/lv2-state.c": "8e5bdd6198634adb284efd4a2f7820752e8b3ed5304ac91df2c764743f3b0335",
+    "tests/fixtures/lv2-state.ttl": "8603fc95a4c8ffe2cf10694bbd93030e63672c463fbed4605fa57e1ecc9df2e6",
     "tests/fixtures/midi/README.md": "74b15f28a85c57e6be2e025fccc1cdf4da1756dc0625bf2535e0310e72ec253e",
     "tests/fixtures/midi/ardour-9.8-region-ppqn19200.mid": "e20b3ab9a40a45b032451df776a7a189bb3e0e886b25f8aeb0be2899ce5aecde",
     "tests/fixtures/midi/generate.py": "16c30a593146b1b9804e8b21c3c6ae87b0b058b70a15cfe559980551d1b45e49",
