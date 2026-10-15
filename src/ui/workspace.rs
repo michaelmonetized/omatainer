@@ -290,7 +290,12 @@ impl App {
                     .or_insert(preset);
             }
             profile.workspaces.studio.active = task;
-            if let Some(draft) = self.settings.draft.profiles.get_mut(&self.settings.applied.active) {
+            if let Some(draft) = self
+                .settings
+                .draft
+                .profiles
+                .get_mut(&self.settings.applied.active)
+            {
                 draft.workspaces.studio = profile.workspaces.studio.clone();
             }
         }
@@ -443,7 +448,16 @@ impl App {
                         });
                         ui.weak("Right-click a panel tab to move, group, float or close it.");
                     });
+                    let floating: BTreeSet<_> = layout
+                        .groups
+                        .iter()
+                        .filter(|group| group.place == Place::Floating)
+                        .flat_map(|group| group.panels.iter().cloned())
+                        .collect();
                     let remaining = layout.show(ui, "omatainer-studio", &registry, |ui, panel| {
+                        if floating.contains(panel) {
+                            self.workspace_status(ui);
+                        }
                         self.studio_panel(ui, panel)
                     });
                     self.workspace.center = Some(remaining);
@@ -462,7 +476,12 @@ impl App {
             .unwrap();
         profile.workspaces.studio = book.clone();
         if !self.settings.open && !self.settings.busy() {
-            if let Some(draft) = self.settings.draft.profiles.get_mut(&self.settings.applied.active) {
+            if let Some(draft) = self
+                .settings
+                .draft
+                .profiles
+                .get_mut(&self.settings.applied.active)
+            {
                 draft.workspaces.studio = book;
             }
         }
