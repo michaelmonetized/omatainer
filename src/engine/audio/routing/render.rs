@@ -105,7 +105,7 @@ impl Prepared {
                     }
                     [pair.taps[slot][0], [left, right], mixed]
                 }
-                Group::FixedReturn(index)=>{let output=rt.surface.render_send(usize::from(index),input,f64::from(rt.sr)*60./f64::from(rt.bpm.max(1.)));if !self.model.fixed_returns_without_default_send[usize::from(index)]{send=Some((self.main,output,self.nodes[index].valid));}[input,output,output]}
+                Group::FixedReturn(return_index)=>{let output=rt.surface.render_send(usize::from(return_index),input,f64::from(rt.sr)*60./f64::from(rt.bpm.max(1.)));if !self.model.fixed_returns_without_default_send[usize::from(return_index)]{send=Some((self.main,output,self.nodes[index].valid));}[input,output,output]}
                 Group::Main => {
                     rt.mic_aux.music_gain();
                     if let Some(latency) = &mut self.latency {

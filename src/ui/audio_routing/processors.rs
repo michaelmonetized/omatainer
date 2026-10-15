@@ -3,7 +3,7 @@ use super::*;
 impl Draft {
     /// Append an effect to one retained shared return.
     /// Takes a catalog processor, project namespace and bus identity; commits a validated draft chain atomically or leaves the draft unchanged.
-    fn attach_return(
+    pub(super) fn attach_return(
         &mut self,
         mut plugin: crate::engine::audio::routing::plugins::Instance,
         namespace: [u64; 2],
