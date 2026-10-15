@@ -68,6 +68,7 @@ impl Gui {
             data,
         })]);
         self.frame(Vec::new());
+        assert_eq!(self.app.submission_error.get(), None, "{label}: {action:?}");
     }
     fn select(&mut self, slots: &[usize]) {
         let layout = self.app.snap.session.as_ref().unwrap();

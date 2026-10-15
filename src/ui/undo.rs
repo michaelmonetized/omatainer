@@ -15,11 +15,6 @@ pub(super) struct History {
 }
 
 impl History {
-    /// Reuse the active input gesture for a set of related controls.
-    /// Args: renderer history handle. Returns one identity for the current edit.
-    pub(super) fn edit_gesture(&self, handle: &crate::engine::undo::Handle) -> u64 {
-        self.gesture.get().unwrap_or_else(|| handle.gesture())
-    }
     pub fn begin_frame(&mut self, ctx: &egui::Context, handle: &crate::engine::undo::Handle) {
         let focused = ctx.memory(|memory| memory.focused());
         if !ctx.input(|input| input.focused) {

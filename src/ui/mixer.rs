@@ -232,24 +232,17 @@ impl App {
                 if pan_field.cancelled || commit_pan {
                     self.mixer.pan_draft = None;
                 }
-                let gesture = self.undo_history.edit_gesture(&self.engine.undo);
                 for (slot, _) in &selected {
                     if commit_gain {
-                        self.send(Command::Gesture {
-                            id: gesture,
-                            command: Box::new(Command::TrackGain {
-                                track: *slot as u8,
-                                value: gain / 100.0,
-                            }),
+                        self.send(Command::TrackGain {
+                            track: *slot as u8,
+                            value: gain / 100.0,
                         });
                     }
                     if commit_pan {
-                        self.send(Command::Gesture {
-                            id: gesture,
-                            command: Box::new(Command::TrackPan {
-                                track: *slot as u8,
-                                value: (pan / 100.0 + 1.0) * 0.5,
-                            }),
+                        self.send(Command::TrackPan {
+                            track: *slot as u8,
+                            value: (pan / 100.0 + 1.0) * 0.5,
                         });
                     }
                 }
@@ -276,16 +269,10 @@ impl App {
                     .clicked();
                     for (slot, _) in &selected {
                         if mute && self.snap.tracks[*slot].mute == muted {
-                            self.send(Command::Gesture {
-                                id: gesture,
-                                command: Box::new(Command::Mute { track: *slot as u8 }),
-                            });
+                            self.send(Command::Mute { track: *slot as u8 });
                         }
                         if solo && self.snap.tracks[*slot].solo == soloed {
-                            self.send(Command::Gesture {
-                                id: gesture,
-                                command: Box::new(Command::Solo { track: *slot as u8 }),
-                            });
+                            self.send(Command::Solo { track: *slot as u8 });
                         }
                     }
                 });
