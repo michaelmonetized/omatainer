@@ -297,6 +297,9 @@ pub(super) unsafe extern "C" fn abstract_path(h: M, p: *const c_char) -> *mut c_
     let Ok(mut paths) = state.paths.lock() else {
         return ptr::null_mut();
     };
+    if let Some((id, _)) = paths.iter().find(|(_, existing)| **existing == path) {
+        return CString::new(id.as_str()).map_or(ptr::null_mut(), |s| libc::strdup(s.as_ptr()));
+    }
     if paths.len() >= 256 {
         return ptr::null_mut();
     }

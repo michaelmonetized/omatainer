@@ -63,6 +63,7 @@ api! {
  ui_get_uri:unsafe extern "C" fn(P)->P,
  ui_get_binary_uri:unsafe extern "C" fn(P)->P,
  ui_get_bundle_uri:unsafe extern "C" fn(P)->P,
+ plugin_get_library_uri:unsafe extern "C" fn(P)->P,
  plugin_get_uri:unsafe extern "C" fn(P)->P,
  plugin_get_name:unsafe extern "C" fn(P)->M,
  plugin_get_author_name:unsafe extern "C" fn(P)->M,

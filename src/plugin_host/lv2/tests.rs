@@ -175,3 +175,116 @@ fn native_lv2_modules_scan_process_state_reopen_and_multibus() {
         exchange(&mut reopened, Request::Quit);
     }
 }
+
+#[test]
+#[ignore = "Compiles and runs the native LV2 state/Atom conformance module; no device or editor"]
+fn native_lv2_atom_state_assets_latency_required_features_and_worker_recovery() {
+    let root = std::env::temp_dir().join(format!(
+        "native-lv2-{}",
+        crate::sampler_bank::BankId::new().unwrap()
+    ));
+    let bundle = root.join("Conformance.lv2");
+    std::fs::create_dir_all(&bundle).unwrap();
+    let fixtures = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures");
+    let status = std::process::Command::new("cc")
+        .args(["-std=c11", "-shared", "-fPIC", "-O1"])
+        .arg(fixtures.join("lv2-state.c"))
+        .arg("-o")
+        .arg(bundle.join("state.so"))
+        .status()
+        .unwrap();
+    assert!(status.success());
+    let ttl = std::fs::read_to_string(fixtures.join("lv2-state.ttl")).unwrap();
+    std::fs::write(bundle.join("manifest.ttl"), &ttl).unwrap();
+    let exe = std::env::current_exe().unwrap();
+    let mut p = process::Process::start(&exe).unwrap();
+    let binary = identify(&bundle).unwrap();
+    let Response::Classes { classes } = exchange(
+        &mut p,
+        Request::Probe {
+            binary: binary.clone(),
+        },
+    ) else {
+        panic!("Expected native LV2 metadata")
+    };
+    let class = &classes[0];
+    let saved = Saved {
+        schema: 1,
+        binary,
+        class_id: class.info.uid.clone(),
+        plugin_version: class.info.version.clone(),
+        state_codec: "lv2-state-1".into(),
+        state: vec![],
+    };
+    exchange(&mut p, Request::Load { saved, rate: 48000 });
+    let mut f = block(class);
+    f.midi = vec![(17, [0x93, 60, 100]), (127, [0x83, 60, 0])];
+    f.parameters = vec![(2, 0.25, 63)];
+    let Response::Audio {
+        outputs,
+        latency,
+        midi,
+        ..
+    } = exchange(&mut p, Request::Process { frame: f })
+    else {
+        panic!("Expected native LV2 output")
+    };
+    assert_eq!(latency, 11);
+    assert_eq!(midi.len(), 2);
+    let out = &outputs[0][0];
+    assert!(out[..17].iter().all(|v| *v == 0.));
+    assert!(out[17..63].iter().all(|v| *v == 0.75));
+    assert!(out[63..127].iter().all(|v| *v == 0.5));
+    assert!(out[127..].iter().all(|v| *v == 0.));
+    let Response::State { saved, .. } = exchange(&mut p, Request::State) else {
+        panic!("Expected portable LV2 state")
+    };
+    let encoded =
+        serde_json::to_value(&serde_json::from_slice::<serde_json::Value>(&saved.state).unwrap())
+            .unwrap();
+    assert_eq!(encoded["assets"]["assets/0"], serde_json::json!([32]));
+    p.kill_for_test();
+    assert!(p
+        .exchange(
+            &Request::State,
+            &AtomicBool::new(false),
+            Duration::from_secs(2)
+        )
+        .is_err());
+    drop(p);
+    let saved: Saved = serde_json::from_slice(&serde_json::to_vec(&saved).unwrap()).unwrap();
+    let mut recovered = process::Process::start(&exe).unwrap();
+    exchange(&mut recovered, Request::Load { saved, rate: 48000 });
+    let mut f = block(class);
+    f.midi.push((0, [0x93, 60, 100]));
+    let Response::Audio { outputs, .. } = exchange(&mut recovered, Request::Process { frame: f })
+    else {
+        panic!("Expected restored native LV2 output")
+    };
+    assert!(outputs[0][0].iter().all(|v| *v == 0.5));
+    exchange(&mut recovered, Request::Quit);
+    drop(recovered);
+    let unsupported = root.join("Unsupported.lv2");
+    std::fs::create_dir(&unsupported).unwrap();
+    std::fs::copy(bundle.join("state.so"), unsupported.join("state.so")).unwrap();
+    std::fs::write(
+        unsupported.join("manifest.ttl"),
+        ttl.replace(
+            "urid:map, state:mapPath",
+            "<urn:omatainer:unsupported-required-feature>, urid:map, state:mapPath",
+        ),
+    )
+    .unwrap();
+    let binary = identify(&unsupported).unwrap();
+    let mut check = process::Process::start(&exe).unwrap();
+    let error = check
+        .exchange(
+            &Request::Probe { binary },
+            &AtomicBool::new(false),
+            Duration::from_secs(5),
+        )
+        .unwrap_err();
+    assert!(error.contains("unsupported-required-feature"));
+    drop(check);
+    std::fs::remove_dir_all(root).unwrap();
+}
