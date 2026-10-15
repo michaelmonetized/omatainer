@@ -3,7 +3,7 @@ use super::*;
 impl Draft {
     /// Append an effect to one retained shared return.
     /// Takes a catalog processor, project namespace and bus identity; commits a validated draft chain atomically or leaves the draft unchanged.
-    fn attach_return(
+    pub(super) fn attach_return(
         &mut self,
         mut plugin: crate::engine::audio::routing::plugins::Instance,
         namespace: [u64; 2],
@@ -29,7 +29,12 @@ impl Draft {
                 .links()
                 .filter(|c| {
                     c.source.group == source
-                        && c.source.tap == Tap::PostMixer
+                        && c.source.tap
+                            == if matches!(source, Group::Bus(_)) {
+                                Tap::PreFx
+                            } else {
+                                Tap::PostFx
+                            }
                         && c.map.iter().any(|m| m.gain != 0.)
                 })
                 .collect::<Vec<_>>();
@@ -110,7 +115,11 @@ impl Draft {
         model.connections.push(Connection {
             source: Source {
                 group: source,
-                tap: Tap::PostMixer,
+                tap: if matches!(source, Group::Bus(_)) {
+                    Tap::PreFx
+                } else {
+                    Tap::PostFx
+                },
             },
             destination: Group::Plugin(id),
             map,

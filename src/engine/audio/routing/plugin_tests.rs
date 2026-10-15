@@ -7,13 +7,13 @@ pub(crate) fn fixture(instrument:bool)->(Class,Saved) {
     probe(root.join("Contract.vst3"),instrument)
 }
 pub(crate) fn probe(bundle:PathBuf,instrument:bool)->(Class,Saved){
-    let exe=PathBuf::from(std::env::var_os("OMATAINER_TEST_BIN").expect("Fresh native app executable is required"));
+    let exe=std::env::var_os("OMATAINER_TEST_BIN").map(PathBuf::from).unwrap_or_else(||std::env::current_exe().unwrap());
     let mut worker=plugin_host::process::Process::start(&exe).unwrap();
     let cancel=AtomicBool::new(false);
     let binary=match worker.exchange(&Request::Inspect{path:bundle},&cancel,Duration::from_secs(10)).unwrap(){Response::Identity{binary}=>binary,_=>panic!("Missing fixture identity")};
     let classes=match worker.exchange(&Request::Probe{binary:binary.clone()},&cancel,Duration::from_secs(10)).unwrap(){Response::Classes{classes}=>classes,_=>panic!("Missing fixture classes")};
     let class=classes.into_iter().find(|c| c.info.category.contains("Instrument")==instrument).expect("Both original fixture classes must be present");
-    let saved=Saved{schema:1,binary,class_id:class.info.uid.clone(),plugin_version:class.info.version.clone(),state_codec:"vst3-host-0.9-state".into(),state:vec![]};
+    let saved=Saved{schema:1,binary,class_id:class.info.uid.clone(),plugin_version:class.info.version.clone(),state_codec:Saved::codec(&class.info.uid).into(),state:vec![]};
     (class,saved)
 }
 fn instance(class:&Class,saved:Saved,track:Option<engine::session::Id>)->Instance{
@@ -34,6 +34,55 @@ fn capture(engine:&Engine,rt:&mut RtEngine)->project::Captured{
     let deadline=Instant::now()+Duration::from_secs(15);
     while !task.is_finished(){rt.process_interleaved(&mut[0.;512],2);assert!(Instant::now()<deadline);std::thread::sleep(Duration::from_millis(1));}
     task.join().unwrap().unwrap()
+}
+
+#[test]
+#[ignore="requires the pinned native MVerb CLAP module; no devices or editors"]
+fn named_return_native_processor_gain_pan_mute_and_wet_tail_keep_independent_reference() {
+    use super::{mixer::{Target,Parameter as MixParameter},selection::Policy};
+    let root=PathBuf::from(std::env::var_os("OMATAINER_CLAP_FIXTURES").expect("Pinned native fixtures required"));
+    let (class,saved)=probe(root.join("MVerb.clap"),false);
+    for rate in [44100,48000,96000] {
+        let (_,mut rt)=Engine::headless_for_test(rate,256);
+        rt.apply(Command::Stop);
+        let mut model=Model::default();model.version=3;model.next_id=5;
+        model.ports.push(Port{id:2,alias:"Return source".into(),direction:Direction::Input,channels:vec![0,1]});
+        model.buses.push(Bus{id:3,alias:"Wet return".into(),channels:2,gain:1.,mute:false,mixer:Default::default()});
+        let mut p=instance(&class,saved.clone(),None);p.id=4;p.return_bus=Some(3);
+        model.plugins.push(p);
+        model.connections=vec![link(Group::Input(2),Group::Bus(3),&[(0,0,1.),(1,1,1.)]),link(Group::Bus(3),Group::Plugin(4),&[(0,0,1.),(1,1,1.)]),link(Group::Plugin(4),Group::Output(1),&[(0,0,1.),(1,1,1.)])];
+        model.connections[1].source.tap=Tap::PreFx;
+        let mut graph=Prepared::at_rate(Arc::new(model.clone()),&rt.session,rate).unwrap();graph.offline();graph.selection=Some(Policy::PostDevice);
+        let mut reference=Prepared::at_rate(Arc::new(model),&rt.session,rate).unwrap();reference.offline();reference.selection=Some(Policy::PostDevice);
+        assert_eq!(graph.output_delay(1),rate/10);
+        let node=graph.plugins[0].node;
+        let delay=(graph.output_delay(1)-graph.latency.as_ref().unwrap().plan.taps[node][2]) as usize;
+        let mut expected=vec![[0f32;2];rate as usize/2+delay+1];
+        let mut tail=false;
+        let mut muted_tail=false;
+        for frame in 0..rate as usize/2 {
+            let level=if frame<1024 {1.}else{0.5};
+            let mute=(rate as usize/12..rate as usize/4).contains(&frame);
+            graph.mix_control(Target::Return(3),MixParameter::Level,level);
+            graph.mix_control(Target::Return(3),MixParameter::Pan,-1.);
+            graph.mix_control(Target::Return(3),MixParameter::Mute,if mute {1.}else{0.});
+            rt.routing_input_frame.fill(0.);if frame==0{rt.routing_input_frame[..2].copy_from_slice(&[0.125,-0.0625]);}
+            let actual=graph.render(&mut rt,false,0.,2);
+            reference.render(&mut rt,false,0.,2);
+            let raw=&reference.nodes[node].taps[Tap::PostFx.index()];
+            assert_eq!(graph.nodes[node].taps[Tap::PostFx.index()],reference.nodes[node].taps[Tap::PostFx.index()],"Return controls must keep the native feeder/state unchanged at {rate}/{frame}");
+            let pair=if mute{[0.;2]}else{[raw[0]*level,0.]};
+            expected[frame+delay]=pair;
+            assert_eq!(&graph.nodes[node].taps[Tap::PostMixer.index()][..2],&pair);
+            assert!((actual[0]-expected[frame][0]).abs()<1e-7 && actual[1].abs()<1e-7,"Independent aligned return equation at {rate}/{frame}");
+            muted_tail|=mute&&raw[..2].iter().any(|v|v.abs()>1e-8);
+            tail|=frame>8192&&raw[..2].iter().any(|v|v.abs()>1e-8);
+        }
+        assert!(muted_tail&&tail,"Native wet tail must continue across mute and reappear after unmute at {rate}");
+        assert!(graph.plugins[0].error.is_none());
+        graph.offline=false;
+        assert_eq!(engine::test_alloc::measure(||{graph.render(&mut rt,false,0.,2);}),engine::test_alloc::Counts::default());
+    }
 }
 
 #[test]

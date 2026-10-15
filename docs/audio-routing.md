@@ -30,6 +30,58 @@ invalid channel maps and changed project state reject the complete edit. Cancel
 preserves current audio. History can undo and redo applied routing; Save and Open
 retain aliases, routes, buses and input choices. Opening never enables an input.
 
+## Named sends and shared returns
+
+Under **Named sends and returns**, add a named stereo return and choose each send's
+source, destination, tap and channel map. A send has its own level, stereo balance
+and mute. Return controls add solo and solo safe. The live mixer shows current
+levels and peaks; changes use the same History journal as other mixer controls.
+Pre FX and post FX taps bypass source mute, solo, fader, pan and crossfader. Post
+mixer includes those controls. A return's mute changes its post-mixer tap; pre taps
+continue processing. These tap rules also apply to automation and MIDI controls.
+
+Return solo gates audible sums, including shared downstream sums. Source nodes
+continue processing, and explicit secondary plugin input buses retain their
+sidechain feeds. Any source feeding a soloed or solo-safe return remains available
+to it. Solo safe keeps that return's audible path in the sum. Selecting an upstream
+return includes its downstream processing. Existing track solo follows the track
+tap rules above; return solo does not change them.
+
+In **Native plugins**, choose **Return for effect → Append return effect** to add
+an effect to a saved shared return. Review and apply the inspected routing draft.
+Track duplication preserves shared return processors; deleting the return removes
+its owned processor chain and dependent routes. Sidechains and extra plugin outputs
+remain explicit maps. An ambiguous parallel chain or incompatible output width
+refuses the draft rather than dropping channels.
+Owned return effects take the bus pre-FX signal and pass their processed signal to
+the next effect. The last effect's post-mixer tap applies return level, balance and
+mute, so wet tails remain inaudible while muted and keep processing underneath.
+Its post-FX tap remains available for an explicit pre-fader route.
+
+Automation uses absolute song beats. Level and pan interpolate linearly; mute,
+solo and solo safe step at each point. Endpoints hold outside the lane. While song
+playback runs, a lane owns its parameter; stopping restores its saved manual value.
+Each strip permits 16,384 points, with 65,536 total mixer points, 128 UTF-8 bytes per
+name and 256 regular connections plus named sends. Graph and native delay storage
+are admitted on workers. Invalid values, cycles or exhausted budgets leave the
+active graph unchanged. Callback controls allocate no memory, take no locks and
+perform no file operations.
+
+Fixed reverb and echo amounts and crossfader assignments are saved per retained
+track identity. New tracks start with zero sends and no crossfader assignment.
+Duplication copies those controls; reorder, removal, Undo and save/reopen preserve
+their identities. Fixed returns can also be selected as separate render contributions.
+
+Contribution rendering validates a selection against one immutable capture and
+keeps every source and sidechain feeder processing. Post-device track contributions
+end before shared scene effects; scene contributions include that shared boundary.
+Shared returns are separate passes. Post-device and explicit dry passes bypass main
+processing and the final soft limiter; their original graph delay is trimmed once.
+Mastered solo passes retain normal main processing and are not an exact-sum format.
+Overlapping track/scene selections, ambiguous device forks, stale identities or a
+changed output delay are refused. These software contracts do not establish
+physical speaker mapping, device clock alignment or listening acceptance.
+
 Enter an exact input device/backend, channel count and sample format under **Live
 input choices**. Preview discovers its advertised configuration at the active
 output's nominal rate. Confirm **Stop and enable input** to open it. Input faults,

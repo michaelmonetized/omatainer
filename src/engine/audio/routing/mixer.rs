@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 
 pub const MAX_SENDS: usize = 256;
 pub const MAX_LANE_POINTS: usize = 16384;
-pub const MAX_MIXER_POINTS:usize=65536;
+pub const MAX_MIXER_POINTS: usize = 65536;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -238,17 +238,26 @@ pub struct Channel {
     pub values: Values,
     pub effective: Values,
     pub peaks: [f32; MAX_PORT_CHANNELS],
+    #[serde(skip)]
+    pub automation_delay: u32,
 }
 #[derive(Debug)]
 pub struct Runtime {
     pub channels: Vec<Channel>,
     pub ancestry: Vec<u32>,
+    pub feeders: Vec<u32>,
     pub solo: u32,
+    pub safe: u32,
 }
 impl Runtime {
     /// Prepare live controls and return ancestry outside the callback.
     /// Takes the saved graph and topological nodes; returns bounded scalar and meter storage.
-    pub fn new(model: &Model, order: &[Group], layout: &crate::engine::session::Layout) -> Self {
+    pub fn new(
+        model: &Model,
+        order: &[Group],
+        layout: &crate::engine::session::Layout,
+        plan: Option<&super::latency::Plan>,
+    ) -> Self {
         let channels = model
             .sends
             .iter()
@@ -275,40 +284,182 @@ impl Runtime {
                 values,
                 effective: values,
                 peaks: [0.; MAX_PORT_CHANNELS],
+                automation_delay: plan.map_or(0, |plan| match target {
+                    Target::Send(id) => {
+                        plan.inputs[order
+                            .iter()
+                            .position(|g| {
+                                *g == model
+                                    .sends
+                                    .iter()
+                                    .find(|s| s.id == id)
+                                    .unwrap()
+                                    .route
+                                    .destination
+                            })
+                            .unwrap()]
+                    }
+                    Target::Return(id) => model
+                        .plugins
+                        .iter()
+                        .find(|p| {
+                            p.return_bus == Some(id)
+                                && !model.links().any(|r| {
+                                    r.source.group == Group::Plugin(p.id)
+                                        && model.plugins.iter().any(|next| {
+                                            r.destination == Group::Plugin(next.id)
+                                                && next.return_bus == Some(id)
+                                        })
+                                })
+                        })
+                        .map_or_else(
+                            || {
+                                plan.inputs
+                                    [order.iter().position(|g| *g == Group::Bus(id)).unwrap()]
+                            },
+                            |p| {
+                                plan.taps[order
+                                    .iter()
+                                    .position(|g| *g == Group::Plugin(p.id))
+                                    .unwrap()][Tap::PostFx.index()]
+                            },
+                        ),
+                }),
             })
             .collect();
-        let mut ancestry = vec![0u32; order.len()];
-        for (index, group) in order.iter().copied().enumerate() {
-            if let Group::Bus(id) = group {
-                ancestry[index] |= 1u32 << model.buses.iter().position(|b| b.id == id).unwrap();
-            }
-            for route in model.links().filter(|r| r.destination == group) {
-                if let Some(source) = order[..index].iter().position(|g| *g == route.source.group) {
-                    ancestry[index] |= ancestry[source];
+        let indices = order
+            .iter()
+            .enumerate()
+            .map(|(i, g)| (*g, i))
+            .collect::<std::collections::BTreeMap<_, _>>();
+        let mut edges = model
+            .links()
+            .map(|r| {
+                let audible = if let Group::Plugin(id) = r.destination {
+                    r.map.iter().any(|m| {
+                        usize::from(m.destination)
+                            < usize::from(
+                                model
+                                    .plugins
+                                    .iter()
+                                    .find(|p| p.id == id)
+                                    .unwrap()
+                                    .inputs
+                                    .first()
+                                    .copied()
+                                    .unwrap_or(0),
+                            )
+                    })
+                } else {
+                    true
+                };
+                (indices[&r.source.group], indices[&r.destination], audible)
+            })
+            .collect::<Vec<_>>();
+        for track in &layout.tracks {
+            let source = indices[&Group::Track(track.id)];
+            if !model.tracks_without_default_send.contains(&track.id) {
+                for scene in &layout.scenes {
+                    edges.push((source, indices[&Group::Scene(scene.id)], true));
                 }
             }
-            if matches!(group, Group::Scene(_) | Group::Main) {
-                for (source, old) in order[..index].iter().enumerate() {
-                    if matches!((group,*old),(Group::Scene(_),Group::Track(id))if !model.tracks_without_default_send.contains(&id))
-                        || matches!((group, *old), (Group::Main, Group::Scene(_)))
-                        || matches!((group,*old),(Group::Main,Group::Deck(d))if !model.decks_without_default_send[usize::from(d)])
-                    {
-                        ancestry[index] |= ancestry[source];
-                    }
+            for send in 0..2 {
+                edges.push((source, indices[&Group::FixedReturn(send)], true));
+            }
+        }
+        for scene in &layout.scenes {
+            edges.push((
+                indices[&Group::Scene(scene.id)],
+                indices[&Group::Main],
+                true,
+            ));
+        }
+        for plugin in &model.plugins {
+            if plugin.scene_track.is_some() {
+                for scene in &layout.scenes {
+                    edges.push((
+                        indices[&Group::Plugin(plugin.id)],
+                        indices[&Group::Scene(scene.id)],
+                        true,
+                    ));
                 }
             }
         }
-        let _ = layout;
+        for deck in 0..2 {
+            if !model.decks_without_default_send[deck] {
+                edges.push((
+                    indices[&Group::Deck(deck as u8)],
+                    indices[&Group::Main],
+                    true,
+                ));
+            }
+        }
+        for send in 0..2 {
+            if !model.fixed_returns_without_default_send[send] {
+                edges.push((
+                    indices[&Group::FixedReturn(send as u8)],
+                    indices[&Group::Main],
+                    true,
+                ));
+            }
+        }
+        let mut ancestry = vec![0u32; order.len()];
+        let mut feeders = vec![0u32; order.len()];
+        for (index, group) in order.iter().enumerate() {
+            if let Group::Bus(id) = group {
+                let bit = 1u32 << model.buses.iter().position(|b| b.id == *id).unwrap();
+                ancestry[index] = bit;
+                feeders[index] = bit;
+            }
+        }
+        for index in 0..order.len() {
+            for &(source, _, audible) in edges.iter().filter(|e| e.1 == index) {
+                if audible {
+                    let carried = ancestry[source];
+                    ancestry[index] |= carried;
+                }
+            }
+        }
+        for index in (0..order.len()).rev() {
+            for &(_, destination, _) in edges.iter().filter(|e| e.0 == index) {
+                let carried = feeders[destination];
+                feeders[index] |= carried;
+            }
+        }
         Self {
             channels,
             ancestry,
+            feeders,
             solo: 0,
+            safe: 0,
         }
+    }
+    /// Gate audible sums while retaining source and sidechain processing.
+    /// Takes source/destination indices and terminal/sidechain classification; returns whether this contribution belongs to a soloed or solo-safe path or feeds one.
+    pub(super) fn audible(
+        &self,
+        source: usize,
+        destination: usize,
+        terminal: bool,
+        sidechain: bool,
+    ) -> bool {
+        let selected = self.solo | self.safe;
+        self.solo == 0
+            || sidechain
+            || self.feeders[destination] & selected != 0
+            || self.ancestry[source] & selected != 0
+            || !terminal && self.ancestry[destination] & selected == 0
     }
     /// Evaluate sample-accurate saved automation.
     /// Takes graph and current song clock; updates effective controls while leaving recalled manual values intact.
     pub fn evaluate(&mut self, model: &Model, beat: f64, playing: bool) {
+        self.evaluate_at(model, playing, |_| beat);
+    }
+    /// Evaluate controls at the source time of each compensated sum.
+    /// Takes the graph, playback state and delay-to-beat converter; updates each lane at its own aligned sample without allocating.
+    pub fn evaluate_at(&mut self, model: &Model, playing: bool, beat: impl Fn(u32) -> f64) {
         self.solo = 0;
+        self.safe = 0;
         for (index, channel) in self.channels.iter_mut().enumerate() {
             channel.effective = channel.values;
             let lanes = if index < model.sends.len() {
@@ -318,11 +469,16 @@ impl Runtime {
             };
             if playing {
                 for lane in lanes {
-                    channel.effective.set(lane.parameter, lane.at(beat));
+                    channel
+                        .effective
+                        .set(lane.parameter, lane.at(beat(channel.automation_delay)));
                 }
             }
             for peak in &mut channel.peaks[..usize::from(channel.width)] {
                 *peak *= 0.9995;
+            }
+            if index >= model.sends.len() && channel.effective.solo_safe {
+                self.safe |= 1u32 << (index - model.sends.len());
             }
             if index >= model.sends.len() && channel.effective.solo {
                 self.solo |= 1u32 << (index - model.sends.len());
@@ -387,21 +543,6 @@ impl Prepared {
         } else {
             false
         }
-    }
-    /// Honor return solo at terminal sums while every feeder keeps processing.
-    /// Takes an upstream node; returns whether it carries a soloed or solo-safe return.
-    pub(super) fn mix_audible(&self, source: usize) -> bool {
-        let safe = self.model.buses.iter().enumerate().fold(0, |mask, (i, _)| {
-            if self.mixer.channels[self.model.sends.len() + i]
-                .effective
-                .solo_safe
-            {
-                mask | 1u32 << i
-            } else {
-                mask
-            }
-        });
-        self.mixer.solo == 0 || self.mixer.ancestry[source] & (self.mixer.solo | safe) != 0
     }
 }
 
