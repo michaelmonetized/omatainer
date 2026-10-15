@@ -54,7 +54,10 @@ fn activate(
     let end = Instant::now() + Duration::from_secs(15);
     while r.alias() == 0 {
         if job.is_finished() {
-            panic!("recording writer exited before activation: {:?}", job.join());
+            panic!(
+                "recording writer exited before activation: {:?}",
+                job.join()
+            );
         }
         r.begin_delivery(rate);
         assert!(Instant::now() < end, "recording never activated");
@@ -400,4 +403,37 @@ fn two_hour_software_stream_splits_without_missing_frames_or_growing_callback_me
     let plan =
         crate::audio_delivery::recovery::review(&out.folder, &AtomicBool::new(false)).unwrap();
     assert_eq!((plan.frames, plan.repairs), (frames, 0));
+}
+
+#[test]
+fn recording_retains_publication_warning_and_never_replaces_committed_take() {
+    let files = Files::new();
+    let recorder = Recorder::default();
+    let folder = files.0.join("committed");
+    let q = request(&recorder, Some(vec![0, 1]), Format::Pcm24, 48000, 1);
+    let r = recorder.clone();
+    let path = folder.clone();
+    let copy = q.clone();
+    let job = std::thread::spawn(move || {
+        crate::portable_project::FAIL_PUBLICATION_SYNC.with(|flag| flag.set(true));
+        r.write_delivery(&copy, &path, &AtomicBool::new(false))
+    });
+    let job = activate(&recorder, 48000, job);
+    recorder.converted(&[0.125_f32, -0.25].repeat(127), 2);
+    recorder.stop();
+    let outcome = job.join().unwrap().unwrap();
+    assert!(outcome
+        .warning
+        .as_ref()
+        .unwrap()
+        .contains("Files committed"));
+    assert!(std::fs::read_to_string(folder.join("recording.json"))
+        .unwrap()
+        .contains("Files committed"));
+    assert!(folder.join("publication-warning.json").is_file());
+    let before = std::fs::read(folder.join("take-0001.wav")).unwrap();
+    assert!(recorder
+        .write_delivery(&q, &folder, &AtomicBool::new(false))
+        .is_err());
+    assert_eq!(before, std::fs::read(folder.join("take-0001.wav")).unwrap());
 }

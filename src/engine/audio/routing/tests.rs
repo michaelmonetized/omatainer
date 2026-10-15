@@ -107,14 +107,14 @@ fn explicit_bus_routes_order_independent_sources_and_reject_bus_feedback() {
     let mut model = Model::default();
     model.next_id = 4;
     model.buses = vec![
-        Bus {
+        Bus { mixer: Default::default(),
             id: 2,
             alias: "Surround".into(),
             channels: 8,
             gain: 0.8,
             mute: false,
         },
-        Bus {
+        Bus { mixer: Default::default(),
             id: 3,
             alias: "Print".into(),
             channels: 8,
@@ -153,7 +153,7 @@ fn missing_input_reaches_direct_bus_track_scene_and_main_record_routes() {
     model.next_id = 5;
     model.ports.push(Port { id: 2, alias: "Input".into(), direction: Direction::Input, channels: vec![0] });
     model.ports.push(Port { id: 4, alias: "Record".into(), direction: Direction::Record, channels: vec![0] });
-    model.buses.push(Bus { id: 3, alias: "Bus".into(), channels: 1, gain: 1.0, mute: false });
+    model.buses.push(Bus { mixer: Default::default(), id: 3, alias: "Bus".into(), channels: 1, gain: 1.0, mute: false });
     for group in [Group::Input(2), Group::Bus(3), Group::Track(track), Group::Scene(scene), Group::Main, Group::Deck(0)] {
         let mut saved = model.clone();
         saved.connections.push(connection(Group::Input(2), Group::Bus(3)));
@@ -340,7 +340,7 @@ fn independent_track_deck_and_bus_taps_preserve_pre_mixer_audio() {
         direction: Direction::Input,
         channels: vec![0],
     });
-    model.buses.push(Bus {
+    model.buses.push(Bus { mixer: Default::default(),
         id: 3,
         alias: "Print".into(),
         channels: 1,
@@ -425,7 +425,7 @@ fn maximum_saved_graph_processes_full_native_width_without_callback_heap_work() 
         }
     }
     for index in 0..MAX_BUSES {
-        model.buses.push(Bus {
+        model.buses.push(Bus { mixer: Default::default(),
             id: (97 + index) as u64,
             alias: format!("Bus {index}"),
             channels: 32,

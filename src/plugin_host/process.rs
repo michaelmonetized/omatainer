@@ -18,8 +18,14 @@ impl Process {
         wire.set_nonblocking(true).map_err(|e| e.to_string())?;
         let fd = child_wire.as_raw_fd();
         let mut command = Command::new(executable);
+        #[cfg(test)]
+        let test_worker = executable == std::env::current_exe().map_err(|e|e.to_string())?;
+        #[cfg(not(test))]
+        let test_worker = false;
+        if test_worker {
+            command.args(["--exact", "plugin_host::clap::tests::worker_entry", "--ignored", "--nocapture"]).env("OMATAINER_PLUGIN_TEST_WORKER", "1");
+        } else { command.arg("vst3-worker"); }
         command
-            .arg("vst3-worker")
             .stdin(Stdio::null())
             .stdout(Stdio::null())
             .stderr(Stdio::null());
@@ -134,6 +140,8 @@ impl Process {
         }
         Ok(())
     }
+    #[cfg(test)]
+    pub(super) fn kill_for_test(&mut self) { if let Some(child)=&mut self.child { child.kill().unwrap(); } }
     fn stop(&mut self) {
         if let Some(mut child) = self.child.take() {
             let _ = child.kill();

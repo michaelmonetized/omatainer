@@ -27,6 +27,8 @@ pub(crate) struct Instance {
     pub outputs: Vec<u8>,
     pub midi_track: Option<Id>,
     pub scene_track: Option<Id>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub return_bus: Option<u64>,
     pub instrument: bool,
     pub bypass: bool,
     pub latency: u32,
@@ -48,6 +50,8 @@ pub(crate) struct Parameter {
 pub(crate) struct Automation {
     pub id: u32,
     pub points: Vec<[f64; 2]>,
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub modulation: bool,
 }
 impl Automation {
     /// Read a normalized linear parameter envelope.
@@ -71,6 +75,7 @@ impl Instance {
             || self.midi_track.is_some_and(|id| !layout.tracks.iter().any(|t| t.id == id))
             || self.scene_track.is_some_and(|id| !layout.tracks.iter().any(|t| t.id == id))
             || self.instrument && self.midi_track.is_none()
+            || self.return_bus.is_some() && (self.instrument || self.midi_track.is_some() || self.scene_track.is_some())
             || self.unavailable.as_ref().is_some_and(|s| s.len() > 4096)
         { return Err("Plugin name, buses, MIDI source or storage limits are invalid".into()); }
         let mut ids = std::collections::BTreeSet::new();
@@ -79,8 +84,8 @@ impl Instance {
         let mut points = 0;
         for lane in &self.automation {
             points += lane.points.len();
-            if !ids.insert(lane.id) || lane.points.is_empty() || points > 16384
-                || lane.points.iter().any(|p| !p[0].is_finite() || !(0.0..=1.0e9).contains(&p[0]) || !p[1].is_finite() || !(0.0..=1.0).contains(&p[1]))
+            if !ids.insert(lane.id) || lane.modulation && !self.saved.class_id.starts_with("clap:") || lane.points.is_empty() || points > 16384
+                || lane.points.iter().any(|p| !p[0].is_finite() || !(0.0..=1.0e9).contains(&p[0]) || !p[1].is_finite() || !(if lane.modulation {-1.0..=1.0} else {0.0..=1.0}).contains(&p[1]))
                 || lane.points.windows(2).any(|p| p[0][0] >= p[1][0])
             { return Err("Plugin automation requires unique lanes and ordered bounded song positions".into()); }
         }

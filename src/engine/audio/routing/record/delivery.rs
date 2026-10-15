@@ -140,6 +140,9 @@ impl Recorder {
         stop: &AtomicBool,
     ) -> Result<Outcome, String> {
         request.options.validate()?;
+        if !Format::RECORDING.contains(&request.options.format) {
+            return Err("Use offline delivery for BWF/RF64/AIFF; performance recording retains segmented WAV/FLAC/MP3".into());
+        }
         if stop.load(Ordering::Acquire) {
             return Err("Recording cancelled before activation".into());
         }
@@ -228,7 +231,14 @@ impl Recorder {
                 available / (1024 * 1024)
             ));
         }
-        crate::portable_project::publish(stage, destination, &AtomicBool::new(false))?;
+        let publication_warning = crate::audio_delivery::publication::retain(
+            destination,
+            crate::audio_delivery::publication::warning(crate::portable_project::publish(
+                stage,
+                destination,
+                &AtomicBool::new(false),
+            )?),
+        );
         let first_writer = wav::Writer::new(
             &current_first,
             request.options.channels,
@@ -490,6 +500,12 @@ impl Recorder {
                     }
                 }
             }
+        }
+        if let Some(committed) = publication_warning {
+            warning = Some(match warning {
+                Some(other) => format!("{committed}; {other}"),
+                None => committed,
+            });
         }
         if let Err(e) = self.write_metadata(destination, request, &files, total, warning.as_deref())
         {

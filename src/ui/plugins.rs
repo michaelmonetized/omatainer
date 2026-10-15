@@ -19,8 +19,9 @@ impl App {
         let busy = self.plugins.busy();
         let mut selected = self.plugins.selected;
         let mut attach = None;
-        egui::Window::new("VST3 plugins").id(egui::Id::new("plugin-browser")).open(&mut open).default_width(650.).vscroll(true).show(ctx,|ui|{
-            ui.label("Native Linux VST3 instruments and effects are inspected in isolated workers. AU, VST2 and incompatible OS/CPU bundles require an installed native replacement or a rendered stem.");
+        let mut attach_return = None;
+        egui::Window::new("Native plugins").id(egui::Id::new("plugin-browser")).open(&mut open).default_width(650.).vscroll(true).show(ctx,|ui|{
+            ui.label("Native Linux VST3, CLAP and LV2 instruments and effects are inspected in isolated workers. Select a class to review its ports and extension support. AU requires a macOS host. Windows and legacy VST2 bridges are not bundled; compatible native editions and aligned rendered stems remain the migration paths.");
             let label=ui.label("Plugin folders (one absolute path per line)");
             let edit=ui.add_enabled(!protected && !busy,egui::TextEdit::multiline(&mut self.plugins.roots).char_limit(65536).desired_rows(3).hint_text("/home/you/.vst3").id_source("plugin-roots")).labelled_by(label.id);
             edit.widget_info(||egui::WidgetInfo::labeled(egui::WidgetType::TextEdit,edit.enabled(),"Plugin folders"));
@@ -34,14 +35,23 @@ impl App {
             if let Some((record,class)) = selected.and_then(|(r,c)| self.plugins.catalog.records.get(r).and_then(|record| record.classes.get(c).map(|class|(record,class)))) {
                 if record.failure.is_none() && !self.plugins.catalog.blacklist.contains(&record.path) {
                     if let Some(binary) = &record.binary {
+                        let instance = |instrument| crate::engine::audio::routing::plugins::Instance {id:0,name:class.info.name.char_indices().take_while(|(index,_)| *index < 80).map(|(_,c)|c).collect(),saved:crate::plugin_host::Saved {schema:1,binary:binary.clone(),class_id:class.info.uid.clone(),plugin_version:class.info.version.clone(),state_codec:crate::plugin_host::Saved::codec(&class.info.uid).into(),state:Vec::new()},inputs:class.layout.inputs.iter().map(|b| b.channel_count as u8).collect(),outputs:class.layout.outputs.iter().map(|b| b.channel_count as u8).collect(),midi_track:None,scene_track:None,return_bus:None,instrument,bypass:false,latency:class.latency.saturating_add(crate::plugin_host::BLOCK as u32 * crate::plugin_host::realtime::BRIDGE_BLOCKS as u32),parameters:Vec::new(),automation:Vec::new(),unavailable:None};
                         ui.horizontal(|ui| {
                             for (label,instrument) in [("Use as track instrument",true),("Append track effect",false)] {
-                                if ui.add_enabled(!protected && !busy && if instrument { class.info.category.contains("Instrument") && class.info.has_midi_input } else { !class.layout.inputs.is_empty() && !class.info.category.contains("Instrument") },egui::Button::new(label)).clicked() {
-                                    attach=Some(crate::engine::audio::routing::plugins::Instance {id:0,name:class.info.name.char_indices().take_while(|(index,_)| *index < 80).map(|(_,c)|c).collect(),saved:crate::plugin_host::Saved {schema:1,binary:binary.clone(),class_id:class.info.uid.clone(),plugin_version:class.info.version.clone(),state_codec:"vst3-host-0.9-state".into(),state:Vec::new()},inputs:class.layout.inputs.iter().map(|b| b.channel_count as u8).collect(),outputs:class.layout.outputs.iter().map(|b| b.channel_count as u8).collect(),midi_track:None,scene_track:None,instrument,bypass:false,latency:class.latency.saturating_add(crate::plugin_host::BLOCK as u32 * crate::plugin_host::realtime::BRIDGE_BLOCKS as u32),parameters:Vec::new(),automation:Vec::new(),unavailable:None});
+                                if ui.add_enabled(!protected && if instrument { class.info.category.contains("Instrument") && class.info.has_midi_input } else { !class.layout.inputs.is_empty() && !class.info.category.contains("Instrument") },egui::Button::new(label)).clicked() {
+                                    attach=Some(instance(instrument));
                                 }
                             }
                         });
-                        ui.label("The processor is added to an inspected routing draft for the selected track. Review and apply while playback is stopped.");
+                        let returns = self.snap.routing_mixer.iter().filter_map(|channel| if let crate::engine::audio::routing::mixer::Target::Return(id) = channel.target { Some((id,channel.name.text())) } else { None }).collect::<Vec<_>>();
+                        let key=egui::Id::new("native-return-target");
+                        let mut target=ui.data(|data|data.get_temp::<([u64;2],u64)>(key));
+                        let namespace=self.snap.session.as_ref().map(|s|s.namespace).unwrap_or([0;2]);
+                        if target.is_some_and(|(ns,id)|ns!=namespace || !returns.iter().any(|r|r.0==id)) {target=None;}
+                        egui::ComboBox::from_label("Return for effect").selected_text(target.and_then(|(_,id)|returns.iter().find(|r|r.0==id).map(|r|r.1)).unwrap_or("Choose return")).show_ui(ui,|ui|{ for (id,name) in &returns {ui.selectable_value(&mut target,Some((namespace,*id)),*name);} });
+                        ui.data_mut(|data|{if let Some(target)=target{data.insert_temp(key,target);}else{data.remove::<([u64;2],u64)>(key);}});
+                        if ui.add_enabled(!protected && !busy && target.is_some() && !class.layout.inputs.is_empty() && !class.info.category.contains("Instrument"),egui::Button::new("Append return effect")).clicked(){if let Some((namespace,id))=target{attach_return=Some((instance(false),namespace,id));}}
+                        ui.label("The processor is added to an inspected routing draft. Return effects remain shared; track effects retain the active scene send. Review and apply while playback is stopped.");
                     }
                 }
             }
@@ -53,6 +63,8 @@ impl App {
                     for (class_index,class) in record.classes.iter().enumerate(){
                         if ui.selectable_label(selected==Some((index,class_index)),format!("{} · {} · {}",class.info.name,class.info.vendor,class.info.version)).clicked(){selected=Some((index,class_index));}
                         ui.label(format!("Class {} · {} · {} input buses / {} output buses · {} parameters · {} samples latency",class.info.uid,class.info.category,class.layout.inputs.len(),class.layout.outputs.len(),class.parameters.len(),class.latency));
+                        if let Some(lv2)=&class.lv2 { ui.label(format!("LV2 required features: {}",lv2.required.join(", "))); if !lv2.unsupported.is_empty() { ui.label(format!("Unavailable optional features: {}",lv2.unsupported.join(", "))); } for port in &lv2.ports { ui.label(format!("{} · {} · {}",port.name,port.symbol,port.kind)); } }
+                        if let Some(native)=&class.native { ui.label(format!("CLAP extensions: {}",native.extensions.join(", "))); if !native.unsupported_host_extensions.is_empty() { ui.label(format!("Unavailable host features: {}",native.unsupported_host_extensions.join(", "))); } for port in native.audio_inputs.iter().chain(&native.audio_outputs) { ui.label(format!("{} · {} channels",port.name,port.channels)); } for port in native.note_inputs.iter().chain(&native.note_outputs) {ui.label(format!("Note port {} · dialects {:#x}",port.name,port.dialects));} }
                         ui.label(if class.tail==u32::MAX{"Tail: unlimited".into()}else{format!("Tail: {} samples",class.tail)});
                     }
                 });
@@ -62,6 +74,7 @@ impl App {
         if let Some((path, blocked)) = blacklist {
             self.plugins.blacklist(path, blocked);
         }
+        if let Some((plugin,namespace,id))=attach_return {self.audio_routing.attach_return_plugin(&self.engine,plugin,namespace,id);}
         self.plugins.selected = selected;
         self.plugins.open = open;
         if let Some(plugin)=attach { if let Some(track)=self.snap.session.as_ref().and_then(|s|s.tracks.get(self.snap.selected_track)).filter(|t|t.active) { self.audio_routing.attach_plugin(&self.engine,plugin,track.id); } else { self.plugins.message="Select a retained track before attaching a processor".into(); } }

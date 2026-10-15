@@ -74,6 +74,7 @@ const APPLICATION_ID: &str = "org.omarchy.omatainer";
 fn main() -> anyhow::Result<()> {
     let _audio_shutdown = engine::audio::owner::Shutdown;
     let mut args = std::env::args().skip(1).collect::<Vec<_>>();
+    if audio_delivery::cli::run(&args).map_err(anyhow::Error::msg)? { return Ok(()); }
     if args.first().map(String::as_str)==Some("controller-profiles-inspect"){anyhow::ensure!(args.len()==1,"usage: omatainer controller-profiles-inspect");println!("{}",engine::midi::catalog::inspect().map_err(anyhow::Error::msg)?);return Ok(());}
     if args.first().map(String::as_str)==Some("controller-profiles-export") {
         anyhow::ensure!(args.len()==2,"usage: omatainer controller-profiles-export NEW_DIRECTORY");

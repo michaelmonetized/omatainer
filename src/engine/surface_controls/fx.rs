@@ -185,8 +185,6 @@ impl State {
         prepared.fx_recall.receipt = self.fx_recall.receipt;
         prepared.fx_recall.receipt.phase = match self.fx_recall.receipt.phase { super::super::dj_fx_recall::Phase::FadingOut | super::super::dj_fx_recall::Phase::FadingIn => super::super::dj_fx_recall::Phase::Stale, phase => phase };
         prepared.status.fx_recall = prepared.fx_recall.receipt;
-        prepared.assignments = self.assignments;
-        prepared.sends = self.sends;
         prepared.master_saved = self.master_saved;
         prepared.shift_owners = self.shift_owners;
         for bank in 0..2 {

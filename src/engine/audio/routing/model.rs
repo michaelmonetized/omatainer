@@ -56,6 +56,8 @@ pub struct Bus {
     pub channels: u8,
     pub gain: f32,
     pub mute: bool,
+    #[serde(default)]
+    pub mixer: super::mixer::Strip,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
@@ -68,6 +70,7 @@ pub enum Group {
     Bus(u64),
     Plugin(u64),
     Main,
+    FixedReturn(u8),
     Output(u64),
     Record(u64),
 }
@@ -105,8 +108,12 @@ pub struct Model {
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub(crate) plugins: Vec<super::plugins::Instance>,
     pub connections: Vec<Connection>,
+    #[serde(default,skip_serializing_if="Vec::is_empty")]
+    pub sends: Vec<super::mixer::Send>,
     pub tracks_without_default_send: Vec<Id>,
     pub decks_without_default_send: [bool; 2],
+    #[serde(default)]
+    pub fixed_returns_without_default_send: [bool; 2],
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub input: Option<InputConfig>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -136,6 +143,7 @@ impl Default for Model {
                 channels: vec![0, 1],
             }],
             buses: Vec::new(),
+            sends: Vec::new(),
             plugins: Vec::new(),
             connections: vec![Connection {
                 source: Source {
@@ -158,6 +166,7 @@ impl Default for Model {
             }],
             tracks_without_default_send: Vec::new(),
             decks_without_default_send: [false; 2],
+            fixed_returns_without_default_send: [false; 2],
             input: None,
             monitor_output: None,
             latency: None,
@@ -166,6 +175,9 @@ impl Default for Model {
 }
 
 impl Model {
+    /// Iterate explicit routes and named sends in their saved order.
+    /// Takes this graph; returns borrowed maps for the existing topology and delay planner.
+    pub fn links(&self)->impl Iterator<Item=&Connection>{self.connections.iter().chain(self.sends.iter().map(|s|&s.route))}
     /// Identify a report-only edit that can retain the running signal graph.
     /// Takes the active saved model; returns true only for enabled compensation with unchanged reserve, aliases, taps, sends and input choices.
     pub(crate) fn latency_edit_of(&self, prior: &Self) -> bool {
@@ -173,9 +185,10 @@ impl Model {
             && self.version == prior.version && self.next_id == prior.next_id
             && self.ports == prior.ports && self.buses == prior.buses
             && self.plugins == prior.plugins
-            && self.connections == prior.connections
+            && self.connections == prior.connections && self.sends == prior.sends
             && self.tracks_without_default_send == prior.tracks_without_default_send
             && self.decks_without_default_send == prior.decks_without_default_send
+            && self.fixed_returns_without_default_send == prior.fixed_returns_without_default_send
             && self.input == prior.input && self.monitor_output == prior.monitor_output
     }
 }
@@ -197,6 +210,8 @@ impl Model {
                 .iter()
                 .map(|port| port.alias.capacity() + port.channels.capacity() * 2)
                 .sum::<usize>()
+            + self.sends.capacity()*std::mem::size_of::<super::mixer::Send>() + self.sends.iter().map(|s|s.name.capacity()+s.route.map.capacity()*std::mem::size_of::<ChannelMap>()+s.automation.capacity()*std::mem::size_of::<super::mixer::Lane>()+s.automation.iter().map(|a|a.points.capacity()*16).sum::<usize>()).sum::<usize>()
+            + self.buses.iter().map(|b|b.mixer.automation.capacity()*std::mem::size_of::<super::mixer::Lane>()+b.mixer.automation.iter().map(|a|a.points.capacity()*16).sum::<usize>()).sum::<usize>()
             + self.buses.capacity() * std::mem::size_of::<Bus>()
             + self.plugins.iter().map(super::plugins::Instance::bytes).sum::<usize>()
             + self
@@ -265,6 +280,7 @@ impl Model {
                 .find(|bus| bus.id == id)
                 .map(|bus| usize::from(bus.channels)),
             Group::Main => Some(2),
+            Group::FixedReturn(send)=>(send<2).then_some(2),
             Group::Plugin(id) => self.plugins.iter().find(|p| p.id == id).map(super::plugins::Instance::output_width),
         }
     }
@@ -290,11 +306,13 @@ impl Model {
             || self.plugins.len() > super::plugins::MAX_PLUGINS
             || self.next_id == 0
             || self.buses.len() > MAX_BUSES
-            || self.connections.len() > MAX_CONNECTIONS
+            || self.connections.len() + self.sends.len() > MAX_CONNECTIONS || self.sends.len() > super::mixer::MAX_SENDS
             || self.ports.len() > MAX_PORTS * 3
         {
             return Err("Routing graph exceeds its supported version or storage limits".into());
         }
+        let points=self.sends.iter().flat_map(|s|&s.automation).chain(self.buses.iter().flat_map(|b|&b.mixer.automation)).try_fold(0usize,|count,lane|count.checked_add(lane.points.len()));
+        if points.is_none_or(|count|count>super::mixer::MAX_MIXER_POINTS){return Err("Mixer automation exceeds 65536 total points; no routing change was applied".into());}
         let mut ids = BTreeSet::new();
         let mut names = BTreeSet::new();
         for port in &self.ports {
@@ -343,16 +361,23 @@ impl Model {
                 || !named(&bus.alias)
                 || !names.insert(bus.alias.as_str())
                 || !(1..=MAX_PORT_CHANNELS).contains(&usize::from(bus.channels))
+                || !super::mixer::Parameter::Pan.valid(bus.mixer.pan)
+                || super::mixer::validate_lanes(&bus.mixer.automation,true).is_err()
                 || !bus.gain.is_finite()
                 || !(0.0..=1.5).contains(&bus.gain)
             {
                 return Err("Invalid, repeated or oversized virtual bus".into());
             }
         }
+        for send in &self.sends {
+            if send.id==0 || send.id>=self.next_id || !ids.insert(send.id) || !named(&send.name) || !names.insert(send.name.as_str()) || !super::mixer::Parameter::Level.valid(send.level) || !super::mixer::Parameter::Pan.valid(send.pan) {return Err("Named sends need unique retained identities, names and finite mixer values".into());}
+            super::mixer::validate_lanes(&send.automation,false)?;
+        }
         let mut plugin_bytes = 0usize;
         let mut instruments = BTreeSet::new();
         for plugin in &self.plugins {
             plugin.validate(layout)?;
+            if plugin.return_bus.is_some_and(|id| !self.buses.iter().any(|bus| bus.id == id)) { return Err("Return processor ownership requires a retained return bus".into()); }
             plugin_bytes = plugin_bytes.saturating_add(plugin.bytes());
             if plugin.id == 0 || plugin.id >= self.next_id || !ids.insert(plugin.id) || !names.insert(plugin.name.as_str())
                 || plugin_bytes > 32 * 1024 * 1024 || plugin.instrument && !instruments.insert(plugin.midi_track.unwrap())
@@ -376,6 +401,7 @@ impl Model {
         }
         let mut graph: BTreeMap<Group, BTreeSet<Group>> = BTreeMap::new();
         graph.insert(Group::Main, BTreeSet::new());
+        for send in 0..2 {graph.insert(Group::FixedReturn(send),layout.tracks.iter().map(|t|Group::Track(t.id)).collect());if !self.fixed_returns_without_default_send[usize::from(send)]{graph.get_mut(&Group::Main).unwrap().insert(Group::FixedReturn(send));}}
         for track in &layout.tracks {
             graph.insert(Group::Track(track.id), BTreeSet::new());
         }
@@ -425,7 +451,7 @@ impl Model {
             }
         }
         let mut maps = 0usize;
-        for connection in &self.connections {
+        for connection in self.links() {
             let from = self
                 .source_width(connection.source, layout)
                 .ok_or("Routing source no longer exists")?;
@@ -455,7 +481,7 @@ impl Model {
         if let Some(id) = self.monitor_output {
             let monitor = self.port(id, Direction::Output).filter(|port| port.channels.len() == 2)
                 .ok_or("Headphones require a distinct stereo output alias")?;
-            for connection in &self.connections {
+            for connection in self.links() {
                 if let Group::Output(output) = connection.destination {
                     let port = self.port(output, Direction::Output).unwrap();
                     if output == id || connection.map.iter().any(|map| monitor.channels.contains(&port.channels[usize::from(map.destination)])) {
@@ -493,3 +519,7 @@ impl Model {
         else { self.width(source.group, layout) }
     }
 }
+
+/// Start the persistent routing identity allocator.
+/// Takes no arguments; returns the first unused ID after the legacy main output.
+pub(crate) fn initial_id()->u64{2}

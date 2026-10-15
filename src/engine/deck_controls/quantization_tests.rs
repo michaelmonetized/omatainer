@@ -328,7 +328,7 @@ fn pending_work_retires_on_input_reset_overload_grid_undo_stop_scratch_and_media
                                 name: "Quantize fixture".into(),
                                 id: "fixture:0".into(),
                             },
-                            binding: Binding {
+                            binding: Binding { routing: None,
                                 kind: MsgKind::Note,
                                 ch: 0,
                                 data: 60,

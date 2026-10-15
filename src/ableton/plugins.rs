@@ -276,6 +276,7 @@ pub(crate) fn relink(
             .collect(),
         midi_track: Some(track_id),
         scene_track: None,
+        return_bus: None,
         instrument,
         bypass: !device.enabled,
         latency: loaded.latency.saturating_add(
@@ -482,7 +483,7 @@ fn parameters(
                 }
             }
             if !points.is_empty() {
-                automation.push(Automation { id, points });
+                automation.push(Automation { id, points, modulation:false });
             }
         }
     }

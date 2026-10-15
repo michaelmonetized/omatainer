@@ -51,7 +51,7 @@ fn map() -> MidiMap {
         matchers: vec![],
         unmapped_notes: UnmappedNotes::Ignore,
         bindings: vec![
-            Binding {
+            Binding { routing: None,
                 kind: MsgKind::CcRel,
                 ch: 0,
                 data: 17,
@@ -65,7 +65,7 @@ fn map() -> MidiMap {
              controls: None,
              pair_order: None,
             },
-            Binding {
+            Binding { routing: None,
                 kind: MsgKind::Note,
                 ch: 0,
                 data: 2,

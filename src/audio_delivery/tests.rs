@@ -1,4 +1,5 @@
 use super::*;
+mod fixed_send_tests;
 use crate::engine::{dsp::Sample, Engine, RtEngine};
 use std::sync::Arc;
 struct Files(PathBuf);
@@ -135,7 +136,8 @@ fn arrangement_song_export_matches_realtime_overlaps_midi_and_five_minute_clock(
             let mut midi = captured.state.tracks[1].clips[7].clone();
             midi.kind = ClipKind::Midi;
             midi.bars = 1.0;
-            midi.notes = vec![MidiNote { variation: None,
+            midi.notes = vec![MidiNote {
+                variation: None,
                 id: NoteId::new(),
                 muted: false,
                 pitch: 64,
@@ -371,7 +373,7 @@ fn mono_normalization_integer_formats_and_lossless_compressed_delivery_decode_co
             assert!(decoded.sample.data.iter().any(|v| v.abs() > 0.5));
         } else {
             assert_eq!(decoded.sample.frames(), 4096);
-            let tolerance = if matches!(format, Format::Pcm16 | Format::Flac16) {
+            let tolerance = if matches!(format, Format::Pcm16 | Format::Flac16 | Format::Aiff16) {
                 0.00007
             } else {
                 0.0000003
@@ -581,17 +583,46 @@ fn invalid_delivery_choices_refuse_before_file_work() {
 
 #[test]
 fn compensated_exports_trim_the_actual_graph_delay_and_preserve_every_selected_source_frame() {
-    use crate::engine::audio::routing::{model::{Direction, Group, Model, Port, LatencyConfiguration, LatencyReport}, prepared::Prepared};
+    use crate::engine::audio::routing::{
+        model::{Direction, Group, LatencyConfiguration, LatencyReport, Model, Port},
+        prepared::Prepared,
+    };
     let files = Files::new();
     for rate in [44100, 48000, 96000] {
         let (engine, mut rt) = fixture(rate);
         let mut model = Model::default();
         model.next_id = 3;
-        model.ports.push(Port { id: 2, alias: "Reserved external source".into(), direction: Direction::Input, channels: vec![0] });
-        model.latency = Some(LatencyConfiguration { reports: vec![LatencyReport { group: Group::Input(2), external_micros: 7000, processing_micros: 0 }], ..Default::default() });
-        rt.routing = Some(Box::new(Prepared::at_rate(Arc::new(model), &rt.session, rate).unwrap()));
+        model.ports.push(Port {
+            id: 2,
+            alias: "Reserved external source".into(),
+            direction: Direction::Input,
+            channels: vec![0],
+        });
+        model.latency = Some(LatencyConfiguration {
+            reports: vec![LatencyReport {
+                group: Group::Input(2),
+                external_micros: 7000,
+                processing_micros: 0,
+            }],
+            ..Default::default()
+        });
+        rt.routing = Some(Box::new(
+            Prepared::at_rate(Arc::new(model), &rt.session, rate).unwrap(),
+        ));
         let captured = capture(&engine, &mut rt);
-        let request = Export { source: Source::Session, decks: true, output_alias: Some(1), start: 0.01, end: 0.04, tail: 0.0, options: Options { rate, ..Options::default() }, ..Export::default() };
+        let request = Export {
+            source: Source::Session,
+            decks: true,
+            output_alias: Some(1),
+            start: 0.01,
+            end: 0.04,
+            tail: 0.0,
+            options: Options {
+                rate,
+                ..Options::default()
+            },
+            ..Export::default()
+        };
         let bounds = request.frames().unwrap();
         let delay = u64::from(rt.routing.as_ref().unwrap().output_delay(1));
         assert!(delay > 0);
@@ -601,12 +632,57 @@ fn compensated_exports_trim_the_actual_graph_delay_and_preserve_every_selected_s
         let mut actual = vec![0.0; ((bounds.0 + bounds.1 + delay) * 2) as usize];
         rt.process(&mut actual);
         let folder = files.0.join(format!("compensated-{rate}"));
-        let outcome = run(captured, &request, &folder, &engine.cmd.performance().optional_work().unwrap(), &crate::background::Reporter::default()).unwrap();
+        let outcome = run(
+            captured,
+            &request,
+            &folder,
+            &engine.cmd.performance().optional_work().unwrap(),
+            &crate::background::Reporter::default(),
+        )
+        .unwrap();
         let decoded = crate::engine::decode::decode_audio(&folder.join("master.wav")).unwrap();
         assert_eq!(outcome.frames, bounds.3);
         assert_eq!(decoded.sample.frames() as u64, bounds.3);
-        assert_eq!(decoded.sample.data, actual[((bounds.0 + delay) * 2) as usize..], "{rate} Hz export differs from actual compensated rendering");
+        assert_eq!(
+            decoded.sample.data,
+            actual[((bounds.0 + delay) * 2) as usize..],
+            "{rate} Hz export differs from actual compensated rendering"
+        );
         assert!(decoded.sample.data.iter().any(|value| value.abs() > 0.01));
     }
     println!("LATENCY_EXPORT {{\"sample_rates\":3,\"source_frames_trimmed_exactly\":true,\"maximum_sample_error\":0,\"physical_devices_opened\":false}}");
+}
+
+#[test]
+fn committed_audio_sync_warning_survives_and_retry_preserves_output() {
+    let files = Files::new();
+    let (engine, mut rt) = fixture(48000);
+    let request = Export {
+        source: Source::Session,
+        decks: true,
+        end: 0.02,
+        tail: 0.,
+        ..Export::default()
+    };
+    let permit = engine.cmd.performance().optional_work().unwrap();
+    let captured = capture(&engine, &mut rt);
+    crate::portable_project::FAIL_PUBLICATION_SYNC.with(|flag| flag.set(true));
+    let folder = files.0.join("committed");
+    let result = run(captured, &request, &folder, &permit, &Default::default()).unwrap();
+    assert!(result.warning.as_ref().unwrap().contains("Files committed"));
+    let before = std::fs::read(folder.join("master.wav")).unwrap();
+    let warning: serde_json::Value =
+        serde_json::from_slice(&std::fs::read(folder.join("publication-warning.json")).unwrap())
+            .unwrap();
+    assert_eq!(warning["committed"], true);
+    assert_eq!(warning["directory_durable"], false);
+    assert!(run(
+        capture(&engine, &mut rt),
+        &request,
+        &folder,
+        &permit,
+        &Default::default()
+    )
+    .is_err());
+    assert_eq!(before, std::fs::read(folder.join("master.wav")).unwrap());
 }

@@ -12,7 +12,7 @@ fn native_encoder_format_pair_capture_preview_assignment_and_saved_preset_reopen
     gui.app.midi_open = true;
     gui.app.settings =
         preferences::Settings::with_worker_for_test(files.0.join("preferences.json"));
-    gui.app.midi_learn.binding = Binding {
+    gui.app.midi_learn.binding = Binding { routing: None,
         kind: MsgKind::Cc,
         ch: 0,
         data: 0,

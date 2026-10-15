@@ -8,7 +8,7 @@
 use std::io::{Seek, SeekFrom};
 
 use symphonia_core::codecs::CodecParameters;
-use symphonia_core::errors::{seek_error, unsupported_error};
+use symphonia_core::errors::{decode_error, seek_error, unsupported_error, Error};
 use symphonia_core::errors::{Result, SeekErrorKind};
 use symphonia_core::formats::prelude::*;
 use symphonia_core::io::*;
@@ -51,7 +51,7 @@ impl QueryDescriptor for WavReader {
                 "Waveform Audio File Format",
                 &["wav", "wave"],
                 &["audio/vnd.wave", "audio/x-wav", "audio/wav", "audio/wave"],
-                &[b"RIFF"]
+                &[b"RIFF", b"RF64"]
             ),
         ]
     }
@@ -66,7 +66,8 @@ impl FormatReader for WavReader {
         // The RIFF marker should be present.
         let marker = source.read_quad_bytes()?;
 
-        if marker != WAVE_STREAM_MARKER {
+        let rf64 = marker == *b"RF64";
+        if marker != WAVE_STREAM_MARKER && !rf64 {
             return unsupported_error("wav: missing riff stream marker");
         }
 
@@ -78,10 +79,38 @@ impl FormatReader for WavReader {
 
         // The RIFF chunk contains WAVE data.
         if riff_form != WAVE_RIFF_FORM {
-            error!("riff form is not wave ({})", String::from_utf8_lossy(&riff_form));
+            error!(
+                "riff form is not wave ({})",
+                String::from_utf8_lossy(&riff_form)
+            );
 
             return unsupported_error("wav: riff form is not wave");
         }
+
+        let large = if rf64 {
+            if riff_len != u32::MAX || source.read_quad_bytes()? != *b"ds64" {
+                return decode_error("rf64: missing mandatory ds64 header");
+            }
+            let size = source.read_u32()?;
+            if size != 28 {
+                return unsupported_error(
+                    "rf64: only a single data extent without size-table entries is supported",
+                );
+            }
+            let riff = source.read_u64()?;
+            let data = source.read_u64()?;
+            let frames = source.read_u64()?;
+            if source.read_u32()? != 0
+                || riff
+                    .checked_add(8)
+                    .is_none_or(|end| source.byte_len().is_some_and(|bytes| end > bytes))
+            {
+                return decode_error("rf64: invalid or truncated 64-bit extent");
+            }
+            Some((riff, data, frames))
+        } else {
+            None
+        };
 
         let mut riff_chunks =
             ChunksReader::<RiffWaveChunks>::new(riff_len, ByteOrder::LittleEndian);
@@ -138,10 +167,34 @@ impl FormatReader for WavReader {
 
                     // Record the bounds of the data chunk.
                     let data_start_pos = source.pos();
-                    let data_end_pos = data_start_pos + u64::from(data.len);
+                    let data_len = large.map_or(u64::from(data.len), |(_, bytes, _)| bytes);
+                    if large.is_some()
+                        && packet_info.block_size != 0
+                        && data_len % packet_info.block_size != 0
+                    {
+                        return decode_error("rf64: incomplete encoded frame block");
+                    }
+                    if large.is_some() && data.len != u32::MAX {
+                        return decode_error("rf64: data chunk must use the 32-bit placeholder");
+                    }
+                    let data_end_pos = data_start_pos
+                        .checked_add(data_len)
+                        .ok_or(Error::DecodeError("rf64: extent overflow"))?;
+                    if large.is_some_and(|(riff, _, _)| {
+                        data_end_pos
+                            .checked_add(data_len & 1)
+                            .is_none_or(|end| end > riff + 8)
+                    }) {
+                        return decode_error("rf64: data exceeds declared container extent");
+                    }
 
                     // Append Data chunk fields to codec parameters.
-                    append_data_params(&mut codec_params, data.len as u64, &packet_info);
+                    append_data_params(&mut codec_params, data_len, &packet_info);
+                    if large.is_some_and(|(_, _, frames)| {
+                        frames != 0 && codec_params.n_frames != Some(frames)
+                    }) {
+                        return decode_error("rf64: sample count differs from complete frames");
+                    }
 
                     // Add a new track using the collected codec parameters.
                     return Ok(WavReader {
@@ -196,8 +249,7 @@ impl FormatReader for WavReader {
                 // known, the seek cannot be completed.
                 if let Some(sample_rate) = params.sample_rate {
                     TimeBase::new(1, sample_rate).calc_timestamp(time)
-                }
-                else {
+                } else {
                     return seek_error(SeekErrorKind::Unseekable);
                 }
             }
@@ -235,15 +287,22 @@ impl FormatReader for WavReader {
             let current_pos = self.reader.pos();
             if seek_pos >= current_pos {
                 self.reader.ignore_bytes(seek_pos - current_pos)?;
-            }
-            else {
+            } else {
                 return seek_error(SeekErrorKind::ForwardOnly);
             }
         }
 
-        debug!("seeked to packet_ts={} (delta={})", actual_ts, actual_ts as i64 - ts as i64);
+        debug!(
+            "seeked to packet_ts={} (delta={})",
+            actual_ts,
+            actual_ts as i64 - ts as i64
+        );
 
-        Ok(SeekedTo { track_id: 0, actual_ts, required_ts: ts })
+        Ok(SeekedTo {
+            track_id: 0,
+            actual_ts,
+            required_ts: ts,
+        })
     }
 
     fn into_inner(self: Box<Self>) -> MediaSourceStream {

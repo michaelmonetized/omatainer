@@ -21,6 +21,8 @@ fn class(plugin: &Plugin) -> Result<Class, String> {
         parameters: plugin.get_parameters().map_err(|e| e.to_string())?,
         latency: plugin.latency_samples(),
         tail: plugin.tail_samples(),
+        native: None,
+        lv2: None,
     };
     result.validate()?;
     Ok(result)
@@ -41,7 +43,23 @@ fn unchanged(binary: &BinaryIdentity) -> Result<(), String> {
     }
     Ok(())
 }
-fn handle(request: Request, instance: &mut Option<Instance>) -> Result<Response, String> {
+fn handle(request: Request, instance: &mut Option<Instance>, clap: &mut Option<super::clap::Instance>, lv2: &mut Option<super::lv2::Instance>) -> Result<Response, String> {
+    if let Some(plugin) = lv2.as_mut() {
+        match request {
+            Request::Process { frame } => return plugin.process(frame),
+            Request::State => return plugin.state(),
+            Request::Editor { open } => return plugin.editor(open),
+            _ => {}
+        }
+    }
+    if let Some(plugin) = clap.as_mut() {
+        match request {
+            Request::Process { frame } => return plugin.process(frame),
+            Request::State => return plugin.state(),
+            Request::Editor { open } => return plugin.editor(open),
+            _ => {}
+        }
+    }
     match request {
         Request::Paths { roots } => {
             let catalog = scanner::Catalog {
@@ -61,6 +79,12 @@ fn handle(request: Request, instance: &mut Option<Instance>) -> Result<Response,
         }),
         Request::Probe { binary } => {
             unchanged(&binary)?;
+            if binary.bundle.extension().is_some_and(|e|e == "lv2") { let classes = super::lv2::probe(&binary)?; unchanged(&binary)?; return Ok(Response::Classes { classes }); }
+            if binary.bundle.extension().is_some_and(|e| e == "clap") {
+                let classes = super::clap::probe(&binary)?;
+                unchanged(&binary)?;
+                return Ok(Response::Classes { classes });
+            }
             let detailed =
                 vst3_host::get_detailed_plugin_info(&binary.bundle).map_err(|e| e.to_string())?;
             let classes: Vec<_> = detailed
@@ -89,6 +113,16 @@ fn handle(request: Request, instance: &mut Option<Instance>) -> Result<Response,
         Request::Load { saved, rate } => {
             saved.validate()?;
             unchanged(&saved.binary)?;
+            *lv2 = None;
+            *clap = None;
+            *instance = None;
+            if saved.class_id.starts_with("lv2:") { let plugin=super::lv2::Instance::load(saved,rate)?; let class=plugin.class.clone(); *lv2=Some(plugin); return Ok(Response::Loaded {class}); }
+            if saved.class_id.starts_with("clap:") {
+                let plugin = super::clap::load(saved, rate)?;
+                let class = plugin.class.clone();
+                *clap = Some(plugin);
+                return Ok(Response::Loaded { class });
+            }
             let mut host = host(rate)?;
             let mut plugin = host
                 .load_plugin_class(&saved.binary.bundle, &saved.class_id)
@@ -130,6 +164,7 @@ fn handle(request: Request, instance: &mut Option<Instance>) -> Result<Response,
         }
         Request::Process { frame } => {
             frame.validate()?;
+            if !frame.native.is_empty() { return Err("CLAP native expression events cannot be sent to a VST3 processor; use its MIDI input".into()); }
             let instance = instance.as_mut().ok_or("No plugin is loaded")?;
             let mut p = instance.plugin.lock().map_err(|e| e.to_string())?;
             let layout = p.audio_bus_layout().map_err(|e| e.to_string())?;
@@ -250,6 +285,8 @@ fn handle(request: Request, instance: &mut Option<Instance>) -> Result<Response,
             Ok(Response::Ok)
         }
         Request::Quit => {
+            *lv2 = None;
+            *clap = None;
             *instance = None;
             Ok(Response::Ok)
         }
@@ -285,11 +322,13 @@ pub(crate) fn run() -> Result<(), String> {
         })
         .map_err(|e| e.to_string())?;
     let mut instance = None;
+    let mut clap = None;
+    let mut lv2 = None;
     loop {
         match rx.recv_timeout(std::time::Duration::from_millis(10)) {
             Ok(request) => {
                 let quit = matches!(request, Request::Quit);
-                let response = handle(request, &mut instance)
+                let response = handle(request, &mut instance, &mut clap, &mut lv2)
                     .unwrap_or_else(|message| Response::Error { message });
                 let data = serde_json::to_vec(&response).map_err(|e| e.to_string())?;
                 if data.len() > MAX_MESSAGE {
@@ -306,6 +345,8 @@ pub(crate) fn run() -> Result<(), String> {
             Err(std::sync::mpsc::RecvTimeoutError::Disconnected) => return Ok(()),
             Err(std::sync::mpsc::RecvTimeoutError::Timeout) => {}
         }
+        if let Some(plugin) = lv2.as_mut() { plugin.service()?; }
+        if let Some(plugin) = clap.as_mut() { plugin.service()?; }
         if let Some(instance) = instance.as_mut() {
             instance.plugin.lock().map_err(|e| e.to_string())?.service_run_loop();
             if let Some(editor) = &mut instance.editor {

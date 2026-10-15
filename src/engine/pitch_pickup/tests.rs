@@ -7,7 +7,7 @@ fn capture(engine:&Engine,rt:&mut RtEngine)->crate::engine::project::Captured {
     while !worker.is_finished() {rt.process(&mut []);assert!(std::time::Instant::now()<end);std::thread::sleep(std::time::Duration::from_millis(1));}
     worker.join().unwrap()
 }
-fn input(kind:MsgKind,deck:u8,value:f32)->Input {Input {source:2191,context:[0;3],channel:3,binding:Binding {kind,ch:3,data:7,action:Action::DeckPitch,deck,extra:0,relative:None,controls:None,pair_order:None},value}}
+fn input(kind:MsgKind,deck:u8,value:f32)->Input {Input {source:2191,context:[0;3],channel:3,binding:Binding { routing: None,kind,ch:3,data:7,action:Action::DeckPitch,deck,extra:0,relative:None,controls:None,pair_order:None},value}}
 fn send(rt:&mut RtEngine,input:Input) {assert_eq!(test_alloc::measure(||rt.apply(Command::MidiPitch(input))),Default::default());}
 #[test]
 fn absolute_crossings_acquire_without_a_tempo_jump_and_follow_only_after_pickup() {
@@ -56,10 +56,10 @@ fn mapping_limits_inversion_wire_channels_and_bounded_owner_reuse_never_bypass_p
     let (_engine,mut rt)=Engine::headless_for_test(8000,256);
     let mut b=input(MsgKind::Cc14,0,0.2);b.binding.controls=Some(ControlSpec {min:0.2,max:0.8,invert:true});
     send(&mut rt,b);assert_eq!(rt.decks[0].pitch,0.5);send(&mut rt,Input {value:0.8,..b});assert_eq!(rt.decks[0].pitch,0.5);send(&mut rt,Input {value:0.79,..b});assert_eq!(rt.decks[0].pitch,0.79);
-    send(&mut rt,Input {channel:4,binding:Binding {ch:4,..b.binding},value:0.2,..b});assert_eq!(rt.decks[0].pitch,0.79);
+    send(&mut rt,Input {channel:4,binding:Binding { routing: None,ch:4,..b.binding},value:0.2,..b});assert_eq!(rt.decks[0].pitch,0.79);
     for source in 2200..2400 {send(&mut rt,Input {source,value:0.2,..b});assert_eq!(rt.decks[0].pitch,0.79);}
     send(&mut rt,Input {value:0.2,..b});assert_eq!(rt.decks[0].pitch,0.79);assert!(!rt.pitch_pickup_status(0).acquired);
-    for bad in [Input {source:0,..b},Input {channel:16,..b},Input {value:f32::NAN,..b},Input {value:1.1,..b},Input {binding:Binding {deck:2,..b.binding},..b}] {assert!(!bad.valid());let before=rt.decks[0].pitch;rt.apply(Command::MidiPitch(bad));assert_eq!(rt.decks[0].pitch,before);}
+    for bad in [Input {source:0,..b},Input {channel:16,..b},Input {value:f32::NAN,..b},Input {value:1.1,..b},Input {binding:Binding { routing: None,deck:2,..b.binding},..b}] {assert!(!bad.valid());let before=rt.decks[0].pitch;rt.apply(Command::MidiPitch(bad));assert_eq!(rt.decks[0].pitch,before);}
 }
 #[test]
 fn input_acquisition_is_transient_and_native_pitch_undo_restores_the_base_without_retargeting_the_fader() {

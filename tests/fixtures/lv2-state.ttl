@@ -1,0 +1,15 @@
+@prefix lv2: <http://lv2plug.in/ns/lv2core#> .
+@prefix atom: <http://lv2plug.in/ns/ext/atom#> .
+@prefix midi: <http://lv2plug.in/ns/ext/midi#> .
+@prefix state: <http://lv2plug.in/ns/ext/state#> .
+@prefix urid: <http://lv2plug.in/ns/ext/urid#> .
+@prefix doap: <http://usefulinc.com/ns/doap#> .
+<urn:omatainer:conformance:lv2> a lv2:Plugin, lv2:InstrumentPlugin ;
+    doap:name "Native state conformance" ; lv2:binary <state.so> ;
+    lv2:requiredFeature urid:map, state:mapPath, state:makePath, state:freePath ;
+    lv2:extensionData state:interface ;
+    lv2:port [ a lv2:OutputPort, lv2:AudioPort ; lv2:index 0 ; lv2:symbol "out" ; lv2:name "Audio" ],
+        [ a lv2:InputPort, atom:AtomPort ; lv2:index 1 ; lv2:symbol "events_in" ; lv2:name "Notes" ; atom:bufferType atom:Sequence ; atom:supports midi:MidiEvent ],
+        [ a lv2:InputPort, lv2:ControlPort ; lv2:index 2 ; lv2:symbol "gain" ; lv2:name "Gain" ; lv2:minimum 0.0 ; lv2:maximum 1.0 ; lv2:default 0.5 ],
+        [ a lv2:OutputPort, lv2:ControlPort ; lv2:index 3 ; lv2:symbol "latency" ; lv2:name "Latency" ; lv2:minimum 0.0 ; lv2:maximum 1024.0 ; lv2:designation lv2:latency ],
+        [ a lv2:OutputPort, atom:AtomPort ; lv2:index 4 ; lv2:symbol "events_out" ; lv2:name "MIDI output" ; atom:bufferType atom:Sequence ; atom:supports midi:MidiEvent ] .

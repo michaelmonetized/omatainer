@@ -145,7 +145,7 @@ fn midi_lock_binding_and_typed_ipc_share_renderer_state_and_target_validation() 
         name: "Load lock fixture".into(),
         matchers: vec![],
         unmapped_notes: midi::UnmappedNotes::Ignore,
-        bindings: vec![midi::Binding {
+        bindings: vec![midi::Binding { routing: None,
             ch: 0,
             kind: midi::MsgKind::Note,
             data: 20,
