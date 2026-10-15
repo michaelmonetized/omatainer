@@ -198,14 +198,13 @@ impl Prepared {
     /// Takes its prepared index; sums into its prepared input after all earlier sources have rendered.
     pub fn gather(&mut self, index: usize) {
         let terminal=matches!(self.nodes[index].group,Group::Main|Group::Output(_)|Group::Record(_));
-        let solo=self.mixer.solo;
-        let safe=self.model.buses.iter().enumerate().fold(0,|mask,(i,_)|if self.mixer.channels[self.model.sends.len()+i].effective.solo_safe{mask|1u32<<i}else{mask});
+        let primary=if let Group::Plugin(id)=self.nodes[index].group{usize::from(self.model.plugins.iter().find(|p|p.id==id).unwrap().inputs.first().copied().unwrap_or(0))}else{MAX_PORT_CHANNELS};
         let (sources, destination) = self.nodes.split_at_mut(index);
         let destination = &mut destination[0];
         for link in &self.incoming[index] {
-            if terminal&&solo!=0&&self.mixer.ancestry[link.source]&(solo|safe)==0 {continue;}
             let source = &sources[link.source].taps[link.tap];
             for map in &link.map {
+                if !self.mixer.audible(link.source,index,terminal,usize::from(map.destination)>=primary){continue;}
                 let(value,valid)=self.latency.as_ref().map_or((source[usize::from(map.source)],sources[link.source].valid),
                     |latency|latency.routed(link.source,link.tap,index,usize::from(map.source)));
                 let gain=link.send.map_or(1.,|slot|self.mixer.channels[slot].effective.gain(usize::from(map.source)))*link.fixed.map_or(1.,|(slot,send)|self.fixed_levels[slot][send]);
@@ -225,6 +224,7 @@ impl Prepared {
         let mut frame = [0.;2];
         for link in &self.incoming[index] {
             if !self.nodes[link.source].generated { continue; }
+            if !self.mixer.audible(link.source,index,false,false){continue;}
             for map in &link.map {
                 if map.destination < 2 {
                     let value = self.latency.as_ref().map_or(self.nodes[link.source].taps[link.tap][usize::from(map.source)], |l| l.routed(link.source,link.tap,index,usize::from(map.source)).0);
@@ -267,7 +267,7 @@ impl Prepared {
     /// Align an implicit send through its published original source.
     /// Takes source and destination indices plus fallback audio/continuity; reads the same prepared history used by explicit links.
     pub(super) fn source_send(&mut self,source:usize,destination:usize,frame:[f32;2],valid:bool) {
-        if destination==self.main && (self.selection==Some(super::selection::Policy::MasteredSolo)||!self.mix_audible(source)){return;}
+        if destination==self.main && self.selection==Some(super::selection::Policy::MasteredSolo) || !self.mixer.audible(source,destination,destination==self.main,false){return;}
         if let Some(latency)=&self.latency {
             for channel in 0..2 {
                 let(value,complete)=latency.routed(source,super::model::Tap::PostMixer.index(),destination,channel);
@@ -326,10 +326,12 @@ impl Prepared {
         let mut frame = [0.0; MAX_PORT_CHANNELS];
         let mut valid = true;
         for link in &self.incoming[index] {
+            if !self.mixer.audible(link.source,index,true,false){continue;}
             for map in &link.map {
                 let (value, complete) = latency.routed_monitor(link.source, link.tap, usize::from(map.source));
-                frame[usize::from(map.destination)] += value * map.gain;
-                if map.gain != 0.0 { valid &= complete; }
+                let gain=link.send.map_or(1.,|slot|self.mixer.channels[slot].effective.gain(usize::from(map.source)))*link.fixed.map_or(1.,|(slot,send)|self.fixed_levels[slot][send]);
+                frame[usize::from(map.destination)] += value * map.gain * gain;
+                if map.gain * gain != 0.0 { valid &= complete; }
             }
         }
         Some((frame, valid))
@@ -387,7 +389,7 @@ impl Prepared {
     pub fn bytes(&self) -> usize {
         std::mem::size_of::<Self>()
             + self.model.bytes()
-            + self.mixer.channels.capacity()*std::mem::size_of::<super::mixer::Channel>()+self.mixer.ancestry.capacity()*4
+            + self.mixer.channels.capacity()*std::mem::size_of::<super::mixer::Channel>()+(self.mixer.ancestry.capacity()+self.mixer.feeders.capacity())*4
             + self.plugins.capacity() * std::mem::size_of::<Plugin>()
             + self.plugins.iter().map(|p| p.endpoint.as_ref().map_or(0, crate::plugin_host::realtime::Endpoint::bytes) + p.error.as_ref().map_or(0, String::capacity)).sum::<usize>()
             + self.plugins.iter().map(|p| p.dry.bytes() + p.midi.capacity() * std::mem::size_of::<(u64,[u8;3])>()).sum::<usize>()
