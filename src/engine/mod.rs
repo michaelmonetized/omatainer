@@ -270,6 +270,7 @@ pub struct TrackRt {
     pub gain: f32,
     pub pan: f32,
     pub surface: surface_controls::TrackMix,
+    surface_gain: mixer_gain::GainPair,
     mixer_gain: mixer_gain::GainPair,
     pub mute: bool,
     pub solo: bool,
@@ -301,7 +302,7 @@ impl TrackRt {
         clips.reserve(session::MAX_SCENES - clips.len());
         Self {
             name, clips, playing: None, launch: Default::default(), project_resume: None, scene_bus: 0,
-            gain: 0.8, pan: 0.0, surface: Default::default(), mixer_gain: mixer_gain::GainPair::default(),
+            gain: 0.8, pan: 0.0, surface: Default::default(), surface_gain: Default::default(), mixer_gain: mixer_gain::GainPair::default(),
             mute: false, solo: false, armed: false, kind,
             input_monitor: None, input_gain: mixer_gain::GainPair::default(), pfl: false,
             poly: Poly::new(sr, match kind { 0 => SynthInstrument::Analog, 1 => SynthInstrument::Keys, _ => SynthInstrument::Pad }, 8),
@@ -2161,7 +2162,7 @@ impl RtEngine {
         };
         let output = if silent { [0.0; 2] } else { [fl * gl, fr * gr] };
         self.routing_track_taps = [raw, [fl, fr], output];
-        let output = self.surface.track(ti, track.surface, output);
+        let output = self.surface.track(track, output);
         self.routing_track_taps[2] = output;
         (output[0], output[1], track.pfl)
     }
