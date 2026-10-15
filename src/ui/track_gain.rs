@@ -124,14 +124,18 @@ impl App {
                 }
             });
             ui.add_enabled_ui(editor.pending.is_none(), |ui| {
+                let state = crate::property_fields::FieldState { locked: editor.pending.is_some(), ..Default::default() };
                 if editor.mode == 1 {
-                    let response = ui.add(egui::Slider::new(&mut editor.manual_db, -120.0..=12.0).step_by(0.1).text(tr!("Manual source trim (dB)")).custom_formatter(|value, _| crate::localization::number(value, 1)).custom_parser(crate::localization::parse_number));
-                    help::annotate(ui, &response, HelpControl::SourceGain);
+                    let field = crate::property_fields::number(ui, "source-trim", tr!("Manual source trim (dB)"), &mut editor.manual_db, -120.0..=12.0, " dB", Some(0.0), state);
+                    ui.ctx().accesskit_node_builder(field.response.id, |node| node.set_label("Manual source trim (dB)"));
+                    help::annotate(ui, &field.response, HelpControl::SourceGain);
                 } else if editor.mode == 2 {
-                    let response = ui.add(egui::Slider::new(&mut editor.target_dbfs, -40.0..=-6.0).step_by(0.1).text(tr!("Target RMS (dBFS)")).custom_formatter(|value, _| crate::localization::number(value, 1)).custom_parser(crate::localization::parse_number));
-                    help::annotate(ui, &response, HelpControl::SourceGain);
-                    let response = ui.add(egui::Slider::new(&mut editor.peak_dbfs, -12.0..=-1.0).step_by(0.1).text(tr!("Source sample-peak limit (dBFS)")).custom_formatter(|value, _| crate::localization::number(value, 1)).custom_parser(crate::localization::parse_number));
-                    help::annotate(ui, &response, HelpControl::SourceGain);
+                    let target = crate::property_fields::number(ui, "source-target", tr!("Target RMS (dBFS)"), &mut editor.target_dbfs, -40.0..=-6.0, " dBFS", Some(-18.0), state);
+                    ui.ctx().accesskit_node_builder(target.response.id, |node| node.set_label("Target RMS (dBFS)"));
+                    help::annotate(ui, &target.response, HelpControl::SourceGain);
+                    let peak = crate::property_fields::number(ui, "source-peak", tr!("Source sample-peak limit (dBFS)"), &mut editor.peak_dbfs, -12.0..=-1.0, " dBFS", Some(-3.0), state);
+                    ui.ctx().accesskit_node_builder(peak.response.id, |node| node.set_label("Source sample-peak limit (dBFS)"));
+                    help::annotate(ui, &peak.response, HelpControl::SourceGain);
                 }
             });
             let resolved = Resolved::prepare(editor.policy(), level);

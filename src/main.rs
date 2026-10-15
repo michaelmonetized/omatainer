@@ -34,6 +34,10 @@ mod musical_key;
 mod preferences;
 mod theme;
 mod ui;
+#[path = "../vendor/oma-ui/fields.rs"]
+mod property_fields;
+#[path = "../vendor/oma-ui/workspace.rs"]
+mod panel_workspace;
 mod ipc_server;
 mod automation;
 mod ipc_transport;

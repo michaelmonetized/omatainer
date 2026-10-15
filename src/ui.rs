@@ -119,6 +119,7 @@ mod pitch_controls;
 mod command_palette;
 mod touch;
 mod workspace;
+mod mixer;
 mod help;
 use help::{Control as HelpControl, ContextHelp as _};
 pub(crate) fn validate_shortcuts(profile: &crate::preferences::Profile) -> Result<(), String> { shortcuts::validate(profile) }
@@ -243,6 +244,7 @@ pub struct App {
     command_palette: command_palette::Palette,
     touch_input: touch::Input,
     workspace: workspace::State,
+    mixer: mixer::State,
     help: help::Help,
     midi_open: bool,
     midi_learn: midi_learn::Panel,
@@ -404,6 +406,7 @@ impl App {
             command_palette: command_palette::Palette::default(),
             touch_input: touch::Input::default(),
             workspace: workspace::State::default(),
+            mixer: mixer::State::default(),
             help: help::Help::default(),
             midi_open: false,
             midi_learn: midi_learn::Panel::default(),
@@ -981,6 +984,7 @@ impl App {
         self.cue_editor_ui(ctx);
         self.grid_editor_ui(ctx);
         self.track_gain_ui(ctx);
+        self.mixer_ui(ctx);
         self.session_editor_ui(ctx);
         self.audio_routing_ui(ctx);
         self.dj_fx_ui(ctx);

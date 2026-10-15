@@ -17,6 +17,7 @@ impl App {
                 if ui.button(tr!("Audio export & recording")).help(ui,HelpControl::AudioExport).clicked() { self.audio_delivery.open = true; ui.close(); }
                 if ui.button("Session clips").help(ui,HelpControl::ClipManager).clicked(){self.open_clip_manager(self.snap.selected_track,self.snap.selected_scene);}
                 if ui.button("Arrangement timeline").help(ui,HelpControl::Arrangement).clicked(){self.open_arrangement();}
+                if ui.button("Track mixer").clicked() { self.mixer.open = true; ui.close(); }
                 if ui.button(tr!("Audio clip")).help(ui,HelpControl::AudioClip).clicked() { self.open_audio_clip(self.snap.selected_track as u8, self.snap.selected_scene as u16); ui.close(); }
                 if ui.button(tr!("Automation")).help(ui, HelpControl::AutomationOpen).clicked() { self.automation_panel.open = true; ui.close(); }
                 if ui.button(tr!("Preferences")).help(ui, HelpControl::Preferences).clicked() { self.settings.open = true; ui.close(); }
