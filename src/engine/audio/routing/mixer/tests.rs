@@ -256,3 +256,29 @@ fn named_mixer_typed_journal_stable_targets_capture_and_worker_checkpoint() {
         old
     );
 }
+
+#[test]
+fn named_mixer_total_automation_budget_refuses_before_replacing_the_graph() {
+    let (_, rt) = Engine::headless_for_test(48000, 256);
+    let original = model();
+    let mut next = original.clone();
+    let mut fourth = next.sends[0].clone();
+    fourth.id = 8;
+    fourth.name = "Fourth bounded automation".into();
+    next.sends.push(fourth);
+    next.next_id = 10;
+    for send in &mut next.sends {
+        send.automation = vec![Lane {
+            parameter: Parameter::Level,
+            points: (0..MAX_LANE_POINTS).map(|i| [i as f64, 0.5]).collect(),
+        }];
+    }
+    next.order(&rt.session).unwrap();
+    let mut fifth = next.sends[0].clone();
+    fifth.id = 9;
+    fifth.name = "One point too many".into();
+    fifth.automation[0].points = vec![[0., 0.5]];
+    next.sends.push(fifth);
+    assert!(next.order(&rt.session).unwrap_err().contains("65536"));
+    assert_eq!(original, model());
+}
