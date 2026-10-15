@@ -143,6 +143,20 @@ impl World {
     }
     fn report(&self, plugin: P, binary: &BinaryIdentity) -> Result<Class, String> {
         unsafe {
+            let library = (self.api.node_get_path)(
+                (self.api.plugin_get_library_uri)(plugin),
+                ptr::null_mut(),
+            );
+            if library.is_null() {
+                return Err("LV2 processor binary is not a native local file".into());
+            }
+            let library_path = PathBuf::from(CStr::from_ptr(library).to_string_lossy().as_ref());
+            (self.api.free)(library.cast());
+            let bundle_root = binary.bundle.canonicalize().map_err(|e| e.to_string())?;
+            let library_path = library_path.canonicalize().map_err(|e| e.to_string())?;
+            if !library_path.starts_with(&bundle_root) {
+                return Err("LV2 processor binary escapes its inspected bundle".into());
+            }
             let count = (self.api.plugin_get_num_ports)(plugin);
             if count > 512 {
                 return Err("LV2 plugin exceeds 512 ports".into());

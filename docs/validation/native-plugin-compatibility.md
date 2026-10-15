@@ -15,7 +15,7 @@ AUDIO-02 remains open until each format's acceptance and native editor qualifica
 
 Projects retain exact binary hashes, descriptor/class URI, plugin version, codec and opaque state. Existing VST3 state remains `vst3-host-0.9-state`; CLAP and LV2 use distinct codecs. New cached metadata and modulation fields have serde defaults. An unsupported format is not silently replaced by a similarly named processor.
 
-For imported Ableton projects, **Import → Ableton Live project → review dependencies** retains the original device chain and source state. A compatible VST3 replacement still requires its original class identity. Use the existing aligned-render import to supply the source-rendered audio, choose timing/tail/printed mixer scope, and review before applying. The original editable tracks, devices, media provenance and mute/routing restoration data remain in the project. See the focused `ableton::renders::tests` save/reopen and restore checks. CLAP/LV2 native plugin state is not represented as converted AU/VST2 state.
+For imported Ableton projects, **Project → Project tools → Import Ableton Live Set…** retains the original device chain and source state. A compatible VST3 replacement still requires its original class identity. Use the existing aligned-render import to supply the source-rendered audio, choose timing/tail/printed mixer scope, and review before applying. The original editable tracks, devices, media provenance and mute/routing restoration data remain in the project. See the focused `ableton::renders::tests` save/reopen and restore checks. CLAP/LV2 native plugin state is not represented as converted AU/VST2 state.
 
 ## Source and license review
 
