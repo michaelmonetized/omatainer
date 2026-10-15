@@ -72,7 +72,7 @@ impl Native {
         assert_eq!(
             self.ctx
                 .memory(|memory| memory.focused())
-                .map(|id| id.accesskit_id()),
+                .map(|id| NodeId::from(id.value())),
             Some(id),
             "native Memory focus for {label}"
         );
@@ -116,7 +116,7 @@ trait Keyboard {
                 .native()
                 .ctx
                 .memory(|memory| memory.focused())
-                .map(|id| id.accesskit_id());
+                .map(|id| NodeId::from(id.value()));
             if self
                 .native()
                 .nodes

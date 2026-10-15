@@ -95,8 +95,8 @@ pub(super) fn error(ui: &mut Ui, response: &egui::Response, text: &str) {
     ui.ctx().accesskit_node_builder(response.id, |node| {
         node.set_invalid(egui::accesskit::Invalid::True);
         node.clear_numeric_value();
-        node.set_error_message(message.id.accesskit_id());
-        node.push_described_by(message.id.accesskit_id());
+        node.set_error_message(message.id.value().into());
+        node.push_described_by(message.id.value().into());
     });
     ui.data_mut(|data| {
         if let Some(form) = data.get_temp::<egui::Id>(context_key(ui, FORM)) {
