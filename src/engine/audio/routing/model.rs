@@ -377,6 +377,7 @@ impl Model {
         let mut instruments = BTreeSet::new();
         for plugin in &self.plugins {
             plugin.validate(layout)?;
+            if plugin.return_bus.is_some_and(|id| !self.buses.iter().any(|bus| bus.id == id)) { return Err("Return processor ownership requires a retained return bus".into()); }
             plugin_bytes = plugin_bytes.saturating_add(plugin.bytes());
             if plugin.id == 0 || plugin.id >= self.next_id || !ids.insert(plugin.id) || !names.insert(plugin.name.as_str())
                 || plugin_bytes > 32 * 1024 * 1024 || plugin.instrument && !instruments.insert(plugin.midi_track.unwrap())

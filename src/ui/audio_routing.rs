@@ -9,6 +9,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 mod worker;
 mod latency;
 mod mixer;
+mod processors;
 use worker::{Event, Job, Worker};
 
 #[derive(Clone)]
@@ -35,6 +36,7 @@ impl Draft {
         plugin.id = self.model.next_id; self.model.next_id += 1;
         plugin.name = format!("{} {}",plugin.name,plugin.id);
         plugin.midi_track = Some(track);
+        plugin.return_bus = None;
         let maps = |source: usize, destination: usize| {
             if destination == 1 && source >= 2 { vec![ChannelMap {source:0,destination:0,gain:0.5},ChannelMap {source:1,destination:0,gain:0.5}] }
             else { (0..destination.min(2)).map(|i| ChannelMap {source:if source == 1 {0}else{i as u8},destination:i as u8,gain:1.}).collect() }
@@ -89,6 +91,10 @@ impl Panel {
     pub(super) fn attach_plugin(&mut self, engine: &Engine, plugin: crate::engine::audio::routing::plugins::Instance, track: crate::engine::session::Id) {
         self.open = true;
         self.request(engine,|cancel| Job::Attach(plugin,track,cancel));
+    }
+    pub(super) fn attach_return_plugin(&mut self, engine: &Engine, plugin: crate::engine::audio::routing::plugins::Instance, namespace: [u64;2], bus: u64) {
+        self.open = true;
+        self.request(engine,|cancel| Job::AttachReturn(plugin,namespace,bus,cancel));
     }
     /// Read pending routing work.
     /// Takes this panel; returns whether a worker or commit is active.
@@ -394,12 +400,18 @@ fn direction_name(direction: Direction) -> &'static str {
 /// Remove one alias and its maps.
 /// Takes the saved draft and identity; removes dependent connections together.
 fn remove_alias(model: &mut Model, id: u64) {
+    let processors=model.plugins.iter().filter(|p|p.return_bus==Some(id)).map(|p|p.id).collect::<std::collections::BTreeSet<_>>();
+    model.plugins.retain(|p|!processors.contains(&p.id));
     model.ports.retain(|port| port.id != id);
     model.buses.retain(|bus| bus.id != id);
     model.sends.retain(|s|!matches!(s.route.source.group,Group::Input(value)|Group::Bus(value)if value==id)&&!matches!(s.route.destination,Group::Bus(value)|Group::Output(value)|Group::Record(value)if value==id));
     model.connections.retain(|connection| !matches!(connection.source.group, Group::Input(value) | Group::Bus(value) if value == id)
         && !matches!(connection.destination, Group::Output(value) | Group::Record(value) | Group::Bus(value) if value == id));
+    let retained=|group| !matches!(group,Group::Plugin(value)if processors.contains(&value));
+    model.connections.retain(|c|retained(c.source.group)&&retained(c.destination));
+    model.sends.retain(|s|retained(s.route.source.group)&&retained(s.route.destination));
     if let Some(latency) = &mut model.latency { latency.reports.retain(|report| !matches!(report.group, Group::Input(value) | Group::Output(value) | Group::Record(value) | Group::Bus(value) if value == id)); }
+    if let Some(latency)=&mut model.latency{latency.reports.retain(|r|retained(r.group));}
 }
 
 /// Edit one routing value through pointer, keyboard or native accessibility.

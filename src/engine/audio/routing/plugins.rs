@@ -27,6 +27,8 @@ pub(crate) struct Instance {
     pub outputs: Vec<u8>,
     pub midi_track: Option<Id>,
     pub scene_track: Option<Id>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub return_bus: Option<u64>,
     pub instrument: bool,
     pub bypass: bool,
     pub latency: u32,
@@ -73,6 +75,7 @@ impl Instance {
             || self.midi_track.is_some_and(|id| !layout.tracks.iter().any(|t| t.id == id))
             || self.scene_track.is_some_and(|id| !layout.tracks.iter().any(|t| t.id == id))
             || self.instrument && self.midi_track.is_none()
+            || self.return_bus.is_some() && (self.instrument || self.midi_track.is_some() || self.scene_track.is_some())
             || self.unavailable.as_ref().is_some_and(|s| s.len() > 4096)
         { return Err("Plugin name, buses, MIDI source or storage limits are invalid".into()); }
         let mut ids = std::collections::BTreeSet::new();
