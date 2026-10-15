@@ -762,8 +762,11 @@ impl Instance {
                     }
                     "control" => (&mut self.controls[index] as *mut f32).cast(),
                     "atom" => {
-                        let sequence =
-                            self.features.id("http://lv2plug.in/ns/ext/atom#Sequence")?;
+                        let sequence = self.features.id(if port.input {
+                            "http://lv2plug.in/ns/ext/atom#Sequence"
+                        } else {
+                            "http://lv2plug.in/ns/ext/atom#Chunk"
+                        })?;
                         let midi = self
                             .features
                             .id("http://lv2plug.in/ns/ext/midi#MidiEvent")?;
