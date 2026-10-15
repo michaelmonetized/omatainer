@@ -9,9 +9,11 @@ fn fixed_send_identity_controls_undo_defaults_and_structural_recall() {
         assert_eq!(test_alloc::measure(||rt.apply(command)),test_alloc::Counts::default());
     }
     assert_eq!(rt.tracks[2].surface,mix);
-    rt.apply(Command::Undo);
-    assert_eq!(rt.tracks[2].surface,TrackMix::default());
-    rt.apply(Command::Redo);
+    for expected in [TrackMix {sends:mix.sends,crossfader:0},TrackMix {sends:[mix.sends[0],0.],crossfader:0},TrackMix::default()] {
+        rt.apply(Command::Undo);
+        assert_eq!(rt.tracks[2].surface,expected);
+    }
+    for _ in 0..3 {rt.apply(Command::Redo);}
     assert_eq!(rt.tracks[2].surface,mix);
     let id=rt.session.tracks[2].id;
     let (request,ack)=Request::metadata(&rt.session,captured(&rt).checkpoint.epoch,Action::Move {axis:Axis::Track,id,position:0}).unwrap();

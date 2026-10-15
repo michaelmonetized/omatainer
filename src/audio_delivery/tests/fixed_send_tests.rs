@@ -46,7 +46,7 @@ fn fixture(rate: u32, sends: [f32; 2]) -> (Engine, RtEngine) {
     track.clips[0].audio_region = Some(region);
     track.clips[0].kind = ClipKind::Audio;
     track.clips[0].audio = Some(sample);
-    track.clips[0].bars = 1.;
+    track.clips[0].bars = region.duration_beats as f32 / 4.;
     rt.apply(Command::TrackSend {
         track: 0,
         send: 0,
