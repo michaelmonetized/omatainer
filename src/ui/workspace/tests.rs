@@ -319,6 +319,26 @@ fn studio_task_panels_move_tab_float_close_restore_reset_and_keep_the_main_surfa
         .groups
         .iter()
         .any(|group| group.place == Place::Floating && group.panels == ["library"]));
+    {
+        let book = &mut gui
+            .app
+            .settings
+            .applied
+            .profiles
+            .get_mut("Studio")
+            .unwrap()
+            .workspaces
+            .studio;
+        book.tasks
+            .get_mut("Decks")
+            .unwrap()
+            .groups
+            .iter_mut()
+            .find(|group| group.panels == ["library"])
+            .unwrap()
+            .rect = [1100.0, 600.0, 400.0, 350.0];
+    }
+    gui.frame(vec![]);
     gui.panel_menu("Sampler");
     gui.root_click("Move left");
     assert!(studio(&gui).tasks["Decks"]
@@ -502,6 +522,42 @@ fn studio_layout_serde_defaults_roundtrip_and_scale_recovery_keep_panels_reachab
         assert!(gui.ctx.screen_rect().contains_rect(safe));
         assert!(gui.app.workspace.center.unwrap().is_positive());
     }
+}
+
+#[test]
+fn studio_docked_midi_edits_the_captured_clip_and_undoes_through_existing_apply() {
+    let mut gui = crate::ui::piano_roll::tests::Gui::new();
+    {
+        let book = &mut gui
+            .app
+            .settings
+            .applied
+            .profiles
+            .get_mut("Studio")
+            .unwrap()
+            .workspaces
+            .studio;
+        book.active = "MIDI".into();
+        book.tasks.insert("MIDI".into(), Workspace::default());
+    }
+    gui.frame(vec![]);
+    gui.click("Inspect selected MIDI clip");
+    gui.settle();
+    let before = gui.rt.tracks[2].clips[7].notes.clone();
+    gui.number("Note pitch", 65.0);
+    gui.number("Note start", 1.0);
+    gui.number("Note length", 0.5);
+    gui.click("MIDI piano roll: Add note");
+    gui.apply();
+    assert_eq!(gui.rt.tracks[2].clips[7].notes.len(), before.len() + 1);
+    assert!(gui.rt.tracks[2].clips[7]
+        .notes
+        .iter()
+        .any(|note| note.pitch == 65 && note.start == 1.0 && note.len == 0.5));
+    gui.rt.apply(Command::Undo);
+    gui.frame(vec![]);
+    assert_eq!(gui.rt.tracks[2].clips[7].notes, before);
+    assert_eq!((gui.rt.selected_track, gui.rt.selected_scene), (2, 7));
 }
 
 #[test]
