@@ -36,7 +36,7 @@ impl App {
                     if let Some(binary) = &record.binary {
                         ui.horizontal(|ui| {
                             for (label,instrument) in [("Use as track instrument",true),("Append track effect",false)] {
-                                if ui.add_enabled(!protected && !busy && if instrument { class.info.category.contains("Instrument") && class.info.has_midi_input } else { !class.layout.inputs.is_empty() && !class.info.category.contains("Instrument") },egui::Button::new(label)).clicked() {
+                                if ui.add_enabled(!protected && if instrument { class.info.category.contains("Instrument") && class.info.has_midi_input } else { !class.layout.inputs.is_empty() && !class.info.category.contains("Instrument") },egui::Button::new(label)).clicked() {
                                     attach=Some(crate::engine::audio::routing::plugins::Instance {id:0,name:class.info.name.char_indices().take_while(|(index,_)| *index < 80).map(|(_,c)|c).collect(),saved:crate::plugin_host::Saved {schema:1,binary:binary.clone(),class_id:class.info.uid.clone(),plugin_version:class.info.version.clone(),state_codec:crate::plugin_host::Saved::codec(&class.info.uid).into(),state:Vec::new()},inputs:class.layout.inputs.iter().map(|b| b.channel_count as u8).collect(),outputs:class.layout.outputs.iter().map(|b| b.channel_count as u8).collect(),midi_track:None,scene_track:None,instrument,bypass:false,latency:class.latency.saturating_add(crate::plugin_host::BLOCK as u32 * crate::plugin_host::realtime::BRIDGE_BLOCKS as u32),parameters:Vec::new(),automation:Vec::new(),unavailable:None});
                                 }
                             }
