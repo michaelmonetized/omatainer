@@ -3,8 +3,9 @@ use crate::engine::{ClipKind, project, test_alloc};
 
 fn fixture(rate:u32,sends:[f32;2])->(Engine,RtEngine) {
     let (engine,mut rt)=Engine::headless_for_test(rate,256);
-    let mut empty=project::Prepared::empty(rate).unwrap();
-    empty.swap_into(&mut rt);
+    rt.apply(Command::Stop);
+    for track in &mut rt.tracks {track.clips.iter_mut().for_each(|clip|*clip=crate::engine::Clip::empty());track.fx.slots.clear();}
+    for rack in &mut rt.scene_fx {rack.slots.clear();}
     rt.quantize=false;rt.bpm=120.;rt.master=0.25;rt.xfader=0.25;
     let mut data=vec![0.;8192*2];
     for (i,left,right) in [(0,0.11,-0.07),(2048,-0.05,0.13),(8000,0.09,0.03)] {data[i*2]=left;data[i*2+1]=right;}
@@ -31,8 +32,8 @@ fn fixed_send_fresh_process_renderer() {
     let Some(path)=std::env::var_os("OMATAINER_FIXED_SEND_ARCHIVE") else {return};
     let bundle=crate::project_file::load::<project::State>(Path::new(&path),&Default::default(),&AtomicBool::new(false)).unwrap();
     let rate=std::env::var("OMATAINER_FIXED_SEND_RATE").unwrap().parse().unwrap();
-    let mut prepared=project::Prepared::from_state(bundle.state,bundle.media,rate).unwrap();
-    let output=pcm(&mut prepared.rt,rate,127);
+    let mut prepared=project::Prepared::from_state(bundle.state,bundle.media,rate).unwrap().into_offline();
+    let output=pcm(&mut prepared,rate,127);
     std::fs::write(Path::new(&path).with_extension("f32"),output.iter().flat_map(|v|v.to_le_bytes()).collect::<Vec<_>>()).unwrap();
 }
 
