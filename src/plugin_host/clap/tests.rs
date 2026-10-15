@@ -402,12 +402,23 @@ fn native_expression_offsets_identity_state_latency_and_process_crash_recovery()
     let saved: Saved = serde_json::from_slice(&serde_json::to_vec(&saved).unwrap()).unwrap();
     let mut recovered = process::Process::start(&executable).unwrap();
     exchange(&mut recovered, Request::Load { saved, rate: 48000 });
-    exchange(
-        &mut recovered,
-        Request::Process {
-            frame: block(class),
-        },
-    );
+    let mut live_midi = block(class);
+    live_midi.midi = vec![
+        (7, [0x93, 60, 100]),
+        (31, [0xd3, 64, 0]),
+        (127, [0x83, 60, 0]),
+    ];
+    let Response::Audio { outputs, .. } =
+        exchange(&mut recovered, Request::Process { frame: live_midi })
+    else {
+        panic!("Expected native CLAP-only MIDI expression output")
+    };
+    assert!(outputs[0][0][..7].iter().all(|v| *v == 0.));
+    assert!(outputs[0][0][7..31].iter().all(|v| *v == 0.25));
+    assert!(outputs[0][0][31..127]
+        .iter()
+        .all(|v| (*v - (0.25 + 64. / 127.)).abs() < 1e-6));
+    assert!(outputs[0][0][127..].iter().all(|v| *v == 0.));
     exchange(&mut recovered, Request::Quit);
     drop(recovered);
     std::fs::remove_dir_all(root).unwrap();

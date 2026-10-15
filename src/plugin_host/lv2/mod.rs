@@ -419,7 +419,6 @@ impl World {
 }
 impl Drop for World {
     fn drop(&mut self) {
-        self.editor = None;
         unsafe {
             (self.api.world_free)(self.raw);
         }
