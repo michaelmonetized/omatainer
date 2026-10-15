@@ -8,6 +8,7 @@ use std::time::{Duration, Instant};
 pub(super) struct State {
     pub restart: AtomicBool,
     pub callback: AtomicBool,
+    pub flush: AtomicBool,
     pub audio: AtomicBool,
     pub closed: AtomicBool,
     pub destroyed: AtomicBool,
@@ -23,6 +24,7 @@ impl Default for State {
         Self {
             restart: AtomicBool::new(false),
             callback: AtomicBool::new(false),
+            flush: AtomicBool::new(false),
             audio: AtomicBool::new(false),
             closed: AtomicBool::new(false),
             destroyed: AtomicBool::new(false),
@@ -61,7 +63,7 @@ unsafe extern "C" fn clear(h: *const clap_host, _id: u32, _flags: u32) {
     restart(h);
 }
 unsafe extern "C" fn flush(h: *const clap_host) {
-    callback(h);
+    state(h).flush.store(true, Ordering::Release);
 }
 unsafe extern "C" fn dirty(_h: *const clap_host) {}
 unsafe extern "C" fn resize(h: *const clap_host, w: u32, t: u32) -> bool {
