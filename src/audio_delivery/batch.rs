@@ -57,6 +57,7 @@ pub(crate) struct Status {
     pub phase: String,
 }
 pub(crate) type Progress = Arc<Mutex<Status>>;
+const RECIPE_BYTES: usize = 1024 * 1024;
 #[derive(Debug)]
 pub(crate) struct BatchOutcome {
     pub folder: PathBuf,
@@ -210,6 +211,11 @@ impl Recipe {
             return Err("Choose an absolute new batch recipe path".into());
         }
         let bytes = serde_json::to_vec_pretty(self).map_err(|e| e.to_string())?;
+        if bytes.len() > RECIPE_BYTES {
+            return Err(
+                "Batch recipe exceeds1MiB; reduce the pass/target list before saving".into(),
+            );
+        }
         let mut f = super::create(path)?;
         f.write_all(&bytes)
             .and_then(|_| f.sync_all())
@@ -218,7 +224,7 @@ impl Recipe {
     /// Reopen a bounded native batch recipe.
     /// Args: existing JSON path. Returns authored IDs and choices; caller must review a fresh capture before rendering.
     pub fn load(path: &Path, cancel: &std::sync::atomic::AtomicBool) -> Result<Self, String> {
-        let bytes = super::process::read_regular(path, 1024 * 1024, cancel)?;
+        let bytes = super::process::read_regular(path, RECIPE_BYTES, cancel)?;
         let recipe = serde_json::from_slice(&bytes).map_err(|e| e.to_string())?;
         super::active(cancel)?;
         Ok(recipe)

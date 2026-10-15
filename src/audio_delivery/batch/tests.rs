@@ -410,4 +410,12 @@ fn recipe_fifo_refuses_without_writer_and_regular_recipe_preserves_bytes_with_ca
         .unwrap_err()
         .contains("cancelled"));
     assert_eq!(before, std::fs::read(&path).unwrap());
+    let mut oversized = recipe.clone();
+    oversized.config.metadata.description = "x".repeat(RECIPE_BYTES);
+    let rejected = files.0.join("oversized.json");
+    assert!(oversized
+        .save(&rejected)
+        .unwrap_err()
+        .contains("exceeds1MiB"));
+    assert!(!rejected.exists());
 }
