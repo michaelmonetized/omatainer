@@ -3502,3 +3502,5 @@ omatainer delivery-batch /home/you/song.omat /home/you/new-delivery.json /home/y
 ```
 
 Edit/review the generated recipe's range, output, tags, targets and explicit contribution passes before rendering. CLI plans bind the exact native project bytes; changed project bytes require a new plan. Ctrl+C requests cancellation and reaps running codec processes. Native project loading stays stopped and opens no audio device. The recipe is a delivery preset, not a substitute native project document.
+
+The included loudness meter uses pinned libebur1281.2.6 with a finite49-tap Hann-windowed sinc true-peak interpolator. A controlled12kHz quadrature fixture is compared against its analytic peak and independent FFmpeg; abrupt file starts/stops are characterized separately because finite resamplers can disagree (about0.52dB in the retained abrupt-edge fixture). This is measured software evidence, not certified meter or physical playback proof. Targets use the included meter’s reported value; no value is padded or fabricated to match another meter.

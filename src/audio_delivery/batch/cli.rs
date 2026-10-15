@@ -149,7 +149,7 @@ struct Interrupt {
 impl Interrupt {
     fn new(cancel: Arc<AtomicBool>) -> Self {
         INTERRUPTED.store(false, Ordering::Release);
-        let previous = unsafe { libc::signal(libc::SIGINT, interrupt as libc::sighandler_t) };
+        let previous = unsafe { libc::signal(libc::SIGINT, interrupt as *const () as libc::sighandler_t) };
         let done = Arc::new(AtomicBool::new(false));
         let stop = done.clone();
         let thread = std::thread::spawn(move || {

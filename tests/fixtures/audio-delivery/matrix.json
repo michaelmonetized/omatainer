@@ -53,7 +53,7 @@
       "id": "ebu-calibrated-and-lra",
       "test": "audio_delivery::measurement::tests::bs1770_calibrated_tone_and_dynamic_lra_match_independent_ffmpeg",
       "source": "src/audio_delivery/measurement/tests.rs",
-      "source_sha256": "fd424004a95440aeebea5e7d571883b8720fb1ec7ca48c3121f3db2153115524",
+      "source_sha256": "f7e170fb995b468d83d6857bf0254179fb3776cae898f9b11682fcbc2c662d5d",
       "requirement": "required",
       "acceptance": "analytic 1kHz mono -20dBFS peak expected -23LUFS, dynamic levels, independent FFmpeg ebur128"
     },
@@ -61,15 +61,15 @@
       "id": "ebu-intersample-and-invalid",
       "test": "audio_delivery::measurement::tests::true_peak_intersample_silence_nonfinite_and_layout_targets_are_explicit",
       "source": "src/audio_delivery/measurement/tests.rs",
-      "source_sha256": "fd424004a95440aeebea5e7d571883b8720fb1ec7ca48c3121f3db2153115524",
+      "source_sha256": "f7e170fb995b468d83d6857bf0254179fb3776cae898f9b11682fcbc2c662d5d",
       "requirement": "required",
-      "acceptance": "12kHz quadrature intersample peak; silence/null, LFE weighting, undeclared wide and nonfinite refusal"
+      "acceptance": "Smooth-envelope12kHz quadrature peak tight analytic+independent FFmpeg comparison; abrupt-edge difference retained separately as characterization, not strict conformance; silence/LFE/unknown-layout/nonfinite"
     },
     {
       "id": "post-mp3",
       "test": "audio_delivery::measurement::tests::final_lossy_measurement_binds_decoded_file_and_can_differ_from_source_peak",
       "source": "src/audio_delivery/measurement/tests.rs",
-      "source_sha256": "fd424004a95440aeebea5e7d571883b8720fb1ec7ca48c3121f3db2153115524",
+      "source_sha256": "f7e170fb995b468d83d6857bf0254179fb3776cae898f9b11682fcbc2c662d5d",
       "requirement": "required",
       "acceptance": "actual encoded MP3 decoded/measured then independently FFmpeg referenced"
     },
@@ -109,7 +109,7 @@
       "id": "native-batch-ui",
       "test": "ui::audio_delivery::tests::native_aligned_batch_review_recipe_reopen_render_and_stale_guard_use_real_worker",
       "source": "src/ui/audio_delivery/tests.rs",
-      "source_sha256": "67d17ee8e86f432aa2c12b3c39b3102c12565a93ad9314f3c4caa596afd9c3f4",
+      "source_sha256": "2acb876c8c011e71965be836d20e2b9cff946c7a99c910dbee5cf01a061e745a",
       "requirement": "required",
       "acceptance": "headless egui accesskit actual source review/recipe/reopen/render worker; no native window"
     },
@@ -117,7 +117,7 @@
       "id": "native-project-cli",
       "test": "ui::audio_delivery::tests::native_document_cli_plan_reopen_and_batch_use_same_encoded_delivery_path",
       "source": "src/ui/audio_delivery/tests.rs",
-      "source_sha256": "67d17ee8e86f432aa2c12b3c39b3102c12565a93ad9314f3c4caa596afd9c3f4",
+      "source_sha256": "2acb876c8c011e71965be836d20e2b9cff946c7a99c910dbee5cf01a061e745a",
       "requirement": "required",
       "acceptance": "real .omat container/native Document, device-free CLI dispatch, exact project byte binding"
     },
