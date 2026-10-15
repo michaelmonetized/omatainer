@@ -435,6 +435,10 @@ fn keyboard_access_empty_project_tracks_clips_notes_controllers_song_timing_save
     gui.number("Range start", "8");
     gui.press("Place source at range start");
     gui.number("Instance start beat", "12.125001");
+    assert_eq!(
+        gui.native.node("Instance start beat").1.numeric_value(),
+        Some(12.125001)
+    );
     gui.number("Instance duration beats", "4.5");
     gui.press("Apply song");
     gui.until(|gui| {
@@ -676,6 +680,10 @@ fn keyboard_access_precise_native_invalid_mixed_escape_and_disabled_target_seman
     fields.mixed = false;
     fields.number("Amount (beats)", " 1 . 2 5 0 0 0 1 ");
     assert_eq!(fields.amount, 1.250001);
+    assert_eq!(
+        fields.native.node("Amount (beats)").1.numeric_value(),
+        Some(1.250001)
+    );
     fields.press("Apply draft");
     assert_eq!(fields.accepted, 1);
     fields.locked = true;

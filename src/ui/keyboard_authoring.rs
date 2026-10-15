@@ -190,6 +190,18 @@ pub(super) fn number(
                 *value = f64::from(next);
             }
         }
+        ui.ctx().accesskit_node_builder(response.id, |node| {
+            node.set_numeric_value(*value);
+            node.set_min_numeric_value(min);
+            node.set_max_numeric_value(max);
+            node.set_numeric_value_step(step);
+            if node.role() != egui::accesskit::Role::TextInput {
+                node.set_value(format!(
+                    "{}{unit}",
+                    ui.style().number_formatter.format(*value, 0..=decimals)
+                ));
+            }
+        });
         if response.has_focus() {
             ui.memory_mut(|memory| {
                 memory.set_focus_lock_filter(
