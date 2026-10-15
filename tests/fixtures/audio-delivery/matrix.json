@@ -77,7 +77,7 @@
       "id": "every-codec-metadata",
       "test": "audio_delivery::finishing::tests::every_final_codec_embeds_metadata_without_changing_encoded_audio_and_enforces_targets",
       "source": "src/audio_delivery/finishing.rs",
-      "source_sha256": "156ee9eb786c89af4cba2402eeecff33e8becc7603bdb7879c8199fd967dc170",
+      "source_sha256": "a150ce32f0c4d8247ad70f3da2b5e7d14cd48e69f55f7b1fdc8649bc02c7e9a4",
       "requirement": "required",
       "acceptance": "all11 output options; tags, decoded PCM hash invariance, warn/block"
     },
@@ -85,7 +85,7 @@
       "id": "aligned-native-null",
       "test": "audio_delivery::batch::tests::aligned_encoded_stems_null_sum_explicit_version_and_normal_graph_oracle_after_reopen",
       "source": "src/audio_delivery/batch/tests.rs",
-      "source_sha256": "cd9ff75b2bbc5fd419322e86667f6225fe2d361d6db97db0668f9925f525ee75",
+      "source_sha256": "6f45911b9e7c6830c29356a80ae7a515abf6473a52342c55ecf08046e26c0b0c",
       "requirement": "required",
       "acceptance": "encoded stems sum vs explicitly selected combined pass, normal nonlinear master oracle, recipe reopen/live state"
     },
@@ -93,7 +93,7 @@
       "id": "batch-atomic-refusals",
       "test": "audio_delivery::batch::tests::batch_stale_missing_ids_collision_cancel_and_failed_qc_never_publish_partial_folder",
       "source": "src/audio_delivery/batch/tests.rs",
-      "source_sha256": "cd9ff75b2bbc5fd419322e86667f6225fe2d361d6db97db0668f9925f525ee75",
+      "source_sha256": "6f45911b9e7c6830c29356a80ae7a515abf6473a52342c55ecf08046e26c0b0c",
       "requirement": "required",
       "acceptance": "namespace/deleted identity, stale revision, case collision, existing folder, QC failure statuses"
     },
@@ -101,7 +101,7 @@
       "id": "batch-mid-cancel",
       "test": "audio_delivery::batch::tests::batch_cancel_during_second_pass_keeps_only_failure_receipt_and_no_final_audio",
       "source": "src/audio_delivery/batch/tests.rs",
-      "source_sha256": "cd9ff75b2bbc5fd419322e86667f6225fe2d361d6db97db0668f9925f525ee75",
+      "source_sha256": "6f45911b9e7c6830c29356a80ae7a515abf6473a52342c55ecf08046e26c0b0c",
       "requirement": "required",
       "acceptance": "cancel after first pass, passed/failed/skipped receipt, no final folder"
     },
@@ -109,7 +109,7 @@
       "id": "native-batch-ui",
       "test": "ui::audio_delivery::tests::native_aligned_batch_review_recipe_reopen_render_and_stale_guard_use_real_worker",
       "source": "src/ui/audio_delivery/tests.rs",
-      "source_sha256": "cbd2993dc69c33fe25414defa57ca400f4ba0c0363a319126c805f965b0af490",
+      "source_sha256": "bb51ff947a1aff637524ecf7b251c25959b65db968927c95e8ee6255cf793af0",
       "requirement": "required",
       "acceptance": "headless egui accesskit actual source review/recipe/reopen/render worker; no native window"
     },
@@ -117,9 +117,25 @@
       "id": "native-project-cli",
       "test": "ui::audio_delivery::tests::native_document_cli_plan_reopen_and_batch_use_same_encoded_delivery_path",
       "source": "src/ui/audio_delivery/tests.rs",
-      "source_sha256": "cbd2993dc69c33fe25414defa57ca400f4ba0c0363a319126c805f965b0af490",
+      "source_sha256": "bb51ff947a1aff637524ecf7b251c25959b65db968927c95e8ee6255cf793af0",
       "requirement": "required",
       "acceptance": "real .omat container/native Document, device-free CLI dispatch, exact project byte binding"
+    },
+    {
+      "id": "recipe-fifo-cancel",
+      "test": "audio_delivery::batch::tests::recipe_fifo_refuses_without_writer_and_regular_recipe_preserves_bytes_with_cancel",
+      "source": "src/audio_delivery/batch/tests.rs",
+      "requirement": "required",
+      "acceptance": "actual FIFO with no writer promptly refused via opened-descriptor regular-file check, valid regular recipe preserved, cancellation observed",
+      "source_sha256": "6f45911b9e7c6830c29356a80ae7a515abf6473a52342c55ecf08046e26c0b0c"
+    },
+    {
+      "id": "incremental-digest-cancel",
+      "test": "audio_delivery::process::tests::digest_and_metadata_reads_observe_incremental_cancel_and_preserve_sha256",
+      "source": "src/audio_delivery/process/tests.rs",
+      "requirement": "required",
+      "acceptance": "reader flips cancellation on first fixed-size read; no second read for digest/metadata, independent abc SHA256 and metadata bound",
+      "source_sha256": "3529460e90130424aba7be5cb50bfbb3b284bae4f1084b702f0626ba6e59220d"
     }
   ],
   "proof_axes": {

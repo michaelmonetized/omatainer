@@ -14023,7 +14023,7 @@
     "src/video/decoder/tests.rs": "6bd75f86599d77ff37f42e395deeef08afc0e5b0a670c2fc82709b62df60ffca",
     "src/video/render.rs": "d000c8f64db0d49cce0e678973d9ad9e942dfec76bfd3e5199e2b859a54425af",
     "src/video/tests.rs": "28175eec094a9a9dafffc0dfe5142bb0f13e7d941eec2dc32ae23a8798c7dd3b",
-    "tests/fixtures/audio-delivery/matrix.json": "d89228248f2fe29d7e46fd3d253c851918ef5436bbd11a5ea82f91bb9c6a1977",
+    "tests/fixtures/audio-delivery/matrix.json": "82a84984ec673405cf00e642a6baff7a5ec5db670f4e86e4e58bc76301e29fbd",
     "tests/fixtures/audio/README.md": "06caea8414fb1fdeba65910984128f88022b0f35e8b7a8b4967469bdb0d275a7",
     "tests/fixtures/audio/tone-estimated.mp3": "db3476a2c3bfb5c3838b867d819194bfed908240779a9e219514bbf879a052a0",
     "tests/fixtures/audio/tone-long.ogg": "9f10c76485ef7317d06d35a83703e0e77150a8cb05a6e8755ce5347bb051fa6b",
