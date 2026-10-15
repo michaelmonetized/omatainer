@@ -1,7 +1,66 @@
 //! One shared renderer with named panel arrangements and native secondary windows.
 use super::*;
+use crate::panel_workspace::{Book, Place, Workspace};
 use crate::preferences::workspaces::{Config, Entry, Layout, Panel};
+use crate::property_fields as fields;
 use std::collections::{BTreeMap, BTreeSet};
+
+const STUDIO_PANELS: [(&str, &str); 7] = [
+    ("library", "Library"),
+    ("decks", "Decks"),
+    ("session", "Session"),
+    ("arrangement", "Arrangement"),
+    ("midi", "MIDI"),
+    ("mixer", "Mixer"),
+    ("sampler", "Sampler"),
+];
+
+/// Build task layouts around an application-owned main surface.
+/// Args: none. Returns six independent presets whose main surface cannot be hidden.
+fn studio_presets() -> Vec<(&'static str, Workspace)> {
+    [
+        (
+            "Library",
+            vec![("decks", Place::Bottom), ("mixer", Place::Right)],
+        ),
+        (
+            "Decks",
+            vec![("library", Place::Bottom), ("sampler", Place::Right)],
+        ),
+        (
+            "Session",
+            vec![("library", Place::Left), ("mixer", Place::Right)],
+        ),
+        (
+            "Arrangement",
+            vec![("library", Place::Left), ("session", Place::Bottom)],
+        ),
+        (
+            "MIDI",
+            vec![("session", Place::Bottom), ("mixer", Place::Right)],
+        ),
+        (
+            "Mixer",
+            vec![("library", Place::Left), ("session", Place::Bottom)],
+        ),
+    ]
+    .into_iter()
+    .map(|(task, panels)| (task, Workspace::preset(&panels)))
+    .collect()
+}
+
+/// Resolve the protected main surface for a task.
+/// Args: saved task name. Returns its registered stable panel identity.
+fn studio_center(task: &str) -> &'static str {
+    match task {
+        "Library" => "library",
+        "Session" => "session",
+        "Arrangement" => "arrangement",
+        "MIDI" => "midi",
+        "Mixer" => "mixer",
+        _ => "decks",
+    }
+}
 
 #[derive(Default)]
 struct WindowInput {
@@ -16,6 +75,8 @@ pub(super) struct State {
     pub(super) sizes: BTreeMap<Panel, Vec2>,
     inputs: BTreeMap<Panel, WindowInput>,
     blocked: bool,
+    studio_binding: Option<(String, Vec<(Vec<String>, usize, Place)>)>,
+    pub(super) center: Option<Rect>,
 }
 
 /// Edit a named layout in the existing preference draft.
@@ -173,6 +234,292 @@ fn number(ui: &mut Ui, label: &str, value: &mut f32, min: f32, max: f32) {
 }
 
 impl App {
+    /// Report whether this profile is showing a saved studio task.
+    /// Args: none. Returns true for the task layouts and false for the preserved classic layout.
+    pub(super) fn studio_workspace_active(&self) -> bool {
+        !self.settings.profile().workspaces.studio.active.is_empty()
+    }
+
+    /// Select and save task layouts without changing musical or device settings.
+    /// Args: toolbar UI. Returns nothing; disk writes use the existing conflict-checked worker.
+    pub(super) fn workspace_task_controls(&mut self, ui: &mut Ui) {
+        let active = self.settings.profile().workspaces.studio.active.clone();
+        let title = if active.is_empty() {
+            "Workspace: Classic".into()
+        } else {
+            format!("Workspace: {active}")
+        };
+        let mut select = None;
+        let mut save = false;
+        let editable = !self.settings.busy() && !self.settings.open && !self.project.committing();
+        ui.add_enabled_ui(editable, |ui| {
+            ui.menu_button(title, |ui| {
+                if fields::tab(ui, "Classic", active.is_empty()).clicked() {
+                    select = Some(String::new());
+                    ui.close();
+                }
+                for (name, _) in studio_presets() {
+                    if fields::tab(ui, name, active == name).clicked() {
+                        select = Some(name.into());
+                        ui.close();
+                    }
+                }
+                ui.separator();
+                save = fields::action(
+                    ui,
+                    "Save workspace layouts",
+                    !self.settings.blocked && self.settings.worker.is_some(),
+                )
+                .clicked();
+            });
+        });
+        if let Some(task) = select {
+            let profile = self
+                .settings
+                .applied
+                .profiles
+                .get_mut(&self.settings.applied.active)
+                .unwrap();
+            if let Some((_, preset)) = studio_presets().into_iter().find(|(name, _)| *name == task)
+            {
+                profile
+                    .workspaces
+                    .studio
+                    .tasks
+                    .entry(task.clone())
+                    .or_insert(preset);
+            }
+            profile.workspaces.studio.active = task;
+            if let Some(draft) = self
+                .settings
+                .draft
+                .profiles
+                .get_mut(&self.settings.applied.active)
+            {
+                draft.workspaces.studio = profile.workspaces.studio.clone();
+            }
+        }
+        if save {
+            self.settings
+                .request(crate::preferences::worker::Job::Save {
+                    preferences: self.settings.applied.clone(),
+                    revision: self.settings.revision.clone(),
+                });
+        }
+    }
+
+    /// Reveal a requested editor in the active task instead of opening a duplicate window.
+    /// Args: registered panel ID. Returns nothing and leaves the task's main surface protected.
+    pub(super) fn reveal_studio_panel(&mut self, panel: &str) {
+        if !self.studio_workspace_active() {
+            return;
+        }
+        let profile = self
+            .settings
+            .applied
+            .profiles
+            .get_mut(&self.settings.applied.active)
+            .unwrap();
+        let book = &mut profile.workspaces.studio;
+        if studio_center(&book.active) == panel {
+            return;
+        }
+        if let Some(layout) = book.tasks.get_mut(&book.active) {
+            layout.restore(panel);
+            if !layout
+                .groups
+                .iter()
+                .any(|group| group.panels.iter().any(|id| id == panel))
+            {
+                layout.move_panel(panel, Place::Right);
+            }
+            for group in &mut layout.groups {
+                if let Some(index) = group.panels.iter().position(|id| id == panel) {
+                    group.active = index;
+                }
+            }
+            layout.focus = Some(panel.into());
+        }
+    }
+
+    /// Retire GUI holds before a task or a panel tab moves.
+    /// Args: native context and current book. Returns nothing and preserves controller-held ownership.
+    fn bind_studio_workspace(&mut self, ctx: &egui::Context, book: &Book) {
+        let placements = book
+            .tasks
+            .get(&book.active)
+            .map(|layout| {
+                layout
+                    .groups
+                    .iter()
+                    .map(|group| (group.panels.clone(), group.active, group.place))
+                    .collect()
+            })
+            .unwrap_or_default();
+        let binding = (book.active.clone(), placements);
+        if self.workspace.studio_binding.as_ref() != Some(&binding) {
+            self.release_workspace_panel(Panel::Decks);
+            self.release_workspace_panel(Panel::Sampler);
+            self.release_workspace_midi();
+            self.touch_input.retire();
+            self.command_palette.open = false;
+            accessibility::cancel_editor(ctx);
+            self.workspace.inputs.clear();
+            self.workspace.studio_binding = Some(binding);
+        }
+    }
+
+    /// Render real app panels around a protected task surface.
+    /// Args: native context. Returns nothing; every panel keeps the same App and command target.
+    fn studio_workspace_ui(&mut self, ctx: &egui::Context) {
+        let mut book = self.settings.profile().workspaces.studio.clone();
+        let presets = studio_presets();
+        let center = studio_center(&book.active);
+        let registry: Vec<_> = STUDIO_PANELS
+            .iter()
+            .copied()
+            .filter(|(id, _)| *id != center)
+            .collect();
+        if !presets.iter().any(|(name, _)| *name == book.active) {
+            book.active = "Decks".into();
+        }
+        if !book.tasks.contains_key(&book.active) {
+            if let Some((_, preset)) = presets.iter().find(|(name, _)| *name == book.active) {
+                book.tasks.insert(book.active.clone(), preset.clone());
+            }
+        }
+        let identities: Vec<_> = registry.iter().map(|(id, _)| *id).collect();
+        book.tasks
+            .get_mut(&book.active)
+            .unwrap()
+            .normalize(&identities);
+        self.bind_studio_workspace(ctx, &book);
+        let theme = self.theme.clone();
+        egui::CentralPanel::default()
+            .frame(egui::Frame::new().fill(theme.bg).inner_margin(6.0))
+            .show(ctx, |ui| {
+                self.workspace_status(ui);
+                let blocked = self.project.committing()
+                    || !self.project.dialog_is_closed()
+                    || self.settings.busy()
+                    || self.settings.open;
+                ui.add_enabled_ui(!blocked, |ui| {
+                    let active = book.active.clone();
+                    let layout = book.tasks.get_mut(&active).unwrap();
+                    ui.horizontal_wrapped(|ui| {
+                        ui.menu_button("Panels", |ui| {
+                            for &(id, label) in &registry {
+                                let hidden = layout.hidden.contains_key(id);
+                                if fields::action(
+                                    ui,
+                                    &format!(
+                                        "{} {label}",
+                                        if hidden { "Restore" } else { "Focus" }
+                                    ),
+                                    true,
+                                )
+                                .clicked()
+                                {
+                                    layout.restore(id);
+                                    for group in &mut layout.groups {
+                                        if let Some(index) =
+                                            group.panels.iter().position(|panel| panel == id)
+                                        {
+                                            group.active = index;
+                                        }
+                                    }
+                                    layout.focus = Some(id.into());
+                                    ui.close();
+                                }
+                            }
+                            if fields::action(ui, "Restore all panels", true).clicked() {
+                                for &(id, _) in &registry {
+                                    layout.restore(id);
+                                }
+                            }
+                            if fields::action(ui, "Reset this task", true).clicked() {
+                                if let Some((_, preset)) =
+                                    presets.iter().find(|(name, _)| *name == active)
+                                {
+                                    *layout = preset.clone();
+                                    layout.normalize(&identities);
+                                }
+                            }
+                        });
+                        ui.weak("Right-click a panel tab to move, group, float or close it.");
+                    });
+                    let floating: BTreeSet<_> = layout
+                        .groups
+                        .iter()
+                        .filter(|group| group.place == Place::Floating)
+                        .flat_map(|group| group.panels.iter().cloned())
+                        .collect();
+                    let remaining = layout.show(ui, "omatainer-studio", &registry, |ui, panel| {
+                        if floating.contains(panel) {
+                            self.workspace_status(ui);
+                        }
+                        self.studio_panel(ui, panel)
+                    });
+                    self.workspace.center = Some(remaining);
+                    ui.allocate_ui_at_rect(remaining.shrink(4.0), |ui| {
+                        ui.set_clip_rect(ui.max_rect().intersect(ui.clip_rect()));
+                        self.studio_panel(ui, center);
+                    });
+                });
+            });
+        self.bind_studio_workspace(ctx, &book);
+        let profile = self
+            .settings
+            .applied
+            .profiles
+            .get_mut(&self.settings.applied.active)
+            .unwrap();
+        profile.workspaces.studio = book.clone();
+        if !self.settings.open && !self.settings.busy() {
+            if let Some(draft) = self
+                .settings
+                .draft
+                .profiles
+                .get_mut(&self.settings.applied.active)
+            {
+                draft.workspaces.studio = book;
+            }
+        }
+    }
+
+    /// Draw one registered panel with bounded scrolling.
+    /// Args: available UI and stable panel ID. Returns nothing and never creates another document owner.
+    fn studio_panel(&mut self, ui: &mut Ui, panel: &str) {
+        let theme = self.theme.clone();
+        let height = ui.available_height().max(80.0);
+        let width = ui.available_width();
+        let output = egui::ScrollArea::both()
+            .id_salt(("studio-panel", panel))
+            .auto_shrink([false, false])
+            .show(ui, |ui| {
+                ui.set_width(width);
+                if panel != "library" && self.engine.safe_mode() {
+                    ui.disable();
+                }
+                match panel {
+                    "library" => self.crate_row(ui, &theme),
+                    "decks" => self.workspace_panel(ui, &theme, Panel::Decks, height, false),
+                    "sampler" => self.workspace_panel(ui, &theme, Panel::Sampler, height, false),
+                    "session" => self.workspace_panel(ui, &theme, Panel::Session, height, false),
+                    "arrangement" => {
+                        if !self.arrangement.open {
+                            self.open_arrangement();
+                        }
+                        self.arrangement_panel(ui);
+                    }
+                    "midi" => self.piano_roll_panel(ui),
+                    "mixer" => self.mixer_panel(ui),
+                    _ => {}
+                }
+            });
+        accessibility::scrollbars(ui, &format!("{panel} workspace panel"), &output);
+    }
+
     /// Recall the applied layout and retire local holds before moving their controls.
     /// Takes the root context; returns a current layout without changing MIDI or project data.
     fn workspace_layout(&mut self, ctx: &egui::Context) -> Layout {
@@ -225,6 +572,20 @@ impl App {
     /// Draw the named layout while retaining the app's global safety and transport bars.
     /// Takes the root native context; returns no value and routes every panel into its chosen window.
     pub(super) fn workspace_ui(&mut self, ctx: &egui::Context) {
+        if self.studio_workspace_active() {
+            self.studio_workspace_ui(ctx);
+            return;
+        }
+        if self.workspace.studio_binding.take().is_some() {
+            self.release_workspace_panel(Panel::Decks);
+            self.release_workspace_panel(Panel::Sampler);
+            self.release_workspace_midi();
+            self.touch_input.retire();
+            self.command_palette.open = false;
+            accessibility::cancel_editor(ctx);
+            self.workspace.inputs.clear();
+            self.workspace.center = None;
+        }
         let layout = self.workspace_layout(ctx);
         self.workspace.blocked = keyboard::dialogs_block_input(ctx)
             || self.library_layout.open

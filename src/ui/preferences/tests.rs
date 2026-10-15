@@ -127,6 +127,22 @@ impl Gui {
         })]);
         self.frame(vec![]);
     }
+    fn menu_click(&mut self, name: &str) {
+        let target = self.nodes.iter().find(|(_, node)| {
+            node.label() == Some(name) && node.supports_action(Action::Click)
+                && node.bounds().is_some_and(|bounds| {
+                    let point = Pos2::new(
+                        ((bounds.x0 + bounds.x1) * 0.5) as f32,
+                        ((bounds.y0 + bounds.y1) * 0.5) as f32,
+                    ) / self.ctx.pixels_per_point();
+                    self.ctx.layer_id_at(point).is_some_and(|layer| layer.order == egui::Order::Foreground)
+                })
+        }).unwrap_or_else(|| panic!("Missing visible menu action {name}" )).0;
+        self.frame(vec![egui::Event::AccessKitActionRequest(ActionRequest {
+            target, action: Action::Click, data: None,
+        })]);
+        self.frame(vec![]);
+    }
     fn wait(&mut self) {
         let end = Instant::now() + std::time::Duration::from_secs(15);
         while self.fixture.app.settings.busy() {
@@ -156,6 +172,44 @@ impl Gui {
         self.wait();
     }
 }
+#[test]
+fn studio_workspace_menu_saves_each_task_with_conflict_checked_reopen() {
+    let mut gui = Gui::new();
+    let audio = gui.fixture.app.settings.profile().audio.clone();
+    let midi = gui.fixture.app.settings.profile().midi_inputs.clone();
+    let mut active = "Classic";
+    for task in ["Library", "Decks", "Session", "Arrangement", "MIDI", "Mixer"] {
+        gui.click(&format!("Workspace: {active}"));
+        gui.menu_click(task);
+        assert_eq!(gui.fixture.app.settings.profile().workspaces.studio.active, task);
+        active = task;
+    }
+    assert_eq!(gui.fixture.app.settings.profile().workspaces.studio.active, "Mixer");
+    {
+        let book = &mut gui.fixture.app.settings.applied.profiles.get_mut("Studio").unwrap().workspaces.studio;
+        let layout = book.tasks.get_mut("Mixer").unwrap();
+        layout.move_panel("library", crate::panel_workspace::Place::Floating);
+        layout.groups.iter_mut().find(|group| group.panels == ["library"]).unwrap().rect = [24.0, 90.0, 420.0, 360.0];
+        layout.close("session");
+    }
+    gui.frame(vec![]);
+    gui.click("Workspace: Mixer");
+    gui.menu_click("Decks");
+    gui.click("Workspace: Decks");
+    gui.menu_click("Save workspace layouts");
+    gui.wait();
+    let loaded = storage::load(&gui.dir.join("preferences.json"), &AtomicBool::new(false)).unwrap();
+    let expected = gui.fixture.app.settings.profile().workspaces.clone();
+    assert_eq!(loaded.preferences.current().unwrap().workspaces, expected);
+    assert_eq!(loaded.preferences.current().unwrap().audio, audio);
+    assert_eq!(loaded.preferences.current().unwrap().midi_inputs, midi);
+    assert!(expected.studio.tasks["Mixer"].hidden.contains_key("session"));
+    assert!(expected.studio.tasks["Mixer"].groups.iter().any(|group| group.panels == ["library"] && group.place == crate::panel_workspace::Place::Floating));
+    let mut reopened = Fixture::new(80);
+    reopened.app.initialize_preferences(&gui.ctx, Startup::read(gui.dir.join("preferences.json"), gui.dir.clone()), audio);
+    assert_eq!(reopened.app.settings.profile().workspaces, expected);
+}
+
 #[test]
 fn real_window_previews_persists_applies_and_reopens_supported_profile_settings() {
     let mut gui = Gui::new();

@@ -954,6 +954,7 @@ impl App {
                 self.setup_controls(ctx, Some(ui));
                 self.master_controls(ctx, Some(ui));
                 self.performance_controls(ctx, Some(ui));
+                self.workspace_task_controls(ui);
                 accessibility::action_button(ui);
                 self.project_progress(ui);
                 if !compact {

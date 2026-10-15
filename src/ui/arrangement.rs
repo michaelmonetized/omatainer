@@ -14,7 +14,7 @@ use worker::{Event, Job, Preview, Worker};
 
 #[derive(Default)]
 pub(super) struct Editor {
-    open: bool,
+    pub(super) open: bool,
     worker: Option<Worker>,
     active: Option<Arc<AtomicBool>>,
     pending: Option<Ack>,
@@ -220,6 +220,7 @@ fn number(ui: &mut Ui, label: &str, value: &mut f64, min: f64, max: f64, step: f
 }
 impl App {
     pub(super) fn open_arrangement(&mut self) {
+        self.reveal_studio_panel("arrangement");
         self.arrangement.open = true;
         if self.arrangement.width == 0.0 {
             self.arrangement.width = 64.0;
@@ -232,19 +233,27 @@ impl App {
         self.arrangement.poll(&self.engine);
         self.song_navigation.poll();
     }
+    /// Show the arrangement editor outside a saved studio task.
+    /// Args: native context. Returns nothing; the panel renderer remains shared.
     pub(super) fn arrangement_ui(&mut self, ctx: &egui::Context) {
-        if !self.arrangement.open {
-            return;
-        }
-        let mut editor = std::mem::take(&mut self.arrangement);
+        if !self.arrangement.open || self.studio_workspace_active() { return; }
         let mut open = true;
-        egui::Window::new("Arrangement timeline")
-            .open(&mut open)
-            .default_width(1100.0)
-            .vscroll(true)
-            .max_height(self.theme.window_height(ctx))
-            .show(ctx, |ui| {
+        egui::Window::new("Arrangement timeline").open(&mut open).default_width(1100.0)
+            .vscroll(true).max_height(self.theme.window_height(ctx)).show(ctx, |ui| {
                 keyboard::block_for_dialog(ctx);
+                self.arrangement_panel(ui);
+            });
+        if !open {
+            self.arrangement.cancel();
+            self.arrangement.open = false;
+            self.song_navigation.cancel();
+        }
+    }
+
+    /// Draw the arrangement controls into a dock, tab or floating panel.
+    /// Args: available UI. Returns nothing and preserves the existing worker and draft owner.
+    pub(super) fn arrangement_panel(&mut self, ui: &mut Ui) {
+        let mut editor = std::mem::take(&mut self.arrangement);
                 self.song_navigation_ui(ui,editor.start,editor.width);
                 ui.label(&editor.message);
                 if editor.busy() {
@@ -586,12 +595,6 @@ impl App {
                         });
                     }
                 });
-            });
-        if !open {
-            editor.cancel();
-        }
-        editor.open = open;
-        if !open { self.song_navigation.cancel(); }
         self.arrangement = editor;
     }
 }
