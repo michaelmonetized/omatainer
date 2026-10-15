@@ -140,6 +140,8 @@ impl Process {
         }
         Ok(())
     }
+    #[cfg(test)]
+    pub(super) fn kill_for_test(&mut self) { if let Some(child)=&mut self.child { child.kill().unwrap(); } }
     fn stop(&mut self) {
         if let Some(mut child) = self.child.take() {
             let _ = child.kill();
