@@ -159,7 +159,7 @@ fn learned_beat_jump_pads_keep_note_edges_ordered_and_target_both_decks_without_
         }
     }
     for mapping in mappings {
-        for invalid in [Binding { deck: 2, ..mapping.binding }, Binding { extra: 1, ..mapping.binding }, Binding { kind: MsgKind::Cc, ..mapping.binding }] {
+        for invalid in [Binding { routing: None, deck: 2, ..mapping.binding }, Binding { routing: None, extra: 1, ..mapping.binding }, Binding { routing: None, kind: MsgKind::Cc, ..mapping.binding }] {
             assert!(crate::engine::midi::learn::validate_binding(&invalid).is_err());
         }
     }
@@ -190,7 +190,7 @@ fn learned_cue_holds_follow_note_edges_play_latches_and_worker_retirement_withou
         sink.push(&[0x80,note,0]); drain(&mut worker); render(&mut rt); assert!(rt.decks[deck].preview_position.is_none());
     }
     for mapping in mappings.iter().filter(|m|m.binding.action==Action::DeckCueHold) {
-        for invalid in [Binding {deck:2,..mapping.binding},Binding {extra:1,..mapping.binding},Binding {kind:MsgKind::Cc,..mapping.binding}] {assert!(crate::engine::midi::learn::validate_binding(&invalid).is_err());}
+        for invalid in [Binding { routing: None,deck:2,..mapping.binding},Binding { routing: None,extra:1,..mapping.binding},Binding { routing: None,kind:MsgKind::Cc,..mapping.binding}] {assert!(crate::engine::midi::learn::validate_binding(&invalid).is_err());}
     }
     sink.push(&[0x90,70,100,0x90,72,100]); drain(&mut worker); render(&mut rt);
     assert!(rt.decks.iter().all(|d|d.preview_position.is_some()));

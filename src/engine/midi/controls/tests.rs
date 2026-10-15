@@ -5,7 +5,7 @@ use parking_lot::Mutex;
 use std::sync::Arc;
 
 fn binding(kind: MsgKind, action: Action) -> Binding {
-    Binding {
+    Binding { routing: None,
         kind,
         ch: 3,
         data: 7,
@@ -123,7 +123,7 @@ fn full_cc_and_pitch_ranges_are_monotonic_centered_invertible_and_limited() {
             )
             .unwrap();
             let Command::MidiPitch(crate::engine::pitch_pickup::Input {
-                binding: Binding {deck:0,..},
+                binding: Binding { routing: None,deck:0,..},
                 value: actual,..
             }) = rx.try_iter().next().unwrap()
             else {

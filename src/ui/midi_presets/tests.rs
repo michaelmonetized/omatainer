@@ -17,7 +17,7 @@ fn setup(files: &Files) -> Gui {
     gui
 }
 fn binding(action: Action, data: u8) -> Binding {
-    Binding {
+    Binding { routing: None,
         kind: MsgKind::Note,
         ch: 0,
         data,

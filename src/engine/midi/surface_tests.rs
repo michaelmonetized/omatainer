@@ -647,3 +647,16 @@ fn surfaces_sp1_sync_off_is_idempotent_and_manual_pads_save_and_select_real_loop
     assert!(rt.decks[0].loop_on);
     assert!(!rt.decks[1].loop_on);
 }
+
+#[test]
+fn named_mixer_midi_absolute_controls_use_stable_project_targets_and_undo(){
+    use crate::engine::audio::routing::{mixer::{Assignment,Target,Parameter},model::*,prepared::Prepared};
+    let (engine,mut rt)=Engine::headless_for_test(48000,256);rt.apply(Command::Stop);
+    let mut model=Model::default();model.next_id=3;model.buses.push(Bus{id:2,alias:"MIDI return".into(),channels:2,gain:1.,mute:false,mixer:Default::default()});rt.routing=Some(Box::new(Prepared::at_rate(Arc::new(model),&rt.session,48000).unwrap()));
+    let namespace=rt.session.namespace;
+    let map=MidiMap{name:"Named mixer".into(),matchers:vec![],unmapped_notes:UnmappedNotes::Ignore,bindings:vec![Binding{routing:Some(Assignment{namespace,target:Target::Return(2),parameter:Parameter::Level}),kind:MsgKind::Cc,ch:0,data:7,action:Action::RoutingMix,deck:0,extra:0,relative:None,controls:None,pair_order:None}]};map.validate().unwrap();
+    let mut input=MidiHub::without_devices().open_for_test(&engine.cmd,991,map,"mixer fixture","fixture:named-mixer");
+    send(&mut input,&mut rt,&[0xb0,7,64]);assert!((rt.routing.as_ref().unwrap().mix_values(Target::Return(2)).unwrap().level-1.5*64./127.).abs()<1e-7);
+    rt.apply(Command::Undo);assert_eq!(rt.routing.as_ref().unwrap().mix_values(Target::Return(2)).unwrap().level,1.);
+    let assigned=Assignment{namespace,target:Target::Return(2),parameter:Parameter::Pan};assert!(assigned.valid());rt.session.namespace=[101,102];rt.apply(assigned.command(1.));assert_eq!(rt.routing.as_ref().unwrap().mix_values(Target::Return(2)).unwrap().pan,0.);
+}

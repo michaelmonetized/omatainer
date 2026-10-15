@@ -102,6 +102,69 @@ pub enum Target {
     Send(u64),
     Return(u64),
 }
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Assignment {
+    pub namespace: [u64; 2],
+    pub target: Target,
+    pub parameter: Parameter,
+}
+impl Assignment {
+    /// Validate a saved MIDI mixer assignment.
+    /// Takes this identity; returns whether it addresses an explicit project and supported target parameter.
+    pub fn valid(self) -> bool {
+        self.namespace != [0, 0]
+            && match self.target {
+                Target::Send(id) => {
+                    id != 0 && !matches!(self.parameter, Parameter::Solo | Parameter::SoloSafe)
+                }
+                Target::Return(id) => id != 0,
+            }
+    }
+    /// Convert a normalized MIDI value to a typed routing command.
+    /// Takes a finite normalized control; returns the same namespaced command used by UI and automation.
+    pub fn command(self, value: f32) -> crate::engine::Command {
+        crate::engine::Command::RoutingMix {
+            namespace: self.namespace,
+            target: self.target,
+            parameter: self.parameter,
+            value: match self.parameter {
+                Parameter::Level => value * 1.5,
+                Parameter::Pan => value * 2. - 1.,
+                _ => value,
+            },
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct Name {
+    bytes: [u8; 128],
+    len: u8,
+}
+impl Name {
+    /// Retain an admitted routing name in fixed callback storage.
+    /// Takes validated UTF-8 text of at most 128 bytes; returns a copyable display name.
+    fn new(text: &str) -> Self {
+        let mut bytes = [0; 128];
+        bytes[..text.len()].copy_from_slice(text.as_bytes());
+        Self {
+            bytes,
+            len: text.len() as u8,
+        }
+    }
+    /// Read the original routing name.
+    /// Takes this retained name; returns its validated UTF-8 view without allocation.
+    pub fn text(&self) -> &str {
+        std::str::from_utf8(&self.bytes[..usize::from(self.len)]).expect("Validated routing name")
+    }
+}
+impl serde::Serialize for Name {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.serialize_str(self.text())
+    }
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Serialize)]
 pub struct Values {
     pub level: f32,
@@ -168,6 +231,7 @@ impl Send {
 }
 #[derive(Clone, Copy, Debug, Serialize)]
 pub struct Channel {
+    pub name: Name,
     pub target: Target,
     pub values: Values,
     pub effective: Values,
@@ -186,14 +250,15 @@ impl Runtime {
         let channels = model
             .sends
             .iter()
-            .map(|s| (Target::Send(s.id), s.values()))
+            .map(|s| (Target::Send(s.id), s.values(), Name::new(&s.name)))
             .chain(
                 model
                     .buses
                     .iter()
-                    .map(|b| (Target::Return(b.id), b.values())),
+                    .map(|b| (Target::Return(b.id), b.values(), Name::new(&b.alias))),
             )
-            .map(|(target, values)| Channel {
+            .map(|(target, values, name)| Channel {
+                name,
                 target,
                 values,
                 effective: values,

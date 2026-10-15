@@ -9,7 +9,7 @@ fn port(id: &str) -> Endpoint {
 }
 fn binding(action: Action, data: u8) -> Binding {
     let kind = super::super::learn::kind(action);
-    Binding {
+    Binding { routing: None,
         action,
         kind,
         ch: 0,
