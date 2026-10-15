@@ -85,7 +85,7 @@
       "id": "aligned-native-null",
       "test": "audio_delivery::batch::tests::aligned_encoded_stems_null_sum_explicit_version_and_normal_graph_oracle_after_reopen",
       "source": "src/audio_delivery/batch/tests.rs",
-      "source_sha256": "6f45911b9e7c6830c29356a80ae7a515abf6473a52342c55ecf08046e26c0b0c",
+      "source_sha256": "f9c37e7c7565fef37cefc57f9de376db2a5b74ecd954fa53798312bd855e38b1",
       "requirement": "required",
       "acceptance": "encoded stems sum vs explicitly selected combined pass, normal nonlinear master oracle, recipe reopen/live state"
     },
@@ -93,7 +93,7 @@
       "id": "batch-atomic-refusals",
       "test": "audio_delivery::batch::tests::batch_stale_missing_ids_collision_cancel_and_failed_qc_never_publish_partial_folder",
       "source": "src/audio_delivery/batch/tests.rs",
-      "source_sha256": "6f45911b9e7c6830c29356a80ae7a515abf6473a52342c55ecf08046e26c0b0c",
+      "source_sha256": "f9c37e7c7565fef37cefc57f9de376db2a5b74ecd954fa53798312bd855e38b1",
       "requirement": "required",
       "acceptance": "namespace/deleted identity, stale revision, case collision, existing folder, QC failure statuses"
     },
@@ -101,7 +101,7 @@
       "id": "batch-mid-cancel",
       "test": "audio_delivery::batch::tests::batch_cancel_during_second_pass_keeps_only_failure_receipt_and_no_final_audio",
       "source": "src/audio_delivery/batch/tests.rs",
-      "source_sha256": "6f45911b9e7c6830c29356a80ae7a515abf6473a52342c55ecf08046e26c0b0c",
+      "source_sha256": "f9c37e7c7565fef37cefc57f9de376db2a5b74ecd954fa53798312bd855e38b1",
       "requirement": "required",
       "acceptance": "cancel after first pass, passed/failed/skipped receipt, no final folder"
     },
@@ -127,7 +127,7 @@
       "source": "src/audio_delivery/batch/tests.rs",
       "requirement": "required",
       "acceptance": "actual FIFO with no writer promptly refused via opened-descriptor regular-file check, valid regular recipe preserved, cancellation observed",
-      "source_sha256": "6f45911b9e7c6830c29356a80ae7a515abf6473a52342c55ecf08046e26c0b0c"
+      "source_sha256": "f9c37e7c7565fef37cefc57f9de376db2a5b74ecd954fa53798312bd855e38b1"
     },
     {
       "id": "incremental-digest-cancel",

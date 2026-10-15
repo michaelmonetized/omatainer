@@ -67,8 +67,8 @@ fn fixture() -> (Engine, RtEngine) {
         track.eq.high_g = 1.;
         track.clips[0].kind = ClipKind::Audio;
         track.clips[0].audio = Some(sample);
+        track.clips[0].bars = (region.duration_beats / 4.) as f32;
         track.clips[0].audio_region = Some(region);
-        track.clips[0].bars = 1.;
     }
     (engine, rt)
 }
