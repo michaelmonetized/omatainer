@@ -13602,7 +13602,7 @@
     "src/ui/ableton/tests.rs": "f2ade8e50ffdbb358aa6ae0ce86247c097b03247544f4bcfbe254f3b03a0f6bb",
     "src/ui/accessibility.rs": "2142375e27181cb8768e167e9153eea7ae842f9a6d09f4d7bd48322066ae2bbc",
     "src/ui/accessibility/tests.rs": "88ff18bf08bf109d723600da7d9f8f41d3c55a03ea994f4d6e4ccd907114dc4f",
-    "src/ui/arrangement.rs": "f5b5ce4415951aaf631433fdc890b6bfc78b62f9c6cd37d0b1066c693e2f4b35",
+    "src/ui/arrangement.rs": "7bd33354aef9e5d7e46dbcdae780bd287f554137fd3039f7d232976b56dfe6d6",
     "src/ui/arrangement/fades.rs": "2e649792da92dbd111482beece51dfde904f34a098423bf96bab6102ddcfd8ed",
     "src/ui/arrangement/tests.rs": "342223887859749b486ebf70a9f6df426aaac72bc18ba841f5626dee61f06aef",
     "src/ui/arrangement/worker.rs": "11fab297166a397a26c2bbcdd643112afca162a11d6de4311262a331059d9ec2",

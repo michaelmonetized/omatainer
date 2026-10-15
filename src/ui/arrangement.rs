@@ -14,7 +14,7 @@ use worker::{Event, Job, Preview, Worker};
 
 #[derive(Default)]
 pub(super) struct Editor {
-    open: bool,
+    pub(super) open: bool,
     worker: Option<Worker>,
     active: Option<Arc<AtomicBool>>,
     pending: Option<Ack>,
