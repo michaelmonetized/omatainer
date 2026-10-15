@@ -20,7 +20,7 @@ impl App {
     /// Show the same track inspector used by the workspace mixer panel.
     /// Args: native context. Returns nothing; edits use the existing typed command port.
     pub(super) fn mixer_ui(&mut self, ctx: &egui::Context) {
-        if !self.mixer.open {
+        if !self.mixer.open || self.studio_workspace_active() {
             return;
         }
         let mut open = true;

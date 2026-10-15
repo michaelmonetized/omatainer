@@ -48,6 +48,78 @@ fn window_id(panel: Panel) -> egui::ViewportId {
     egui::ViewportId::from_hash_of(("workspace-window", panel))
 }
 impl Gui {
+    fn task(&mut self, name: &str) {
+        self.root_focused = true;
+        let book = &mut self
+            .app
+            .settings
+            .applied
+            .profiles
+            .get_mut("Studio")
+            .unwrap()
+            .workspaces
+            .studio;
+        let (_, preset) = studio_presets()
+            .into_iter()
+            .find(|(task, _)| *task == name)
+            .unwrap();
+        book.active = name.into();
+        book.tasks.entry(name.into()).or_insert(preset);
+        self.frame(vec![]);
+        self.frame(vec![]);
+    }
+
+    fn root_click(&mut self, label: &str) {
+        let target = self
+            .root_nodes
+            .iter()
+            .rev()
+            .find(|(_, node)| node.label() == Some(label) && node.supports_action(Action::Click))
+            .unwrap_or_else(|| {
+                panic!(
+                    "Missing root action {label}; {:?}",
+                    self.root_nodes
+                        .iter()
+                        .filter_map(|(_, node)| node.label())
+                        .collect::<Vec<_>>()
+                )
+            })
+            .0;
+        self.frame(vec![egui::Event::AccessKitActionRequest(ActionRequest {
+            target,
+            action: Action::Click,
+            data: None,
+        })]);
+        self.frame(vec![]);
+    }
+
+    fn panel_menu(&mut self, label: &str) {
+        let bounds = self
+            .root_nodes
+            .iter()
+            .find(|(_, node)| node.label() == Some(label) && node.supports_action(Action::Click))
+            .unwrap()
+            .1
+            .bounds()
+            .unwrap();
+        let point = Pos2::new(
+            ((bounds.x0 + bounds.x1) * 0.5) as f32,
+            ((bounds.y0 + bounds.y1) * 0.5) as f32,
+        ) / self.ctx.pixels_per_point();
+        for pressed in [true, false] {
+            self.frame(vec![
+                egui::Event::PointerMoved(point),
+                egui::Event::PointerButton {
+                    pos: point,
+                    button: PointerButton::Secondary,
+                    pressed,
+                    modifiers: Default::default(),
+                },
+            ]);
+        }
+        self.frame(vec![]);
+    }
+
     fn new(panels: &[Panel]) -> Self {
         let (engine, mut rt) = Engine::headless_for_test(48_000, 256);
         rt.apply(Command::SamplerInst(SamplerInstrument::Synth(
@@ -233,6 +305,202 @@ impl Gui {
                 force: Some(0.3),
             }],
         );
+    }
+}
+
+#[test]
+fn studio_task_panels_move_tab_float_close_restore_reset_and_keep_the_main_surface() {
+    let mut gui = Gui::new(&[Panel::Decks]);
+    gui.task("Decks");
+    gui.panel_menu("Library");
+    gui.root_click("Float");
+    let studio = |gui: &Gui| gui.app.settings.profile().workspaces.studio.clone();
+    assert!(studio(&gui).tasks["Decks"]
+        .groups
+        .iter()
+        .any(|group| group.place == Place::Floating && group.panels == ["library"]));
+    gui.panel_menu("Sampler");
+    gui.root_click("Move left");
+    assert!(studio(&gui).tasks["Decks"]
+        .groups
+        .iter()
+        .any(|group| group.place == Place::Left && group.panels == ["sampler"]));
+    gui.panel_menu("Sampler");
+    gui.root_click("Close");
+    assert!(studio(&gui).tasks["Decks"].hidden.contains_key("sampler"));
+    gui.root_click("Panels");
+    gui.root_click("Restore Sampler");
+    assert!(!studio(&gui).tasks["Decks"].hidden.contains_key("sampler"));
+    {
+        let book = &mut gui
+            .app
+            .settings
+            .applied
+            .profiles
+            .get_mut("Studio")
+            .unwrap()
+            .workspaces
+            .studio;
+        assert!(book
+            .tasks
+            .get_mut("Decks")
+            .unwrap()
+            .tab_with("sampler", "library"));
+    }
+    gui.frame(vec![]);
+    assert!(studio(&gui).tasks["Decks"]
+        .groups
+        .iter()
+        .any(|group| group.panels == ["library", "sampler"]));
+    let before = studio(&gui).tasks["Decks"].clone();
+    gui.root_click("Library");
+    assert_eq!(
+        studio(&gui).tasks["Decks"]
+            .groups
+            .iter()
+            .find(|group| group.panels == ["library", "sampler"])
+            .unwrap()
+            .active,
+        0
+    );
+    let center = gui.app.workspace.center.unwrap();
+    assert!(center.width() >= 230.0 && center.height() >= 150.0);
+    assert!(!before
+        .groups
+        .iter()
+        .any(|group| group.panels.iter().any(|id| id == "decks")));
+    gui.root_click("Panels");
+    gui.root_click("Reset this task");
+    let mut expected = studio_presets()
+        .into_iter()
+        .find(|(task, _)| *task == "Decks")
+        .unwrap()
+        .1;
+    expected.normalize(&[
+        "library",
+        "session",
+        "arrangement",
+        "midi",
+        "mixer",
+        "sampler",
+    ]);
+    assert_eq!(studio(&gui).tasks["Decks"].groups, expected.groups);
+}
+
+#[test]
+fn studio_tasks_render_actual_controls_preserve_locks_and_independent_controller_owners() {
+    let mut gui = Gui::new(&[Panel::Decks]);
+    gui.rt.apply(Command::DeckLoadLock {
+        deck: 0,
+        enabled: true,
+    });
+    gui.rt.apply(Command::MidiDeckTouch {
+        source: 99,
+        deck: 0,
+        on: true,
+    });
+    gui.rt.apply(Command::SelectDeck(1));
+    gui.rt.apply(Command::Select { track: 2, scene: 0 });
+    gui.rt.publish_for_test();
+    for task in [
+        "Library",
+        "Decks",
+        "Session",
+        "Arrangement",
+        "MIDI",
+        "Mixer",
+    ] {
+        gui.task(task);
+        assert!(gui.app.workspace.center.unwrap().is_positive());
+        assert!(gui.rt.performance.deck_load_locked(0));
+        assert!(
+            gui.rt.decks[0].touching,
+            "GUI rearrangement cannot release a controller owner"
+        );
+        assert_eq!((gui.rt.selected_deck, gui.rt.selected_track), (1, 2));
+        for required in ["Stop session", "Mute output…"] {
+            assert!(
+                gui.root_nodes
+                    .iter()
+                    .any(|(_, node)| node.label() == Some(required)),
+                "{task}: {required}"
+            );
+        }
+        if task == "Arrangement" {
+            assert!(gui
+                .root_nodes
+                .iter()
+                .any(|(_, node)| node.label() == Some("Refresh song")));
+        }
+        if task == "MIDI" {
+            assert!(gui
+                .root_nodes
+                .iter()
+                .any(|(_, node)| node.label() == Some("Inspect selected MIDI clip")));
+        }
+        if task == "Mixer" {
+            assert!(gui
+                .root_nodes
+                .iter()
+                .any(|(_, node)| node.label() == Some("Track gain")));
+        }
+    }
+    gui.rt.apply(Command::MidiDeckTouch {
+        source: 99,
+        deck: 0,
+        on: false,
+    });
+    gui.frame(vec![]);
+    assert!(!gui.rt.decks[0].touching);
+}
+
+#[test]
+fn studio_layout_serde_defaults_roundtrip_and_scale_recovery_keep_panels_reachable() {
+    let old = serde_json::to_value(Config::default()).unwrap();
+    let mut legacy = old.clone();
+    legacy.as_object_mut().unwrap().remove("studio");
+    let migrated: Config = serde_json::from_value(legacy).unwrap();
+    assert!(migrated.studio.tasks.is_empty());
+    migrated.validate().unwrap();
+    let mut gui = Gui::new(&[Panel::Decks]);
+    gui.task("Mixer");
+    {
+        let layout = gui
+            .app
+            .settings
+            .applied
+            .profiles
+            .get_mut("Studio")
+            .unwrap()
+            .workspaces
+            .studio
+            .tasks
+            .get_mut("Mixer")
+            .unwrap();
+        layout.move_panel("library", Place::Floating);
+        layout
+            .groups
+            .iter_mut()
+            .find(|group| group.panels == ["library"])
+            .unwrap()
+            .rect = [9000.0, -500.0, 1400.0, 1200.0];
+    }
+    for scale in [1.0, 1.5, 2.0] {
+        gui.ctx.set_pixels_per_point(scale);
+        gui.frame(vec![]);
+        gui.frame(vec![]);
+        let config = gui.app.settings.profile().workspaces.clone();
+        let reopened: Config =
+            serde_json::from_slice(&serde_json::to_vec(&config).unwrap()).unwrap();
+        assert_eq!(config, reopened);
+        let group = reopened.studio.tasks["Mixer"]
+            .groups
+            .iter()
+            .find(|group| group.panels == ["library"])
+            .unwrap();
+        let safe = crate::panel_workspace::safe_rect(group.rect, gui.ctx.screen_rect());
+        assert!(gui.ctx.screen_rect().contains_rect(safe));
+        assert!(gui.app.workspace.center.unwrap().is_positive());
     }
 }
 

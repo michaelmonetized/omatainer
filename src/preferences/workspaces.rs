@@ -78,6 +78,8 @@ impl Layout {
 #[serde(deny_unknown_fields)]
 pub(crate) struct Config {
     pub active: String,
+    #[serde(default)]
+    pub studio: crate::panel_workspace::Book,
     #[serde(deserialize_with = "unique_map")]
     pub saved: BTreeMap<String, Layout>,
 }
@@ -106,6 +108,7 @@ impl Default for Config {
         }
         Self {
             active: "Production".into(),
+            studio: Default::default(),
             saved: BTreeMap::from([
                 ("Production".into(), production),
                 ("Mix".into(), mix),
@@ -124,6 +127,29 @@ impl Config {
     /// Validate names, the selected layout and every saved panel configuration.
     /// Takes this configuration; returns a readable error without modifying it.
     pub fn validate(&self) -> Result<(), String> {
+        const TASKS: [&str; 6] = [
+            "Library",
+            "Decks",
+            "Session",
+            "Arrangement",
+            "MIDI",
+            "Mixer",
+        ];
+        if !self.studio.active.is_empty() && !TASKS.contains(&self.studio.active.as_str())
+            || self.studio.tasks.len() > TASKS.len()
+            || self
+                .studio
+                .tasks
+                .keys()
+                .any(|name| !TASKS.contains(&name.as_str()))
+        {
+            return Err("Choose a known studio workspace task".into());
+        }
+        for layout in self.studio.tasks.values() {
+            if layout.groups.len() > 7 || layout.hidden.len() > 7 {
+                return Err("Keep studio layouts within the registered panel limit".into());
+            }
+        }
         if self.saved.is_empty() || self.saved.len() > 32 {
             return Err("Keep between 1 and 32 workspaces".into());
         }

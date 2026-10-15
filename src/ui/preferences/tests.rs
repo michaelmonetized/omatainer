@@ -157,6 +157,39 @@ impl Gui {
     }
 }
 #[test]
+fn studio_workspace_menu_saves_each_task_with_conflict_checked_reopen() {
+    let mut gui = Gui::new();
+    let audio = gui.fixture.app.settings.profile().audio.clone();
+    let midi = gui.fixture.app.settings.profile().midi_inputs.clone();
+    gui.click("Workspace: Classic");
+    gui.click("Mixer");
+    assert_eq!(gui.fixture.app.settings.profile().workspaces.studio.active, "Mixer");
+    {
+        let book = &mut gui.fixture.app.settings.applied.profiles.get_mut("Studio").unwrap().workspaces.studio;
+        let layout = book.tasks.get_mut("Mixer").unwrap();
+        layout.move_panel("library", crate::panel_workspace::Place::Floating);
+        layout.groups.iter_mut().find(|group| group.panels == ["library"]).unwrap().rect = [24.0, 90.0, 420.0, 360.0];
+        layout.close("session");
+    }
+    gui.frame(vec![]);
+    gui.click("Workspace: Mixer");
+    gui.click("Decks");
+    gui.click("Workspace: Decks");
+    gui.click("Save workspace layouts");
+    gui.wait();
+    let loaded = storage::load(&gui.dir.join("preferences.json"), &AtomicBool::new(false)).unwrap();
+    let expected = gui.fixture.app.settings.profile().workspaces.clone();
+    assert_eq!(loaded.preferences.current().unwrap().workspaces, expected);
+    assert_eq!(loaded.preferences.current().unwrap().audio, audio);
+    assert_eq!(loaded.preferences.current().unwrap().midi_inputs, midi);
+    assert!(expected.studio.tasks["Mixer"].hidden.contains_key("session"));
+    assert!(expected.studio.tasks["Mixer"].groups.iter().any(|group| group.panels == ["library"] && group.place == crate::panel_workspace::Place::Floating));
+    let mut reopened = Fixture::new(80);
+    reopened.app.initialize_preferences(&gui.ctx, Startup::read(gui.dir.join("preferences.json"), gui.dir.clone()), audio);
+    assert_eq!(reopened.app.settings.profile().workspaces, expected);
+}
+
+#[test]
 fn real_window_previews_persists_applies_and_reopens_supported_profile_settings() {
     let mut gui = Gui::new();
     gui.open();

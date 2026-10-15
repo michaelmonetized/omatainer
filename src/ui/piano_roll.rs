@@ -658,6 +658,7 @@ impl Editor {
 }
 impl App {
     pub(super) fn open_piano_roll(&mut self) {
+        self.reveal_studio_panel("midi");
         if self.piano_roll.blocks_close() {
             self.piano_roll.open = true;
             self.piano_roll.message =
@@ -675,6 +676,26 @@ impl App {
         self.piano_roll.submit_prepared(&self.engine);
     }
     pub(super) fn piano_roll_ui(&mut self, ctx: &egui::Context) {
+        if !self.studio_workspace_active() { self.piano_roll_view(ctx, None); }
+    }
+
+    /// Draw the existing MIDI editor inside a workspace panel.
+    /// Args: panel UI. Returns nothing; captured drafts and typed Apply keep their owners.
+    pub(super) fn piano_roll_panel(&mut self, ui: &mut Ui) {
+        if !self.piano_roll.open {
+            if ui.button("Inspect selected MIDI clip").clicked() { self.open_piano_roll(); }
+            return;
+        }
+        let ctx = ui.ctx().clone();
+        self.piano_roll_view(&ctx, Some(ui));
+    }
+
+    /// Retire GUI-owned musical notes when their panel moves or loses its tab.
+    /// Args: none. Returns nothing and leaves independent MIDI owners untouched.
+    pub(super) fn release_workspace_midi(&mut self) { self.piano_roll.stop(&self.engine); }
+
+    fn piano_roll_view(&mut self, ctx: &egui::Context, panel: Option<&mut Ui>) {
+        let docked = panel.is_some();
         let mut editor = std::mem::take(&mut self.piano_roll);
         if !ctx.input(|i| i.focused) {
             editor.stop(&self.engine);
@@ -683,10 +704,11 @@ impl App {
             self.piano_roll = editor;
             return;
         }
-        keyboard::block_for_dialog(ctx);
-        let escape = ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, Key::Escape));
+        if !docked { keyboard::block_for_dialog(ctx); }
+        let escape = !docked && ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, Key::Escape));
         let musical_events = ctx.input(|i| i.events.clone());
-        let available = ctx.screen_rect().shrink(8.0);
+        let available = panel.as_ref().map(|ui| ui.available_rect_before_wrap())
+            .unwrap_or_else(|| ctx.screen_rect()).shrink(8.0);
         let mut open = true;
         let mut close = escape;
         let mut apply = false;
@@ -701,12 +723,7 @@ impl App {
         let mut octave = editor.keyboard.octave;
         let mut velocity = editor.keyboard.velocity;
         let busy = editor.busy();
-        let shown = egui::Window::new(tr!("MIDI piano roll")).id(egui::Id::new("midi-piano-roll"))
-            .open(&mut open).collapsible(false).resizable(true)
-            .default_pos(available.left_top() + Vec2::new(16.0, 32.0))
-            .default_width(980.0_f32.min(available.width())).min_width(260.0_f32.min(available.width()))
-            .max_width(available.width()).max_height(available.height()).constrain_to(available)
-            .show(ctx, |ui| {
+        let mut draw = |ui: &mut Ui| {
                 accessibility::scope(ui, "MIDI piano roll", |ui| {
                     ui.label(&editor.message);
                     if let Some(error) = &editor.error { ui.colored_label(self.theme.red, error); }
@@ -855,18 +872,28 @@ impl App {
                         if button(ui, "Keep editing MIDI").clicked() { editor.confirm_discard = false; }
                     }
                 });
-            });
+        };
+        let shown = if let Some(ui) = panel {
+            Some(ui.scope(&mut draw).response)
+        } else {
+            egui::Window::new(tr!("MIDI piano roll")).id(egui::Id::new("midi-piano-roll"))
+            .open(&mut open).collapsible(false).resizable(true)
+            .default_pos(available.left_top() + Vec2::new(16.0, 32.0))
+            .default_width(980.0_f32.min(available.width())).min_width(260.0_f32.min(available.width()))
+            .max_width(available.width()).max_height(available.height()).constrain_to(available)
+            .show(ctx, &mut draw).map(|shown| shown.response)
+        };
         if let Some(shown) = shown {
             let outside = ctx.input(|i| {
                 i.pointer.any_pressed()
                     && i.pointer
                         .interact_pos()
-                        .is_some_and(|p| !shown.response.rect.contains(p))
+                        .is_some_and(|p| !shown.rect.contains(p))
             });
             let other_focus = ctx
                 .memory(|m| m.focused())
                 .and_then(|id| ctx.read_response(id))
-                .is_some_and(|r| r.layer_id != shown.response.layer_id);
+                .is_some_and(|r| r.layer_id != shown.layer_id);
             if outside || other_focus {
                 editor.stop(&self.engine);
             }
