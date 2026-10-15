@@ -112,19 +112,19 @@ fn surfaces_apc_knob_modes_assignments_and_master_device_controls_change_real_va
     assert_eq!(rt.surface_status().sends[1][1], 64.0 / 127.0);
     send(&mut input, &mut rt, &[0x90, 0x42, 127]);
     assert_eq!(rt.surface_status().assignments[0], 1);
-    rt.surface.prepare(48000.0, 1.0, 1.0, &rt.tracks);
+    rt.surface.prepare(48000.0, 1.0, 1.0, &mut rt.tracks);
     for _ in 0..240 {
-        rt.surface.track(0, rt.tracks[0].surface, [0.0; 2]);
+        rt.surface.track(&mut rt.tracks[0], [0.0; 2]);
     }
-    let dry = rt.surface.track(0, rt.tracks[0].surface, [0.2, -0.3]);
+    let dry = rt.surface.track(&mut rt.tracks[0], [0.2, -0.3]);
     assert_eq!(dry, [0.0, 0.0]);
     send(&mut input, &mut rt, &[0x90, 0x42, 127]);
     assert_eq!(rt.surface_status().assignments[0], 2);
-    rt.surface.prepare(48000.0, 1.0, 1.0, &rt.tracks);
+    rt.surface.prepare(48000.0, 1.0, 1.0, &mut rt.tracks);
     for _ in 0..240 {
-        rt.surface.track(0, rt.tracks[0].surface, [0.0; 2]);
+        rt.surface.track(&mut rt.tracks[0], [0.0; 2]);
     }
-    let dry = rt.surface.track(0, rt.tracks[0].surface, [0.2, -0.3]);
+    let dry = rt.surface.track(&mut rt.tracks[0], [0.2, -0.3]);
     assert_eq!(dry, [0.2, -0.3]);
     send(&mut input, &mut rt, &[0x90, 0x50, 127]);
     send(&mut input, &mut rt, &[0xb0, 0x10, 80]);
@@ -439,8 +439,8 @@ fn surfaces_controls_render_without_callback_allocations_and_send_stereo_effect_
         send: 0,
         value: 1.0,
     }));
-    rt.surface.prepare(48000.0, 0.5, 0.0, &rt.tracks);
-    rt.surface.track(0, rt.tracks[0].surface, [1.0, -0.5]);
+    rt.surface.prepare(48000.0, 0.5, 0.0, &mut rt.tracks);
+    rt.surface.track(&mut rt.tracks[0], [1.0, -0.5]);
     let mut energy = [0.0; 2];
     for _ in 0..8000 {
         let output = rt.surface.render_sends(24000.0);
@@ -449,6 +449,29 @@ fn surfaces_controls_render_without_callback_allocations_and_send_stereo_effect_
         }
     }
     assert!(energy[0] > 0.1 && energy[1] > 0.05 && energy[0] > energy[1] * 1.9);
+}
+
+#[test]
+fn fixed_send_owned_crossfader_ramps_follow_reorder_duplication_and_new_identity() {
+    let (_,mut rt)=Engine::headless_for_test(48000,256);
+    rt.tracks[0].surface.crossfader=1;
+    rt.tracks[1].surface.crossfader=2;
+    rt.surface.prepare(48000.,1.,1.,&mut rt.tracks);
+    assert_eq!(rt.surface.track(&mut rt.tracks[0],[1.,-1.]),[0.;2]);
+    assert_eq!(rt.surface.track(&mut rt.tracks[1],[1.,-1.]),[1.,-1.]);
+    rt.tracks.swap(0,1);
+    rt.surface.prepare(48000.,1.,1.,&mut rt.tracks);
+    assert_eq!(rt.surface.track(&mut rt.tracks[0],[1.,-1.]),[1.,-1.]);
+    assert_eq!(rt.surface.track(&mut rt.tracks[1],[1.,-1.]),[0.;2]);
+    rt.tracks[2]=rt.tracks[0].clone();
+    let (_,fresh)=Engine::headless_for_test(48000,256);
+    rt.tracks[1]=fresh.tracks[1].clone();
+    let counts=crate::engine::test_alloc::measure(||{
+        rt.surface.prepare(48000.,1.,1.,&mut rt.tracks);
+        assert_eq!(rt.surface.track(&mut rt.tracks[1],[1.,-1.]),[1.,-1.],"New identity must start at its default gain immediately");
+        assert_eq!(rt.surface.track(&mut rt.tracks[2],[1.,-1.]),[1.,-1.],"Duplication owns its independent ramp");
+    });
+    assert_eq!(counts,crate::engine::test_alloc::Counts::default());
 }
 
 #[test]

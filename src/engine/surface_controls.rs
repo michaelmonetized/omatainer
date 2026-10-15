@@ -172,7 +172,6 @@ pub(super) struct State {
     pad_gain: [f32; 16],
     master_saved: [f32; 3],
     shift_owners: [Option<u64>; super::control::MAX_COMMANDS],
-    track_gain: [super::mixer_gain::GainPair; super::session::MAX_TRACKS],
 }
 impl State {
     /// Prepare the two stereo send processors outside the audio callback.
@@ -203,32 +202,27 @@ impl State {
             fx_recall: super::dj_fx_recall::Transition::default(),
             sampler_slots: [None; 2],
             sampler_history_target: [None; 2],
-            track_gain: std::array::from_fn(|_| {
-                let mut ramp = super::mixer_gain::GainPair::default();
-                ramp.prepare([1.0; 2], sr, |left, right| [left, right]);
-                ramp
-            }),
         })
     }
     /// Prepare assigned track gains once per callback block.
     /// Takes output rate and current crossfader controls; keeps cuts on the same short ramp as the deck mixer.
-    pub fn prepare(&mut self, sr: f32, position: f32, curve: f32, tracks: &[Box<super::TrackRt>]) {
+    pub fn prepare(&mut self, sr: f32, position: f32, curve: f32, tracks: &mut [Box<super::TrackRt>]) {
         let gains = super::mixer_gain::crossfader_gains(position, curve);
-        for (index, ramp) in self.track_gain.iter_mut().enumerate() {
-            let gain = match tracks.get(index).map_or(0, |t| t.surface.crossfader) {
+        for track in tracks {
+            let gain = match track.surface.crossfader {
                 1 => gains[0],
                 2 => gains[1],
                 _ => 1.0,
             };
-            ramp.prepare([gain, gain], sr, |left, right| [left, right]);
+            track.surface_gain.prepare([gain, gain], sr, |left, right| [left, right]);
         }
     }
     /// Route one track through its crossfader assignment and sends.
-    /// Takes track index and stereo output; returns the assigned dry output.
-    pub fn track(&mut self, track: usize, controls: TrackMix, input: [f32; 2]) -> [f32; 2] {
-        let gains = self.track_gain[track].tick();
+    /// Takes one retained track and stereo output; returns the assigned dry output with its own ramp history.
+    pub fn track(&mut self, track: &mut super::TrackRt, input: [f32; 2]) -> [f32; 2] {
+        let gains = track.surface_gain.tick();
         let output = std::array::from_fn(|channel| input[channel] * gains[channel]);
-        for (bus, amount) in self.send_input.iter_mut().zip(controls.sends) {
+        for (bus, amount) in self.send_input.iter_mut().zip(track.surface.sends) {
             for channel in 0..2 {
                 bus[channel] += output[channel] * amount;
             }
