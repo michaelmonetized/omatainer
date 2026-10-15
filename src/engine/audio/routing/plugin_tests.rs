@@ -62,7 +62,7 @@ fn named_return_native_processor_gain_pan_mute_and_wet_tail_keep_independent_ref
         let mut muted_tail=false;
         for frame in 0..rate as usize/2 {
             let level=if frame<1024 {1.}else{0.5};
-            let mute=(2048..4096).contains(&frame);
+            let mute=(rate as usize/12..rate as usize/4).contains(&frame);
             graph.mix_control(Target::Return(3),MixParameter::Level,level);
             graph.mix_control(Target::Return(3),MixParameter::Pan,-1.);
             graph.mix_control(Target::Return(3),MixParameter::Mute,if mute {1.}else{0.});

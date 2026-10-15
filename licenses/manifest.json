@@ -13166,7 +13166,7 @@
     "src/engine/audio/routing/model.rs": "ad6c8d53fc83098bdedb87c262aaefcdcecdbab37fce66ac28da0cc8af9d1a19",
     "src/engine/audio/routing/native_tests.rs": "e31857b77f5ef6d9af47cc6082a4b6c57e79d8585179656e312c5485bdf96ee9",
     "src/engine/audio/routing/ns7_native_tests.rs": "a45e852f08abb8fdc016b7bd614d140aecafb0adf8365014ec3f2cfb23601c77",
-    "src/engine/audio/routing/plugin_tests.rs": "690bccd28a118c23add056b088703266e5ece5ecf34c3c8ad32fc35af27f0941",
+    "src/engine/audio/routing/plugin_tests.rs": "859f891140a89e528e572238c1f82b46ef5f51e34f5a93dd4b2caf4d8824e4c3",
     "src/engine/audio/routing/plugins.rs": "0e6cd706858b286a2865c7a8838a980f95d0214c9b69d24ed941f4e2008f89ef",
     "src/engine/audio/routing/positions.rs": "1c58b2a4f93399fc405535dbaa08c050afd52b3b2984cfbd8900105f62bb7298",
     "src/engine/audio/routing/positions/tests.rs": "d83ce9d98c18ad4c8ed791282b92be763f9854d1688d59c65d409d66a8cdf493",
