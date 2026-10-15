@@ -138,16 +138,21 @@ impl Playback {
     #[cfg(test)]
     pub(super) fn sample(&mut self, slot: usize, beat: f64) -> ([f32; 2], bool) { self.sample_with_tempo(slot,beat,2.0) }
     pub(super) fn sample_with_tempo(&mut self, slot: usize, beat: f64, beats_per_second: f64) -> ([f32; 2], bool) {
+        self.sample_channels(slot,beat,beats_per_second)
+    }
+    /// Sum timeline sources without discarding their additional channels.
+    /// Takes stable track slot, beat and tempo; returns fixed-width source-order audio and the existing activity flag.
+    pub(super) fn sample_channels<const N:usize>(&mut self, slot:usize,beat:f64,beats_per_second:f64)->([f32;N],bool){
         let Some(plan) = &self.plan else {
-            return ([0.0; 2], false);
+            return ([0.0; N], false);
         };
         let Some(track) = plan.tracks.get(slot).and_then(Option::as_ref) else {
-            return ([0.0; 2], false);
+            return ([0.0; N], false);
         };
         let cursor = &mut self.cursors[slot];
         advance(&track.audio_segments, &mut cursor.audio, beat);
         advance(&track.activity, &mut cursor.activity, beat);
-        let mut output = [0.0; 2];
+        let mut output = [0.0; N];
         for &index in selected(&track.audio_segments, cursor.audio, beat) {
             let span = track.audio[index as usize];
             let source = &plan.sources[span.source];
@@ -165,18 +170,16 @@ impl Playback {
                             (seconds * tempo, tempo)
                         });
                 if span.fades.is_some() {
-                    region.sample(audio, local, span.repeating)
+                    region.sample_channels(audio, local, span.repeating)
                 } else {
-                    region.faded_sample(audio, local, span.repeating, tempo)
+                    region.faded_channels(audio, local, span.repeating, tempo)
                 }
             } else if span.repeating || local < source.length {
-                let (l, r) = audio
-                    .at(local.rem_euclid(source.length) / source.length * audio.frames() as f64);
-                [l, r]
+                audio.at_channels(local.rem_euclid(source.length) / source.length * audio.frames() as f64)
             } else {
-                [0.0; 2]
+                [0.0; N]
             };
-            for channel in 0..2 {
+            for channel in 0..N {
                 output[channel] += value[channel] * span.gain * span.fades.map_or(1.0,|f| f.gain(beat-span.start,span.end-span.start,beats_per_second));
             }
         }
@@ -407,16 +410,16 @@ impl RtEngine {
             }
         }
     }
-    pub(in crate::engine) fn render_arrangement(&mut self, slot: usize) -> ([f32; 2], bool) {
+    pub(in crate::engine) fn render_arrangement(&mut self, slot: usize) -> (crate::engine::audio::routing::prepared::Frame, bool) {
         if !self.playing
             || self.count_in.is_some()
             || !self.arrangement.current(slot, &self.session)
         {
-            return ([0.0; 2], false);
+            return ([0.0; crate::engine::audio::routing::model::MAX_PORT_CHANNELS], false);
         }
         let end = self.precise_midi_beat();
         if end <= self.arrangement.seek + super::super::midi_schedule::BEAT_EPSILON {
-            return ([0.0; 2], false);
+            return ([0.0; crate::engine::audio::routing::model::MAX_PORT_CHANNELS], false);
         }
         let step = if self.conductor.is_some() {
             self.last_midi_step
@@ -505,6 +508,6 @@ impl RtEngine {
                 }
             }
         }
-        self.arrangement.sample_with_tempo(slot, (end - step).max(0.0), step*f64::from(self.sr))
+        self.arrangement.sample_channels(slot, (end - step).max(0.0), step*f64::from(self.sr))
     }
 }
