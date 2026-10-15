@@ -97,7 +97,7 @@ impl Configuration {
                 .port(id, Direction::Input)
                 .filter(|p| (1..=2).contains(&p.channels.len()))
                 .ok_or("Mic/aux input needs one or two available channels")?;
-            for connection in &m.connections {
+            for connection in m.links() {
                 if let Group::Input(source) = connection.source.group {
                     let port = m
                         .port(source, Direction::Input)

@@ -871,7 +871,7 @@ mod cue_audition_migration_tests {
         let profile=old.profiles.get_mut("Studio").unwrap();
         profile.shortcuts.insert("play_a".into(),Some(Shortcut {key:"[".into(),ctrl:false,shift:true,alt:false}));
         profile.shortcuts.insert("beat_jump_back".into(),Some(Shortcut {key:"J".into(),ctrl:false,shift:false,alt:false}));
-        profile.midi_learn.mappings.push(crate::engine::midi::learn::Mapping {endpoint:crate::engine::midi::learn::Endpoint {name:"Test".into(),id:"port".into()},binding:crate::engine::midi::Binding {kind:crate::engine::midi::MsgKind::Note,ch:0,data:60,action:crate::engine::midi::Action::DeckCue,deck:1,extra:0,relative:None, controls: None,
+        profile.midi_learn.mappings.push(crate::engine::midi::learn::Mapping {endpoint:crate::engine::midi::learn::Endpoint {name:"Test".into(),id:"port".into()},binding:crate::engine::midi::Binding { routing: None,kind:crate::engine::midi::MsgKind::Note,ch:0,data:60,action:crate::engine::midi::Action::DeckCue,deck:1,extra:0,relative:None, controls: None,
          pair_order: None,
         }});
         let (loaded,migrated)=decode(&serde_json::to_vec(&old).unwrap()).unwrap(); assert!(migrated);

@@ -40,7 +40,10 @@ impl Scoped {
                 let Some(track) = adjust.track() else { return Ok(command); };
                 (Some(track), None)
             }
-            Command::TrackGain { track, .. }
+            Command::TrackSend { track, .. }
+            | Command::TrackCrossfader { track, .. }
+            | Command::Surface(crate::engine::surface_controls::Input::TrackSend { track, .. })
+            | Command::TrackGain { track, .. }
             | Command::ClipCancel { track }
             | Command::TrackPan { track, .. }
             | Command::Mute { track }

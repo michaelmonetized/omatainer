@@ -22,11 +22,15 @@ struct Link {
     source: usize,
     tap: usize,
     map: Vec<ChannelMap>,
+    send: Option<usize>,
+    fixed: Option<(usize,usize)>,
 }
 
 #[derive(Debug)]
 pub struct Prepared {
     pub model: Arc<Model>,
+    pub mixer: super::mixer::Runtime,
+    pub(super) fixed_levels: [[f32;2];crate::engine::session::MAX_TRACKS],
     pub nodes: Vec<Node>,
     incoming: Vec<Vec<Link>>,
     outputs: Vec<usize>,
@@ -38,6 +42,7 @@ pub struct Prepared {
     positions: super::positions::Positions,
     pub(crate) plugins: Vec<Plugin>,
     pub(crate) offline: bool,
+    pub(crate) selection:Option<super::selection::Policy>,
 }
 
 #[derive(Debug)]
@@ -112,13 +117,16 @@ impl Prepared {
             .map(|(index, group)| (*group, index))
             .collect();
         let mut incoming = vec![Vec::new(); order.len()];
-        for connection in &model.connections {
+        for (link,connection) in model.links().enumerate() {
             incoming[indices[&connection.destination]].push(Link {
                 source: indices[&connection.source.group],
                 tap: connection.source.tap.index(),
                 map: connection.map.clone(),
+                send: link.checked_sub(model.connections.len()),
+                fixed: None,
             });
         }
+        for send in 0..2 {for (slot,track) in layout.tracks.iter().enumerate(){incoming[indices[&Group::FixedReturn(send)]].push(Link{source:indices[&Group::Track(track.id)],tap:Tap::PostMixer.index(),map:vec![ChannelMap{source:0,destination:0,gain:1.},ChannelMap{source:1,destination:1,gain:1.}],send:None,fixed:Some((slot,usize::from(send)))});}}
         let scene_nodes = std::array::from_fn(|slot| {
             layout
                 .scenes
@@ -156,7 +164,10 @@ impl Prepared {
             let port = model.port(id, Direction::Output).unwrap();
             (id, [usize::from(port.channels[0]), usize::from(port.channels[1])])
         });
+        let mixer=super::mixer::Runtime::new(&model,&order_from_nodes(&nodes),layout);
         Ok(Self {
+            mixer,
+            fixed_levels:[[0.;2];crate::engine::session::MAX_TRACKS],
             model,
             nodes,
             incoming,
@@ -169,6 +180,7 @@ impl Prepared {
             positions,
             plugins,
             offline: false,
+            selection:None,
         })
     }
 
@@ -185,15 +197,22 @@ impl Prepared {
     /// Sum a node's explicit incoming maps.
     /// Takes its prepared index; sums into its prepared input after all earlier sources have rendered.
     pub fn gather(&mut self, index: usize) {
+        let terminal=matches!(self.nodes[index].group,Group::Main|Group::Output(_)|Group::Record(_));
+        let solo=self.mixer.solo;
+        let safe=self.model.buses.iter().enumerate().fold(0,|mask,(i,_)|if self.mixer.channels[self.model.sends.len()+i].effective.solo_safe{mask|1u32<<i}else{mask});
         let (sources, destination) = self.nodes.split_at_mut(index);
         let destination = &mut destination[0];
         for link in &self.incoming[index] {
+            if terminal&&solo!=0&&self.mixer.ancestry[link.source]&(solo|safe)==0 {continue;}
             let source = &sources[link.source].taps[link.tap];
             for map in &link.map {
                 let(value,valid)=self.latency.as_ref().map_or((source[usize::from(map.source)],sources[link.source].valid),
                     |latency|latency.routed(link.source,link.tap,index,usize::from(map.source)));
-                destination.input[usize::from(map.destination)] += value * map.gain;
-                if map.gain != 0.0 {
+                let gain=link.send.map_or(1.,|slot|self.mixer.channels[slot].effective.gain(usize::from(map.destination)))*link.fixed.map_or(1.,|(slot,send)|self.fixed_levels[slot][send]);
+                let sample=value*map.gain*gain;
+                destination.input[usize::from(map.destination)] += sample;
+                if let Some(slot)=link.send {self.mixer.channels[slot].peaks[usize::from(map.destination)]=self.mixer.channels[slot].peaks[usize::from(map.destination)].max(sample.abs());}
+                if map.gain * gain != 0.0 {
                     destination.valid &= valid;
                 }
             }
@@ -209,7 +228,7 @@ impl Prepared {
             for map in &link.map {
                 if map.destination < 2 {
                     let value = self.latency.as_ref().map_or(self.nodes[link.source].taps[link.tap][usize::from(map.source)], |l| l.routed(link.source,link.tap,index,usize::from(map.source)).0);
-                    frame[usize::from(map.destination)] += value * map.gain;
+                    frame[usize::from(map.destination)] += value * map.gain * link.send.map_or(1.,|slot|self.mixer.channels[slot].effective.gain(usize::from(map.destination)));
                 }
             }
         }
@@ -248,6 +267,7 @@ impl Prepared {
     /// Align an implicit send through its published original source.
     /// Takes source and destination indices plus fallback audio/continuity; reads the same prepared history used by explicit links.
     pub(super) fn source_send(&mut self,source:usize,destination:usize,frame:[f32;2],valid:bool) {
+        if destination==self.main && (self.selection==Some(super::selection::Policy::MasteredSolo)||!self.mix_audible(source)){return;}
         if let Some(latency)=&self.latency {
             for channel in 0..2 {
                 let(value,complete)=latency.routed(source,super::model::Tap::PostMixer.index(),destination,channel);
@@ -319,6 +339,7 @@ impl Prepared {
     /// Takes cancellation on a setup worker; returns exact live parameter and opaque checkpoints, preserving actionable unavailable records.
     pub(crate) fn checkpoint(&self, cancel: &std::sync::atomic::AtomicBool) -> Result<Arc<Model>,String> {
         let mut model = (*self.model).clone();
+        super::mixer::Runtime::save(&self.mixer.channels,&mut model);
         for (saved,plugin) in model.plugins.iter_mut().zip(&self.plugins) {
             if cancel.load(std::sync::atomic::Ordering::Acquire) { return Err("Plugin state capture cancelled".into()); }
             saved.parameters = plugin.parameters.iter().flatten().copied().collect();
@@ -366,6 +387,7 @@ impl Prepared {
     pub fn bytes(&self) -> usize {
         std::mem::size_of::<Self>()
             + self.model.bytes()
+            + self.mixer.channels.capacity()*std::mem::size_of::<super::mixer::Channel>()+self.mixer.ancestry.capacity()*4
             + self.plugins.capacity() * std::mem::size_of::<Plugin>()
             + self.plugins.iter().map(|p| p.endpoint.as_ref().map_or(0, crate::plugin_host::realtime::Endpoint::bytes) + p.error.as_ref().map_or(0, String::capacity)).sum::<usize>()
             + self.plugins.iter().map(|p| p.dry.bytes() + p.midi.capacity() * std::mem::size_of::<(u64,[u8;3])>()).sum::<usize>()
@@ -387,3 +409,7 @@ impl Prepared {
                 .sum::<usize>()
     }
 }
+
+/// Read the already prepared topological identities.
+/// Takes node storage; returns a worker-only ordering for mixer preparation.
+fn order_from_nodes(nodes:&[Node])->Vec<Group>{nodes.iter().map(|n|n.group).collect()}

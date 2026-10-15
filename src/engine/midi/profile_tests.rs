@@ -211,7 +211,7 @@ fn validation_rejects_duplicates_conflicts_wildcards_and_decoder_aliases() {
             assert!(error.contains("bindings 0 and 1 overlap"));
         }
     }
-    let pitch = Binding {
+    let pitch = Binding { routing: None,
         kind: MsgKind::Pitch,
         ch: 1,
         data: 0,

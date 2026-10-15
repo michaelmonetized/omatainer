@@ -73,6 +73,7 @@ impl Request {
                 saved.kind = if audio { 4 } else { 2 };
                 saved.gain = 0.8;
                 saved.pan = 0.0;
+                saved.surface = Default::default();
                 saved.mute = false;
                 saved.solo = false;
                 saved.armed = false;
@@ -130,7 +131,7 @@ impl Request {
                 saved.input_monitor = Some(crate::engine::input_monitor::Mode::Auto);
                 saved.clips = saved.clips.into_iter().map(duplicate_cell).collect();
                 let color = before.tracks[source].color;
-                Self::prepare_track_change(
+                let content=Self::prepare_track_change(
                     &mut state,
                     &media,
                     &mut next,
@@ -140,7 +141,9 @@ impl Request {
                     rate,
                     &mut pins,
                     &mut fx_storage,
-                )?
+                )?;
+                if let (Some(model),Content::Track{slot,..})=(&state.routing,&content){state.routing=Some(Arc::new(model.duplicate_track(id,next.tracks[*slot].id,&next)?));}
+                content
             }
             Structure::Duplicate {
                 axis: Axis::Scene,

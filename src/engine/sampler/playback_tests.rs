@@ -240,7 +240,7 @@ fn learned_controller_slot_stop_survives_saturated_admission_and_performance_pro
                     name: "Fixture USB pads".into(),
                     id: "fixture:slot-stop".into(),
                 },
-                binding: Binding {
+                binding: Binding { routing: None,
                     kind: MsgKind::Note,
                     ch: 1,
                     data: 62,

@@ -204,7 +204,7 @@ fn actual_input_worker_recalled_ids_survive_reorder_and_preset_profile_files_gua
         id: "fixture:saved-loops".into(),
     };
     let bindings: Vec<_> = (0..8)
-        .map(|extra| Binding {
+        .map(|extra| Binding { routing: None,
             kind: MsgKind::Note,
             ch: 2,
             data: 60 + extra as u8,
@@ -259,7 +259,7 @@ fn actual_input_worker_recalled_ids_survive_reorder_and_preset_profile_files_gua
         midi::Action::DeckSavedLoopSave,
         midi::Action::DeckSavedLoopDelete,
     ] {
-        let binding = Binding {
+        let binding = Binding { routing: None,
             action,
             extra: 4,
             ..bindings[0]
@@ -392,15 +392,15 @@ fn actual_input_worker_recalled_ids_survive_reorder_and_preset_profile_files_gua
         midi::Action::DeckSavedLoopSave,
         midi::Action::DeckSavedLoopDelete,
     ] {
-        let good = Binding {
+        let good = Binding { routing: None,
             action,
             ..bindings[0]
         };
         midi::learn::validate_binding(&good).unwrap();
         for bad in [
-            Binding { extra: 8, ..good },
-            Binding { deck: 2, ..good },
-            Binding {
+            Binding { routing: None, extra: 8, ..good },
+            Binding { routing: None, deck: 2, ..good },
+            Binding { routing: None,
                 kind: MsgKind::Cc,
                 ..good
             },
