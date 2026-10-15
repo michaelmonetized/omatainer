@@ -13663,7 +13663,7 @@
     "src/ui/audio_routing/latency.rs": "ef97a9b23a498366f4d84b258b8dced481cd689ada62f1e057ce60c86f62df9a",
     "src/ui/audio_routing/mixer.rs": "215b96614b2219d51552abeed8b0fdd2adc3f437edcb09dc9c4b5776d14a7b83",
     "src/ui/audio_routing/processors.rs": "0a47149f2b5e5dfedad04b129754a64d842b53f5b33b6d3b2064b31fb9ad00ed",
-    "src/ui/audio_routing/tests.rs": "a6706290d437bc94a974cb849deede24f8e5f0dace523eea3d4748e9af51579b",
+    "src/ui/audio_routing/tests.rs": "c7962b03224501ab72f0ca52e7653e7622271004bebeed8423cbdac3efad3229",
     "src/ui/audio_routing/worker.rs": "528a4f86649ecdf54ed3405b58c9307a97c18a7df1138b4a5374a978394088a0",
     "src/ui/audio_settings.rs": "d2dd90a28ac469fd6e4c66450486062f23ad948620a3cb339e3a61243d7d9112",
     "src/ui/audio_settings/tests.rs": "a98fed82cbe583e4c3800d7f3739e1913983231bc330840b87db55b872663c10",

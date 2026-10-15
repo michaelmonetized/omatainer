@@ -59,13 +59,13 @@ fn named_send_return_widgets_create_review_keyboard_edit_undo_and_reopen_saved_c
     while !capture.is_finished(){gui.frame(vec![]);assert!(Instant::now()<deadline);std::thread::sleep(Duration::from_millis(1));}
     let captured=capture.join().unwrap().unwrap();
     let state=serde_json::from_slice(&serde_json::to_vec(&captured.state).unwrap()).unwrap();
-    let reopened=crate::engine::project::Prepared::from_state(state,captured.media,48000).unwrap();
-    let graph=reopened.rt.routing.as_ref().unwrap();
+    let reopened=crate::engine::project::Prepared::from_state(state,captured.media,48000).unwrap().into_offline();
+    let graph=reopened.routing.as_ref().unwrap();
     assert_eq!(graph.model.sends[0].name,"Hall send");
     assert_eq!(graph.model.sends[0].level,0.73);
     assert_eq!(graph.model.sends[0].pan,0.25);
     assert_eq!(graph.model.buses[0].gain,0.5);
-    assert_eq!(reopened.rt.tracks[0].surface.sends[0],0.37);
+    assert_eq!(reopened.tracks[0].surface.sends[0],0.37);
 }
 
 #[test]
