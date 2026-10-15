@@ -419,3 +419,39 @@ fn recipe_fifo_refuses_without_writer_and_regular_recipe_preserves_bytes_with_ca
         .contains("exceeds1MiB"));
     assert!(!rejected.exists());
 }
+
+#[test]
+fn saved_recipe_source_scene_uses_canonical_identity_and_never_reuses_deleted_slot() {
+    let (engine, mut rt) = fixture();
+    let captured = capture(&engine, &mut rt);
+    let recipe = recipe(&captured);
+    let reference = recipe.source_scene.unwrap();
+    let mut reordered = copy(&captured);
+    reordered
+        .state
+        .session
+        .as_mut()
+        .unwrap()
+        .scene_order
+        .swap(0, 1);
+    let reviewed = recipe.review(&reordered).unwrap();
+    assert_eq!(reviewed.recipe.source_scene, Some(reference));
+    assert_eq!(reviewed.recipe.export.scene, 0);
+    let mut replaced = copy(&captured);
+    let layout = replaced.state.session.as_mut().unwrap();
+    let id = crate::engine::session::Id(layout.next_id);
+    layout.next_id += 1;
+    layout.generation += 1;
+    layout.scenes[0].id = id;
+    assert!(recipe
+        .review(&replaced)
+        .unwrap_err()
+        .contains("source scene was removed or replaced"));
+    let mut value = serde_json::to_value(&recipe).unwrap();
+    value.as_object_mut().unwrap().remove("source_scene");
+    let old: Recipe = serde_json::from_value(value).unwrap();
+    assert!(old
+        .review(&captured)
+        .unwrap_err()
+        .contains("no stable identity"));
+}

@@ -241,12 +241,14 @@ fn native_aligned_batch_review_recipe_reopen_render_and_stale_guard_use_real_wor
     let files=Files::new();let mut g=Gui::new(&files);g.click("Review export source");g.wait();
     g.app.audio_delivery.request.end=0.5;g.app.audio_delivery.request.tail=0.;
     g.app.audio_delivery.batch.as_mut().unwrap().items.truncate(2);
+    g.app.audio_delivery.batch.as_mut().unwrap().items[0].name="preserved-custom".into();
     g.app.audio_delivery.request.options.normalize=true;
     g.click("Aligned stems & versions");
     let recipe=files.0.join("reviewed.json");g.app.audio_delivery.recipe_path=recipe.to_string_lossy().into_owned();g.frame(vec![]);g.click("Save batch recipe to new file");g.wait();assert!(recipe.is_file());assert!(!data::batch::Recipe::load(&recipe,&AtomicBool::new(false)).unwrap().export.options.normalize);
     g.app.audio_delivery.batch.as_mut().unwrap().items.clear();g.click("Reopen batch recipe");g.wait();assert_eq!(g.app.audio_delivery.batch.as_ref().unwrap().items.len(),2);
     let folder=files.0.join("batch");g.app.audio_delivery.path=folder.to_string_lossy().into_owned();let before=g.app.snap.project_revision;g.frame(vec![]);g.click("Render aligned batch");g.wait();assert!(g.app.audio_delivery.message.starts_with("Saved aligned batch"),"{}",g.app.audio_delivery.message);assert!(folder.join("batch.json").is_file());assert_eq!(g.app.snap.project_revision,before);
     g.callback.renderer_mut_for_test().apply(Command::SetBpm(131.));let stale=files.0.join("stale-batch");g.app.audio_delivery.path=stale.to_string_lossy().into_owned();g.frame(vec![]);g.click("Render aligned batch");g.wait();assert!(g.app.audio_delivery.message.contains("changed since batch review"),"{}",g.app.audio_delivery.message);assert!(!stale.exists());
+    g.click("Review export source");g.wait();let refreshed=g.app.audio_delivery.batch.as_ref().unwrap();assert_eq!(refreshed.items.len(),2);assert_eq!(refreshed.items[0].name,"preserved-custom");
 }
 
 #[test]

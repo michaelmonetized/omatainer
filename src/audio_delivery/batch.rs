@@ -38,6 +38,8 @@ pub(crate) struct Recipe {
     pub next_id: u64,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub project_sha256: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub source_scene: Option<crate::engine::session::Reference>,
     pub export: Export,
     pub config: Config,
     pub items: Vec<Item>,
@@ -146,6 +148,14 @@ impl Recipe {
         Ok(Self {
             schema: 1,
             project_sha256: None,
+            source_scene: (export.source == super::Source::Scene)
+                .then(|| {
+                    layout.reference(
+                        crate::engine::session::Axis::Scene,
+                        usize::from(export.scene),
+                    )
+                })
+                .flatten(),
             namespace: layout.namespace,
             next_id: items.len() as u64 + 1,
             export,
@@ -169,6 +179,20 @@ impl Recipe {
             || self.items.len() > 128
         {
             return Err("Batch needs 1–128 passes from this project namespace".into());
+        }
+        let mut resolved = self.clone();
+        if self.export.source == super::Source::Scene {
+            let reference=self.source_scene.ok_or("Saved source scene has no stable identity; explicitly choose the scene before reviewing this recipe")?;
+            if reference.namespace != layout.namespace {
+                return Err("Saved source scene belongs to another project".into());
+            }
+            let slot = layout
+                .resolve(crate::engine::session::Axis::Scene, reference.id)
+                .ok_or(
+                    "Saved source scene was removed or replaced; explicitly choose a scene again",
+                )?;
+            resolved.export.scene =
+                u16::try_from(slot).map_err(|_| "Source scene slot exceeds delivery range")?;
         }
         let mut ids = BTreeSet::new();
         let mut names = BTreeSet::new();
@@ -201,7 +225,7 @@ impl Recipe {
         Ok(Review {
             revision: c.revision,
             generation: layout.generation,
-            recipe: self.clone(),
+            recipe: resolved,
         })
     }
     /// Save a reusable reviewed recipe without replacing a file.
@@ -271,12 +295,12 @@ pub(crate) fn run(
         .ok_or("Batch folder needs an existing parent")?;
     super::measurement::preflight(&cancel)?;
     let stage = crate::portable_project::Stage::new(parent)?;
-    space(&stage.path, &review.recipe)?;
-    let recipe = &review.recipe;
+    space(&stage.path, &fresh.recipe)?;
+    let recipe = &fresh.recipe;
     let bounds = recipe.export.frames()?;
     let mut cases=recipe.items.iter().map(|i|serde_json::json!({"id":i.id,"name":i.name,"kind":i.kind,"selection":i.selection,"status":"skipped"})).collect::<Vec<_>>();
     let mut warnings = Vec::new();
-    let mut manifest = serde_json::json!({"schema":1,"review":review,"range_start_frame":bounds.0,"body_frames":bounds.1,"tail_frames":bounds.2,"frames_per_pass":bounds.3,"alignment":"same immutable capture/revision, source origin, range, sample rate, output channel order, repeats and tail; fresh graph per pass; original PDC trimmed once","semantics":"Track post-device before shared scene FX; Group includes shared scene FX; named/fixed Return carries its actual wet tap. All feeders/sidechains continue. Dry uses pre-FX taps. MasteredSolo includes normal master/limiter and is non-exact-sum. No inferred vocal separation. Independent normalization, dither, lossy formats and nonlinear shared/master processing cannot promise null-sum.","status":"running"});
+    let mut manifest = serde_json::json!({"schema":1,"review":fresh,"range_start_frame":bounds.0,"body_frames":bounds.1,"tail_frames":bounds.2,"frames_per_pass":bounds.3,"alignment":"same immutable capture/revision, source origin, range, sample rate, output channel order, repeats and tail; fresh graph per pass; original PDC trimmed once","semantics":"Track post-device before shared scene FX; Group includes shared scene FX; named/fixed Return carries its actual wet tap. All feeders/sidechains continue. Dry uses pre-FX taps. MasteredSolo includes normal master/limiter and is non-exact-sum. No inferred vocal separation. Independent normalization, dither, lossy formats and nonlinear shared/master processing cannot promise null-sum.","status":"running"});
     let result = (|| {
         for (index, item) in recipe.items.iter().enumerate() {
             update(

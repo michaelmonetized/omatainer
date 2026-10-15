@@ -7,7 +7,7 @@ pub(super) fn controls(ui: &mut egui::Ui, panel: &mut Panel, plan: &Plan) -> Opt
     ui.collapsing("Aligned stems & versions",|ui|{
         ui.label("One captured revision. All passes share the reviewed range, origin, sample rate, output order, repeats and tail. The final folder appears only when every pass succeeds.");
         ui.label("Default group stems include shared scene effects. Track stems stop after their own devices, before shared scene effects. Shared returns are separate passes. Dry uses pre-FX taps; mastered solo includes the master and limiter and cannot promise an exact sum. Sidechain feeders keep running.");
-        if ui.button("Use aligned group & return defaults").clicked(){panel.batch=Some(plan.batch.clone());panel.batch_normalize=false;panel.batch_dither=false;}
+        if ui.button("Use aligned group & return defaults").clicked(){let mut recipe=plan.batch.clone();recipe.source_scene=plan.scene_refs.iter().find(|(slot,_)|*slot==panel.request.scene).map(|(_,r)|*r);panel.batch=Some(recipe);panel.batch_normalize=false;panel.batch_dither=false;}
         let Some(recipe)=&mut panel.batch else {return};
         let mut remove=None;
         egui::ScrollArea::vertical().id_salt("batch-pass-list").max_height(180.).show(ui,|ui|{for (index,item) in recipe.items.iter_mut().enumerate(){ui.push_id(item.id,|ui|{ui.horizontal(|ui|{let label=ui.label(format!("Pass {} name",item.id));ui.text_edit_singleline(&mut item.name).labelled_by(label.id);ui.label(format!("{:?} · {:?} · {} contributions",item.kind,item.selection.policy,item.selection.targets.len()));if ui.button("Remove pass").clicked(){remove=Some(index);}});});}});

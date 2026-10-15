@@ -85,7 +85,7 @@
       "id": "aligned-native-null",
       "test": "audio_delivery::batch::tests::aligned_encoded_stems_null_sum_explicit_version_and_normal_graph_oracle_after_reopen",
       "source": "src/audio_delivery/batch/tests.rs",
-      "source_sha256": "63f90be668f65f81449b2ce7087cff6d11d0cec26c58e0e3fd9079af28ed7dfb",
+      "source_sha256": "ceac99396c557f1f5bcb60642a6f9e7357a958c681884c80470368ac02a6bb9d",
       "requirement": "required",
       "acceptance": "encoded stems sum vs explicitly selected combined pass, normal nonlinear master oracle, recipe reopen/live state"
     },
@@ -93,7 +93,7 @@
       "id": "batch-atomic-refusals",
       "test": "audio_delivery::batch::tests::batch_stale_missing_ids_collision_cancel_and_failed_qc_never_publish_partial_folder",
       "source": "src/audio_delivery/batch/tests.rs",
-      "source_sha256": "63f90be668f65f81449b2ce7087cff6d11d0cec26c58e0e3fd9079af28ed7dfb",
+      "source_sha256": "ceac99396c557f1f5bcb60642a6f9e7357a958c681884c80470368ac02a6bb9d",
       "requirement": "required",
       "acceptance": "namespace/deleted identity, stale revision, case collision, existing folder, QC failure statuses"
     },
@@ -101,7 +101,7 @@
       "id": "batch-mid-cancel",
       "test": "audio_delivery::batch::tests::batch_cancel_during_second_pass_keeps_only_failure_receipt_and_no_final_audio",
       "source": "src/audio_delivery/batch/tests.rs",
-      "source_sha256": "63f90be668f65f81449b2ce7087cff6d11d0cec26c58e0e3fd9079af28ed7dfb",
+      "source_sha256": "ceac99396c557f1f5bcb60642a6f9e7357a958c681884c80470368ac02a6bb9d",
       "requirement": "required",
       "acceptance": "cancel after first pass, passed/failed/skipped receipt, no final folder"
     },
@@ -109,7 +109,7 @@
       "id": "native-batch-ui",
       "test": "ui::audio_delivery::tests::native_aligned_batch_review_recipe_reopen_render_and_stale_guard_use_real_worker",
       "source": "src/ui/audio_delivery/tests.rs",
-      "source_sha256": "0f3dd3646fe740f99d75fb9ffea5abf3f6ec7770050ec271a6da767c8905d51c",
+      "source_sha256": "67d17ee8e86f432aa2c12b3c39b3102c12565a93ad9314f3c4caa596afd9c3f4",
       "requirement": "required",
       "acceptance": "headless egui accesskit actual source review/recipe/reopen/render worker; no native window"
     },
@@ -117,7 +117,7 @@
       "id": "native-project-cli",
       "test": "ui::audio_delivery::tests::native_document_cli_plan_reopen_and_batch_use_same_encoded_delivery_path",
       "source": "src/ui/audio_delivery/tests.rs",
-      "source_sha256": "0f3dd3646fe740f99d75fb9ffea5abf3f6ec7770050ec271a6da767c8905d51c",
+      "source_sha256": "67d17ee8e86f432aa2c12b3c39b3102c12565a93ad9314f3c4caa596afd9c3f4",
       "requirement": "required",
       "acceptance": "real .omat container/native Document, device-free CLI dispatch, exact project byte binding"
     },
@@ -127,7 +127,7 @@
       "source": "src/audio_delivery/batch/tests.rs",
       "requirement": "required",
       "acceptance": "actual FIFO with no writer promptly refused via opened-descriptor regular-file check, valid regular recipe preserved, cancellation observed",
-      "source_sha256": "63f90be668f65f81449b2ce7087cff6d11d0cec26c58e0e3fd9079af28ed7dfb"
+      "source_sha256": "ceac99396c557f1f5bcb60642a6f9e7357a958c681884c80470368ac02a6bb9d"
     },
     {
       "id": "incremental-digest-cancel",
@@ -136,6 +136,14 @@
       "requirement": "required",
       "acceptance": "reader flips cancellation on first fixed-size read; no second read for digest/metadata, independent abc SHA256 and metadata bound",
       "source_sha256": "3529460e90130424aba7be5cb50bfbb3b284bae4f1084b702f0626ba6e59220d"
+    },
+    {
+      "id": "recipe-source-scene-identity",
+      "test": "audio_delivery::batch::tests::saved_recipe_source_scene_uses_canonical_identity_and_never_reuses_deleted_slot",
+      "source": "src/audio_delivery/batch/tests.rs",
+      "requirement": "required",
+      "acceptance": "canonical session reference survives display reorder, deleted/reused source scene refuses even for track-only passes, older optional-field JSON loads but cannot silently bind a scene",
+      "source_sha256": "ceac99396c557f1f5bcb60642a6f9e7357a958c681884c80470368ac02a6bb9d"
     }
   ],
   "proof_axes": {
