@@ -42,7 +42,7 @@ pub(super) fn merge(
     }
     loop {
         let before = groups.len();
-        for route in &source.connections {
+        for route in source.links() {
             let a = route.source.group;
             let b = route.destination;
             if a != Group::Main && groups.contains(&a) || b != Group::Main && groups.contains(&b) {
@@ -124,7 +124,7 @@ pub(super) fn merge(
         plugin.scene_track = plugin.scene_track.map(musical).transpose()?;
         graph.plugins.push(plugin);
     }
-    for route in &source.connections {
+    for (route,named) in source.connections.iter().map(|r|(r,None)).chain(source.sends.iter().map(|s|(&s.route,Some(s)))) {
         let from = route.source.group;
         let to = route.destination;
         if from == Group::Main && matches!(to, Group::Output(_)) {
@@ -139,7 +139,7 @@ pub(super) fn merge(
         let mut route = route.clone();
         route.source.group = resolve(from)?;
         route.destination = resolve(to)?;
-        graph.connections.push(route);
+        if let Some(saved)=named {let mut send=saved.clone();send.id=graph.next_id;graph.next_id=graph.next_id.checked_add(1).ok_or("Imported sends exhausted routing identities")?;send.name=format!("{} {}",send.name,send.id);send.route=route;graph.sends.push(send);}else{graph.connections.push(route);}
     }
     for &id in &source.tracks_without_default_send {
         if let Some(Group::Track(id)) = mapped.get(&Group::Track(id)) {

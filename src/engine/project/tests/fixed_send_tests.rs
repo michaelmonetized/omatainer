@@ -59,3 +59,21 @@ fn fixed_send_legacy_defaults_invalid_packets_and_saved_values_are_atomic() {
         assert!(Prepared::from_state(state,saved.media.clone(),48000).is_err());
     }
 }
+
+#[test]
+fn named_send_duplicate_undo_removal_and_capture_keep_stable_routes(){
+    use crate::engine::audio::routing::{model::*,mixer::{Send,Target,Parameter},prepared};
+    let (_,mut rt)=Engine::headless_for_test(48000,144);rt.apply(Command::Stop);
+    let id=rt.session.tracks[2].id;
+    let mut model=Model::default();model.next_id=4;
+    model.buses.push(Bus{id:2,alias:"Shared return".into(),channels:2,gain:1.,mute:false,mixer:Default::default()});
+    model.sends.push(Send{id:3,name:"Shared send".into(),route:Connection{source:Source{group:Group::Track(id),tap:Tap::PostFx},destination:Group::Bus(2),map:vec![ChannelMap{source:0,destination:0,gain:1.},ChannelMap{source:1,destination:1,gain:1.}]},level:0.5,pan:0.,mute:false,automation:vec![]});
+    rt.routing=Some(Box::new(prepared::Prepared::at_rate(Arc::new(model),&rt.session,48000).unwrap()));
+    rt.apply(Command::RoutingMix{namespace:rt.session.namespace,target:Target::Send(3),parameter:Parameter::Level,value:0.73});
+    let saved=captured(&rt);assert_eq!(saved.state.routing.as_ref().unwrap().sends[0].level,0.73);
+    let(request,ack)=Request::structural(saved,48000,Structure::Duplicate{axis:Axis::Track,id,name:"Send copy".into(),position:3}).unwrap();rt.apply(Command::session_edit(request));assert_eq!(ack.state(),midi_edit::Outcome::Applied);
+    let copied=rt.session.tracks[8].id;let graph=rt.routing.as_ref().unwrap();assert_eq!(graph.model.sends.len(),2);let send=&graph.model.sends[1];assert_eq!(send.route.source.group,Group::Track(copied));assert_eq!(send.level,0.73);assert_eq!(send.route.destination,Group::Bus(2));assert_ne!(send.id,3);
+    rt.apply(Command::Undo);assert_eq!(rt.routing.as_ref().unwrap().model.sends.len(),1);
+    rt.apply(Command::Redo);assert_eq!(rt.routing.as_ref().unwrap().model.sends.len(),2);
+    let saved=captured(&rt);let reopened=Prepared::from_state(serde_json::from_slice(&serde_json::to_vec(&saved.state).unwrap()).unwrap(),saved.media,48000).unwrap();assert_eq!(reopened.rt.routing.as_ref().unwrap().model.sends[1].route.source.group,Group::Track(copied));
+}

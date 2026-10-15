@@ -156,7 +156,7 @@ impl Plan {
             required[from][source.tap.index()] = true;
             incoming[indices[&destination]].push((from, source.tap.index()));
         };
-        for connection in &model.connections {
+        for connection in model.links() {
             connect(connection.source, connection.destination);
         }
         for track in &layout.tracks {

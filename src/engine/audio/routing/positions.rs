@@ -71,9 +71,7 @@ impl Positions {
                     plan.inputs[index].saturating_sub(plan.taps[source][tap])
                 })
             };
-            for connection in model
-                .connections
-                .iter()
+            for connection in model.links()
                 .filter(|connection| connection.destination == group)
             {
                 let source = indices[&connection.source.group];

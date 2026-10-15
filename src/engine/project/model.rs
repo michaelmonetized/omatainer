@@ -462,7 +462,7 @@ impl State {
     pub(crate) fn track_processing_required(&self, slot: usize) -> bool {
         if !self.tracks[slot].mute { return true; }
         let Some(id) = self.session.as_ref().and_then(|layout| layout.tracks.get(slot)).map(|track| track.id) else { return false; };
-        self.routing.as_ref().is_some_and(|model| model.connections.iter().any(|route|
+        self.routing.as_ref().is_some_and(|model| model.links().any(|route|
             route.source.group == audio::routing::model::Group::Track(id)
                 && route.source.tap != audio::routing::model::Tap::PostMixer
                 && route.map.iter().any(|channel| channel.gain != 0.0)))

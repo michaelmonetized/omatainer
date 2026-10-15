@@ -9,6 +9,7 @@ pub(super) struct Frame {
     pub playback_receipts: [Option<load_receipt::Receipt>; DECKS],
     pub complete: bool,
     pub error: Option<&'static str>,
+    mixer: Vec<audio::routing::mixer::Channel>,
     plugins: Vec<(u64, Option<crate::plugin_host::realtime::Control>, [Option<audio::routing::plugins::Parameter>; audio::routing::plugins::MAX_PARAMETERS])>,
     shape: Shape,
 }
@@ -42,6 +43,7 @@ impl Frame {
             playback_receipts: [None, None],
             complete: false,
             error: None,
+            mixer: Vec::with_capacity(audio::routing::mixer::MAX_SENDS+audio::routing::model::MAX_BUSES),
             plugins: Vec::with_capacity(audio::routing::plugins::MAX_PLUGINS),
             shape: Shape::default(),
         }
@@ -190,7 +192,9 @@ impl Frame {
         target.sync_leader = rt.deck_sync.leader;
         target.routing = rt.routing.as_ref().map(|routing| routing.model.clone());
         self.plugins.clear();
+        self.mixer.clear();
         if let Some(graph) = &rt.routing {
+            self.mixer.extend_from_slice(&graph.mixer.channels);
             for (saved, plugin) in graph.model.plugins.iter().zip(&graph.plugins) { self.plugins.push((saved.id,plugin.endpoint.as_ref().map(|e| e.control.clone()),plugin.parameters)); }
         }
         target.mic_aux = rt.mic_aux.configuration();
@@ -298,9 +302,10 @@ impl Frame {
     /// Capture live processor state after the native metadata boundary.
     /// Takes worker cancellation; retains missing or failed processor checkpoints with an explicit diagnostic.
     pub(super) fn finish_plugins(&mut self, cancel: &AtomicBool) -> Result<(), Error> {
-        if self.plugins.is_empty() { return Ok(()); }
+        if self.plugins.is_empty() && self.mixer.is_empty() { return Ok(()); }
         let Some(model) = &mut self.state.routing else { return Err(Error::Invalid("Plugin state has no saved routing graph".into())); };
         let model = Arc::make_mut(model);
+        audio::routing::mixer::Runtime::save(&self.mixer,model);
         for (id,control,parameters) in &self.plugins {
             if cancel.load(Ordering::Acquire) { return Err(Error::Cancelled); }
             let saved = model.plugins.iter_mut().find(|p| p.id == *id).ok_or_else(|| Error::Invalid("Captured plugin identity changed".into()))?;

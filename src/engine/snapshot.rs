@@ -404,6 +404,8 @@ impl Frame {
         target.master_meters = rt.master_meters;
         target.cue_mix = rt.cue_mix;
         target.monitor = rt.monitor.status;
+        target.routing_mixer.clear();
+        if let Some(graph)=&rt.routing {target.routing_mixer.extend_from_slice(&graph.mixer.channels);}
         target.latency = rt.routing.as_ref().map_or(Default::default(), |graph| graph.latency_status());
         target.mic_aux = rt.mic_aux.status();
         target.surfaces = rt.surface_status();

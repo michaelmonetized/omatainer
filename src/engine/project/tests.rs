@@ -233,6 +233,7 @@ fn captured(rt: &RtEngine) -> Captured {
         frame.capture(rt);
         assert!(frame.error.is_none(), "{:?}", frame.error);
         if frame.complete {
+            frame.finish_plugins(&AtomicBool::new(false)).unwrap();
             frame.state.deduplicate(&mut frame.media);
             frame.state.validate(&frame.media).unwrap();
             return Captured {

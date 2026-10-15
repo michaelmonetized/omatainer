@@ -975,6 +975,7 @@ pub struct Snapshot {
     pub master_meters: [f32; 2],
     pub monitor: monitor::Status,
     pub(crate) latency: audio::routing::latency::Status,
+    pub(crate) routing_mixer: Vec<audio::routing::mixer::Channel>,
     pub(crate) mic_aux: audio::routing::mic_aux::Status,
     pub(crate) arrangement_enabled: bool,
     pub(crate) arrangement_end: f64,
@@ -1058,6 +1059,7 @@ impl Default for Snapshot {
             master_meters: [0.0; 2],
             monitor: monitor::Status::default(),
             latency: audio::routing::latency::Status::default(),
+            routing_mixer: Vec::with_capacity(audio::routing::mixer::MAX_SENDS+audio::routing::model::MAX_BUSES),
             mic_aux: audio::routing::mic_aux::Status::default(),
             arrangement_enabled: false,
             arrangement_end: 0.0,
@@ -1195,6 +1197,7 @@ pub enum Command {
     Monitor(monitor::Control),
     MicAuxConfigure(Box<audio::routing::mic_aux::control::Request>),
     MicAuxControl(audio::routing::mic_aux::control::Control),
+    RoutingMix { namespace:[u64;2], target:audio::routing::mixer::Target, parameter:audio::routing::mixer::Parameter, value:f32 },
     TrackSend { track: u8, send: u8, value: f32 },
     TrackCrossfader { track: u8, assignment: u8 },
     TrackGain { track: u8, value: f32 },
@@ -2551,7 +2554,7 @@ impl RtEngine {
             Command::DeckControl { source, deck, control: deck_controls::Control::HotLoop { pad, clear } } if usize::from(deck) < DECKS && pad < 8 && self.decks[usize::from(deck)].controls.status().hotloops[usize::from(pad)] => Command::DeckControl { source, deck, control: deck_controls::Control::SavedLoop { media_key: self.decks[usize::from(deck)].history_key, id: pad + 1, action: if clear { deck_controls::SavedLoopAction::Delete } else { deck_controls::SavedLoopAction::Recall { activate: true } } } },
             other => other,
         };
-        let voice_valid=match &c {Command::TrackSend { track,send,value } => self.session.tracks.get(usize::from(*track)).is_some_and(|t|t.active) && *send < 2 && value.is_finite() && (0.0..=1.0).contains(value), Command::TrackCrossfader {track,assignment} => self.session.tracks.get(usize::from(*track)).is_some_and(|t|t.active) && *assignment <= 2, Command::MicAuxConfigure(r)=>r.current(self),Command::MicAuxControl(v)=>v.resolve(self).is_some(),_=>true};
+        let voice_valid=match &c {Command::RoutingMix {namespace,target,parameter,value}=>*namespace==self.session.namespace&&parameter.valid(*value)&&!(matches!(target,audio::routing::mixer::Target::Send(_))&&matches!(parameter,audio::routing::mixer::Parameter::Solo|audio::routing::mixer::Parameter::SoloSafe))&&self.routing.as_ref().is_some_and(|g|g.mix_values(*target).is_some()),Command::TrackSend { track,send,value } => self.session.tracks.get(usize::from(*track)).is_some_and(|t|t.active) && *send < 2 && value.is_finite() && (0.0..=1.0).contains(value), Command::TrackCrossfader {track,assignment} => self.session.tracks.get(usize::from(*track)).is_some_and(|t|t.active) && *assignment <= 2, Command::MicAuxConfigure(r)=>r.current(self),Command::MicAuxControl(v)=>v.resolve(self).is_some(),_=>true};
         if !voice_valid {self.undo.reject(undo::Failure::Invalid);self.undo.retire_command(c);return;}
         if let Command::Monitor(control) = &c {
             if !self.monitor_can_apply(*control) { self.undo.retire_command(c); return; }
@@ -3125,6 +3128,9 @@ impl RtEngine {
                 self.undo.retire_command(Command::MicAuxConfigure(request));
             }
             Command::MicAuxControl(control) => {if let Some(cfg)=control.resolve(self){self.mic_aux.set(Some(cfg));}}
+            Command::RoutingMix {namespace,target,parameter,value} => {
+                if namespace!=self.session.namespace || !self.routing.as_mut().is_some_and(|graph|graph.mix_control(target,parameter,value)){self.undo.reject(undo::Failure::Invalid);}
+            }
             Command::TrackSend { track, send, value } => {
                 if send < 2 && value.is_finite() && (0.0..=1.0).contains(&value) {
                     if let Some(track) = self.tracks.get_mut(usize::from(track)) { track.surface.sends[usize::from(send)] = value; }

@@ -16,6 +16,7 @@ enum Target {
     Slot(Rack, usize),
     Effect(Rack, usize),
     Plugin(u64,u32),
+    Routing(audio::routing::mixer::Target),
 }
 struct Plan {
     target: Target,
@@ -26,6 +27,10 @@ impl Plan {
     fn get(rt: &RtEngine, c: &Command) -> Option<Self> {
         use Command::*;
         let (target, name, key) = match c {
+            RoutingMix {namespace,target,parameter,value} if *namespace==rt.session.namespace && parameter.valid(*value) => {
+                rt.routing.as_ref()?.mix_values(*target)?;
+                (Target::Routing(*target),Name::Track,0x2000000000000000+rt.routing.as_ref()?.mixer.channels.iter().position(|c|c.target==*target)? as u64)
+            }
             PluginParameter { namespace,id,parameter,value } if *namespace == rt.session.namespace && value.is_finite() && (0.0..=1.0).contains(value) => {
                 let graph = rt.routing.as_ref()?;
                 graph.plugin_parameter_value(*id,*parameter)?;
@@ -382,6 +387,7 @@ impl RtEngine {
                     replacement: edit.bank.data.clone(),
                 }
             }
+            Target::Routing(target) => Patch::RoutingMix {namespace:self.session.namespace,target,value:self.routing.as_ref().unwrap().mix_values(target).unwrap()},
             Target::Global => Patch::Global(Global::get(self)),
             Target::Plugin(id,parameter) => Patch::PluginParameter { namespace:self.session.namespace,id,parameter,value:self.routing.as_ref().unwrap().plugin_parameter_value(id,parameter).unwrap() },
             Target::Sync => Patch::Sync(deck_sync::Saved::get(self)),

@@ -13,6 +13,7 @@ impl Prepared {
         channels: usize,
     ) -> [f32; MAX_PHYSICAL_CHANNELS] {
         self.begin_plugins(rt);
+        self.mixer.evaluate(&self.model,rt.precise_midi_beat(),rt.playing);
         self.begin();
         rt.mic_aux.begin();
         let gains = {
@@ -168,8 +169,12 @@ impl Prepared {
                         }
                         Group::Bus(_) => {
                             let bus = &self.model.buses[self.nodes[index].slot.unwrap()];
-                            let gain = if bus.mute { 0.0 } else { bus.gain };
-                            [input, input, input.map(|value| value * gain)]
+                            let slot=self.model.sends.len()+self.nodes[index].slot.unwrap();
+                            let values=self.mixer.channels[slot].effective;
+                            let output=std::array::from_fn(|channel|input[channel]*values.gain(channel));
+                            for (peak,sample)in self.mixer.channels[slot].peaks.iter_mut().zip(output){*peak=peak.max(sample.abs());}
+                            let _=bus;
+                            [input, input, output]
                         }
                         _ => unreachable!(),
                     };
