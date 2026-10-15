@@ -193,6 +193,18 @@ impl Class {
             return Err("Plugin identity/parameters exceed host limits".into());
         }
         layout_valid(&self.layout)?;
+        if let Some(native) = &self.native {
+            if !self.info.uid.starts_with("clap:") {
+                return Err("CLAP metadata belongs to another plugin format".into());
+            }
+            native.validate(&self.parameters, &self.layout)?;
+        }
+        if let Some(native) = &self.lv2 {
+            if !self.info.uid.starts_with("lv2:") {
+                return Err("LV2 metadata belongs to another plugin format".into());
+            }
+            native.validate(&self.layout)?;
+        }
         let mut ids = std::collections::HashSet::new();
         if self.parameters.iter().any(|p| {
             !ids.insert(p.id)

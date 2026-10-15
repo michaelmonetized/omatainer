@@ -369,6 +369,7 @@ impl Endpoint {
             + self.control.shared.values.capacity() * std::mem::size_of::<(u32,AtomicU64)>()
             + class.parameters.capacity() * std::mem::size_of::<vst3_host::Parameter>()
             + class.parameters.iter().map(|p|p.name.capacity()+p.unit.capacity()).sum::<usize>()
+            + class.native.as_ref().map_or(0,|m|m.bytes()) + class.lv2.as_ref().map_or(0,|m|m.bytes())
     }
     /// Queue a channel message at the current sample offset.
     /// Takes three MIDI bytes; returns false on the fixed event/pool bound without allocation or waiting.
