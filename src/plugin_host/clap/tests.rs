@@ -118,9 +118,9 @@ fn native_clap_modules_scan_process_state_reopen_and_worker_recovery() {
     let root = PathBuf::from(
         std::env::var_os("OMATAINER_CLAP_FIXTURES").expect("OMATAINER_CLAP_FIXTURES is required"),
     );
-    let executable = PathBuf::from(
-        std::env::var_os("OMATAINER_TEST_BIN").expect("OMATAINER_TEST_BIN is required"),
-    );
+    let executable = std::env::var_os("OMATAINER_TEST_BIN")
+        .map(PathBuf::from)
+        .unwrap_or_else(|| std::env::current_exe().unwrap());
     for file in ["Nekobi.clap", "MVerb.clap", "3BandSplitter.clap"] {
         let path = root.join(file);
         let binary = identify(&path).unwrap();
@@ -205,6 +205,11 @@ fn native_clap_modules_scan_process_state_reopen_and_worker_recovery() {
         else {
             panic!("Expected restored state")
         };
+        let mut resumed = block(&class);
+        if class.info.has_midi_input {
+            resumed.midi.push((17, [0x92, 60, 110]));
+        }
+        exchange(&mut reopened, Request::Process { frame: resumed });
         assert_eq!(
             parameters, restored,
             "{file} must preserve parameter state across independent workers"
@@ -234,4 +239,28 @@ fn native_clap_modules_scan_process_state_reopen_and_worker_recovery() {
         exchange(&mut recovered, Request::Inspect { path });
         exchange(&mut recovered, Request::Quit);
     }
+}
+
+#[test]
+#[ignore = "Private inherited-socket worker entry, invoked only by native host tests"]
+fn worker_entry() {
+    if std::env::var_os("OMATAINER_PLUGIN_TEST_WORKER").is_some() {
+        crate::plugin_host::worker::run().unwrap();
+    }
+}
+
+#[test]
+fn mixed_plugin_folder_keeps_every_sibling_and_nested_bundle() {
+    let root = std::env::temp_dir().join(format!(
+        "clap-scan-{}",
+        crate::sampler_bank::BankId::new().unwrap()
+    ));
+    std::fs::create_dir_all(root.join("a.vst3")).unwrap();
+    std::fs::create_dir_all(root.join("nested/b.vst3")).unwrap();
+    std::fs::write(root.join("first.clap"), b"fixture").unwrap();
+    std::fs::write(root.join("second.clap"), b"fixture").unwrap();
+    let paths =
+        crate::plugin_host::scanner::candidates(&[root.clone()], &AtomicBool::new(false)).unwrap();
+    assert_eq!(paths.len(), 4);
+    std::fs::remove_dir_all(root).unwrap();
 }
