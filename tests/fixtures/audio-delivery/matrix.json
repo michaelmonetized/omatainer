@@ -109,7 +109,7 @@
       "id": "native-batch-ui",
       "test": "ui::audio_delivery::tests::native_aligned_batch_review_recipe_reopen_render_and_stale_guard_use_real_worker",
       "source": "src/ui/audio_delivery/tests.rs",
-      "source_sha256": "22126aaa57c0e6a6e240215bd9f36784008112b45efe979f8a2c1cfd50bd2404",
+      "source_sha256": "17bd1a6eb5a8baf2d88b499a1cbdf8568c87c2223c6f9485ed6c891a678e5ff0",
       "requirement": "required",
       "acceptance": "headless egui accesskit actual source review/recipe/reopen/render worker; no native window"
     },
@@ -117,9 +117,9 @@
       "id": "native-project-cli",
       "test": "ui::audio_delivery::tests::native_document_cli_plan_reopen_and_batch_use_same_encoded_delivery_path",
       "source": "src/ui/audio_delivery/tests.rs",
-      "source_sha256": "22126aaa57c0e6a6e240215bd9f36784008112b45efe979f8a2c1cfd50bd2404",
+      "source_sha256": "17bd1a6eb5a8baf2d88b499a1cbdf8568c87c2223c6f9485ed6c891a678e5ff0",
       "requirement": "required",
-      "acceptance": "real .omat container/native Document, device-free CLI dispatch, exact project byte binding"
+      "acceptance": "real .omat container/native Document, device-free CLI dispatch, exact project byte binding; ordinary and canonically-deleted scene0 both create/render/reopen a plan bound to first active scene ID"
     },
     {
       "id": "recipe-fifo-cancel",
@@ -151,7 +151,7 @@
       "source": "src/ui/audio_delivery/tests.rs",
       "requirement": "required",
       "acceptance": "Native egui named-field focus/Ctrl+A/text editing for metadata/pass/recipe path, realworker recipe save/reopen, unchanged live project/play state; no native window",
-      "source_sha256": "22126aaa57c0e6a6e240215bd9f36784008112b45efe979f8a2c1cfd50bd2404"
+      "source_sha256": "17bd1a6eb5a8baf2d88b499a1cbdf8568c87c2223c6f9485ed6c891a678e5ff0"
     }
   ],
   "proof_axes": {

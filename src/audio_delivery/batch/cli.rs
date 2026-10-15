@@ -78,6 +78,22 @@ pub(crate) fn run(args: &[String]) -> Result<bool, String> {
             }
             let (capture, hash) = capture(Path::new(&args[1]), &AtomicBool::new(false))?;
             let mut export = Export::default();
+            let layout = capture
+                .state
+                .session
+                .as_ref()
+                .ok_or("Delivery plan requires saved scene identities")?;
+            export.scene = layout
+                .scene_order
+                .iter()
+                .copied()
+                .find(|&slot| {
+                    layout
+                        .scenes
+                        .get(usize::from(slot))
+                        .is_some_and(|scene| scene.active)
+                })
+                .ok_or("Create an active scene before planning scene delivery")?;
             if let Some(model) = &capture.state.routing {
                 let outputs = model
                     .ports
@@ -149,7 +165,8 @@ struct Interrupt {
 impl Interrupt {
     fn new(cancel: Arc<AtomicBool>) -> Self {
         INTERRUPTED.store(false, Ordering::Release);
-        let previous = unsafe { libc::signal(libc::SIGINT, interrupt as *const () as libc::sighandler_t) };
+        let previous =
+            unsafe { libc::signal(libc::SIGINT, interrupt as *const () as libc::sighandler_t) };
         let done = Arc::new(AtomicBool::new(false));
         let stop = done.clone();
         let thread = std::thread::spawn(move || {

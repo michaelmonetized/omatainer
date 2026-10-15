@@ -83,6 +83,9 @@ impl Gui {
         })]);
         self.frame(vec![]);
     }
+    fn capture(&mut self)->crate::engine::project::Captured{
+        let handle=self.app.engine.project.clone();let capture=std::thread::spawn(move||handle.capture(&AtomicBool::new(false)).unwrap());let end=Instant::now()+std::time::Duration::from_secs(15);while !capture.is_finished(){self.frame(vec![]);assert!(Instant::now()<end);std::thread::sleep(std::time::Duration::from_millis(1));}capture.join().unwrap()
+    }
     fn type_named(&mut self,label:&str,value:&str){
         let labels=self.nodes.iter().filter(|(_,n)|n.label()==Some(label)||(n.role()==egui::accesskit::Role::Label&&n.value()==Some(label))).map(|(id,_)|*id).collect::<Vec<_>>();
         let target=self.nodes.iter().find(|(_,n)|n.role()==egui::accesskit::Role::TextInput&&(n.label()==Some(label)||labels.iter().any(|id|n.labelled_by().contains(id)))).map(|(id,_)|*id).unwrap_or_else(||panic!("Missing named text field {label}"));
@@ -264,10 +267,15 @@ fn native_aligned_batch_review_recipe_reopen_render_and_stale_guard_use_real_wor
 
 #[test]
 fn native_document_cli_plan_reopen_and_batch_use_same_encoded_delivery_path(){
-    let files=Files::new();let mut g=Gui::new(&files);let handle=g.app.engine.project.clone();let capture=std::thread::spawn(move||handle.capture(&AtomicBool::new(false)).unwrap());let end=Instant::now()+std::time::Duration::from_secs(15);while !capture.is_finished(){g.frame(vec![]);assert!(Instant::now()<end);std::thread::sleep(std::time::Duration::from_millis(1));}let captured=capture.join().unwrap();let document=project::Document{engine:captured.state,view:project::UiState::default(),mapping_schema:project::FACTORY_MAPPING_SCHEMA};document.validate().unwrap();let bundle=crate::project_file::Bundle{state:document,media:captured.media};let native=files.0.join("source.omat");crate::project_file::save(&native,&bundle,crate::project_file::Overwrite::Never,&Default::default(),&AtomicBool::new(false)).unwrap();
-    let recipe=files.0.join("cli.json");assert!(data::cli::run(&["delivery-plan".into(),native.to_string_lossy().into_owned(),recipe.to_string_lossy().into_owned()]).unwrap());let mut r=data::batch::Recipe::load(&recipe,&AtomicBool::new(false)).unwrap();r.export.end=0.5;r.export.tail=0.;r.items.truncate(2);std::fs::remove_file(&recipe).unwrap();r.save(&recipe).unwrap();
+    for delete_first in [false,true] {
+    let files=Files::new();let mut g=Gui::new(&files);let mut captured=g.capture();
+    if delete_first {let layout=captured.state.session.as_ref().unwrap();let(request,_)=crate::engine::session::Request::metadata(layout,captured.checkpoint.epoch,crate::engine::session::Action::Delete{axis:crate::engine::session::Axis::Scene,id:layout.scenes[0].id}).unwrap();g.callback.renderer_mut_for_test().apply(Command::session_edit(request));captured=g.capture();assert!(!captured.state.session.as_ref().unwrap().scenes[0].active);}
+    let layout=captured.state.session.as_ref().unwrap();let source_slot=layout.scene_order[0];let source_id=layout.scenes[usize::from(source_slot)].id;
+let document=project::Document{engine:captured.state,view:project::UiState::default(),mapping_schema:project::FACTORY_MAPPING_SCHEMA};document.validate().unwrap();let bundle=crate::project_file::Bundle{state:document,media:captured.media};let native=files.0.join("source.omat");crate::project_file::save(&native,&bundle,crate::project_file::Overwrite::Never,&Default::default(),&AtomicBool::new(false)).unwrap();
+    let recipe=files.0.join("cli.json");assert!(data::cli::run(&["delivery-plan".into(),native.to_string_lossy().into_owned(),recipe.to_string_lossy().into_owned()]).unwrap());let mut r=data::batch::Recipe::load(&recipe,&AtomicBool::new(false)).unwrap();assert_eq!(r.export.scene,source_slot);assert_eq!(r.source_scene.unwrap().id,source_id);r.export.end=0.5;r.export.tail=0.;r.items.truncate(2);std::fs::remove_file(&recipe).unwrap();r.save(&recipe).unwrap();
     let destination=files.0.join("cli-output");assert!(data::cli::run(&["delivery-batch".into(),native.to_string_lossy().into_owned(),recipe.to_string_lossy().into_owned(),destination.to_string_lossy().into_owned()]).unwrap());let report:serde_json::Value=serde_json::from_slice(&std::fs::read(destination.join("batch.json")).unwrap()).unwrap();assert_eq!(report["cases"].as_array().unwrap().len(),2);assert_eq!(report["frames_per_pass"],24000);assert_eq!(report["review"]["recipe"]["project_sha256"],r.project_sha256.as_ref().unwrap().as_str());
     let untouched=files.0.join("changed-plan");r.project_sha256=Some("0".repeat(64));let changed=files.0.join("changed.json");r.save(&changed).unwrap();assert!(data::cli::run(&["delivery-batch".into(),native.to_string_lossy().into_owned(),changed.to_string_lossy().into_owned(),untouched.to_string_lossy().into_owned()]).unwrap_err().contains("Project bytes differ"));assert!(!untouched.exists());
+    }
 }
 
 #[test]
