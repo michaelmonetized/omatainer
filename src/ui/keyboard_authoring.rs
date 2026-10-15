@@ -68,7 +68,8 @@ pub(super) fn target<R>(
 /// Resolve an application's property identity independently of conditional rows.
 /// Args: UI and property salt. Returns an ID scoped to the current document and persisted owner.
 pub(super) fn property(ui: &Ui, salt: impl std::hash::Hash) -> egui::Id {
-    ui.data(|data| data.get_temp::<egui::Id>(context_key(ui, OWNER)))
+    let key = context_key(ui, OWNER);
+    ui.data(|data| data.get_temp::<egui::Id>(key))
         .unwrap_or(ui.id())
         .with(salt)
 }
@@ -76,8 +77,9 @@ pub(super) fn property(ui: &Ui, salt: impl std::hash::Hash) -> egui::Id {
 /// Read current native form validation.
 /// Args: form UI. Returns true when any rendered property has an invalid draft or domain value.
 pub(super) fn invalid(ui: &Ui) -> bool {
+    let key = context_key(ui, FORM);
     ui.data(|data| {
-        data.get_temp::<egui::Id>(context_key(ui, FORM))
+        data.get_temp::<egui::Id>(key)
             .is_some_and(|id| data.get_temp::<bool>(id.with("invalid")).unwrap_or(false))
     })
 }
@@ -85,6 +87,7 @@ pub(super) fn invalid(ui: &Ui) -> bool {
 /// Associate one visible polite error with the actual native widget.
 /// Args: UI, native response and error text. Returns no value; no native-reader announcement is inferred.
 pub(super) fn error(ui: &mut Ui, response: &egui::Response, text: &str) {
+    let key = context_key(ui, FORM);
     let message = native(ui, response.id.with("validation"), |ui| {
         ui.colored_label(ui.visuals().error_fg_color, text)
     });
@@ -99,7 +102,7 @@ pub(super) fn error(ui: &mut Ui, response: &egui::Response, text: &str) {
         node.push_described_by(message.id.value().into());
     });
     ui.data_mut(|data| {
-        if let Some(form) = data.get_temp::<egui::Id>(context_key(ui, FORM)) {
+        if let Some(form) = data.get_temp::<egui::Id>(key) {
             data.insert_temp(form.with("invalid"), true);
         }
     });

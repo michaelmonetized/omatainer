@@ -133,15 +133,18 @@ trait Keyboard {
             self.native().focus
         );
     }
+    #[track_caller]
     fn press(&mut self, label: &str) {
         self.tab_to(label);
         self.key(Key::Enter, egui::Modifiers::NONE);
     }
+    #[track_caller]
     fn text(&mut self, label: &str, text: &str) {
         self.tab_to(label);
         self.key(Key::A, egui::Modifiers::CTRL | egui::Modifiers::COMMAND);
         self.frame(vec![egui::Event::Text(text.into())], egui::Modifiers::NONE);
     }
+    #[track_caller]
     fn number(&mut self, label: &str, text: &str) {
         self.text(label, text);
         self.key(Key::Enter, egui::Modifiers::NONE);
@@ -159,7 +162,7 @@ impl Gui {
             .join(".artifacts/keyboard-access")
             .join(crate::sampler_bank::BankId::new().unwrap().to_string());
         std::fs::create_dir_all(&root).unwrap();
-        let (engine, rt) = Engine::headless_for_test(48000, 512);
+        let (engine, rt) = Engine::headless_for_test(48000, 256);
         let mut app = App::with_loader(engine, Theme::default(), None);
         app.settings = preferences::Settings::with_worker_for_test(root.join("preferences.json"));
         app.library_metadata =
@@ -178,6 +181,7 @@ impl Gui {
         }
         gui
     }
+    #[track_caller]
     fn until(&mut self, mut ready: impl FnMut(&Self) -> bool) {
         let deadline = Instant::now() + Duration::from_secs(15);
         while !ready(self) {
