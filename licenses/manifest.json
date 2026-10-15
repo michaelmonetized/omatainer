@@ -13819,7 +13819,7 @@
     "src/ui/headphones.rs": "e62808c164d7e245eb71fb8e114cdf5fef5900e0b7653a4f27403b5350468c22",
     "src/ui/headphones/tests.rs": "92ea070f545663f9d1f0e12097172dcc9b447864a752055559b1b66f96de6f59",
     "src/ui/help.rs": "73b137c3ff6a9532dddb1cd1dc5e2575c6429ac1cb2950654bc50ab382e5a3a3",
-    "src/ui/help/catalogue.rs": "af1f07ac822b28134e70b3696002d15aa95325e55759be7cf4b70976cb93286c",
+    "src/ui/help/catalogue.rs": "0dc1d2fb82d87d90e6b487da95de0778869f99c9b5d7c7ae5040baffb13bd7b5",
     "src/ui/help/lessons.rs": "ce5ef9d51166df26c79ecdfc4907829f435a14bddffc24af69cd386daa93a01b",
     "src/ui/help/tests.rs": "08757543216a8aa484db5eed2f5f38687bb71fda726dd80fcb8aa61a6622abba",
     "src/ui/input_monitoring.rs": "8f6cbbb4e3a2562bca7e4fdf37b0c0625045c755cce1564a612cce743a6f6894",
