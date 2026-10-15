@@ -131,7 +131,7 @@ static const void *extension(const clap_plugin_t *p, const char *id) {
     return NULL;
 }
 static const char *features[] = {"instrument", NULL};
-static const clap_plugin_descriptor_t descriptor = {CLAP_VERSION, "org.omatainer.conformance.expression", "Native expression conformance", "Omatainer", "", "", "", "1", "Host ABI conformance fixture", features};
+static const clap_plugin_descriptor_t descriptor = {CLAP_VERSION_INIT, "org.omatainer.conformance.expression", "Native expression conformance", "Omatainer", "", "", "", "1", "Host ABI conformance fixture", features};
 static uint32_t plugin_count(const clap_plugin_factory_t *f) { (void)f; return 1; }
 static const clap_plugin_descriptor_t *plugin_descriptor(const clap_plugin_factory_t *f, uint32_t i) { (void)f; return i ? NULL : &descriptor; }
 static const clap_plugin_t *create(const clap_plugin_factory_t *f, const clap_host_t *host, const char *id) {
@@ -149,4 +149,4 @@ static const clap_plugin_factory_t factory = {plugin_count, plugin_descriptor, c
 static bool entry_init(const char *path) { (void)path; return true; }
 static void entry_deinit(void) {}
 static const void *get_factory(const char *id) { return strcmp(id, CLAP_PLUGIN_FACTORY_ID) ? NULL : &factory; }
-CLAP_EXPORT const clap_plugin_entry_t clap_entry = {CLAP_VERSION, entry_init, entry_deinit, get_factory};
+CLAP_EXPORT const clap_plugin_entry_t clap_entry = {CLAP_VERSION_INIT, entry_init, entry_deinit, get_factory};
