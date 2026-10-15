@@ -5,6 +5,7 @@ use crate::engine::audio::routing::record::delivery as live;
 use crossbeam_channel::{bounded, Receiver};
 use std::sync::atomic::{AtomicBool, Ordering};
 mod finishing;
+mod batch;
 #[cfg(test)]
 mod tests;
 
@@ -23,10 +24,16 @@ struct Plan {
     outputs: Vec<(u64, String)>,
     routed: bool,
     scenes: Vec<(u16, String)>,
+    scene_refs:Vec<(u16,crate::engine::session::Reference)>,
     records: Vec<RecordSource>,
     rate: u32,
+    catalog: Vec<(crate::engine::audio::routing::selection::Target,String)>,
+    batch: data::batch::Recipe,
 }
 enum Operation {
+    Batch {plan:Plan,recipe:data::batch::Recipe,path:PathBuf},
+    SaveRecipe(data::batch::Recipe,PathBuf),
+    LoadRecipe(PathBuf),
     Inspect,
     ReviewRecovery(PathBuf),
     Recover(data::recovery::Plan),
@@ -47,6 +54,9 @@ enum Operation {
 }
 enum Reply {
     Inspected(Plan),
+    Batched(data::batch::BatchOutcome),
+    RecipeLoaded(data::batch::Recipe),
+    RecipeSaved(PathBuf),
     Recovery(data::recovery::Plan),
     Recovered(data::recovery::Plan),
     Exported(data::Outcome),
@@ -58,11 +68,12 @@ struct Job {
     thread: Option<std::thread::JoinHandle<()>>,
     progress: crate::background::Reporter,
     recording: bool,
+    batch_progress: data::batch::Progress,
 }
 impl Job {
     fn start(operation: Operation, engine: &Engine) -> Result<Self, String> {
         let recording = matches!(&operation, Operation::Record { .. });
-        let permit = if matches!(&operation, Operation::Export { .. }) {
+        let permit = if matches!(&operation, Operation::Export { .. }|Operation::Batch{..}) {
             Some(
                 engine
                     .cmd
@@ -91,20 +102,22 @@ impl Job {
         let stop = cancel.clone();
         let handle = engine.project.clone();
         let recorder = engine.routing.recorder.clone();
+        let batch_progress=data::batch::Progress::default();let batch_status=batch_progress.clone();
         let (tx, result) = bounded(1);
         let thread=std::thread::Builder::new().name("omatainer-audio-delivery".into()).spawn(move||{
             let result=(||{
                 let _running=if let Some(ticket)=&ticket{Some(ticket.enter(||stop.load(Ordering::Acquire))?)}else{crate::background::recording_priority()?;None};
-                match &operation { Operation::ReviewRecovery(path)=>return data::recovery::review(path,&stop).map(Reply::Recovery), Operation::Recover(plan)=>return data::recovery::recover(plan,&stop).map(Reply::Recovered), _=>{} }
+                match &operation { Operation::SaveRecipe(recipe,path)=>{recipe.save(path)?;return Ok(Reply::RecipeSaved(path.clone()));},Operation::LoadRecipe(path)=>return data::batch::Recipe::load(path,&stop).map(Reply::RecipeLoaded), Operation::ReviewRecovery(path)=>return data::recovery::review(path,&stop).map(Reply::Recovery), Operation::Recover(plan)=>return data::recovery::recover(plan,&stop).map(Reply::Recovered), _=>{} }
                 let epoch=recorder.epoch();let captured=handle.capture(&stop).map_err(|e|e.to_string())?;
                 match operation{
-                    Operation::ReviewRecovery(_)|Operation::Recover(_)=>unreachable!(),
+                    Operation::ReviewRecovery(_)|Operation::Recover(_)|Operation::SaveRecipe(..)|Operation::LoadRecipe(_)=>unreachable!(),
+                    Operation::Batch{plan,recipe,path}=>{let layout=captured.state.session.as_ref().ok_or("Session identity unavailable")?;if captured.revision!=plan.revision||layout.namespace!=plan.namespace||layout.generation!=plan.generation{return Err("Project changed since batch review; refresh source".into());}let review=recipe.review(&captured)?;data::batch::run(captured,&review,&path,permit.as_ref().unwrap(),&ticket.as_ref().unwrap().reporter(),&batch_status).map(Reply::Batched)},
                     Operation::Inspect=>{
                         let layout=captured.state.session.as_ref().ok_or("Session identity unavailable")?;let model=captured.state.routing.as_ref();
                         let outputs=model.map_or(Vec::new(),|m|m.ports.iter().filter(|p|p.direction==Direction::Output&&(1..=2).contains(&p.channels.len())&&m.monitor_output!=Some(p.id)).map(|p|(p.id,p.alias.clone())).collect());
                         let records=model.map_or_else(||vec![RecordSource{id:live::STANDARD_OUTPUT,name:"Standard master output".into(),channels:Some(vec![0,1]),width:2}],|m|m.ports.iter().filter(|p|matches!(p.direction,Direction::Output|Direction::Record)&&p.channels.len()<=26&&m.monitor_output!=Some(p.id)).map(|p|RecordSource{id:p.id,name:format!("{} · {}",p.alias,if p.direction==Direction::Output{"final output"}else{"raw routed source"}),channels:(p.direction==Direction::Output).then(||p.channels.clone()),width:p.channels.len() as u16}).collect());
                         let scenes=layout.scene_order.iter().filter_map(|&slot|layout.scenes.get(usize::from(slot)).filter(|s|s.active).map(|s|(slot,s.name.clone()))).collect();
-                        Ok(Reply::Inspected(Plan{revision:captured.revision,namespace:layout.namespace,generation:layout.generation,outputs,routed:model.is_some(),scenes,records,rate:handle.sample_rate()}))
+                        Ok(Reply::Inspected(Plan{revision:captured.revision,namespace:layout.namespace,generation:layout.generation,outputs,routed:model.is_some(),scenes,scene_refs:layout.scene_order.iter().filter_map(|&slot|layout.reference(crate::engine::session::Axis::Scene,usize::from(slot)).map(|r|(slot,r))).collect(),records,rate:handle.sample_rate(),catalog:data::batch::Recipe::catalog(&captured)?,batch:data::batch::Recipe::aligned(&captured,Export::default(),data::finishing::Config::default())?}))
                     },
                     Operation::Export{plan,request,config,path}=>{
                         let layout=captured.state.session.as_ref().ok_or("Session identity unavailable")?;if captured.revision!=plan.revision||layout.namespace!=plan.namespace||layout.generation!=plan.generation{return Err("Project changed since export review. Refresh the source before rendering".into());}
@@ -125,6 +138,7 @@ impl Job {
             thread: Some(thread),
             progress,
             recording,
+            batch_progress,
         })
     }
     fn poll(&mut self) -> Option<Result<Reply, String>> {
@@ -163,6 +177,14 @@ pub(super) struct Panel {
     record_path: String,
     recovery_path: String,
     recovery: Option<data::recovery::Plan>,
+    batch:Option<data::batch::Recipe>,
+    version_name:String,
+    version_targets:Vec<crate::engine::audio::routing::selection::Target>,
+    version_policy:crate::engine::audio::routing::selection::Policy,
+    version_kind:data::batch::Kind,
+    recipe_path:String,
+    batch_normalize:bool,
+    batch_dither:bool,
 }
 impl App {
     fn start_audio_delivery(&mut self, operation: Operation) {
@@ -185,7 +207,11 @@ impl App {
         if let Some(reply) = reply {
             self.audio_delivery.job = None;
             match reply {
+                Ok(Reply::Batched(outcome))=>{self.audio_delivery.message=format!("Saved aligned batch: {} files · {} frames per pass in {}{}",outcome.files,outcome.frames,outcome.folder.display(),outcome.warning.map_or(String::new(),|w|format!(" · {w}")));},
+                Ok(Reply::RecipeLoaded(recipe))=>{self.audio_delivery.batch_normalize=recipe.export.options.normalize;self.audio_delivery.batch_dither=recipe.export.options.dither;self.audio_delivery.request=recipe.export.clone();self.audio_delivery.config=recipe.config.clone();self.audio_delivery.batch=Some(recipe);self.audio_delivery.message="Recipe reopened. Saved contribution IDs will be checked against this reviewed project before rendering.".into();},
+                Ok(Reply::RecipeSaved(path))=>{self.audio_delivery.message=format!("Saved batch recipe: {}",path.display());},
                 Ok(Reply::Inspected(plan)) => {
+                    let needs_batch=self.audio_delivery.batch.as_ref().is_none_or(|r|r.namespace!=plan.namespace);
                     if self.audio_delivery.request.output_alias.is_none() && plan.outputs.len() == 1
                     {
                         self.audio_delivery.request.output_alias = Some(plan.outputs[0].0);
@@ -198,6 +224,7 @@ impl App {
                         self.audio_delivery.request.scene =
                             plan.scenes.first().map_or(0, |(slot, _)| *slot);
                     }
+                    if needs_batch {let mut recipe=plan.batch.clone();recipe.source_scene=plan.scene_refs.iter().find(|(slot,_)|*slot==self.audio_delivery.request.scene).map(|(_,r)|*r);self.audio_delivery.batch=Some(recipe);}
                     if self.audio_delivery.record_source.is_none() {
                         self.audio_delivery.record_source = plan.records.first().map(|s| s.id);
                     }
@@ -259,8 +286,10 @@ impl App {
             let panel=&mut self.audio_delivery;let busy=panel.job.is_some();ui.label(tr!("Export a scene or the current session without changing playback. Choose a new output folder."));
             if ui.add_enabled(!busy,egui::Button::new(tr!("Review export source"))).help(ui,HelpControl::AudioExport).clicked(){inspect=true;}
             ui.add_enabled_ui(!busy,|ui|{if let Some(plan)=&panel.plan{
+                let previous_source=panel.request.source;
                 ui.horizontal(|ui|{ui.selectable_value(&mut panel.request.source,Source::Arrangement,"Arrangement song");ui.selectable_value(&mut panel.request.source,Source::Session,tr!("Current session launches"));ui.selectable_value(&mut panel.request.source,Source::Scene,tr!("Selected scene"));});
-                if panel.request.source==Source::Scene{egui::ComboBox::from_id_salt("audio-export-scene").selected_text(plan.scenes.iter().find(|(slot,_)|*slot==panel.request.scene).map_or("Choose a scene",|(_,name)|name.as_str())).show_ui(ui,|ui|{for(slot,name)in &plan.scenes{ui.selectable_value(&mut panel.request.scene,*slot,name);}});}
+                if previous_source!=panel.request.source&&panel.request.source==Source::Scene {if let Some(recipe)=&mut panel.batch {recipe.source_scene=plan.scene_refs.iter().find(|(slot,_)|*slot==panel.request.scene).map(|(_,r)|*r);}}
+                if panel.request.source==Source::Scene{egui::ComboBox::from_id_salt("audio-export-scene").selected_text(plan.scenes.iter().find(|(slot,_)|*slot==panel.request.scene).map_or("Choose a scene",|(_,name)|name.as_str())).show_ui(ui,|ui|{for(slot,name)in &plan.scenes{if ui.selectable_value(&mut panel.request.scene,*slot,name).clicked(){if let Some(recipe)=&mut panel.batch{recipe.source_scene=plan.scene_refs.iter().find(|(s,_)|s==slot).map(|(_,r)|*r);}}}});}
                 ui.checkbox(&mut panel.request.decks,tr!("Include loaded decks from their saved cursors"));
                 if plan.routed{egui::ComboBox::from_id_salt("audio-export-alias").selected_text(plan.outputs.iter().find(|(id,_)|Some(*id)==panel.request.output_alias).map_or("Choose program output",|(_,name)|name.as_str())).show_ui(ui,|ui|{for(id,name)in &plan.outputs{ui.selectable_value(&mut panel.request.output_alias,Some(*id),name);}});}else{panel.request.output_alias=None;ui.label(tr!("Standard stereo master output"));}
                 ui.horizontal(|ui|{ui.label(tr!("Range start (seconds)"));ui.add(egui::DragValue::new(&mut panel.request.start).range(0.0..=28800.0).speed(0.1));ui.label(tr!("Range end (seconds)"));ui.add(egui::DragValue::new(&mut panel.request.end).range(0.0..=28800.0).speed(0.1));});
@@ -272,6 +301,7 @@ impl App {
                 finishing::controls(ui,&mut panel.config);
                 ui.label(tr!("New export folder"));ui.add(egui::TextEdit::singleline(&mut panel.path).hint_text("/home/you/Music/Exports/new-mix").desired_width(f32::INFINITY));
                 match panel.request.frames(){Ok((_,_,_,frames))=>{ui.label(format!("{} frames · {:.3} seconds",frames,frames as f64/f64::from(panel.request.options.rate)));if ui.button(tr!("Render master audio")).help(ui,HelpControl::AudioExport).clicked(){export=Some(Operation::Export{plan:plan.clone(),request:panel.request.clone(),config:panel.config.clone(),path:PathBuf::from(&panel.path)});}},Err(e)=>{ui.label(e);}}
+                let reviewed=plan.clone();if let Some(operation)=batch::controls(ui,panel,&reviewed){export=Some(operation);}
             }});
             ui.separator();
             ui.heading(tr!("Record the performance"));
@@ -287,7 +317,7 @@ impl App {
             }});
             ui.separator();ui.heading(tr!("Recover an interrupted recording"));
             ui.add_enabled_ui(!busy,|ui|{ui.label(tr!("Existing recording folder"));ui.add(egui::TextEdit::singleline(&mut panel.recovery_path).hint_text("/home/you/Music/Recordings/interrupted-set").desired_width(f32::INFINITY));if ui.button(tr!("Review recording recovery")).clicked(){export=Some(Operation::ReviewRecovery(PathBuf::from(&panel.recovery_path)));}if let Some(plan)=&panel.recovery{ui.label(format!("{} frames · {} Hz · {} channels · {} files need repair",plan.frames,plan.rate,plan.channels,plan.repairs));if ui.button(tr!("Recover reviewed recording")).clicked(){export=Some(Operation::Recover(plan.clone()));}}});
-            if let Some(job)=&panel.job{if job.recording{ui.label(format!("Recorded source frames: {} · peak {:.3}",self.engine.routing.recorder.frames(),self.engine.routing.recorder.delivery_peak()));}if let Some((done,total))=job.progress.values(){if let Some(total)=total.filter(|t|*t>0){ui.add(egui::ProgressBar::new(done as f32/total as f32).text(format!("{} / {} frames",done,total)));}else{ui.label(tr!("Waiting for worker or encoding"));}}if ui.button(if job.recording{tr!("Stop performance recording")}else{tr!("Cancel audio work")}).clicked(){job.cancel.store(true,Ordering::Release);}}
+            if let Some(job)=&panel.job{let status=job.batch_progress.lock().unwrap().clone();if status.total>0{ui.label(format!("Pass {} / {} · {} · {}",status.item,status.total,status.name,status.phase));}if job.recording{ui.label(format!("Recorded source frames: {} · peak {:.3}",self.engine.routing.recorder.frames(),self.engine.routing.recorder.delivery_peak()));}if let Some((done,total))=job.progress.values(){if let Some(total)=total.filter(|t|*t>0){ui.add(egui::ProgressBar::new(done as f32/total as f32).text(format!("{} / {} frames",done,total)));}else{ui.label(tr!("Waiting for worker or encoding"));}}if ui.button(if job.recording{tr!("Stop performance recording")}else{tr!("Cancel audio work")}).clicked(){job.cancel.store(true,Ordering::Release);}}
             ui.label(&panel.message);
         });
         self.audio_delivery.open = open;

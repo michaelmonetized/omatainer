@@ -120,7 +120,7 @@ fn named_mixer_independent_impulses_taps_solo_mute_pan_and_no_callback_heap() {
                     rt.routing_input_frame[..2].copy_from_slice(&x);
                     let actual = graph.render(&mut rt, false, 0., 2);
                     let dry = if solo { 0. } else { 0.25 };
-                    let wet = if mute && !pre { 0. } else { 1. };
+                    let wet = if pre { 2. } else if mute { 0. } else { 1. };
                     let expected = [
                         (x[0] * (dry + 0.25 * wet)).tanh(),
                         (x[1] * (dry + 0.125 * wet)).tanh(),
@@ -135,6 +135,58 @@ fn named_mixer_independent_impulses_taps_solo_mute_pan_and_no_callback_heap() {
                         (actual[1] - expected[1]).abs() < 1e-7,
                         "right {rate}/{solo}/{mute}/{pre}/{n}"
                     );
+                }
+            });
+            assert_eq!(heap, test_alloc::Counts::default());
+        }
+    }
+}
+
+#[test]
+fn named_mono_sends_and_returns_keep_level_until_stereo_upmix_with_independent_pcm() {
+    for rate in [44100, 48000, 96000] {
+        let (_, mut rt) = Engine::headless_for_test(rate, 256);
+        rt.apply(Command::Stop);
+        for (pan, balance) in [(-1., [1., 0.]), (0., [1., 1.]), (0.5, [std::f32::consts::FRAC_1_SQRT_2, 1.]), (1., [0., 1.])] {
+            let mut m = model();
+            m.ports[1].channels = vec![0];
+            m.buses[0].channels = 1;
+            m.buses[0].mixer.pan = pan;
+            m.connections = vec![route(Group::Bus(4), Group::Output(1))];
+            m.sends.truncate(2);
+            m.sends[0].route = Connection {
+                source: Source { group: Group::Input(2), tap: Tap::PostMixer },
+                destination: Group::Bus(3),
+                map: vec![ChannelMap { source: 0, destination: 0, gain: 1. }],
+            };
+            m.sends[0].pan = pan;
+            m.sends[1].route = Connection {
+                source: Source { group: Group::Bus(3), tap: Tap::PostMixer },
+                destination: Group::Bus(4),
+                map: vec![ChannelMap { source: 0, destination: 0, gain: 1. }, ChannelMap { source: 0, destination: 1, gain: 1. }],
+            };
+            m.sends[1].level = 0.5;
+            m.sends[1].pan = pan;
+            m.latency = Some(Default::default());
+            let mut graph = Prepared::at_rate(Arc::new(m), &rt.session, rate).unwrap();
+            let mono = graph.nodes.iter().position(|n| n.group == Group::Bus(3)).unwrap();
+            let stereo = graph.nodes.iter().position(|n| n.group == Group::Bus(4)).unwrap();
+            let output = graph.nodes.iter().position(|n| n.group == Group::Output(1)).unwrap();
+            graph.nodes[mono].generated = true;
+            let heap = test_alloc::measure(|| {
+                for frame in 0..8193 {
+                    let x = match frame { 0 => 0.125, 2048 => -0.0625, 8000 => 0.03125, _ => 0. };
+                    rt.routing_input_frame[0] = x;
+                    let actual = graph.render(&mut rt, false, 0., 2);
+                    let expected = [x * 0.125 * balance[0], x * 0.125 * balance[1]];
+                    let generated = graph.generated_input(stereo);
+                    let monitor = graph.monitor_mix(output).unwrap().0;
+                    assert_eq!(graph.nodes[mono].taps[2][0], x * 0.25);
+                    for channel in 0..2 {
+                        assert!((actual[channel] - expected[channel].tanh()).abs() < 1e-7, "{rate}/{pan}/{frame}/{channel}");
+                        assert!((generated[channel] - expected[channel]).abs() < 1e-7);
+                        assert!((monitor[channel] - expected[channel]).abs() < 1e-7);
+                    }
                 }
             });
             assert_eq!(heap, test_alloc::Counts::default());
@@ -214,6 +266,10 @@ fn named_mixer_typed_journal_stable_targets_capture_and_worker_checkpoint() {
         0.7
     );
     rt.apply(Command::Undo);
+    let values=rt.routing.as_ref().unwrap().mix_values(Target::Return(4)).unwrap();
+    assert!(!values.solo_safe);
+    assert_eq!(values.pan,-0.5);
+    rt.apply(Command::Undo);
     assert_eq!(
         rt.routing
             .as_ref()
@@ -223,6 +279,7 @@ fn named_mixer_typed_journal_stable_targets_capture_and_worker_checkpoint() {
             .pan,
         0.
     );
+    rt.apply(Command::Redo);
     rt.apply(Command::Redo);
     assert_eq!(
         rt.routing

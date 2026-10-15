@@ -325,7 +325,6 @@ pub(super) fn live(
     snapshot: &Snapshot,
     commands: &crate::engine::CommandPort,
     history: &undo::History,
-    model: Option<&Model>,
 ) {
     let Some(layout) = &snapshot.session else {
         return;
@@ -418,20 +417,8 @@ pub(super) fn live(
         ui.push_id(
             ("live-routing-mix", format!("{:?}", channel.target)),
             |ui| {
-                let name = model
-                    .and_then(|m| match channel.target {
-                        Target::Send(id) => {
-                            m.sends.iter().find(|s| s.id == id).map(|s| s.name.as_str())
-                        }
-                        Target::Return(id) => m
-                            .buses
-                            .iter()
-                            .find(|b| b.id == id)
-                            .map(|b| b.alias.as_str()),
-                    })
-                    .map(str::to_owned)
-                    .unwrap_or_else(|| format!("{:?}", channel.target));
-                ui.label(&name);
+                let name = channel.name.text();
+                ui.label(name);
                 let submit = |ui: &mut Ui, parameter, value| {
                     if let Err(error) = commands.send(history.wrap(Command::RoutingMix {
                         namespace: layout.namespace,

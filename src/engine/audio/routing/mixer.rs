@@ -191,7 +191,7 @@ impl Values {
         true
     }
     /// Read the channel gain for an explicit map.
-    /// Takes its destination channel; returns the existing unity-center stereo balance law, or unity balance for other channels.
+    /// Takes its prepared left/right balance index, or any other index for a mono/unbalanced channel; returns the existing unity-center stereo balance law.
     pub fn gain(self, channel: usize) -> f32 {
         if self.mute {
             0.

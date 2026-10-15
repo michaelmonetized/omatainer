@@ -21,9 +21,45 @@ pub struct Node {
 struct Link {
     source: usize,
     tap: usize,
-    map: Vec<ChannelMap>,
+    map: Vec<Map>,
     send: Option<usize>,
     fixed: Option<(usize,usize)>,
+}
+
+#[derive(Clone, Copy, Debug)]
+struct Map {
+    source: u8,
+    destination: u8,
+    balance: u8,
+    gain: f32,
+}
+
+impl Map {
+    /// Bind balance to the signal's stereo pair before callback admission.
+    /// Takes a validated map and graph; returns source balance for stereo or destination bus-local balance for a mono upmix, with mono destinations unchanged.
+    fn prepare(map: ChannelMap, connection: &Connection, model: &Model, layout: &Layout) -> Self {
+        let (channel,width)=if let Group::Plugin(id)=connection.source.group {
+            let plugin=model.plugins.iter().find(|p|p.id==id).unwrap();
+            Self::bus_channel(map.source,if connection.source.tap==Tap::PreFx {&plugin.inputs} else {&plugin.outputs})
+        } else {(usize::from(map.source),model.source_width(connection.source,layout).unwrap())};
+        let balance = if width==1 {
+            let (channel,width)=if let Group::Plugin(id)=connection.destination {
+                Self::bus_channel(map.destination,&model.plugins.iter().find(|p|p.id==id).unwrap().inputs)
+            } else {(usize::from(map.destination),model.input_width(connection.destination,layout).unwrap())};
+            if width > 1 { channel.min(2) as u8 } else { 2 }
+        } else { channel.min(2) as u8 };
+        Self { source: map.source, destination: map.destination, balance, gain: map.gain }
+    }
+
+    /// Locate a validated channel inside its declared native bus.
+    /// Takes a flattened channel and bus widths; returns its local index and bus width before rendering starts.
+    fn bus_channel(channel:u8,buses:&[u8])->(usize,usize) {
+        let mut channel=usize::from(channel);
+        buses.iter().find_map(|width| {
+            let width=usize::from(*width);
+            if channel<width {Some((channel,width))} else {channel-=width;None}
+        }).unwrap()
+    }
 }
 
 #[derive(Debug)]
@@ -122,12 +158,12 @@ impl Prepared {
             incoming[indices[&connection.destination]].push(Link {
                 source: indices[&connection.source.group],
                 tap: connection.source.tap.index(),
-                map: connection.map.clone(),
+                map: connection.map.iter().map(|map| Map::prepare(*map,connection,&model,layout)).collect(),
                 send: link.checked_sub(model.connections.len()),
                 fixed: None,
             });
         }
-        for send in 0..2 {for (slot,track) in layout.tracks.iter().enumerate(){incoming[indices[&Group::FixedReturn(send)]].push(Link{source:indices[&Group::Track(track.id)],tap:Tap::PostMixer.index(),map:vec![ChannelMap{source:0,destination:0,gain:1.},ChannelMap{source:1,destination:1,gain:1.}],send:None,fixed:Some((slot,usize::from(send)))});}}
+        for send in 0..2 {for (slot,track) in layout.tracks.iter().enumerate(){incoming[indices[&Group::FixedReturn(send)]].push(Link{source:indices[&Group::Track(track.id)],tap:Tap::PostMixer.index(),map:vec![Map{source:0,destination:0,balance:0,gain:1.},Map{source:1,destination:1,balance:1,gain:1.}],send:None,fixed:Some((slot,usize::from(send)))});}}
         let scene_nodes = std::array::from_fn(|slot| {
             layout
                 .scenes
@@ -208,7 +244,7 @@ impl Prepared {
                 if !self.mixer.audible(link.source,index,terminal,usize::from(map.destination)>=primary){continue;}
                 let(value,valid)=self.latency.as_ref().map_or((source[usize::from(map.source)],sources[link.source].valid),
                     |latency|latency.routed(link.source,link.tap,index,usize::from(map.source)));
-                let gain=link.send.map_or(1.,|slot|self.mixer.channels[slot].effective.gain(usize::from(map.source)))*link.fixed.map_or(1.,|(slot,send)|self.fixed_levels[slot][send]);
+                let gain=link.send.map_or(1.,|slot|self.mixer.channels[slot].effective.gain(usize::from(map.balance)))*link.fixed.map_or(1.,|(slot,send)|self.fixed_levels[slot][send]);
                 let sample=value*map.gain*gain;
                 destination.input[usize::from(map.destination)] += sample;
                 if let Some(slot)=link.send {self.mixer.channels[slot].peaks[usize::from(map.destination)]=self.mixer.channels[slot].peaks[usize::from(map.destination)].max(sample.abs());}
@@ -229,7 +265,7 @@ impl Prepared {
             for map in &link.map {
                 if map.destination < 2 {
                     let value = self.latency.as_ref().map_or(self.nodes[link.source].taps[link.tap][usize::from(map.source)], |l| l.routed(link.source,link.tap,index,usize::from(map.source)).0);
-                    frame[usize::from(map.destination)] += value * map.gain * link.send.map_or(1.,|slot|self.mixer.channels[slot].effective.gain(usize::from(map.source)));
+                    frame[usize::from(map.destination)] += value * map.gain * link.send.map_or(1.,|slot|self.mixer.channels[slot].effective.gain(usize::from(map.balance)));
                 }
             }
         }
@@ -330,7 +366,7 @@ impl Prepared {
             if !self.mixer.audible(link.source,index,true,false){continue;}
             for map in &link.map {
                 let (value, complete) = latency.routed_monitor(link.source, link.tap, usize::from(map.source));
-                let gain=link.send.map_or(1.,|slot|self.mixer.channels[slot].effective.gain(usize::from(map.source)))*link.fixed.map_or(1.,|(slot,send)|self.fixed_levels[slot][send]);
+                let gain=link.send.map_or(1.,|slot|self.mixer.channels[slot].effective.gain(usize::from(map.balance)))*link.fixed.map_or(1.,|(slot,send)|self.fixed_levels[slot][send]);
                 frame[usize::from(map.destination)] += value * map.gain * gain;
                 if map.gain * gain != 0.0 { valid &= complete; }
             }
@@ -406,7 +442,7 @@ impl Prepared {
                     links.capacity() * std::mem::size_of::<Link>()
                         + links
                             .iter()
-                            .map(|link| link.map.capacity() * std::mem::size_of::<ChannelMap>())
+                            .map(|link| link.map.capacity() * std::mem::size_of::<Map>())
                             .sum::<usize>()
                 })
                 .sum::<usize>()
@@ -416,3 +452,28 @@ impl Prepared {
 /// Read the already prepared topological identities.
 /// Takes node storage; returns a worker-only ordering for mixer preparation.
 fn order_from_nodes(nodes:&[Node])->Vec<Group>{nodes.iter().map(|n|n.group).collect()}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn named_native_bus_offsets_keep_sidechain_mono_and_secondary_stereo_separate() {
+        for (channel,expected) in [(0,(0,2)),(1,(1,2)),(2,(0,1)),(3,(0,2)),(4,(1,2))] {
+            assert_eq!(Map::bus_channel(channel,&[2,1,2]),expected);
+        }
+    }
+
+    #[test]
+    fn named_native_pre_fx_maps_use_input_bus_identity_before_mono_output() {
+        let layout=Layout::legacy((0..8).map(|n|format!("Track {n}")),8);
+        let mut model=Model::default();model.next_id=3;
+        let saved=crate::plugin_host::Saved {schema:1,binary:crate::plugin_host::BinaryIdentity {bundle:"/home/michael/missing/Tap.clap".into(),binary:"/home/michael/missing/Tap.clap".into(),sha256:"0".repeat(64),arch:std::env::consts::ARCH.into()},class_id:"clap:org.omatainer.tap".into(),plugin_version:"1".into(),state_codec:"clap-state-1".into(),state:vec![]};
+        model.plugins.push(super::super::plugins::Instance {id:2,name:"Different native input/output widths".into(),saved,inputs:vec![2,1],outputs:vec![1],midi_track:None,scene_track:None,return_bus:None,instrument:false,bypass:true,latency:0,parameters:vec![],automation:vec![],unavailable:None});
+        for (tap,source,destination,expected) in [(Tap::PreFx,0,1,0),(Tap::PreFx,1,0,1),(Tap::PreFx,2,1,1),(Tap::PostFx,0,1,1),(Tap::PostMixer,0,0,0)] {
+            let map=ChannelMap {source,destination,gain:1.};
+            let connection=Connection {source:Source {group:Group::Plugin(2),tap},destination:Group::Output(1),map:vec![map]};
+            assert_eq!(Map::prepare(map,&connection,&model,&layout).balance,expected);
+        }
+    }
+}
