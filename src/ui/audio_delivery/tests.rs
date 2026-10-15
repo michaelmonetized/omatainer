@@ -222,7 +222,9 @@ fn native_performance_record_stop_decode_and_reviewed_recovery_work_in_performan
 
 #[test]
 fn native_final_file_policy_blocks_before_publication_then_warns_with_metadata() {
-    let files=Files::new();let mut g=Gui::new(&files);g.click("Review export source");g.wait();
+    let files=Files::new();let mut g=Gui::new(&files);
+    for track in &mut g.callback.renderer_mut_for_test().tracks {for clip in &mut track.clips {*clip=crate::engine::Clip::empty();}}
+    g.frame(vec![]);g.click("Review export source");g.wait();
     g.app.audio_delivery.request.end=0.5;g.app.audio_delivery.request.tail=0.;
     g.app.audio_delivery.config.metadata.title="Keyboard reachable delivery".into();
     g.app.audio_delivery.config.targets.integrated_lufs=Some(-23.);

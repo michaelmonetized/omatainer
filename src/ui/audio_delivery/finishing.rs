@@ -14,6 +14,6 @@ pub(super) fn controls(ui: &mut egui::Ui, config: &mut Config) {
         ui.horizontal(|ui|{let label=ui.label("Maximum true peak dBTP");ui.add(egui::DragValue::new(&mut config.targets.max_true_peak).range(-30.0..=6.0).speed(0.1)).labelled_by(label.id);});
         let mut lra=config.targets.max_lra.is_some();if ui.checkbox(&mut lra,"Check maximum loudness range").changed(){config.targets.max_lra=lra.then_some(20.);}
         if let Some(value)=&mut config.targets.max_lra {ui.horizontal(|ui|{let label=ui.label("Maximum LRA LU");ui.add(egui::DragValue::new(value).range(0.0..=70.0).speed(0.1)).labelled_by(label.id);});}
-        ui.label("LUFS, LRA, sample peak and true peak come from the final encoded file, including MP3. Targets never change gain. Silence and unknown speaker layouts cannot qualify a loudness target. FFmpeg and ffprobe are required; the native meter is included.");
+        ui.label("LUFS, LRA, sample peak and true peak come from the final encoded file, including MP3. Targets never change gain. True-peak readings use the included meter; other meters can differ at abrupt file edges. Silence and unknown speaker layouts cannot qualify a loudness target. FFmpeg and ffprobe are required; the native meter is included.");
     });
 }

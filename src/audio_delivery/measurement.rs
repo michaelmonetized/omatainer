@@ -259,7 +259,7 @@ pub(crate) fn measure(
     for c in 0..u32::from(channels) {
         peak = peak.max(meter.peak(c, true)?);
     }
-    Ok(Report{standard:"ITU-R BS.1770-4 / EBU R128; LRA EBU Tech3342; libebur128 implementation-defined polyphase true peak (4x below96kHz,2x below192kHz,1x at192kHz),64-frame zero extension for peak tail only".into(),integrated_lufs:integrated,short_term_max_lufs:short,momentary_max_lufs:momentary,lra_lu:lra,sample_peak_dbfs:db(sample),true_peak_dbtp:db(peak),full_scale_samples:full_scale,frames,rate,channels,wave_mask:mask,loudness_supported:supported,measured_final_encoded_audio:true,decoded_pcm_sha256:format!("{:x}",pcm.finalize()),meter:meter_tool(&meter.api.version,cancel)?,decoder,probe})
+    Ok(Report{standard:"ITU-R BS.1770-4 / EBU R128; LRA EBU Tech3342; libebur128 implementation-defined 49-tap Hann-windowed sinc polyphase true peak; independent resamplers may differ at abrupt file edges (4x below96kHz,2x below192kHz,1x at192kHz),64-frame zero extension for peak tail only".into(),integrated_lufs:integrated,short_term_max_lufs:short,momentary_max_lufs:momentary,lra_lu:lra,sample_peak_dbfs:db(sample),true_peak_dbtp:db(peak),full_scale_samples:full_scale,frames,rate,channels,wave_mask:mask,loudness_supported:supported,measured_final_encoded_audio:true,decoded_pcm_sha256:format!("{:x}",pcm.finalize()),meter:meter_tool(&meter.api.version,cancel)?,decoder,probe})
 }
 
 fn meter_tool(version: &str, cancel: &AtomicBool) -> Result<Tool, String> {
