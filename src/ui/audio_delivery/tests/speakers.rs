@@ -25,6 +25,8 @@ fn independent(path: &Path, tools: &serde_json::Value) -> Vec<f32> {
 #[test]
 fn native_declared_speaker_controls_export_and_cli_reopen_share_actual_ordered_graph() {
     let files = Files::new();
+    let retained = data::fixture::producer("native-declared-speaker-2-1");
+    let root = retained.as_ref().unwrap_or(&files.0);
     let (engine, rt) = fixture(48000);
     let input = rt.tracks[0].clips[0]
         .audio
@@ -39,6 +41,8 @@ fn native_declared_speaker_controls_export_and_cli_reopen_share_actual_ordered_g
         input_sha256,
         "510c775f101b3b688dc304e676820ec3a5887dc64dbd2992ca517b7bfcfa3da1"
     );
+    let input_path = root.join("input.f32");
+    std::fs::write(&input_path, &input).unwrap();
     let mut gui = Gui::with_renderer(&files, 6, engine, rt);
     let revision = gui.app.engine.project.revision();
     gui.click("Review export source");
@@ -57,7 +61,7 @@ fn native_declared_speaker_controls_export_and_cli_reopen_share_actual_ordered_g
     gui.app.audio_delivery.request.end = 0.01;
     gui.app.audio_delivery.request.tail = 0.;
     gui.app.audio_delivery.request.options.format = Format::Rf64Float32;
-    let folder = files.0.join("wide-master");
+    let folder = root.join("wide-master");
     gui.app.audio_delivery.path = folder.to_string_lossy().into_owned();
     gui.click("Render master audio");
     gui.wait();
@@ -101,7 +105,7 @@ fn native_declared_speaker_controls_export_and_cli_reopen_share_actual_ordered_g
         mapping_schema: project::FACTORY_MAPPING_SCHEMA,
     };
     document.validate().unwrap();
-    let native = files.0.join("speakers.omat");
+    let native = root.join("speakers.omat");
     crate::project_file::save(
         &native,
         &crate::project_file::Bundle {
@@ -113,7 +117,7 @@ fn native_declared_speaker_controls_export_and_cli_reopen_share_actual_ordered_g
         &AtomicBool::new(false),
     )
     .unwrap();
-    let path = files.0.join("wide-plan.json");
+    let path = root.join("wide-plan.json");
     assert!(data::cli::run(&[
         "delivery-plan".into(),
         native.to_string_lossy().into_owned(),
@@ -128,7 +132,7 @@ fn native_declared_speaker_controls_export_and_cli_reopen_share_actual_ordered_g
     recipe.items.truncate(1);
     std::fs::remove_file(&path).unwrap();
     recipe.save(&path).unwrap();
-    let batch = files.0.join("wide-cli");
+    let batch = root.join("wide-cli");
     assert!(data::cli::run(&[
         "delivery-batch".into(),
         native.to_string_lossy().into_owned(),
@@ -157,8 +161,20 @@ fn native_declared_speaker_controls_export_and_cli_reopen_share_actual_ordered_g
         }
     }
     assert!(post_residual < 2e-6, "{post_residual}");
+    let producer_files = [
+        &input_path,
+        &native,
+        &path,
+        &folder.join("master.wav"),
+        &folder.join("export.json"),
+        &audio,
+        &batch.join("batch.json"),
+    ]
+    .into_iter()
+    .map(|path| data::fixture::file(path))
+    .collect::<Vec<_>>();
     data::fixture::retain(
         "native-declared-speaker-delivery-ui-cli",
-        serde_json::json!({"status":"passed","input_sha256":input_sha256,"input_bytes":input.len(),"master_file_sha256":format!("{:x}",Sha256::digest(std::fs::read(folder.join("master.wav")).unwrap())),"selected_file_sha256":format!("{:x}",Sha256::digest(std::fs::read(&audio).unwrap())),"layout":"2.1","native_channels":3,"wave_mask":11,"physical_channels":[3,0,5],"frames":480,"master_analytic_residual":residual,"post_device_analytic_residual":post_residual,"live_state_unchanged":true,"native_project_recipe_reopened":true,"export":metadata,"batch":manifest,"tools":tools}),
+        serde_json::json!({"status":"passed","test_identity":"ui::audio_delivery::tests::speakers::native_declared_speaker_controls_export_and_cli_reopen_share_actual_ordered_graph","current_bytes_retained":retained.is_some(),"producer_files":producer_files,"input_sha256":input_sha256,"input_bytes":input.len(),"master_file_sha256":format!("{:x}",Sha256::digest(std::fs::read(folder.join("master.wav")).unwrap())),"selected_file_sha256":format!("{:x}",Sha256::digest(std::fs::read(&audio).unwrap())),"layout":"2.1","native_channels":3,"wave_mask":11,"physical_channels":[3,0,5],"frames":480,"master_analytic_residual":residual,"post_device_analytic_residual":post_residual,"live_state_unchanged":true,"native_project_recipe_reopened":true,"export":metadata,"batch":manifest,"tools":tools}),
     );
 }

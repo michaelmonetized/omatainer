@@ -160,7 +160,7 @@
       "source": "src/ui/audio_delivery/tests/speakers.rs",
       "requirement": "required",
       "acceptance": "actual 2.1 graph/ordered physical alias, native width UI/mono switch, RF64 render, independent analytic PCM and native project/CLI recipe/batch reopen",
-      "source_sha256": "cff3c9e1825731469f87c7cf468a0ed2bfa131d45b3da12a0dc80d2ed4b71151"
+      "source_sha256": "0939460f141468d3492b2ff2c3f9efe98a7df74a9ab9612e54df87a7d3edf889"
     },
     {
       "id": "native-recording-speaker-contract",
