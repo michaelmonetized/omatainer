@@ -11,6 +11,7 @@ pub struct Node {
     pub group: Group,
     pub slot: Option<usize>,
     pub width: usize,
+    pub speakers: Option<super::speakers::Layout>,
     pub input: Frame,
     pub valid: bool,
     pub taps: [Frame; 3],
@@ -189,6 +190,7 @@ impl Prepared {
                     _ => None,
                 },
                 width: model.width(group, layout).unwrap().max(model.input_width(group, layout).unwrap()),
+                speakers: model.speaker_layout(group),
                 input: [0.0; MAX_PORT_CHANNELS],
                 valid: true,
                 taps: [[0.0; MAX_PORT_CHANNELS]; 3],
@@ -258,12 +260,18 @@ impl Prepared {
     /// Separate instrument audio from independently monitored physical input.
     /// Takes a retained track node; returns its already-aligned generated stereo contribution without advancing sources.
     pub(super) fn generated_input(&self, index: usize) -> [f32;2] {
-        let mut frame = [0.;2];
+        let frame=self.generated_frame(index);
+        [frame[0],frame[1]]
+    }
+    /// Separate all generated channels from physical monitor input.
+    /// Takes a prepared track node; returns its complete already-aligned contribution without advancing any source.
+    pub(super) fn generated_frame(&self,index:usize)->Frame{
+        let mut frame = [0.;MAX_PORT_CHANNELS];
         for link in &self.incoming[index] {
             if !self.nodes[link.source].generated { continue; }
             if !self.mixer.audible(link.source,index,false,false){continue;}
             for map in &link.map {
-                if map.destination < 2 {
+                if usize::from(map.destination)<self.nodes[index].width {
                     let value = self.latency.as_ref().map_or(self.nodes[link.source].taps[link.tap][usize::from(map.source)], |l| l.routed(link.source,link.tap,index,usize::from(map.source)).0);
                     frame[usize::from(map.destination)] += value * map.gain * link.send.map_or(1.,|slot|self.mixer.channels[slot].effective.gain(usize::from(map.balance)));
                 }
@@ -303,14 +311,25 @@ impl Prepared {
 
     /// Align an implicit send through its published original source.
     /// Takes source and destination indices plus fallback audio/continuity; reads the same prepared history used by explicit links.
-    pub(super) fn source_send(&mut self,source:usize,destination:usize,frame:[f32;2],valid:bool) {
+    pub(super) fn source_send(&mut self,source:usize,destination:usize,_frame:[f32;2],valid:bool) {
         if destination==self.main && self.selection==Some(super::selection::Policy::MasteredSolo) || !self.mixer.audible(source,destination,destination==self.main,false){return;}
-        if let Some(latency)=&self.latency {
-            for channel in 0..2 {
-                let(value,complete)=latency.routed(source,super::model::Tap::PostMixer.index(),destination,channel);
-                self.nodes[destination].input[channel]+=value;self.nodes[destination].valid&=complete;
-            }
-        }else{self.legacy_send(destination,frame,valid);}
+        let width=if let Group::Plugin(id)=self.nodes[source].group{usize::from(self.model.plugins.iter().find(|p|p.id==id).unwrap().outputs[0])}else{self.nodes[source].width};
+        let mut frame=[0.;MAX_PORT_CHANNELS];
+        let mut complete=valid;
+        for channel in 0..width {let(value,ok)=self.latency.as_ref().map_or((self.nodes[source].taps[2][channel],valid),|l|l.routed(source,Tap::PostMixer.index(),destination,channel));frame[channel]=value;complete&=ok;}
+        let source_layout=self.nodes[source].speakers;
+        let destination_layout=self.nodes[destination].speakers;
+        if let (Some(from),Some(to))=(source_layout,destination_layout){
+            if to.channels()<=2 {
+                let pair=from.downmix(&frame);
+                self.nodes[destination].input[0]+=if to.channels()==1{0.5*(pair[0]+pair[1])}else{pair[0]};
+                if to.channels()==2{self.nodes[destination].input[1]+=pair[1];}
+            }else if from==super::speakers::Layout::Mono {
+                self.nodes[destination].input[0]+=frame[0]*std::f32::consts::FRAC_1_SQRT_2;
+                self.nodes[destination].input[1]+=frame[0]*std::f32::consts::FRAC_1_SQRT_2;
+            }else{for (channel,speaker)in from.speakers().iter().enumerate(){if let Some(target)=to.speakers().iter().position(|s|s==speaker){self.nodes[destination].input[target]+=frame[channel];}}}
+        }else{for channel in 0..width.min(self.nodes[destination].width){self.nodes[destination].input[channel]+=frame[channel];}}
+        self.nodes[destination].valid&=complete;
     }
 
     /// Reuse compatible source histories before an applied graph replaces its predecessor.

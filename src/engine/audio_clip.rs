@@ -46,7 +46,7 @@ impl Region {
     /// Takes decoded PCM; returns bounded frame/beat conversion without opening a file, or refuses empty/out-of-source/nonfinite settings.
     pub(crate) fn prepare(self, source: &Sample) -> Result<Plan, &'static str> {
         if source.sr == 0
-            || !(1..=2).contains(&source.ch)
+            || !(1..=super::audio::routing::model::MAX_PORT_CHANNELS as u16).contains(&source.ch)
             || source.data.len() % usize::from(source.ch) != 0
             || self.start >= self.end
             || self.end > source.frames() as u64
@@ -58,7 +58,7 @@ impl Region {
             || !self.tempo.is_finite()
             || !(30.0..=300.0).contains(&self.tempo)
         {
-            return Err("Audio clip needs a finite mono/stereo source, in-source trim/loop, tempo 30–300 BPM and transpose ±48 semitones");
+            return Err("Audio clip needs a finite source of 1–32 channels, in-source trim/loop, tempo 30–300 BPM and transpose ±48 semitones");
         }
         let frames_per_beat = f64::from(source.sr) * 60.0 / f64::from(self.tempo)
             * 2_f64.powf(f64::from(self.transpose) / 12.0);
@@ -157,15 +157,21 @@ impl Plan {
     /// Read a trimmed stereo frame.
     /// Takes shared PCM, elapsed beats and launch repetition; interpolates within the retained region and duplicates mono without reading adjacent trimmed material.
     pub(crate) fn sample(self, source: &Sample, beats: f64, repeating: bool) -> [f32; 2] {
+        self.sample_channels(source,beats,repeating)
+    }
+    /// Read a trimmed frame in its original channel order.
+    /// Takes shared PCM, elapsed beats and repetition; returns fixed-width interpolation inside the retained trim, with absent channels silent.
+    pub(crate) fn sample_channels<const N:usize>(self, source:&Sample,beats:f64,repeating:bool)->[f32;N]{
         let Some((position, end)) = self.coordinate(beats, repeating) else {
-            return [0.0; 2];
+            return [0.0; N];
         };
         let frame = position.floor() as usize;
         let next = (frame + 1).min((end - 1) as usize);
         let fraction = (position - frame as f64) as f32;
         let channels = usize::from(source.ch);
         std::array::from_fn(|channel| {
-            let channel = channel.min(channels - 1);
+            let channel = if channels==1&&channel==1 {0}else{channel};
+            if channel>=channels {return 0.;}
             let a = source.data[frame * channels + channel];
             let b = source.data[next * channels + channel];
             a + (b - a) * fraction
@@ -196,6 +202,12 @@ impl Plan {
         let value = self.sample(source, beats, repeating);
         let gain = self.fade_gain(beats, repeating, beats_per_second);
         value.map(|v| v * gain)
+    }
+    /// Apply the common clip envelope to every source channel.
+    /// Takes shared PCM, beats, repetition and musical tempo; returns the declared ordered frame with the same fade and loop-edge gain on all channels.
+    pub(crate) fn faded_channels<const N:usize>(self,source:&Sample,beats:f64,repeating:bool,beats_per_second:f64)->[f32;N]{
+        let gain=self.fade_gain(beats,repeating,beats_per_second);
+        self.sample_channels(source,beats,repeating).map(|v|v*gain)
     }
     /// Read the audible envelope at a source or repeated-loop position.
     /// Takes elapsed quarter notes, repetition and quarter notes per second; returns the common stereo multiplier for playback and waveform previews.

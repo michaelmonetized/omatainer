@@ -281,7 +281,7 @@ impl Plan {
                         if index == main {
                             4
                         } else {
-                            2
+                            width
                         }
                     } else {
                         0
@@ -480,7 +480,7 @@ impl Runtime {
             .iter()
             .enumerate()
             .map(|(index, needed)| {
-                needed.then(|| History::new(if index == plan.main { 4 } else { 2 }, plan.reserve))
+                needed.then(|| History::new(if index == plan.main { 4 } else { widths[index] }, plan.reserve))
             })
             .collect();
         let monitor = plan
@@ -604,7 +604,7 @@ impl Runtime {
     }
     /// Align generated source audio with that node's routed inputs.
     /// Takes its exact node and generated stereo frame; returns delayed native audio without borrowing another node's source clock.
-    pub(super) fn generated(&mut self, index: usize, frame: [f32; 2]) -> [f32; 2] {
+    pub(super) fn generated<const N:usize>(&mut self, index: usize, frame: [f32; N]) -> [f32; N] {
         let mix = self.blend();
         let old = self.prior.inputs[index];
         let delay = self.plan.inputs[index];

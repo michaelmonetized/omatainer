@@ -606,6 +606,7 @@ impl Model {
             r.destination = remap(r.destination);
             r
         };
+        next.speaker_layouts.extend(self.speaker_layouts.iter().filter(|b|owned(b.group)).map(|b|{let mut b=*b;b.group=remap(b.group);b}));
         next.connections.extend(
             self.connections
                 .iter()

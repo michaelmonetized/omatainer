@@ -176,6 +176,7 @@ impl Request {
                 )?;
                 let destination = match &content { Content::Scene { slot, .. } => *slot, _ => unreachable!() };
                 next.scenes[destination].scene = before.scenes[source].scene;
+                if let Some(model)=&mut state.routing{let speaker_layout=model.speaker_layout(crate::engine::audio::routing::model::Group::Scene(id)).unwrap_or_default();Arc::make_mut(model).set_speaker_layout(crate::engine::audio::routing::model::Group::Scene(next.scenes[destination].id),speaker_layout);}
                 content
             }
         };
@@ -272,6 +273,7 @@ impl Request {
         storage: &mut Vec<fx::FxId>,
     ) -> Result<Content, String> {
         let (_, slot) = next.create(Axis::Scene, name, color, position)?;
+        if let Some(model)=&mut state.routing{if let Some(layout)=model.speaker_layout(crate::engine::audio::routing::model::Group::Main).filter(|l|l.channels()>2){Arc::make_mut(model).set_speaker_layout(crate::engine::audio::routing::model::Group::Scene(next.scenes[slot].id),layout);}}
         storage.extend(effects.iter().map(|e| e.id));
         if let Some(old) = state.scene_fx.get(slot) {
             storage.extend(old.iter().map(|e| e.id));

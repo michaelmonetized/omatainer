@@ -4,13 +4,13 @@ use crate::engine::audio::routing::model::{Direction, Group, MAX_PHYSICAL_CHANNE
 /// Inspect the exact selected output without allocating a renderer or opening devices.
 /// Takes one immutable captured state and reviewed export; returns physical source indices and actual encoded speaker identity.
 pub(crate) fn output_contract(state:&crate::engine::project::State,request:&Export)->Result<crate::engine::audio::routing::speakers::OutputContract,String>{
-    let channels=if let Some(model)=&state.routing{
+    if let Some(model)=&state.routing{
         let alias=request.output_alias.ok_or("Choose the exact saved output alias before exporting routed audio")?;
         let port=model.port(alias,Direction::Output).ok_or("Reviewed output alias was removed")?;
         if model.monitor_output==Some(alias){return Err("Headphones are separate from program delivery".into());}
-        port.channels.clone()
-    }else{if request.output_alias.is_some(){return Err("Reviewed output alias no longer exists".into());}vec![0,1]};
-    crate::engine::audio::routing::speakers::OutputContract::stereo(channels,request.options.channels)
+        let _=port;
+        model.channel_contract(Group::Output(alias),request.options.channels)
+    }else{if request.output_alias.is_some(){return Err("Reviewed output alias no longer exists".into());}crate::engine::audio::routing::speakers::OutputContract::stereo(vec![0,1],request.options.channels)}
 }
 
 /// Prepare the reviewed native render source.
@@ -132,6 +132,7 @@ pub(super) fn run(
 /// Takes the immutable capture, request, optional canonical selection and raw render destination; writes aligned ordered frames or refuses without publication.
 pub(crate) fn run_selected(mut captured:Captured,request:&Export,selection:Option<&crate::engine::audio::routing::selection::Selection>,raw:&Path,bounds:(u64,u64,u64,u64),cancel:&std::sync::Arc<AtomicBool>,progress:&crate::background::Reporter)->Result<(),String>{
     let _contract=output_contract(&captured.state,request)?;
+    let source_layout=captured.state.routing.as_ref().and_then(|m|request.output_alias.and_then(|id|m.speaker_layout(Group::Output(id)))).unwrap_or_default();
     let original_delay=if let Some(selection)=selection{
         let original=captured.state.routing.as_deref().cloned().unwrap_or_default();
         let alias=request.output_alias.unwrap_or(1);
@@ -148,7 +149,7 @@ pub(crate) fn run_selected(mut captured:Captured,request:&Export,selection:Optio
     if rt.routing.as_ref().is_some_and(|graph| graph.model.plugins.iter().zip(&graph.plugins).any(|(saved,plugin)| !saved.bypass && plugin.endpoint.is_none())) { return Err("A native plugin is unavailable; relink its exact identity or explicitly bypass it before exporting".into()); }
     let mut output = create(raw)?;
     let mut rendered = [0_f32; 1024 * MAX_PHYSICAL_CHANNELS];
-    let mut bytes = [0_u8; 1024 * 2 * 4];
+    let mut bytes = [0_u8; 1024 * MAX_PHYSICAL_CHANNELS * 4];
     let mut position = 0_u64;
     let stop = bounds.0 + bounds.1;
     let delay = u64::from(source_request.output_alias.and_then(|alias| rt.routing.as_ref().map(|graph| graph.output_delay(alias))).unwrap_or(0));
@@ -169,16 +170,13 @@ pub(crate) fn run_selected(mut captured:Captured,request:&Export,selection:Optio
                 .chunks_exact(width)
                 .zip(bytes.chunks_exact_mut(usize::from(request.options.channels) * 4))
             {
-                let pair = if channels.len() == 1 {
-                    [frame[channels[0]]; 2]
-                } else {
-                    [frame[channels[0]], frame[channels[1]]]
-                };
-                let source = if request.options.channels == 1 {
-                    [0.5 * (pair[0] + pair[1]), 0.0]
-                } else {
-                    pair
-                };
+                let mut source=[0_f32;MAX_PHYSICAL_CHANNELS];
+                for (sample,physical) in source.iter_mut().zip(&channels){*sample=frame[*physical];}
+                if request.options.channels<=2 {
+                    let pair=source_layout.downmix(&source);
+                    source[0]=if request.options.channels==1 {0.5*(pair[0]+pair[1])} else {pair[0]};
+                    source[1]=pair[1];
+                }
                 for (sample, target) in source.iter().zip(encoded.chunks_exact_mut(4)) {
                     if !sample.is_finite() {
                         return Err("Independent renderer produced an invalid output frame".into());
