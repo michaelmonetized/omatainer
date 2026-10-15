@@ -110,6 +110,7 @@ impl Request {
         Self::routing_cancelled(captured,rate,model,&std::sync::atomic::AtomicBool::new(false))
     }
     pub(crate) fn routing_cancelled(mut captured: crate::engine::project::Captured, rate: u32, model: Option<std::sync::Arc<crate::engine::audio::routing::model::Model>>, cancel: &std::sync::atomic::AtomicBool) -> Result<(Self,Ack),String> {
+        if model.as_ref().is_some_and(|m|m.next_id<captured.state.routing_next_id){return Err("Routing draft would reuse a retired identity; refresh routes".into());}
         let original=std::mem::replace(&mut captured.state.routing,model.clone());
         crate::project_file::validate_metadata(&crate::project_file::Bundle {state:&captured.state,media:captured.media.clone()},&Default::default(),cancel).map_err(|e|e.to_string())?;
         captured.state.routing=original;
@@ -368,6 +369,7 @@ impl Inverse {
         }
         std::mem::swap(&mut rt.session, &mut self.layout);
         if let Some(routing) = &mut self.routing {
+            rt.routing_next_id=rt.routing_next_id.max(routing.as_ref().map_or(2,|r|r.model.next_id)).max(rt.routing.as_ref().map_or(2,|r|r.model.next_id));
             let compatible = routing.as_ref().zip(rt.routing.as_ref()).is_some_and(|(next,prior)| next.model.latency_edit_of(&prior.model));
             if let(Some(next),Some(prior))=(routing.as_mut(),rt.routing.as_mut()){next.inherit(prior);}
             if !compatible { rt.plugin_midi.reset(); for track in &mut rt.tracks { track.midi_output.invalidate(); } }

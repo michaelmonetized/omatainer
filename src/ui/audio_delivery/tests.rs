@@ -219,3 +219,21 @@ fn native_performance_record_stop_decode_and_reviewed_recovery_work_in_performan
     g.wait();
     assert!(!files.0.join("protected-export").exists());
 }
+
+#[test]
+fn native_final_file_policy_blocks_before_publication_then_warns_with_metadata() {
+    let files=Files::new();let mut g=Gui::new(&files);
+    for track in &mut g.callback.renderer_mut_for_test().tracks {for clip in &mut track.clips {*clip=crate::engine::Clip::empty();}}
+    g.frame(vec![]);g.click("Review export source");g.wait();
+    g.app.audio_delivery.request.end=0.5;g.app.audio_delivery.request.tail=0.;
+    g.app.audio_delivery.config.metadata.title="Keyboard reachable delivery".into();
+    g.app.audio_delivery.config.targets.integrated_lufs=Some(-23.);
+    g.app.audio_delivery.config.targets.policy=data::measurement::Policy::Block;
+    let blocked=files.0.join("blocked");g.app.audio_delivery.path=blocked.to_string_lossy().into_owned();g.frame(vec![]);g.click("Render master audio");g.wait();
+    assert!(g.app.audio_delivery.message.contains("blocked publication"),"{}",g.app.audio_delivery.message);assert!(!blocked.exists());
+    g.app.audio_delivery.config.targets.policy=data::measurement::Policy::Warn;
+    let warned=files.0.join("warned");g.app.audio_delivery.path=warned.to_string_lossy().into_owned();g.frame(vec![]);g.click("Render master audio");g.wait();
+    assert!(g.app.audio_delivery.message.contains("Delivery QC:"),"{}",g.app.audio_delivery.message);
+    let value:serde_json::Value=serde_json::from_slice(&std::fs::read(warned.join("export.json")).unwrap()).unwrap();
+    assert_eq!(value["metadata"]["title"],"Keyboard reachable delivery");assert!(value["qc"]["integrated_lufs"].is_null());assert_eq!(value["qc"]["frames"],24000);assert_eq!(value["file_sha256"].as_str().unwrap().len(),64);
+}

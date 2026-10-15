@@ -28,6 +28,8 @@ pub struct State {
     pub(crate) arrangement: Option<Arc<arrangement::Model>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub routing: Option<Arc<audio::routing::model::Model>>,
+    #[serde(default="audio::routing::model::initial_id")]
+    pub routing_next_id:u64,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub(crate) migration: Option<Arc<crate::ableton::Migration>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -84,6 +86,8 @@ struct StateWire {
     arrangement: Option<Arc<arrangement::Model>>,
     #[serde(default)]
     routing: Option<Arc<audio::routing::model::Model>>,
+    #[serde(default="audio::routing::model::initial_id")]
+    routing_next_id:u64,
     #[serde(default)]
     migration: Option<Arc<crate::ableton::Migration>>,
     #[serde(default)]
@@ -227,6 +231,7 @@ impl<'de> Deserialize<'de> for State {
             navigation: wire.navigation,
             arrangement: wire.arrangement,
             routing: wire.routing,
+            routing_next_id:wire.routing_next_id,
             migration: wire.migration,
             mic_aux: wire.mic_aux,
             session: wire.session,
@@ -273,6 +278,8 @@ pub struct Track {
     pub launch: Option<Launch>,
     pub gain: f32,
     pub pan: f32,
+    #[serde(default, skip_serializing_if = "surface_controls::TrackMix::is_default")]
+    pub surface: surface_controls::TrackMix,
     pub mute: bool,
     pub solo: bool,
     pub armed: bool,
@@ -460,7 +467,7 @@ impl State {
     pub(crate) fn track_processing_required(&self, slot: usize) -> bool {
         if !self.tracks[slot].mute { return true; }
         let Some(id) = self.session.as_ref().and_then(|layout| layout.tracks.get(slot)).map(|track| track.id) else { return false; };
-        self.routing.as_ref().is_some_and(|model| model.connections.iter().any(|route|
+        self.routing.as_ref().is_some_and(|model| model.links().any(|route|
             route.source.group == audio::routing::model::Group::Track(id)
                 && route.source.tap != audio::routing::model::Tap::PostMixer
                 && route.map.iter().any(|channel| channel.gain != 0.0)))
@@ -520,6 +527,7 @@ impl State {
             scene_timing: None,
             arrangement: None,
             routing: None,
+            routing_next_id:2,
             migration: None,
             mic_aux: None,
             session: Some(session::Layout::legacy((0..TRACKS).map(|_| String::new()), SCENES)),
@@ -556,6 +564,7 @@ impl State {
                 launch: None,
                 gain: 0.8,
                 pan: 0.0,
+                surface: Default::default(),
                 mute: false,
                 solo: false,
                 armed: false,
@@ -714,6 +723,7 @@ impl State {
                 || !valid_synth(&track.synth)
                 || !finite_range(track.gain as f64, 0.0, 1.5)
                 || !finite_range(track.pan as f64, -1.0, 1.0)
+                || !track.surface.valid()
                 || !valid_eq(track.eq)
                 || track.drums.iter().any(|i| !reference(*i))
                 || !valid_fx(&track.fx, false)

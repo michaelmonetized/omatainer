@@ -341,6 +341,66 @@
           "sha256": "424a9185db789463d40ee3dfa05d07bf5de42ad40aca1959fa77e77db4c01e66"
         }
       ]
+    },
+    {
+      "category": "native-component",
+      "commercial_use": "Commercial use permitted under retained MIT and BSD-3-Clause terms.",
+      "delivery": "Statically compiled into Omatainer for final-file BS1770/EBUR128 measurement; no system libebur128 runtime dependency",
+      "id": "native:libebur128@1.2.6",
+      "license": "MIT AND BSD-3-Clause",
+      "members": [
+        "COPYING",
+        "ebur128.c",
+        "ebur128.h",
+        "notices/R128Scan.txt",
+        "notices/queue.txt",
+        "queue/sys/queue.h"
+      ],
+      "name": "libebur1281.2.6 with bundled BSD queue",
+      "notice_files": [
+        ".local/share/omatainer/source/vendor/ebur128/COPYING",
+        ".local/share/omatainer/source/vendor/ebur128/notices/R128Scan.txt",
+        ".local/share/omatainer/source/vendor/ebur128/notices/queue.txt"
+      ],
+      "redistribution": "Retain Jan Kokemuller/Chris Moeller MIT notices and University of California BSD notice; no endorsement implied. Exact unmodified sources and provenance are retained in the package.",
+      "sources": [
+        {
+          "location": "https://codeload.github.com/jiixyj/libebur128/tar.gz/refs/tags/v1.2.6",
+          "sha256": "baa7fc293a3d4651e244d8022ad03ab797ca3c2ad8442c43199afe8059faa613"
+        },
+        {
+          "location": ".local/share/omatainer/source/vendor/ebur128/COPYING",
+          "sha256": "d6b4754bb67bdd08b97d5d11b2d7434997a371585a78fe77007149df3af8d09c"
+        },
+        {
+          "location": ".local/share/omatainer/source/vendor/ebur128/ebur128.c",
+          "sha256": "c2fc562f1088cacab4d21250b6e04996ef36c7694ea901e08cc4d64eb542b78d"
+        },
+        {
+          "location": ".local/share/omatainer/source/vendor/ebur128/ebur128.h",
+          "sha256": "a988fa03828bcdd6258e6c52300d709a58727272a9ce6cd3fbf351f090517111"
+        },
+        {
+          "location": ".local/share/omatainer/source/vendor/ebur128/notices/R128Scan.txt",
+          "sha256": "58dbf3729fc6e48fff1125c7e86a5a004105ef8628d2373bba0ea01f044d5335"
+        },
+        {
+          "location": ".local/share/omatainer/source/vendor/ebur128/notices/queue.txt",
+          "sha256": "70cf9b4c1aabf50c12a0bba3d352459d05fb379a047dac5ecc6a9f74e38ed5ef"
+        },
+        {
+          "location": ".local/share/omatainer/source/vendor/ebur128/queue/sys/queue.h",
+          "sha256": "8b284031772b1ba2035d9b05b24f2cb9b23e7bd324bcccb5e3fcc57d34aafa48"
+        },
+        {
+          "location": ".local/share/omatainer/source/vendor/ebur128/SOURCE.sha256",
+          "sha256": "ae20e4e6bd2878ba606d42457e81141688be723ed9376593f4c622d98569e617"
+        },
+        {
+          "location": ".local/share/omatainer/source/vendor/ebur128/UPSTREAM.json",
+          "sha256": "344115b19de6367e2e9691c5d21c697f7df6c1719d91c1c5d73e54c1f8ef5a6e"
+        }
+      ]
     }
   ],
   "external": [
@@ -418,6 +478,14 @@
     "plugin/BarWidget.qml": ".config/omarchy/plugins/omatainer/BarWidget.qml",
     "plugin/Service.qml": ".config/omarchy/plugins/omatainer/Service.qml",
     "plugin/manifest.json": ".config/omarchy/plugins/omatainer/manifest.json",
+    "vendor/ebur128/COPYING": ".local/share/omatainer/source/vendor/ebur128/COPYING",
+    "vendor/ebur128/SOURCE.sha256": ".local/share/omatainer/source/vendor/ebur128/SOURCE.sha256",
+    "vendor/ebur128/UPSTREAM.json": ".local/share/omatainer/source/vendor/ebur128/UPSTREAM.json",
+    "vendor/ebur128/ebur128.c": ".local/share/omatainer/source/vendor/ebur128/ebur128.c",
+    "vendor/ebur128/ebur128.h": ".local/share/omatainer/source/vendor/ebur128/ebur128.h",
+    "vendor/ebur128/notices/R128Scan.txt": ".local/share/omatainer/source/vendor/ebur128/notices/R128Scan.txt",
+    "vendor/ebur128/notices/queue.txt": ".local/share/omatainer/source/vendor/ebur128/notices/queue.txt",
+    "vendor/ebur128/queue/sys/queue.h": ".local/share/omatainer/source/vendor/ebur128/queue/sys/queue.h",
     "vendor/egui-winit/.cargo_vcs_info.json": ".local/share/omatainer/source/vendor/egui-winit/.cargo_vcs_info.json",
     "vendor/egui-winit/Cargo.lock": ".local/share/omatainer/source/vendor/egui-winit/Cargo.lock",
     "vendor/egui-winit/Cargo.toml": ".local/share/omatainer/source/vendor/egui-winit/Cargo.toml",

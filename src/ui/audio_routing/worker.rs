@@ -6,6 +6,7 @@ use crossbeam_channel::{bounded, Receiver, Sender};
 pub(super) enum Job {
     Inspect(Arc<AtomicBool>),
     Attach(crate::engine::audio::routing::plugins::Instance, crate::engine::session::Id, Arc<AtomicBool>),
+    AttachReturn(crate::engine::audio::routing::plugins::Instance, [u64;2], u64, Arc<AtomicBool>),
     Apply(Draft, WorkPermit),
     PreviewInput(InputConfig, Arc<AtomicBool>),
     EnableInput(InputPreview, Arc<AtomicBool>),
@@ -42,7 +43,7 @@ impl Worker {
         std::thread::Builder::new().name("omatainer-routing-editor".into()).spawn(move || {
             while let Ok(job) = incoming.recv() {
                 let cancel = match &job {
-                    Job::Inspect(cancel) | Job::Attach(_,_,cancel) | Job::PreviewInput(_, cancel) | Job::EnableInput(_, cancel) | Job::DisableInput(_, cancel) => cancel.clone(),
+                    Job::Inspect(cancel) | Job::Attach(_,_,cancel) | Job::AttachReturn(_,_,_,cancel) | Job::PreviewInput(_, cancel) | Job::EnableInput(_, cancel) | Job::DisableInput(_, cancel) => cancel.clone(),
                     Job::Apply(_, work) | Job::Record(_, _, _, _, work) | Job::ReviewRecording(_, _, work) | Job::PlaceRecording(_, work) => work.cancel(),
                 };
                 let event = match job {
@@ -51,7 +52,8 @@ impl Worker {
                         let layout = captured.state.session.ok_or("Session identity unavailable")?;
                         let channels = output.as_ref().and_then(|handle| handle.status().active.as_ref().map(|active| usize::from(active.plan.channels))).unwrap_or(2);
                         let original = captured.state.routing;
-                        let model = original.as_ref().map(|model| (**model).clone()).unwrap_or_else(|| Model::for_output_channels(channels));
+                        let mut model = original.as_ref().map(|model| (**model).clone()).unwrap_or_else(|| Model::for_output_channels(channels));
+                        model.next_id=model.next_id.max(captured.state.routing_next_id);
                         Ok(Draft { namespace: layout.namespace, generation: layout.generation, revision: captured.revision, rate: project.sample_rate(), layout, enabled: original.is_some(), model, original, controls })
                     })()),
                     Job::Attach(plugin, track, cancel) => Event::Inspected((|| {
@@ -59,10 +61,22 @@ impl Worker {
                         let layout = captured.state.session.ok_or("Session identity unavailable")?;
                         let channels = output.as_ref().and_then(|handle| handle.status().active.as_ref().map(|active| usize::from(active.plan.channels))).unwrap_or(2);
                         let original = captured.state.routing;
-                        let model = original.as_ref().map(|m| (**m).clone()).unwrap_or_else(|| Model::for_output_channels(channels));
+                        let mut model = original.as_ref().map(|m| (**m).clone()).unwrap_or_else(|| Model::for_output_channels(channels));
+                        model.next_id=model.next_id.max(captured.state.routing_next_id);
                         let mut draft = Draft { namespace:layout.namespace,generation:layout.generation,revision:captured.revision,rate:project.sample_rate(),layout,enabled:true,model,original,controls };
                         draft.attach(plugin,track)?;
                         if cancel.load(Ordering::Acquire) { return Err("Plugin attachment cancelled".into()); }
+                        Ok(draft)
+                    })()),
+                    Job::AttachReturn(plugin, namespace, bus, cancel) => Event::Inspected((|| {
+                        let (captured,controls) = project.capture_processors(&cancel).map_err(|error| error.to_string())?;
+                        let layout = captured.state.session.ok_or("Session identity unavailable")?;
+                        let original = captured.state.routing;
+                        let mut model = original.as_ref().map(|m| (**m).clone()).ok_or("Create and apply a named return before attaching its processor")?;
+                        model.next_id=model.next_id.max(captured.state.routing_next_id);
+                        let mut draft = Draft { namespace:layout.namespace,generation:layout.generation,revision:captured.revision,rate:project.sample_rate(),layout,enabled:true,model,original,controls };
+                        draft.attach_return(plugin,namespace,bus)?;
+                        if cancel.load(Ordering::Acquire) { return Err("Return processor attachment cancelled".into()); }
                         Ok(draft)
                     })()),
                     Job::Apply(draft, work) => Event::Applied((|| {

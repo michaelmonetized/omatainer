@@ -1,6 +1,18 @@
 use super::*;
 use crate::engine::audio::routing::model::{Direction, Group, MAX_PHYSICAL_CHANNELS};
 
+/// Inspect the exact selected output without allocating a renderer or opening devices.
+/// Takes one immutable captured state and reviewed export; returns physical source indices and actual encoded speaker identity.
+pub(crate) fn output_contract(state:&crate::engine::project::State,request:&Export)->Result<crate::engine::audio::routing::speakers::OutputContract,String>{
+    let channels=if let Some(model)=&state.routing{
+        let alias=request.output_alias.ok_or("Choose the exact saved output alias before exporting routed audio")?;
+        let port=model.port(alias,Direction::Output).ok_or("Reviewed output alias was removed")?;
+        if model.monitor_output==Some(alias){return Err("Headphones are separate from program delivery".into());}
+        port.channels.clone()
+    }else{if request.output_alias.is_some(){return Err("Reviewed output alias no longer exists".into());}vec![0,1]};
+    crate::engine::audio::routing::speakers::OutputContract::stereo(channels,request.options.channels)
+}
+
 /// Prepare the reviewed native render source.
 /// Takes an owned coherent capture and export request; returns a stopped independent graph, exact ordered source channels and render width without opening devices.
 pub(super) fn prepare(
@@ -54,33 +66,9 @@ fn prepare_cancelled(mut captured:Captured,request:&Export,cancel:&AtomicBool) -
             return Err("A sounding instrument is unavailable; restore it before exporting".into());
         }
     }
-    let channels = if let Some(model) = &state.routing {
-        if model.connections.iter().any(|c| {
-            matches!(c.source.group, Group::Input(_)) && c.map.iter().any(|m| m.gain != 0.0)
-        }) {
-            return Err("This source uses physical input. Use real-time recording to include the hardware return".into());
-        }
-        let alias = request
-            .output_alias
-            .ok_or("Choose the exact saved output alias before exporting routed audio")?;
-        let port = model
-            .port(alias, Direction::Output)
-            .ok_or("Reviewed output alias was removed")?;
-        if !(1..=2).contains(&port.channels.len()) || model.monitor_output == Some(alias) {
-            return Err(
-                "Choose a mono/stereo program output alias, separate from headphones".into(),
-            );
-        }
-        port.channels
-            .iter()
-            .map(|&c| usize::from(c))
-            .collect::<Vec<_>>()
-    } else {
-        if request.output_alias.is_some() {
-            return Err("Reviewed output alias no longer exists".into());
-        }
-        vec![0, 1]
-    };
+    if state.routing.as_ref().is_some_and(|model|model.links().any(|c|matches!(c.source.group,Group::Input(_))&&c.map.iter().any(|m|m.gain!=0.))){return Err("This source uses physical input. Use real-time recording to include the hardware return".into());}
+    let contract=output_contract(state,request)?;
+    let channels=contract.channels.iter().map(|&c|usize::from(c)).collect::<Vec<_>>();
     let width = state
         .routing
         .as_ref()
@@ -137,7 +125,25 @@ pub(super) fn run(
     cancel: &std::sync::Arc<AtomicBool>,
     progress: &crate::background::Reporter,
 ) -> Result<(), String> {
-    let (mut rt, channels, width) = prepare_cancelled(captured, request,cancel)?;
+    run_selected(captured,request,None,raw,bounds,cancel,progress)
+}
+
+/// Render an explicit contribution while keeping every source and sidechain feeder alive.
+/// Takes the immutable capture, request, optional canonical selection and raw render destination; writes aligned ordered frames or refuses without publication.
+pub(crate) fn run_selected(mut captured:Captured,request:&Export,selection:Option<&crate::engine::audio::routing::selection::Selection>,raw:&Path,bounds:(u64,u64,u64,u64),cancel:&std::sync::Arc<AtomicBool>,progress:&crate::background::Reporter)->Result<(),String>{
+    let _contract=output_contract(&captured.state,request)?;
+    let original_delay=if let Some(selection)=selection{
+        let original=captured.state.routing.as_deref().cloned().unwrap_or_default();
+        let alias=request.output_alias.unwrap_or(1);
+        let layout=captured.state.session.as_ref().ok_or("Contribution rendering requires stable session identity")?;
+        let delay=crate::engine::audio::routing::latency::offline_output_delay(&original,layout,request.options.rate,alias)?;
+        let model=selection.plan(&captured,request.output_alias)?;
+        captured.state.routing=Some(std::sync::Arc::new(model));
+        Some(delay)
+    }else{None};
+    let mut source_request=request.clone();if selection.is_some()&&source_request.output_alias.is_none(){source_request.output_alias=Some(1);}
+    let (mut rt, channels, width) = prepare_cancelled(captured, &source_request,cancel)?;
+    if let Some(selection)=selection{let graph=rt.routing.as_mut().ok_or("Selected contribution has no prepared graph")?;let delay=graph.output_delay(source_request.output_alias.unwrap());if original_delay.is_some_and(|original|delay!=original){return Err("Selected contribution changes the reviewed program delay; connect it to the reviewed program and capture again".into());}graph.selection=Some(selection.policy);}
     rt.offline_plugin_cancel = cancel.clone();
     if rt.routing.as_ref().is_some_and(|graph| graph.model.plugins.iter().zip(&graph.plugins).any(|(saved,plugin)| !saved.bypass && plugin.endpoint.is_none())) { return Err("A native plugin is unavailable; relink its exact identity or explicitly bypass it before exporting".into()); }
     let mut output = create(raw)?;
@@ -145,7 +151,7 @@ pub(super) fn run(
     let mut bytes = [0_u8; 1024 * 2 * 4];
     let mut position = 0_u64;
     let stop = bounds.0 + bounds.1;
-    let delay = u64::from(request.output_alias.and_then(|alias| rt.routing.as_ref().map(|graph| graph.output_delay(alias))).unwrap_or(0));
+    let delay = u64::from(source_request.output_alias.and_then(|alias| rt.routing.as_ref().map(|graph| graph.output_delay(alias))).unwrap_or(0));
     let write_start = bounds.0 + delay;
     let end = stop + bounds.2 + delay;
     progress.progress(0, Some(end));

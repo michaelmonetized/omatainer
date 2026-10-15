@@ -41,7 +41,7 @@ fn native_bend_pointer_keyboard_assistive_and_focus_release_return_to_the_base_w
 #[test]
 fn native_pitch_target_and_separate_bpm_readouts_follow_the_actual_snapshot_and_sync_settings() {
     let mut g=Gui::new();g.fixture.rt.apply(Command::DeckPitch {deck:0,value:0.75});g.fixture.rt.publish_for_test();g.frame(vec![]);
-    g.fixture.rt.apply(Command::MidiPitch(crate::engine::pitch_pickup::Input {source:2190,context:[0;3],channel:0,binding:crate::engine::midi::Binding {kind:crate::engine::midi::MsgKind::Cc,ch:0,data:7,action:crate::engine::midi::Action::DeckPitch,deck:0,extra:0,relative:None,controls:None,pair_order:None},value:0.1}));
+    g.fixture.rt.apply(Command::MidiPitch(crate::engine::pitch_pickup::Input {source:2190,context:[0;3],channel:0,binding:crate::engine::midi::Binding { routing: None,kind:crate::engine::midi::MsgKind::Cc,ch:0,data:7,action:crate::engine::midi::Action::DeckPitch,deck:0,extra:0,relative:None,controls:None,pair_order:None},value:0.1}));
     g.fixture.rt.publish_for_test();g.frame(vec![]);
     let pitch=g.nodes.iter().find(|(_,n)|n.label()==Some("Deck A: Pitch")).unwrap().1.clone();
     assert!(pitch.description().unwrap().contains("Pickup +4.00% · move up"));

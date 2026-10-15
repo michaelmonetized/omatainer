@@ -86,6 +86,7 @@ pub(crate) fn actions() -> &'static [Action] {
         Action::TrackPan,
         Action::TrackSendA,
         Action::TrackSendB,
+        Action::RoutingMix,
         Action::Play,
         Action::Stop,
         Action::Record,
@@ -136,6 +137,7 @@ pub(crate) fn kind(action: Action) -> MsgKind {
         | Action::TrackPan
         | Action::TrackSendA
         | Action::TrackSendB
+        | Action::RoutingMix
         | Action::FxWet => MsgKind::Cc,
         _ => MsgKind::Note,
     }

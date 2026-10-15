@@ -13,6 +13,9 @@ impl Prepared {
         channels: usize,
     ) -> [f32; MAX_PHYSICAL_CHANNELS] {
         self.begin_plugins(rt);
+        self.mixer.delays(self.latency.as_ref().map(|latency|&latency.plan));
+        self.mixer.evaluate_at(&self.model,rt.playing,|delay|super::render_plugins::context(rt,delay).beat);
+        self.fixed_levels.fill([0.;2]);for (slot,track)in rt.tracks.iter().enumerate(){if rt.session.tracks[slot].active{self.fixed_levels[slot]=track.surface.sends;}}
         self.begin();
         rt.mic_aux.begin();
         let gains = {
@@ -103,14 +106,14 @@ impl Prepared {
                     }
                     [pair.taps[slot][0], [left, right], mixed]
                 }
+                Group::FixedReturn(return_index)=>{let output=rt.surface.render_send(usize::from(return_index),input,f64::from(rt.sr)*60./f64::from(rt.bpm.max(1.)));if !self.model.fixed_returns_without_default_send[usize::from(return_index)]{send=Some((self.main,output,self.nodes[index].valid));}[input,output,output]}
                 Group::Main => {
                     rt.mic_aux.music_gain();
                     if let Some(latency) = &mut self.latency {
                         let (inputs, frames, valid, duck) = rt.mic_aux.contributions();
                         latency.publish_auxiliary(inputs, frames, valid, duck, &self.nodes);
                     }
-                    let sends = rt.surface.render_sends(f64::from(rt.sr) * 60.0 / f64::from(rt.bpm.max(1.0)));
-                    let generated=[click+sends[0],click+sends[1]];
+                    let generated=[if self.selection.is_some(){0.}else{click};2];
                     let(generated,preview)=if let Some(latency)=&mut self.latency {
                         let(generated,preview)=latency.generated_main(index,generated,rt.tick_provider_preview());
                         (generated,Some(preview))
@@ -125,6 +128,7 @@ impl Prepared {
                     }
                     let post_fx = output;
                     let preview=preview.unwrap_or_else(||rt.tick_provider_preview());
+                    let preview=if self.selection.is_some(){[0.;2]}else{preview};
                     for channel in 0..2 {
                         output[channel] = (output[channel] + preview[channel]) * rt.master;
                     }
@@ -168,8 +172,12 @@ impl Prepared {
                         }
                         Group::Bus(_) => {
                             let bus = &self.model.buses[self.nodes[index].slot.unwrap()];
-                            let gain = if bus.mute { 0.0 } else { bus.gain };
-                            [input, input, input.map(|value| value * gain)]
+                            let slot=self.model.sends.len()+self.nodes[index].slot.unwrap();
+                            let values=self.mixer.channels[slot].effective;
+                            let output=std::array::from_fn(|channel|input[channel]*values.gain(channel));
+                            if !self.model.plugins.iter().any(|p|p.return_bus==Some(bus.id)){for (peak,sample)in self.mixer.channels[slot].peaks.iter_mut().zip(output){*peak=peak.max(sample.abs());}}
+                            let _=bus;
+                            [input, input, output]
                         }
                         _ => unreachable!(),
                     };
@@ -214,7 +222,7 @@ impl Prepared {
         let gain = rt.safety_output.output([1.0; 2])[0];
         for value in &mut output {
             *value = if value.is_finite() {
-                crate::engine::limiter(*value) * gain
+                if matches!(self.selection,Some(super::selection::Policy::PostDevice|super::selection::Policy::Dry)){*value}else{crate::engine::limiter(*value) * gain}
             } else {
                 0.0
             };

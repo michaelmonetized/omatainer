@@ -81,6 +81,9 @@ impl History {
                 | Command::Master(_)
                 | Command::CueMix(_)
                 | Command::Monitor(crate::engine::monitor::Control::Blend(_))
+                | Command::RoutingMix { .. }
+                | Command::TrackSend { .. }
+                | Command::TrackCrossfader { .. }
                 | Command::TrackGain { .. }
                 | Command::TrackPan { .. }
                 | Command::ClipGain { .. }

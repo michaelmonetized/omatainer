@@ -128,6 +128,7 @@ impl Global {
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub(super) struct TrackControls {
+    surface: surface_controls::TrackMix,
     gain: f32,
     pan: f32,
     mute: bool,
@@ -138,6 +139,7 @@ pub(super) struct TrackControls {
 impl TrackControls {
     pub fn get(track: &TrackRt) -> Self {
         Self {
+            surface: track.surface,
             gain: track.gain,
             pan: track.pan,
             mute: track.mute,
@@ -148,6 +150,7 @@ impl TrackControls {
     }
     fn swap(&mut self, track: &mut TrackRt) {
         let current = Self::get(track);
+        track.surface = self.surface;
         track.gain = self.gain;
         track.pan = self.pan;
         track.mute = self.mute;
@@ -288,6 +291,7 @@ impl Effect {
 }
 
 pub(super) enum Patch {
+    RoutingMix {namespace:[u64;2],target:audio::routing::mixer::Target,value:audio::routing::mixer::Values},
     SongNavigation {saved:Option<song_navigation::Saved>,bytes:usize},
     ClipManagement(Box<clip_management::edit::Inverse>),
     Arrangement {seed:u64,value:Box<arrangement::Playback>,reserved:[Option<Arc<arrangement::Plan>>;2],bytes:usize},
@@ -385,6 +389,7 @@ impl Patch {
         use super::TargetLabel as T;
         match self {
             Self::SongNavigation {..} | Self::ClipManagement(_) | Self::Arrangement {..} | Self::Session(_) | Self::Global(_) | Self::Sync(_) | Self::Conductor { .. } | Self::Sampler { .. } => T::None,
+            Self::RoutingMix {..} => T::None,
             Self::Track(t, _) => T::Track(*t),
             Self::PluginParameter {id,..} => T::Plugin(*id),
             Self::ClipGain { track, scene, .. } | Self::Clip { track, scene, .. } => {
@@ -403,6 +408,7 @@ impl Patch {
             Self::Deck(index,value) => rt.decks.get(*index as usize).is_some_and(|deck|
                 (value.source_gain == deck.source_gain || !deck.source_gain_active())
                 && (value.grid==deck.grid || !deck.load_receipt.as_ref().is_some_and(|receipt|receipt.grid_is_locked()))),
+            Self::RoutingMix {namespace,target,..}=>*namespace==rt.session.namespace&&rt.routing.as_ref().is_some_and(|g|g.mix_values(*target).is_some()),
             Self::Session(value) => value.valid(rt),
             Self::PluginParameter {namespace,id,parameter,..} => *namespace==rt.session.namespace && rt.routing.as_ref().is_some_and(|g|g.plugin_parameter_value(*id,*parameter).is_some()),
             Self::ClipManagement(value) => value.valid(rt),
@@ -455,6 +461,7 @@ impl Patch {
                 rt.sampler_bank = (*selected).min(rt.sampler_banks.len().saturating_sub(1));
                 *selected = selection;
             }
+            Self::RoutingMix {target,value,..}=>{assert!(rt.routing.as_mut().unwrap().mix_swap(*target,value));},
             Self::Global(value) => value.swap(rt),
             Self::PluginParameter {id,parameter,value,..} => {
                 let graph=rt.routing.as_mut().unwrap(); let current=graph.plugin_parameter_value(*id,*parameter).unwrap();

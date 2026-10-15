@@ -15,7 +15,7 @@ impl Default for Panel {
         Self {
             profiles:super::midi_profiles::Panel::default(),
             presets: super::midi_presets::Panel::default(),
-            binding: Binding {
+            binding: Binding { routing: None,
                 kind: MsgKind::Note,
                 ch: 0,
                 data: 0,
@@ -91,6 +91,7 @@ fn label(action: Action) -> &'static str {
         Action::TrackPan => "Track pan",
         Action::TrackSendA => "Track reverb send",
         Action::TrackSendB => "Track echo send",
+        Action::RoutingMix => "Named send or return control",
         Action::Play => "Session Play",
         Action::Stop => "Session Stop",
         Action::Record => "Session Record",
@@ -200,6 +201,7 @@ impl App {
             if previous != self.midi_learn.binding.action {
                 let binding = &mut self.midi_learn.binding;
                 binding.kind = learn::kind(binding.action);
+                binding.routing = None;
                 binding.deck = 0;
                 binding.extra = u16::from(binding.action == Action::SongLocator);
                 binding.controls = None;
@@ -214,7 +216,18 @@ impl App {
                 });
             }
             let binding = &mut self.midi_learn.binding;
-            if binding.action != Action::SamplerSlotStop && binding.action != Action::DeckSyncLeader && !learn::navigation(binding.action) {
+            if binding.action==Action::RoutingMix {
+                use crate::engine::audio::routing::mixer::{Assignment,Parameter,Target};
+                let namespace=self.snap.session.as_ref().map(|s|s.namespace);
+                let response=egui::ComboBox::from_id_salt("midi-routing-target").selected_text(binding.routing.and_then(|a|self.snap.routing_mixer.iter().find(|c|c.target==a.target&&Some(a.namespace)==namespace).map(|c|c.name.text())).unwrap_or("Choose named send or return")).show_ui(ui,|ui|{
+                    if let Some(namespace)=namespace{for channel in &self.snap.routing_mixer{if ui.selectable_label(binding.routing.is_some_and(|a|a.namespace==namespace&&a.target==channel.target),channel.name.text()).clicked(){binding.routing=Some(Assignment{namespace,target:channel.target,parameter:Parameter::Level});}}}
+                }).response;accessibility::focus(ui,&response);
+                if let Some(target)=&mut binding.routing{
+                    let response=egui::ComboBox::from_id_salt("midi-routing-parameter").selected_text(format!("{:?}",target.parameter)).show_ui(ui,|ui|for parameter in [Parameter::Level,Parameter::Pan,Parameter::Mute,Parameter::Solo,Parameter::SoloSafe]{if matches!(target.target,Target::Send(_))&&matches!(parameter,Parameter::Solo|Parameter::SoloSafe){continue;}ui.selectable_value(&mut target.parameter,parameter,format!("{parameter:?}"));}).response;accessibility::focus(ui,&response);
+                    if Some(target.namespace)!=namespace||!self.snap.routing_mixer.iter().any(|c|c.target==target.target){ui.colored_label(ui.visuals().warn_fg_color,"Assigned routing target is missing from this project. Choose its replacement explicitly.");}
+                }
+            }
+            if binding.action != Action::RoutingMix && binding.action != Action::SamplerSlotStop && binding.action != Action::DeckSyncLeader && !learn::navigation(binding.action) {
             let mut deck = f32::from(binding.deck) + 1.0;
             preferences::float_control(
                 ui,
@@ -519,7 +532,7 @@ impl App {
                                 .into();
                         return;
                     }
-                    config.mappings[index].binding = Binding {
+                    config.mappings[index].binding = Binding { routing: target.routing,
                         kind: target.kind,
                         ch: original.ch,
                         data: original.data,

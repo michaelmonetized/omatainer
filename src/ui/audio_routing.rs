@@ -8,6 +8,8 @@ use crate::engine::{
 use std::sync::atomic::{AtomicBool, Ordering};
 mod worker;
 mod latency;
+mod mixer;
+mod processors;
 use worker::{Event, Job, Worker};
 
 #[derive(Clone)]
@@ -34,6 +36,7 @@ impl Draft {
         plugin.id = self.model.next_id; self.model.next_id += 1;
         plugin.name = format!("{} {}",plugin.name,plugin.id);
         plugin.midi_track = Some(track);
+        plugin.return_bus = None;
         let maps = |source: usize, destination: usize| {
             if destination == 1 && source >= 2 { vec![ChannelMap {source:0,destination:0,gain:0.5},ChannelMap {source:1,destination:0,gain:0.5}] }
             else { (0..destination.min(2)).map(|i| ChannelMap {source:if source == 1 {0}else{i as u8},destination:i as u8,gain:1.}).collect() }
@@ -88,6 +91,10 @@ impl Panel {
     pub(super) fn attach_plugin(&mut self, engine: &Engine, plugin: crate::engine::audio::routing::plugins::Instance, track: crate::engine::session::Id) {
         self.open = true;
         self.request(engine,|cancel| Job::Attach(plugin,track,cancel));
+    }
+    pub(super) fn attach_return_plugin(&mut self, engine: &Engine, plugin: crate::engine::audio::routing::plugins::Instance, namespace: [u64;2], bus: u64) {
+        self.open = true;
+        self.request(engine,|cancel| Job::AttachReturn(plugin,namespace,bus,cancel));
     }
     /// Read pending routing work.
     /// Takes this panel; returns whether a worker or commit is active.
@@ -323,6 +330,8 @@ fn endpoint(group: Group, model: &Model, layout: &Layout) -> String {
         Group::Deck(0) => "Deck A".into(),
         Group::Deck(_) => "Deck B".into(),
         Group::Main => "Main mixer".into(),
+        Group::FixedReturn(0)=>"Fixed reverb return".into(),
+        Group::FixedReturn(_)=>"Fixed echo return".into(),
     }
 }
 /// List selectable endpoints.
@@ -344,7 +353,7 @@ fn endpoints(model: &Model, layout: &Layout, source: bool) -> Vec<Group> {
             .map(|item| Group::Scene(item.id)),
     );
     if source {
-        groups.extend([Group::Deck(0), Group::Deck(1)]);
+        groups.extend([Group::Deck(0), Group::Deck(1),Group::FixedReturn(0),Group::FixedReturn(1)]);
     }
     groups.extend(model.buses.iter().map(|bus| Group::Bus(bus.id)));
     groups.extend(model.plugins.iter().filter(|p| source || p.input_width() > 0).map(|p| Group::Plugin(p.id)));
@@ -371,7 +380,7 @@ fn choose(
     model: &Model,
     layout: &Layout,
 ) {
-    egui::ComboBox::from_id_salt(label)
+    egui::ComboBox::from_label(label)
         .selected_text(endpoint(*group, model, layout))
         .show_ui(ui, |ui| {
             for choice in choices {
@@ -391,11 +400,18 @@ fn direction_name(direction: Direction) -> &'static str {
 /// Remove one alias and its maps.
 /// Takes the saved draft and identity; removes dependent connections together.
 fn remove_alias(model: &mut Model, id: u64) {
+    let processors=model.plugins.iter().filter(|p|p.return_bus==Some(id)).map(|p|p.id).collect::<std::collections::BTreeSet<_>>();
+    model.plugins.retain(|p|!processors.contains(&p.id));
     model.ports.retain(|port| port.id != id);
     model.buses.retain(|bus| bus.id != id);
+    model.sends.retain(|s|!matches!(s.route.source.group,Group::Input(value)|Group::Bus(value)if value==id)&&!matches!(s.route.destination,Group::Bus(value)|Group::Output(value)|Group::Record(value)if value==id));
     model.connections.retain(|connection| !matches!(connection.source.group, Group::Input(value) | Group::Bus(value) if value == id)
         && !matches!(connection.destination, Group::Output(value) | Group::Record(value) | Group::Bus(value) if value == id));
+    let retained=|group| !matches!(group,Group::Plugin(value)if processors.contains(&value));
+    model.connections.retain(|c|retained(c.source.group)&&retained(c.destination));
+    model.sends.retain(|s|retained(s.route.source.group)&&retained(s.route.destination));
     if let Some(latency) = &mut model.latency { latency.reports.retain(|report| !matches!(report.group, Group::Input(value) | Group::Output(value) | Group::Record(value) | Group::Bus(value) if value == id)); }
+    if let Some(latency)=&mut model.latency{latency.reports.retain(|r|retained(r.group));}
 }
 
 /// Edit one routing value through pointer, keyboard or native accessibility.
@@ -534,7 +550,7 @@ fn aliases(ui: &mut Ui, model: &mut Model) {
         {
             let id = model.next_id;
             model.next_id += 1;
-            model.buses.push(Bus {
+            model.buses.push(Bus { mixer: Default::default(),
                 id,
                 alias: format!("Bus {id}"),
                 channels: 2,
@@ -682,6 +698,7 @@ impl App {
         egui::Window::new(tr!("Audio routing")).id(egui::Id::new("audio-routing-window")).open(&mut open).default_width(850.0).default_height(650.0).vscroll(true).show(ctx, |ui| {
             ui.label(tr!("Aliases retain exact physical channels. Missing channels stay silent. Drafts require confirmation; routes save with the project."));
             ui.collapsing(tr!("Headphone controls"), |ui| headphones::controls(ui, &self.snap, &self.engine.cmd, &self.undo_history));
+            ui.collapsing("Live sends and returns",|ui|mixer::live(ui,&self.snap,&self.engine.cmd,&self.undo_history,panel.draft.as_ref().filter(|d|self.snap.session.as_ref().is_some_and(|s|s.namespace==d.namespace)).map(|d|&d.model)));
             ui.label(&panel.message);
             if let Some(error) = &panel.error { ui.colored_label(ui.visuals().warn_fg_color, error); }
             if panel.busy() { if ui.button(tr!("Cancel routing operation")).clicked() { panel.cancel(); } }
@@ -739,11 +756,13 @@ impl App {
                                     if !send { draft.model.tracks_without_default_send.push(track.id); }
                                 }
                             }
+                            for (index,disabled)in draft.model.fixed_returns_without_default_send.iter_mut().enumerate(){let mut send=!*disabled;if ui.checkbox(&mut send,if index==0{"Fixed reverb return → main"}else{"Fixed echo return → main"}).changed(){*disabled=!send;}}
                             for (deck, disabled) in draft.model.decks_without_default_send.iter_mut().enumerate() {
                                 let mut send = !*disabled;
                                 if ui.checkbox(&mut send, if deck == 0 { "Deck A → main" } else { "Deck B → main" }).changed() { *disabled = !send; }
                             }
                         });
+                        ui.collapsing("Named auxiliary sends and returns",|ui|mixer::draft(ui,draft));
                         ui.collapsing(tr!("Routes and tap positions"), |ui| connections(ui, &mut draft.model, &draft.layout));
                         ui.collapsing(tr!("Latency compensation"), |ui| latency::controls(ui, &mut draft.model, &draft.layout, draft.rate, self.snap.latency));
                         ui.label(tr!("Track pre FX includes instruments and mapped input; post mixer includes mute, solo, gain and pan. Deck pre FX is the source; post FX includes deck gain/EQ/filter and transition; post mixer adds crossfader gain."));

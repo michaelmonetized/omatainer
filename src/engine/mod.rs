@@ -269,6 +269,8 @@ pub struct TrackRt {
     pub scene_bus: usize,
     pub gain: f32,
     pub pan: f32,
+    pub surface: surface_controls::TrackMix,
+    surface_gain: mixer_gain::GainPair,
     mixer_gain: mixer_gain::GainPair,
     pub mute: bool,
     pub solo: bool,
@@ -300,7 +302,7 @@ impl TrackRt {
         clips.reserve(session::MAX_SCENES - clips.len());
         Self {
             name, clips, playing: None, launch: Default::default(), project_resume: None, scene_bus: 0,
-            gain: 0.8, pan: 0.0, mixer_gain: mixer_gain::GainPair::default(),
+            gain: 0.8, pan: 0.0, surface: Default::default(), surface_gain: Default::default(), mixer_gain: mixer_gain::GainPair::default(),
             mute: false, solo: false, armed: false, kind,
             input_monitor: None, input_gain: mixer_gain::GainPair::default(), pfl: false,
             poly: Poly::new(sr, match kind { 0 => SynthInstrument::Analog, 1 => SynthInstrument::Keys, _ => SynthInstrument::Pad }, 8),
@@ -776,6 +778,7 @@ pub struct RtEngine {
     metro: metronome::Click,
     count_in: Option<metronome::CountIn>,
     pub(crate) routing: Option<Box<audio::routing::prepared::Prepared>>,
+    pub(crate) routing_next_id:u64,
     routing_track_input: Option<[f32; 2]>,
     routing_track_taps: [[f32; 2]; 3],
     routing_deck_taps: [[f32; 2]; 2],
@@ -890,6 +893,7 @@ pub struct DeckSnap {
 
 #[derive(Clone, Debug, Default, Serialize)]
 pub struct TrackSnap {
+    pub surface:surface_controls::TrackMix,
     pub name: String,
     pub gain: f32,
     pub pan: f32,
@@ -974,6 +978,7 @@ pub struct Snapshot {
     pub master_meters: [f32; 2],
     pub monitor: monitor::Status,
     pub(crate) latency: audio::routing::latency::Status,
+    pub(crate) routing_mixer: Vec<audio::routing::mixer::Channel>,
     pub(crate) mic_aux: audio::routing::mic_aux::Status,
     pub(crate) arrangement_enabled: bool,
     pub(crate) arrangement_end: f64,
@@ -1057,6 +1062,7 @@ impl Default for Snapshot {
             master_meters: [0.0; 2],
             monitor: monitor::Status::default(),
             latency: audio::routing::latency::Status::default(),
+            routing_mixer: Vec::with_capacity(audio::routing::mixer::MAX_SENDS+audio::routing::model::MAX_BUSES),
             mic_aux: audio::routing::mic_aux::Status::default(),
             arrangement_enabled: false,
             arrangement_end: 0.0,
@@ -1194,6 +1200,9 @@ pub enum Command {
     Monitor(monitor::Control),
     MicAuxConfigure(Box<audio::routing::mic_aux::control::Request>),
     MicAuxControl(audio::routing::mic_aux::control::Control),
+    RoutingMix { namespace:[u64;2], target:audio::routing::mixer::Target, parameter:audio::routing::mixer::Parameter, value:f32 },
+    TrackSend { track: u8, send: u8, value: f32 },
+    TrackCrossfader { track: u8, assignment: u8 },
     TrackGain { track: u8, value: f32 },
     ClipGain { track: u8, scene: u16, value: f32 },
     TrackPan { track: u8, value: f32 },
@@ -1401,6 +1410,7 @@ impl RtEngine {
             metro: metronome::Click::new(sr),
             count_in: None,
             routing: None,
+            routing_next_id:2,
             routing_track_input: None,
             routing_track_taps: [[0.0; 2]; 3],
             routing_deck_taps: [[0.0; 2]; 2],
@@ -2152,7 +2162,7 @@ impl RtEngine {
         };
         let output = if silent { [0.0; 2] } else { [fl * gl, fr * gr] };
         self.routing_track_taps = [raw, [fl, fr], output];
-        let output = self.surface.track(ti, output);
+        let output = self.surface.track(track, output);
         self.routing_track_taps[2] = output;
         (output[0], output[1], track.pfl)
     }
@@ -2548,7 +2558,7 @@ impl RtEngine {
             Command::DeckControl { source, deck, control: deck_controls::Control::HotLoop { pad, clear } } if usize::from(deck) < DECKS && pad < 8 && self.decks[usize::from(deck)].controls.status().hotloops[usize::from(pad)] => Command::DeckControl { source, deck, control: deck_controls::Control::SavedLoop { media_key: self.decks[usize::from(deck)].history_key, id: pad + 1, action: if clear { deck_controls::SavedLoopAction::Delete } else { deck_controls::SavedLoopAction::Recall { activate: true } } } },
             other => other,
         };
-        let voice_valid=match &c {Command::MicAuxConfigure(r)=>r.current(self),Command::MicAuxControl(v)=>v.resolve(self).is_some(),_=>true};
+        let voice_valid=match &c {Command::RoutingMix {namespace,target,parameter,value}=>*namespace==self.session.namespace&&parameter.valid(*value)&&!(matches!(target,audio::routing::mixer::Target::Send(_))&&matches!(parameter,audio::routing::mixer::Parameter::Solo|audio::routing::mixer::Parameter::SoloSafe))&&self.routing.as_ref().is_some_and(|g|g.mix_values(*target).is_some()),Command::TrackSend { track,send,value } => self.session.tracks.get(usize::from(*track)).is_some_and(|t|t.active) && *send < 2 && value.is_finite() && (0.0..=1.0).contains(value), Command::TrackCrossfader {track,assignment} => self.session.tracks.get(usize::from(*track)).is_some_and(|t|t.active) && *assignment <= 2, Command::MicAuxConfigure(r)=>r.current(self),Command::MicAuxControl(v)=>v.resolve(self).is_some(),_=>true};
         if !voice_valid {self.undo.reject(undo::Failure::Invalid);self.undo.retire_command(c);return;}
         if let Command::Monitor(control) = &c {
             if !self.monitor_can_apply(*control) { self.undo.retire_command(c); return; }
@@ -3122,6 +3132,19 @@ impl RtEngine {
                 self.undo.retire_command(Command::MicAuxConfigure(request));
             }
             Command::MicAuxControl(control) => {if let Some(cfg)=control.resolve(self){self.mic_aux.set(Some(cfg));}}
+            Command::RoutingMix {namespace,target,parameter,value} => {
+                if namespace!=self.session.namespace || !self.routing.as_mut().is_some_and(|graph|graph.mix_control(target,parameter,value)){self.undo.reject(undo::Failure::Invalid);}
+            }
+            Command::TrackSend { track, send, value } => {
+                if send < 2 && value.is_finite() && (0.0..=1.0).contains(&value) {
+                    if let Some(track) = self.tracks.get_mut(usize::from(track)) { track.surface.sends[usize::from(send)] = value; }
+                }
+            }
+            Command::TrackCrossfader { track, assignment } => {
+                if assignment <= 2 {
+                    if let Some(track) = self.tracks.get_mut(usize::from(track)) { track.surface.crossfader = assignment; }
+                }
+            }
             Command::TrackGain { track, value } => {
                 if (track as usize) < self.tracks.len() {
                     self.tracks[track as usize].gain = value.clamp(0.0, 1.5);

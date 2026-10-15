@@ -4,6 +4,7 @@ use crate::engine::audio::routing::model::Direction;
 use crate::engine::audio::routing::record::delivery as live;
 use crossbeam_channel::{bounded, Receiver};
 use std::sync::atomic::{AtomicBool, Ordering};
+mod finishing;
 #[cfg(test)]
 mod tests;
 
@@ -40,6 +41,7 @@ enum Operation {
     Export {
         plan: Plan,
         request: Export,
+        config: data::finishing::Config,
         path: PathBuf,
     },
 }
@@ -104,9 +106,9 @@ impl Job {
                         let scenes=layout.scene_order.iter().filter_map(|&slot|layout.scenes.get(usize::from(slot)).filter(|s|s.active).map(|s|(slot,s.name.clone()))).collect();
                         Ok(Reply::Inspected(Plan{revision:captured.revision,namespace:layout.namespace,generation:layout.generation,outputs,routed:model.is_some(),scenes,records,rate:handle.sample_rate()}))
                     },
-                    Operation::Export{plan,request,path}=>{
+                    Operation::Export{plan,request,config,path}=>{
                         let layout=captured.state.session.as_ref().ok_or("Session identity unavailable")?;if captured.revision!=plan.revision||layout.namespace!=plan.namespace||layout.generation!=plan.generation{return Err("Project changed since export review. Refresh the source before rendering".into());}
-                        data::run(captured,&request,&path,permit.as_ref().unwrap(),&ticket.as_ref().unwrap().reporter()).map(Reply::Exported)
+                        data::run_selected(captured,&request,None,&config,&path,permit.as_ref().unwrap(),&ticket.as_ref().unwrap().reporter()).map(Reply::Exported)
                     },
                     Operation::Record{plan,source,format,dither,seconds,path}=>{
                         let layout=captured.state.session.as_ref().ok_or("Session identity unavailable")?;if layout.namespace!=plan.namespace||layout.generation!=plan.generation||handle.sample_rate()!=plan.rate{return Err("Recording source changed since review; refresh before recording".into());}
@@ -150,6 +152,7 @@ pub(super) struct Panel {
     pub open: bool,
     plan: Option<Plan>,
     request: Export,
+    config: data::finishing::Config,
     path: String,
     job: Option<Job>,
     message: String,
@@ -264,10 +267,11 @@ impl App {
                 ui.horizontal(|ui|{ui.label(tr!("Repeat range"));ui.add(egui::DragValue::new(&mut panel.request.repeats).range(1..=64));ui.label(tr!("Final tail (seconds)"));ui.add(egui::DragValue::new(&mut panel.request.tail).range(0.0..=120.0).speed(0.1));});
                 egui::ComboBox::from_id_salt("audio-export-format").selected_text(panel.request.options.format.title()).show_ui(ui,|ui|{for format in Format::ALL{ui.selectable_value(&mut panel.request.options.format,format,format.title());}});
                 ui.horizontal(|ui|{ui.label(tr!("Sample rate (Hz)"));ui.add(egui::DragValue::new(&mut panel.request.options.rate).range(8000..=192000).speed(100.0));ui.selectable_value(&mut panel.request.options.channels,1,tr!("Mono"));ui.selectable_value(&mut panel.request.options.channels,2,tr!("Stereo"));});
-                if !panel.request.options.format.dither(){panel.request.options.dither=false;}ui.add_enabled(panel.request.options.format.dither(),egui::Checkbox::new(&mut panel.request.options.dither,tr!("Triangular dither for integer quantization")));ui.checkbox(&mut panel.request.options.normalize,tr!("Normalize peak to −1 dBFS"));
+                if !panel.request.options.format.dither(){panel.request.options.dither=false;}ui.add_enabled(panel.request.options.format.dither(),egui::Checkbox::new(&mut panel.request.options.dither,tr!("Triangular dither for integer quantization")));ui.checkbox(&mut panel.request.options.normalize,tr!("Normalize sample peak to −1 dBFS"));
                 ui.label(tr!("Ranges start at scene zero or the captured session cursor. The session uses its currently launched clips. Effects build from the source start; each repeat copies the same rendered range. Tail keeps the decay after sources stop. Metronome and headphone cue are excluded. FLAC/MP3 require FFmpeg."));
+                finishing::controls(ui,&mut panel.config);
                 ui.label(tr!("New export folder"));ui.add(egui::TextEdit::singleline(&mut panel.path).hint_text("/home/you/Music/Exports/new-mix").desired_width(f32::INFINITY));
-                match panel.request.frames(){Ok((_,_,_,frames))=>{ui.label(format!("{} frames · {:.3} seconds",frames,frames as f64/f64::from(panel.request.options.rate)));if ui.button(tr!("Render master audio")).help(ui,HelpControl::AudioExport).clicked(){export=Some(Operation::Export{plan:plan.clone(),request:panel.request.clone(),path:PathBuf::from(&panel.path)});}},Err(e)=>{ui.label(e);}}
+                match panel.request.frames(){Ok((_,_,_,frames))=>{ui.label(format!("{} frames · {:.3} seconds",frames,frames as f64/f64::from(panel.request.options.rate)));if ui.button(tr!("Render master audio")).help(ui,HelpControl::AudioExport).clicked(){export=Some(Operation::Export{plan:plan.clone(),request:panel.request.clone(),config:panel.config.clone(),path:PathBuf::from(&panel.path)});}},Err(e)=>{ui.label(e);}}
             }});
             ui.separator();
             ui.heading(tr!("Record the performance"));

@@ -112,19 +112,19 @@ fn surfaces_apc_knob_modes_assignments_and_master_device_controls_change_real_va
     assert_eq!(rt.surface_status().sends[1][1], 64.0 / 127.0);
     send(&mut input, &mut rt, &[0x90, 0x42, 127]);
     assert_eq!(rt.surface_status().assignments[0], 1);
-    rt.surface.prepare(48000.0, 1.0, 1.0);
+    rt.surface.prepare(48000.0, 1.0, 1.0, &mut rt.tracks);
     for _ in 0..240 {
-        rt.surface.track(0, [0.0; 2]);
+        rt.surface.track(&mut rt.tracks[0], [0.0; 2]);
     }
-    let dry = rt.surface.track(0, [0.2, -0.3]);
+    let dry = rt.surface.track(&mut rt.tracks[0], [0.2, -0.3]);
     assert_eq!(dry, [0.0, 0.0]);
     send(&mut input, &mut rt, &[0x90, 0x42, 127]);
     assert_eq!(rt.surface_status().assignments[0], 2);
-    rt.surface.prepare(48000.0, 1.0, 1.0);
+    rt.surface.prepare(48000.0, 1.0, 1.0, &mut rt.tracks);
     for _ in 0..240 {
-        rt.surface.track(0, [0.0; 2]);
+        rt.surface.track(&mut rt.tracks[0], [0.0; 2]);
     }
-    let dry = rt.surface.track(0, [0.2, -0.3]);
+    let dry = rt.surface.track(&mut rt.tracks[0], [0.2, -0.3]);
     assert_eq!(dry, [0.2, -0.3]);
     send(&mut input, &mut rt, &[0x90, 0x50, 127]);
     send(&mut input, &mut rt, &[0xb0, 0x10, 80]);
@@ -439,8 +439,8 @@ fn surfaces_controls_render_without_callback_allocations_and_send_stereo_effect_
         send: 0,
         value: 1.0,
     }));
-    rt.surface.prepare(48000.0, 0.5, 0.0);
-    rt.surface.track(0, [1.0, -0.5]);
+    rt.surface.prepare(48000.0, 0.5, 0.0, &mut rt.tracks);
+    rt.surface.track(&mut rt.tracks[0], [1.0, -0.5]);
     let mut energy = [0.0; 2];
     for _ in 0..8000 {
         let output = rt.surface.render_sends(24000.0);
@@ -449,6 +449,29 @@ fn surfaces_controls_render_without_callback_allocations_and_send_stereo_effect_
         }
     }
     assert!(energy[0] > 0.1 && energy[1] > 0.05 && energy[0] > energy[1] * 1.9);
+}
+
+#[test]
+fn fixed_send_owned_crossfader_ramps_follow_reorder_duplication_and_new_identity() {
+    let (_,mut rt)=Engine::headless_for_test(48000,256);
+    rt.tracks[0].surface.crossfader=1;
+    rt.tracks[1].surface.crossfader=2;
+    rt.surface.prepare(48000.,1.,1.,&mut rt.tracks);
+    assert_eq!(rt.surface.track(&mut rt.tracks[0],[1.,-1.]),[0.;2]);
+    assert_eq!(rt.surface.track(&mut rt.tracks[1],[1.,-1.]),[1.,-1.]);
+    rt.tracks.swap(0,1);
+    rt.surface.prepare(48000.,1.,1.,&mut rt.tracks);
+    assert_eq!(rt.surface.track(&mut rt.tracks[0],[1.,-1.]),[1.,-1.]);
+    assert_eq!(rt.surface.track(&mut rt.tracks[1],[1.,-1.]),[0.;2]);
+    rt.tracks[2]=rt.tracks[0].clone();
+    let (_,fresh)=Engine::headless_for_test(48000,256);
+    rt.tracks[1]=fresh.tracks[1].clone();
+    let counts=crate::engine::test_alloc::measure(||{
+        rt.surface.prepare(48000.,1.,1.,&mut rt.tracks);
+        assert_eq!(rt.surface.track(&mut rt.tracks[1],[1.,-1.]),[1.,-1.],"New identity must start at its default gain immediately");
+        assert_eq!(rt.surface.track(&mut rt.tracks[2],[1.,-1.]),[1.,-1.],"Duplication owns its independent ramp");
+    });
+    assert_eq!(counts,crate::engine::test_alloc::Counts::default());
 }
 
 #[test]
@@ -646,4 +669,17 @@ fn surfaces_sp1_sync_off_is_idempotent_and_manual_pads_save_and_select_real_loop
     send(&mut input, &mut rt, &[0x97, 0x61, 127]);
     assert!(rt.decks[0].loop_on);
     assert!(!rt.decks[1].loop_on);
+}
+
+#[test]
+fn named_mixer_midi_absolute_controls_use_stable_project_targets_and_undo(){
+    use crate::engine::audio::routing::{mixer::{Assignment,Target,Parameter},model::*,prepared::Prepared};
+    let (engine,mut rt)=Engine::headless_for_test(48000,256);rt.apply(Command::Stop);
+    let mut model=Model::default();model.next_id=3;model.buses.push(Bus{id:2,alias:"MIDI return".into(),channels:2,gain:1.,mute:false,mixer:Default::default()});rt.routing=Some(Box::new(Prepared::at_rate(Arc::new(model),&rt.session,48000).unwrap()));
+    let namespace=rt.session.namespace;
+    let map=MidiMap{name:"Named mixer".into(),matchers:vec![],unmapped_notes:UnmappedNotes::Ignore,bindings:vec![Binding{routing:Some(Assignment{namespace,target:Target::Return(2),parameter:Parameter::Level}),kind:MsgKind::Cc,ch:0,data:7,action:Action::RoutingMix,deck:0,extra:0,relative:None,controls:None,pair_order:None}]};map.validate().unwrap();
+    let mut input=MidiHub::without_devices().open_for_test(&engine.cmd,991,map,"mixer fixture","fixture:named-mixer");
+    send(&mut input,&mut rt,&[0xb0,7,64]);assert!((rt.routing.as_ref().unwrap().mix_values(Target::Return(2)).unwrap().level-1.5*64./127.).abs()<1e-7);
+    rt.apply(Command::Undo);assert_eq!(rt.routing.as_ref().unwrap().mix_values(Target::Return(2)).unwrap().level,1.);
+    let assigned=Assignment{namespace,target:Target::Return(2),parameter:Parameter::Pan};assert!(assigned.valid());rt.session.namespace=[101,102];rt.apply(assigned.command(1.));assert_eq!(rt.routing.as_ref().unwrap().mix_values(Target::Return(2)).unwrap().pan,0.);
 }
