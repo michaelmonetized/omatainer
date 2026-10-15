@@ -113,7 +113,7 @@ fn native_plugin_instrument_release_capture_container_reopen_and_missing_identit
 #[test]
 fn plugin_automation_bounds_legacy_injection_and_physical_note_ownership(){
     use super::plugins::Automation;
-    let lane=Automation{id:1,points:vec![[0.,0.],[2.,1.]]};assert_eq!(lane.at(1.),0.5);assert_eq!(lane.at(4.),1.);
+    let lane=Automation{id:1,points:vec![[0.,0.],[2.,1.]],modulation:false};assert_eq!(lane.at(1.),0.5);assert_eq!(lane.at(4.),1.);
     let mut root=crate::engine::plugin_midi::Routing::default();let key=engine::InputKey::Midi{source:9,ch:2,note:60};root.on(key,0,2,60,127);root.clip(0,[0x92,60,90],2);root.next();root.clip(0,[0x82,60,0],1);assert!(root.events(0).is_empty());root.clear_clip(0);assert!(root.events(0).is_empty());root.release(key);assert_eq!(root.events(0),[[0x82,60,0]]);
     let (engine,mut rt)=Engine::headless_for_test(48000,256); let mut raw=serde_json::to_value(capture(&engine,&mut rt).state).unwrap();raw["version"]=28.into();raw["routing"]=serde_json::json!({"plugins":[]});assert!(serde_json::from_value::<project::State>(raw).is_err());
 }
@@ -122,7 +122,7 @@ fn plugin_automation_bounds_legacy_injection_and_physical_note_ownership(){
 #[ignore="requires the freshly compiled native worker and original SDK contract fixture"]
 fn native_automation_corner_and_individual_panic_release_reach_the_processor() {
     let (class,saved)=fixture(true);let (_,mut rt)=Engine::headless_for_test(48000,256);let track=rt.session.tracks[0].id;
-    let mut model=Model::default();model.version=3;model.next_id=3;let mut p=instance(&class,saved,Some(track));p.automation.push(super::plugins::Automation{id:0,points:vec![[0.,0.5],[128./24000.,1.],[256./24000.,0.5]]});model.plugins.push(p);
+    let mut model=Model::default();model.version=3;model.next_id=3;let mut p=instance(&class,saved,Some(track));p.automation.push(super::plugins::Automation{id:0,points:vec![[0.,0.5],[128./24000.,1.],[256./24000.,0.5]],modulation:false});model.plugins.push(p);
     model.connections=vec![link(Group::Plugin(2),Group::Output(1),&[(0,0,1.),(1,1,1.)])];
     let mut graph=Prepared::at_rate(Arc::new(model),&rt.session,48000).unwrap();graph.offline=true;rt.playing=true;
     rt.plugin_midi.on(engine::InputKey::Midi{source:8,ch:7,note:72},0,7,72,127);
@@ -197,4 +197,16 @@ fn native_plugin_export_trims_bridge_delay_refuses_missing_processing_and_keeps_
     let cancelled=engine.cmd.performance().optional_work().unwrap();cancelled.cancel().store(true,std::sync::atomic::Ordering::Release);
     assert!(audio_delivery::run(capture(&engine,&mut rt),&request,&root.join("cancelled"),&cancelled,&Default::default()).is_err());assert!(!root.join("cancelled").exists());
     assert!(!rt.playing);assert!(rt.routing.as_ref().unwrap().plugins[0].endpoint.as_ref().unwrap().control.error().is_none());std::fs::remove_dir_all(root).unwrap();
+}
+
+#[test]
+fn clap_modulation_lane_container_reopen_and_legacy_default() {
+    use super::plugins::Automation;
+    let old:Automation=serde_json::from_value(serde_json::json!({"id":7,"points":[[0.,0.25],[2.,0.75]]})).unwrap();assert!(!old.modulation);
+    assert!(serde_json::to_value(&old).unwrap().get("modulation").is_none());
+    let lane=Automation {id:7,points:vec![[0.,-0.5],[2.,0.5]],modulation:true};assert_eq!(lane.at(1.),0.);
+    let (engine,mut rt)=Engine::headless_for_test(48000,256);let mut captured=capture(&engine,&mut rt);let mut model=Model::default();model.version=3;model.next_id=3;
+    let saved=Saved {schema:1,binary:plugin_host::BinaryIdentity {bundle:"/home/missing/Processor.clap".into(),binary:"/home/missing/Processor.clap".into(),sha256:"a".repeat(64),arch:std::env::consts::ARCH.into()},class_id:"clap:org.omatainer.retained".into(),plugin_version:"1".into(),state_codec:"clap-state-1".into(),state:vec![1,2,3]};
+    model.plugins.push(Instance {id:2,name:"Retained CLAP processor".into(),saved,inputs:vec![2],outputs:vec![2],midi_track:None,scene_track:None,instrument:false,bypass:false,latency:768,parameters:vec![],automation:vec![lane.clone()],unavailable:Some("Binary unavailable; state retained".into())});model.order(&rt.session).unwrap();captured.state.routing=Some(Arc::new(model));
+    let root=std::env::temp_dir().join(format!("clap-modulation-project-{}",crate::sampler_bank::BankId::new().unwrap()));std::fs::create_dir_all(&root).unwrap();let path=root.join("modulation.omatainer");let bundle=crate::project_file::Bundle {state:captured.state,media:captured.media};let cancel=AtomicBool::new(false);crate::project_file::save(&path,&bundle,crate::project_file::Overwrite::Never,&Default::default(),&cancel).unwrap();let reopened:crate::project_file::Bundle<project::State>=crate::project_file::load(&path,&Default::default(),&cancel).unwrap();assert_eq!(reopened.state.routing.as_ref().unwrap().plugins[0].automation,[lane]);assert_eq!(reopened.state.routing.as_ref().unwrap().plugins[0].saved.state,[1,2,3]);std::fs::remove_dir_all(root).unwrap();
 }

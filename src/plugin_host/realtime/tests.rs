@@ -189,3 +189,48 @@ fn native_processor_bridge_preserves_delay_state_and_samples() {
     assert!(!saved.state.is_empty());
     assert!(endpoint.control.class.info.name.contains("Gain"));
 }
+
+#[test]
+fn native_expression_and_midi_share_bounded_allocation_free_admission() {
+    use crate::plugin_host::clap::{
+        expression::{NativeEvent, Target},
+        Metadata,
+    };
+    let (mut endpoint, mut requests, _responses) = fixture();
+    Arc::get_mut(&mut endpoint.control.class).unwrap().native = Some(Metadata {
+        audio_inputs: vec![],
+        audio_outputs: vec![],
+        note_inputs: vec![],
+        note_outputs: vec![],
+        parameters: vec![],
+        extensions: vec![],
+        unsupported_host_extensions: vec![],
+    });
+    let event = NativeEvent::Expression {
+        target: Target {
+            note_id: 42,
+            port: 0,
+            channel: 3,
+            key: 60,
+        },
+        kind: 6,
+        value: 0.75,
+    };
+    let counts = crate::engine::test_alloc::measure(|| {
+        assert!(endpoint.native(event));
+        for _ in 0..511 {
+            assert!(endpoint.midi([0x93, 60, 100]));
+        }
+        assert!(!endpoint.native(event));
+        assert!(!endpoint.midi([0x93, 61, 100]));
+        for _ in 0..BLOCK {
+            endpoint.tick([0.; MAX_CHANNELS], Context::default());
+        }
+    });
+    assert_eq!(counts, crate::engine::test_alloc::Counts::default());
+    let packet = requests.pop().unwrap();
+    assert_eq!(packet.native_count, 1);
+    assert_eq!(packet.native[0].event, Some(event));
+    assert_eq!(packet.native[0].offset, 0);
+    assert_eq!(packet.midi_count, 511);
+}

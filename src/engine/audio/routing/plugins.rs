@@ -48,7 +48,7 @@ pub(crate) struct Parameter {
 pub(crate) struct Automation {
     pub id: u32,
     pub points: Vec<[f64; 2]>,
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub modulation: bool,
 }
 impl Automation {
