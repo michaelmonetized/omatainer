@@ -28,10 +28,11 @@ pub(crate) struct Catalog {
 }
 impl Default for Catalog {
     fn default() -> Self {
-        let mut roots = vec!["/usr/lib/vst3".into(), "/usr/local/lib/vst3".into(), "/usr/lib/clap".into(), "/usr/local/lib/clap".into()];
+        let mut roots = vec!["/usr/lib/vst3".into(), "/usr/local/lib/vst3".into(), "/usr/lib/clap".into(), "/usr/local/lib/clap".into(), "/usr/lib/lv2".into(), "/usr/local/lib/lv2".into()];
         if let Some(home) = std::env::var_os("HOME") {
             roots.insert(0, PathBuf::from(&home).join(".vst3"));
-            roots.insert(1, PathBuf::from(home).join(".clap"));
+            roots.insert(1, PathBuf::from(&home).join(".clap"));
+            roots.insert(2, PathBuf::from(home).join(".lv2"));
         }
         Self {
             schema: 1,
@@ -183,7 +184,7 @@ pub(super) fn candidates(roots: &[PathBuf], cancel: &AtomicBool) -> Result<Vec<P
                 );
             }
             let entry = entry.map_err(|e| format!("Plugin scan path cannot be read: {e}"))?;
-            if entry.file_type().is_dir() && entry.path().extension().is_some_and(|s| s == "vst3") || entry.file_type().is_file() && entry.path().extension().is_some_and(|s| s == "clap") {
+            if entry.file_type().is_dir() && entry.path().extension().is_some_and(|s| s == "vst3" || s == "lv2") || entry.file_type().is_file() && entry.path().extension().is_some_and(|s| s == "clap") {
                 found.insert(entry.path().to_path_buf());
                 if entry.file_type().is_dir() { walk.skip_current_dir(); }
                 if found.len() > 4096 {

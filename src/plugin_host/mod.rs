@@ -8,6 +8,7 @@ use std::{
 };
 
 pub(crate) mod clap;
+pub(crate) mod lv2;
 pub(crate) mod process;
 pub(crate) mod realtime;
 pub(crate) mod scanner;
@@ -32,6 +33,9 @@ pub(crate) struct BinaryIdentity {
 /// Identify a native VST3 bundle without loading code.
 /// Takes an absolute bundle path; returns its native ELF path and bounded content digest, or an architecture/format/access diagnostic.
 pub(crate) fn identify(path: &Path) -> Result<BinaryIdentity, String> {
+    if path.extension().is_some_and(|s| s == "lv2") {
+        return lv2::identify(path);
+    }
     if path.extension().is_some_and(|s| s == "clap") {
         return clap::identify(path);
     }
@@ -167,6 +171,8 @@ pub(crate) struct Class {
     pub tail: u32,
     #[serde(default)]
     pub native: Option<clap::Metadata>,
+    #[serde(default)]
+    pub lv2: Option<lv2::Metadata>,
 }
 impl Class {
     /// Select the native sound controls.
@@ -225,7 +231,9 @@ pub(crate) struct Saved {
 impl Saved {
     /// Select the state codec. Takes a class identifier; returns its format's opaque state codec.
     pub fn codec(id: &str) -> &'static str {
-        if id.starts_with("clap:") {
+        if id.starts_with("lv2:") {
+            "lv2-state-1"
+        } else if id.starts_with("clap:") {
             "clap-state-1"
         } else {
             "vst3-host-0.9-state"
@@ -238,6 +246,8 @@ impl Saved {
             || !class_id_valid(&self.class_id)
             || self.class_id.starts_with("clap:")
                 != self.binary.bundle.extension().is_some_and(|e| e == "clap")
+            || self.class_id.starts_with("lv2:")
+                != self.binary.bundle.extension().is_some_and(|e| e == "lv2")
             || self.plugin_version.len() > 1024
         {
             return Err("Plugin state identity, version or codec is unsupported".into());
@@ -248,8 +258,11 @@ impl Saved {
 
 /// Validate a processor identifier. Takes a saved identifier; returns whether it names a VST3 class or CLAP descriptor.
 fn class_id_valid(id: &str) -> bool {
-    id.strip_prefix("clap:")
+    id.strip_prefix("lv2:")
         .is_some_and(|v| !v.is_empty() && v.len() <= 1024 && !v.chars().any(char::is_control))
+        || id
+            .strip_prefix("clap:")
+            .is_some_and(|v| !v.is_empty() && v.len() <= 1024 && !v.chars().any(char::is_control))
         || id.len() == 32 && id.bytes().all(|c| c.is_ascii_hexdigit())
 }
 

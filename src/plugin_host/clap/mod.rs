@@ -18,7 +18,7 @@ use std::{
 };
 mod callbacks;
 mod editor;
-mod events;
+pub(super) mod events;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -411,6 +411,7 @@ impl Instance {
                 latency: if self.active { self.latency() } else { 0 },
                 tail: if self.active { self.tail() } else { 0 },
                 native: Some(metadata),
+                lv2: None,
             };
             result.validate()?;
             Ok(result)
@@ -793,6 +794,7 @@ fn empty_class(binary: &BinaryIdentity) -> Class {
         latency: 0,
         tail: 0,
         native: None,
+        lv2: None,
     }
 }
 

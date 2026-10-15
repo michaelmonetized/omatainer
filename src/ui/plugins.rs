@@ -20,7 +20,7 @@ impl App {
         let mut selected = self.plugins.selected;
         let mut attach = None;
         egui::Window::new("Native plugins").id(egui::Id::new("plugin-browser")).open(&mut open).default_width(650.).vscroll(true).show(ctx,|ui|{
-            ui.label("Native Linux VST3 and CLAP instruments and effects are inspected in isolated workers. Select a class to review its ports and extension support.");
+            ui.label("Native Linux VST3, CLAP and LV2 instruments and effects are inspected in isolated workers. Select a class to review its ports and extension support.");
             let label=ui.label("Plugin folders (one absolute path per line)");
             let edit=ui.add_enabled(!protected && !busy,egui::TextEdit::multiline(&mut self.plugins.roots).char_limit(65536).desired_rows(3).hint_text("/home/you/.vst3").id_source("plugin-roots")).labelled_by(label.id);
             edit.widget_info(||egui::WidgetInfo::labeled(egui::WidgetType::TextEdit,edit.enabled(),"Plugin folders"));
@@ -53,6 +53,7 @@ impl App {
                     for (class_index,class) in record.classes.iter().enumerate(){
                         if ui.selectable_label(selected==Some((index,class_index)),format!("{} · {} · {}",class.info.name,class.info.vendor,class.info.version)).clicked(){selected=Some((index,class_index));}
                         ui.label(format!("Class {} · {} · {} input buses / {} output buses · {} parameters · {} samples latency",class.info.uid,class.info.category,class.layout.inputs.len(),class.layout.outputs.len(),class.parameters.len(),class.latency));
+                        if let Some(lv2)=&class.lv2 { ui.label(format!("LV2 required features: {}",lv2.required.join(", "))); if !lv2.unsupported.is_empty() { ui.label(format!("Unavailable optional features: {}",lv2.unsupported.join(", "))); } for port in &lv2.ports { ui.label(format!("{} · {} · {}",port.name,port.symbol,port.kind)); } }
                         if let Some(native)=&class.native { ui.label(format!("CLAP extensions: {}",native.extensions.join(", "))); if !native.unsupported_host_extensions.is_empty() { ui.label(format!("Unavailable host features: {}",native.unsupported_host_extensions.join(", "))); } for port in native.audio_inputs.iter().chain(&native.audio_outputs) { ui.label(format!("{} · {} channels",port.name,port.channels)); } for port in native.note_inputs.iter().chain(&native.note_outputs) {ui.label(format!("Note port {} · dialects {:#x}",port.name,port.dialects));} }
                         ui.label(if class.tail==u32::MAX{"Tail: unlimited".into()}else{format!("Tail: {} samples",class.tail)});
                     }

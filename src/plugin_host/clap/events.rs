@@ -184,7 +184,7 @@ pub(super) unsafe extern "C" fn push(
     }
     true
 }
-fn midi(b: [u8; 3]) -> Option<vst3_host::MidiEvent> {
+pub(in crate::plugin_host) fn midi(b: [u8; 3]) -> Option<vst3_host::MidiEvent> {
     use vst3_host::MidiEvent::*;
     let channel = vst3_host::MidiChannel::from_index(b[0] & 15)?;
     if b[1] > 127 || b[2] > 127 {
