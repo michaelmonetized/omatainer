@@ -652,9 +652,11 @@ impl Instance {
                 "atom" => {
                     fill_atom(
                         &mut instance.atoms[index],
-                        instance
-                            .features
-                            .id("http://lv2plug.in/ns/ext/atom#Sequence")?,
+                        instance.features.id(if port.input {
+                            "http://lv2plug.in/ns/ext/atom#Sequence"
+                        } else {
+                            "http://lv2plug.in/ns/ext/atom#Chunk"
+                        })?,
                         instance
                             .features
                             .id("http://lv2plug.in/ns/ext/midi#MidiEvent")?,
