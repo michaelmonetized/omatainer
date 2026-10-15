@@ -13093,6 +13093,8 @@
     "scripts/refresh-source-inventory.mjs": "15301a6465bbadf843b6ed27e8d4edb7abc4a2963f20f5b4b0ef86e1295c92ae",
     "scripts/release-package.mjs": "47bb5696ceb1f317bcdca4de8b05a6394fb50592113b52b947f23e33fb7c7aea",
     "scripts/retained-dependency-graph.mjs": "62f20d0bb9e22198af444b8c1876ce528a820fb560b02ac18ead6054fe944046",
+    "scripts/suite-qualification.mjs": "6b604d3da62ca4590c693b56e5e4ff61e2bf7ca38899c8e8f79ac2355ae1fa3a",
+    "scripts/suite-qualification.test.mjs": "aaff43e01acb8f5a1d7f834b4e0614d6e31e3d63a7e8a810fbec22681d183a2a",
     "scripts/test-capability-matrix.mjs": "a2f10be7edde9c6e474a8772cd5a2214790387979a3186c94607c1a77769f016",
     "scripts/test-check-analysis.py": "57adbc43e1be64bcc4cf8ded279905c6f37feb5d7dd85a4dcc1fd44c6511fb3f",
     "scripts/test-install-executable.py": "d1e310f727540f263fdefae4b2880b1a1b2ca5bbfecf8c645439bdf936be8928",
