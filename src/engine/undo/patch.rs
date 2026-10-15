@@ -128,6 +128,7 @@ impl Global {
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub(super) struct TrackControls {
+    surface: surface_controls::TrackMix,
     gain: f32,
     pan: f32,
     mute: bool,
@@ -138,6 +139,7 @@ pub(super) struct TrackControls {
 impl TrackControls {
     pub fn get(track: &TrackRt) -> Self {
         Self {
+            surface: track.surface,
             gain: track.gain,
             pan: track.pan,
             mute: track.mute,
@@ -148,6 +150,7 @@ impl TrackControls {
     }
     fn swap(&mut self, track: &mut TrackRt) {
         let current = Self::get(track);
+        track.surface = self.surface;
         track.gain = self.gain;
         track.pan = self.pan;
         track.mute = self.mute;

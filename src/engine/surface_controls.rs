@@ -1,6 +1,23 @@
 use super::{Command, RtEngine, View};
 pub(crate) mod fx;
 
+#[derive(Clone, Copy, Debug, Default, PartialEq, serde::Serialize, serde::Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct TrackMix {
+    pub sends: [f32; 2],
+    pub crossfader: u8,
+}
+impl TrackMix {
+    /// Validate saved track routing controls.
+    /// Takes this track's controls; returns whether sends and crossfader assignment are supported.
+    pub fn valid(&self) -> bool {
+        self.crossfader <= 2 && self.sends.iter().all(|v| v.is_finite() && (0.0..=1.0).contains(v))
+    }
+    /// Identify the legacy track mix.
+    /// Takes saved controls; returns true for zero sends and an unassigned crossfader.
+    pub fn is_default(&self) -> bool { *self == Self::default() }
+}
+
 #[derive(Clone, Copy, Debug)]
 pub enum Input {
     Shift {
@@ -142,8 +159,6 @@ impl Default for EffectBank {
 
 pub(super) struct State {
     pub status: Status,
-    pub assignments: [u8; super::session::MAX_TRACKS],
-    pub sends: [[f32; 2]; super::session::MAX_TRACKS],
     processors: [super::master_fx::MasterSlot; 2],
     send_input: [[f32; 2]; 2],
     deck_fx: [[[fx::Processor; 3]; 4]; 2],
@@ -156,7 +171,6 @@ pub(super) struct State {
     pad_gain: [f32; 16],
     master_saved: [f32; 3],
     shift_owners: [Option<u64>; super::control::MAX_COMMANDS],
-    track_gain: [super::mixer_gain::GainPair; super::session::MAX_TRACKS],
 }
 impl State {
     /// Prepare the two stereo send processors outside the audio callback.
@@ -172,8 +186,6 @@ impl State {
         status.fx[1].assigned[1] = true;
         Ok(Self {
             status,
-            assignments: [0; super::session::MAX_TRACKS],
-            sends: [[0.0; 2]; super::session::MAX_TRACKS],
             processors: [
                 super::master_fx::MasterSlot::try_new(sr)?,
                 super::master_fx::MasterSlot::try_new(sr)?,
@@ -189,32 +201,27 @@ impl State {
             fx_recall: super::dj_fx_recall::Transition::default(),
             sampler_slots: [None; 2],
             sampler_history_target: [None; 2],
-            track_gain: std::array::from_fn(|_| {
-                let mut ramp = super::mixer_gain::GainPair::default();
-                ramp.prepare([1.0; 2], sr, |left, right| [left, right]);
-                ramp
-            }),
         })
     }
     /// Prepare assigned track gains once per callback block.
     /// Takes output rate and current crossfader controls; keeps cuts on the same short ramp as the deck mixer.
-    pub fn prepare(&mut self, sr: f32, position: f32, curve: f32) {
+    pub fn prepare(&mut self, sr: f32, position: f32, curve: f32, tracks: &mut [Box<super::TrackRt>]) {
         let gains = super::mixer_gain::crossfader_gains(position, curve);
-        for (index, ramp) in self.track_gain.iter_mut().enumerate() {
-            let gain = match self.assignments[index] {
+        for track in tracks {
+            let gain = match track.surface.crossfader {
                 1 => gains[0],
                 2 => gains[1],
                 _ => 1.0,
             };
-            ramp.prepare([gain, gain], sr, |left, right| [left, right]);
+            track.surface_gain.prepare([gain, gain], sr, |left, right| [left, right]);
         }
     }
     /// Route one track through its crossfader assignment and sends.
-    /// Takes track index and stereo output; returns the assigned dry output.
-    pub fn track(&mut self, track: usize, input: [f32; 2]) -> [f32; 2] {
-        let gains = self.track_gain[track].tick();
+    /// Takes one retained track and stereo output; returns the assigned dry output with its own ramp history.
+    pub fn track(&mut self, track: &mut super::TrackRt, input: [f32; 2]) -> [f32; 2] {
+        let gains = track.surface_gain.tick();
         let output = std::array::from_fn(|channel| input[channel] * gains[channel]);
-        for (bus, amount) in self.send_input.iter_mut().zip(self.sends[track]) {
+        for (bus, amount) in self.send_input.iter_mut().zip(track.surface.sends) {
             for channel in 0..2 {
                 bus[channel] += output[channel] * amount;
             }
@@ -278,7 +285,7 @@ impl RtEngine {
             },
             Input::SamplerVolume(value) => self.surface.status.sampler_volume = value,
             Input::TrackSend { track, send, value } => {
-                self.surface.sends[usize::from(track)][usize::from(send)] = value
+                self.apply(Command::TrackSend { track, send, value });
             }
             Input::Recording(on) => {
                 if self.recording != on {
@@ -467,7 +474,7 @@ impl RtEngine {
                     }
                     0x34 => Command::StopTrack { track: track as u8 },
                     _ => {
-                        self.surface.assignments[track] = (self.surface.assignments[track] + 1) % 3;
+                        self.apply(Command::TrackCrossfader { track: track as u8, assignment: (self.tracks[track].surface.crossfader + 1) % 3 });
                         return;
                     }
                 },
@@ -661,7 +668,7 @@ impl RtEngine {
                     }
                     match status.knob_mode {
                         1 => {
-                            self.surface.sends[track][usize::from(status.send)] = value_f;
+                            self.apply(Command::TrackSend { track: track as u8, send: status.send, value: value_f });
                             return;
                         }
                         2 => Command::TrackGain {
@@ -696,9 +703,12 @@ impl RtEngine {
         }
         for index in 0..8 {
             let track = status.track_offset + index;
-            if track < super::session::MAX_TRACKS {
-                status.assignments[index] = self.surface.assignments[track];
-                status.sends[index] = self.surface.sends[track];
+            if let Some(track) = self.tracks.get(track) {
+                status.assignments[index] = track.surface.crossfader;
+                status.sends[index] = track.surface.sends;
+            } else {
+                status.assignments[index] = 0;
+                status.sends[index] = [0.0; 2];
             }
             if status.device_master {
                 status.device_values[index] = match index {

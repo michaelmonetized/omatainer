@@ -162,7 +162,7 @@ impl Adjust {
             Action::TrackFader => rt.tracks.get(track)?.gain,
             Action::TrackPan => (rt.tracks.get(track)?.pan + 1.0) * 0.5,
             Action::TrackSendA | Action::TrackSendB => {
-                rt.surface.sends.get(track)?[usize::from(binding.action == Action::TrackSendB)]
+                rt.tracks.get(track)?.surface.sends[usize::from(binding.action == Action::TrackSendB)]
             }
             Action::FxWet => rt.fx_wet[track],
             _ => return None,

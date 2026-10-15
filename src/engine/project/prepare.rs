@@ -266,6 +266,7 @@ impl Prepared {
             master,
             cue_mix,
             tracks,
+            surface,
             session,
             decks,
             master_fx,
@@ -335,7 +336,7 @@ pub(in crate::engine) fn prepare_track(saved: Track, media: &[Arc<Sample>], sr: 
     let drums = saved.drums.map(|index| media[index].clone());
     let mut track = Box::new(TrackRt::empty(sr as f32, saved.name, saved.kind, drums, 0));
     track.scene_bus = saved.scene_bus;
-    track.gain = saved.gain; track.pan = saved.pan;
+    track.gain = saved.gain; track.pan = saved.pan; track.surface = saved.surface;
     track.mute = saved.mute; track.solo = saved.solo; track.armed = saved.armed; track.input_monitor = saved.input_monitor;
     track.poly = synth(saved.synth, sr); track.eq = eq(saved.eq, sr); track.eq_right = track.eq;
     track.fx = effects(saved.fx, sr);

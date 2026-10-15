@@ -4,6 +4,7 @@ mod sampler_tests;
 mod gain_tests;
 mod dependency_tests;
 mod template_tests;
+mod fixed_send_tests;
 #[test]
 fn channel_effects_native_archive_reopen_rate_change_and_legacy_migration_preserve_both_decks() {
     let mut original = rt();

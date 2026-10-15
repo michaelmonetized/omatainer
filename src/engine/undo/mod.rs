@@ -855,6 +855,8 @@ pub(crate) fn is_gesture_edit(command: &Command) -> bool {
             | Command::SamplerInst(_)
             | Command::SamplerOct(_)
             | Command::SamplerEdit(_)
+            | Command::TrackSend { .. }
+            | Command::TrackCrossfader { .. }
             | Command::TrackGain { .. }
             | Command::TrackPan { .. }
             | Command::Mute { .. }

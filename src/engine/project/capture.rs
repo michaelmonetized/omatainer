@@ -209,6 +209,7 @@ impl Frame {
             });
             out.gain = track.gain;
             out.pan = track.pan;
+            out.surface = track.surface;
             out.mute = track.mute;
             out.solo = track.solo;
             out.armed = track.armed;

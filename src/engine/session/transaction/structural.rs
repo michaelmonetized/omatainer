@@ -73,6 +73,7 @@ impl Request {
                 saved.kind = if audio { 4 } else { 2 };
                 saved.gain = 0.8;
                 saved.pan = 0.0;
+                saved.surface = Default::default();
                 saved.mute = false;
                 saved.solo = false;
                 saved.armed = false;
