@@ -311,6 +311,8 @@ impl Model {
         {
             return Err("Routing graph exceeds its supported version or storage limits".into());
         }
+        let points=self.sends.iter().flat_map(|s|&s.automation).chain(self.buses.iter().flat_map(|b|&b.mixer.automation)).try_fold(0usize,|count,lane|count.checked_add(lane.points.len()));
+        if points.is_none_or(|count|count>super::mixer::MAX_MIXER_POINTS){return Err("Mixer automation exceeds 65536 total points; no routing change was applied".into());}
         let mut ids = BTreeSet::new();
         let mut names = BTreeSet::new();
         for port in &self.ports {

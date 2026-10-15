@@ -10,30 +10,41 @@ fn lanes(ui: &mut Ui, lanes: &mut Vec<Lane>, returns: bool) {
             ui.push_id(index, |ui| {
                 ui.label(format!("{:?}", lane.parameter));
                 let mut point_remove = None;
-                for (point_index, point) in lane.points.iter_mut().enumerate() {
-                    ui.push_id(point_index, |ui| {
-                        ui.horizontal(|ui| {
-                            if let Some(value) =
-                                number(ui, "Beat", point[0] as f32, 0., 1.0e9, 0.01)
-                            {
-                                point[0] = f64::from(value);
+                egui::ScrollArea::vertical()
+                    .id_salt("automation-points")
+                    .max_height(240.)
+                    .show_rows(
+                        ui,
+                        ui.spacing().interact_size.y,
+                        lane.points.len(),
+                        |ui, range| {
+                            for point_index in range {
+                                let point = &mut lane.points[point_index];
+                                ui.push_id(point_index, |ui| {
+                                    ui.horizontal(|ui| {
+                                        if let Some(value) =
+                                            number(ui, "Beat", point[0] as f32, 0., 1.0e9, 0.01)
+                                        {
+                                            point[0] = f64::from(value);
+                                        }
+                                        let (min, max) = match lane.parameter {
+                                            Parameter::Level => (0., 1.5),
+                                            Parameter::Pan => (-1., 1.),
+                                            _ => (0., 1.),
+                                        };
+                                        if let Some(value) =
+                                            number(ui, "Value", point[1] as f32, min, max, 0.01)
+                                        {
+                                            point[1] = f64::from(value);
+                                        }
+                                        if ui.button("Remove point").clicked() {
+                                            point_remove = Some(point_index);
+                                        }
+                                    })
+                                });
                             }
-                            let (min, max) = match lane.parameter {
-                                Parameter::Level => (0., 1.5),
-                                Parameter::Pan => (-1., 1.),
-                                _ => (0., 1.),
-                            };
-                            if let Some(value) =
-                                number(ui, "Value", point[1] as f32, min, max, 0.01)
-                            {
-                                point[1] = f64::from(value);
-                            }
-                            if ui.button("Remove point").clicked() {
-                                point_remove = Some(point_index);
-                            }
-                        })
-                    });
-                }
+                        },
+                    );
                 if let Some(index) = point_remove {
                     lane.points.remove(index);
                 }

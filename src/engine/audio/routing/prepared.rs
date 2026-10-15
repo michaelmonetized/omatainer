@@ -208,7 +208,7 @@ impl Prepared {
             for map in &link.map {
                 let(value,valid)=self.latency.as_ref().map_or((source[usize::from(map.source)],sources[link.source].valid),
                     |latency|latency.routed(link.source,link.tap,index,usize::from(map.source)));
-                let gain=link.send.map_or(1.,|slot|self.mixer.channels[slot].effective.gain(usize::from(map.destination)))*link.fixed.map_or(1.,|(slot,send)|self.fixed_levels[slot][send]);
+                let gain=link.send.map_or(1.,|slot|self.mixer.channels[slot].effective.gain(usize::from(map.source)))*link.fixed.map_or(1.,|(slot,send)|self.fixed_levels[slot][send]);
                 let sample=value*map.gain*gain;
                 destination.input[usize::from(map.destination)] += sample;
                 if let Some(slot)=link.send {self.mixer.channels[slot].peaks[usize::from(map.destination)]=self.mixer.channels[slot].peaks[usize::from(map.destination)].max(sample.abs());}
@@ -228,7 +228,7 @@ impl Prepared {
             for map in &link.map {
                 if map.destination < 2 {
                     let value = self.latency.as_ref().map_or(self.nodes[link.source].taps[link.tap][usize::from(map.source)], |l| l.routed(link.source,link.tap,index,usize::from(map.source)).0);
-                    frame[usize::from(map.destination)] += value * map.gain * link.send.map_or(1.,|slot|self.mixer.channels[slot].effective.gain(usize::from(map.destination)));
+                    frame[usize::from(map.destination)] += value * map.gain * link.send.map_or(1.,|slot|self.mixer.channels[slot].effective.gain(usize::from(map.source)));
                 }
             }
         }

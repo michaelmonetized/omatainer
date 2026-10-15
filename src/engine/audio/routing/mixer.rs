@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 
 pub const MAX_SENDS: usize = 256;
 pub const MAX_LANE_POINTS: usize = 16384;
+pub const MAX_MIXER_POINTS:usize=65536;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -232,6 +233,7 @@ impl Send {
 #[derive(Clone, Copy, Debug, Serialize)]
 pub struct Channel {
     pub name: Name,
+    pub width: u8,
     pub target: Target,
     pub values: Values,
     pub effective: Values,
@@ -250,15 +252,25 @@ impl Runtime {
         let channels = model
             .sends
             .iter()
-            .map(|s| (Target::Send(s.id), s.values(), Name::new(&s.name)))
-            .chain(
-                model
-                    .buses
-                    .iter()
-                    .map(|b| (Target::Return(b.id), b.values(), Name::new(&b.alias))),
-            )
-            .map(|(target, values, name)| Channel {
+            .map(|s| {
+                (
+                    Target::Send(s.id),
+                    s.values(),
+                    Name::new(&s.name),
+                    model.input_width(s.route.destination, layout).unwrap() as u8,
+                )
+            })
+            .chain(model.buses.iter().map(|b| {
+                (
+                    Target::Return(b.id),
+                    b.values(),
+                    Name::new(&b.alias),
+                    b.channels,
+                )
+            }))
+            .map(|(target, values, name, width)| Channel {
                 name,
+                width,
                 target,
                 values,
                 effective: values,
@@ -309,7 +321,7 @@ impl Runtime {
                     channel.effective.set(lane.parameter, lane.at(beat));
                 }
             }
-            for peak in &mut channel.peaks {
+            for peak in &mut channel.peaks[..usize::from(channel.width)] {
                 *peak *= 0.9995;
             }
             if index >= model.sends.len() && channel.effective.solo {
