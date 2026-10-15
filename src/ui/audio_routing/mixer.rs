@@ -115,8 +115,18 @@ pub(super) fn draft(ui: &mut Ui, draft: &mut Draft) {
         ui.push_id(("named-send", send.id), |ui| {
             ui.separator();
             ui.horizontal(|ui| {
-                ui.label(format!("Send {}", send.id));
-                ui.add(egui::TextEdit::singleline(&mut send.name).char_limit(128));
+                let label = ui.label(format!("Send {} name", send.id));
+                let response = ui
+                    .add(egui::TextEdit::singleline(&mut send.name).char_limit(128))
+                    .labelled_by(label.id);
+                response.widget_info(|| {
+                    egui::WidgetInfo::labeled(
+                        egui::WidgetType::TextEdit,
+                        response.enabled(),
+                        format!("Send {} name", send.id),
+                    )
+                });
+                accessibility::focus(ui, &response);
                 if ui.button("Remove send").clicked() {
                     remove = Some(send.id);
                 }
@@ -129,7 +139,7 @@ pub(super) fn draft(ui: &mut Ui, draft: &mut Draft) {
                 &model,
                 &draft.layout,
             );
-            egui::ComboBox::from_id_salt("send-tap")
+            egui::ComboBox::from_label("Send tap")
                 .selected_text(tap_name(send.route.source.tap))
                 .show_ui(ui, |ui| {
                     for tap in [Tap::PreFx, Tap::PostFx, Tap::PostMixer] {
@@ -367,17 +377,19 @@ pub(super) fn live(
                         }
                     }
                     let mut assignment = track.surface.crossfader;
-                    let response = egui::ComboBox::from_id_salt("track-crossfader")
-                        .selected_text(
-                            ["Crossfader unassigned", "Crossfader A", "Crossfader B"]
-                                [usize::from(assignment)],
-                        )
-                        .show_ui(ui, |ui| {
-                            for (id, label) in ["Unassigned", "A", "B"].into_iter().enumerate() {
-                                ui.selectable_value(&mut assignment, id as u8, label);
-                            }
-                        })
-                        .response;
+                    let response =
+                        egui::ComboBox::from_label(format!("{} crossfader assignment", track.name))
+                            .selected_text(
+                                ["Crossfader unassigned", "Crossfader A", "Crossfader B"]
+                                    [usize::from(assignment)],
+                            )
+                            .show_ui(ui, |ui| {
+                                for (id, label) in ["Unassigned", "A", "B"].into_iter().enumerate()
+                                {
+                                    ui.selectable_value(&mut assignment, id as u8, label);
+                                }
+                            })
+                            .response;
                     accessibility::focus(ui, &response);
                     if assignment != track.surface.crossfader {
                         submit(
