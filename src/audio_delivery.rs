@@ -11,6 +11,7 @@ use std::{
     sync::atomic::{AtomicBool, Ordering},
 };
 mod render;
+pub(crate) use render::output_contract;
 pub(crate) mod recovery;
 #[cfg(test)]
 mod tests;

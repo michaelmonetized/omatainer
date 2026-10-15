@@ -1,6 +1,18 @@
 use super::*;
 use crate::engine::audio::routing::model::{Direction, Group, MAX_PHYSICAL_CHANNELS};
 
+/// Inspect the exact selected output without allocating a renderer or opening devices.
+/// Takes one immutable captured state and reviewed export; returns physical source indices and actual encoded speaker identity.
+pub(crate) fn output_contract(state:&crate::engine::project::State,request:&Export)->Result<crate::engine::audio::routing::speakers::OutputContract,String>{
+    let channels=if let Some(model)=&state.routing{
+        let alias=request.output_alias.ok_or("Choose the exact saved output alias before exporting routed audio")?;
+        let port=model.port(alias,Direction::Output).ok_or("Reviewed output alias was removed")?;
+        if model.monitor_output==Some(alias){return Err("Headphones are separate from program delivery".into());}
+        port.channels.clone()
+    }else{if request.output_alias.is_some(){return Err("Reviewed output alias no longer exists".into());}vec![0,1]};
+    crate::engine::audio::routing::speakers::OutputContract::stereo(channels,request.options.channels)
+}
+
 /// Prepare the reviewed native render source.
 /// Takes an owned coherent capture and export request; returns a stopped independent graph, exact ordered source channels and render width without opening devices.
 pub(super) fn prepare(
@@ -54,33 +66,9 @@ fn prepare_cancelled(mut captured:Captured,request:&Export,cancel:&AtomicBool) -
             return Err("A sounding instrument is unavailable; restore it before exporting".into());
         }
     }
-    let channels = if let Some(model) = &state.routing {
-        if model.connections.iter().any(|c| {
-            matches!(c.source.group, Group::Input(_)) && c.map.iter().any(|m| m.gain != 0.0)
-        }) {
-            return Err("This source uses physical input. Use real-time recording to include the hardware return".into());
-        }
-        let alias = request
-            .output_alias
-            .ok_or("Choose the exact saved output alias before exporting routed audio")?;
-        let port = model
-            .port(alias, Direction::Output)
-            .ok_or("Reviewed output alias was removed")?;
-        if !(1..=2).contains(&port.channels.len()) || model.monitor_output == Some(alias) {
-            return Err(
-                "Choose a mono/stereo program output alias, separate from headphones".into(),
-            );
-        }
-        port.channels
-            .iter()
-            .map(|&c| usize::from(c))
-            .collect::<Vec<_>>()
-    } else {
-        if request.output_alias.is_some() {
-            return Err("Reviewed output alias no longer exists".into());
-        }
-        vec![0, 1]
-    };
+    if state.routing.as_ref().is_some_and(|model|model.links().any(|c|matches!(c.source.group,Group::Input(_))&&c.map.iter().any(|m|m.gain!=0.))){return Err("This source uses physical input. Use real-time recording to include the hardware return".into());}
+    let contract=output_contract(state,request)?;
+    let channels=contract.channels.iter().map(|&c|usize::from(c)).collect::<Vec<_>>();
     let width = state
         .routing
         .as_ref()
