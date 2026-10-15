@@ -30,7 +30,7 @@ pub(crate) fn run(args: &[String]) -> Result<bool, String> {
                 .transpose()?;
             let path = Path::new(&args[1]);
             let report = measurement::measure(path, rate, channels, mask, &cancel)?;
-            serde_json::json!({"schema":1,"file":path,"file_sha256":process::sha256(path)?,"qc":report})
+            serde_json::json!({"schema":1,"file":path,"file_sha256":process::sha256_cancelled(path,&cancel)?,"qc":report})
         }
         _ => return Ok(false),
     };
