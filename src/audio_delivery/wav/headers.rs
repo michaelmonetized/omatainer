@@ -156,6 +156,13 @@ impl Settings {
             comm.extend_from_slice(&((16383 + power) as u16).to_be_bytes());
             comm.extend_from_slice(&(u64::from(rate) << (63 - power)).to_be_bytes());
             chunk(&mut out, b"COMM", &comm, true);
+            if let Some(mask) = self.wave_mask.filter(|mask| *mask < 0x40000) {
+                let mut layout = Vec::with_capacity(12);
+                layout.extend_from_slice(&0x10000_u32.to_be_bytes());
+                layout.extend_from_slice(&mask.to_be_bytes());
+                layout.extend_from_slice(&0_u32.to_be_bytes());
+                chunk(&mut out, b"CHAN", &layout, true);
+            }
             if !self.metadata.title.is_empty() {
                 chunk(&mut out, b"NAME", self.metadata.title.as_bytes(), true);
             }

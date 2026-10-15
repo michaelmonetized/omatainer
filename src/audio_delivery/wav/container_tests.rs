@@ -114,6 +114,27 @@ fn native_interchange_headers_and_independent_decoder_preserve_order_tags_and_fr
             assert_eq!(info["streams"][0]["channels"], channels);
             assert_eq!(info["streams"][0]["sample_rate"], "48000");
             assert_eq!(info["streams"][0]["duration_ts"], frames);
+            if container == Container::Aiff {
+                if let Some(mask) = mask {
+                    let chan = field(&bytes, b"CHAN", true);
+                    assert_eq!(chan.len(), 12);
+                    assert_eq!(u32::from_be_bytes(chan[0..4].try_into().unwrap()), 0x10000);
+                    assert_eq!(u32::from_be_bytes(chan[4..8].try_into().unwrap()), mask);
+                    assert_eq!(&chan[8..12], &[0; 4]);
+                }
+            }
+            if channels >= 3 {
+                assert_eq!(
+                    info["streams"][0]["channel_layout"],
+                    match channels {
+                        3 => "2.1",
+                        6 => "5.1(side)",
+                        8 => "7.1",
+                        _ => unreachable!(),
+                    },
+                    "{container:?}:{info}"
+                );
+            }
             let decoded = Command::new("ffmpeg")
                 .args(["-v", "error", "-nostdin", "-threads", "1", "-i"])
                 .arg(&path)
