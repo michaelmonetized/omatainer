@@ -22,7 +22,8 @@ fn fixed_send_identity_controls_undo_defaults_and_structural_recall() {
     assert_eq!(rt.session.track_order[0],2);
     assert_eq!(rt.tracks[2].surface,mix);
     let (request,ack)=Request::structural(captured(&rt),48000,Structure::Duplicate {axis:Axis::Track,id,name:"Return source copy".into(),position:1}).unwrap();
-    assert_eq!(test_alloc::measure(||rt.apply(Command::session_edit(request))),test_alloc::Counts::default());
+    let command=Command::session_edit(request);
+    assert_eq!(test_alloc::measure(||rt.apply(command)),test_alloc::Counts::default());
     assert_eq!(ack.state(),midi_edit::Outcome::Applied);
     assert_eq!(rt.tracks[8].surface,mix);
     assert_ne!(rt.session.tracks[8].id,id);
