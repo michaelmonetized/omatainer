@@ -12,7 +12,7 @@ fn fixture(rate:u32,sends:[f32;2])->(Engine,RtEngine) {
     let sample=Arc::new(Sample {spectrum:None,name:"Unequal impulses".into(),sr:rate,ch:2,data,peaks:Vec::new().into(),bpm:120.,path:String::new()});
     let region=crate::engine::audio_clip::Region::full(&sample,120.).unwrap().prepare(&sample).unwrap();
     let track=&mut rt.tracks[0];track.kind=4;track.gain=1.;track.eq.low_g=1.;track.eq.mid_g=1.;track.eq.high_g=1.;
-    track.clips[0].audio_region=Some(region);track.clips[0].kind=ClipKind::Audio;track.clips[0].audio=Some(sample);track.clips[0].bars=1.;
+    track.clips[0].audio_region=Some(region);track.clips[0].kind=ClipKind::Audio;track.clips[0].audio=Some(sample);track.clips[0].bars=region.duration_beats as f32/4.;
     rt.apply(Command::TrackSend {track:0,send:0,value:sends[0]});
     rt.apply(Command::TrackSend {track:0,send:1,value:sends[1]});
     rt.apply(Command::TrackCrossfader {track:0,assignment:1});
