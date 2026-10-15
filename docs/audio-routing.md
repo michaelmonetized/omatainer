@@ -36,6 +36,11 @@ Under **Named sends and returns**, add a named stereo return and choose each sen
 source, destination, tap and channel map. A send has its own level, stereo balance
 and mute. Return controls add solo and solo safe. The live mixer shows current
 levels and peaks; changes use the same History journal as other mixer controls.
+Stereo sends balance their source channels before channel mapping, including maps
+to a sidechain. A mono source mapped to a stereo pair balances the destination
+pair; native input buses use their local channel order. Mono-to-mono sends and
+mono return strips ignore balance and retain their level. Balance remains unity
+at the center, preserving existing stereo levels.
 Pre FX and post FX taps bypass source mute, solo, fader, pan and crossfader. Post
 mixer includes those controls. A return's mute changes its post-mixer tap; pre taps
 continue processing. These tap rules also apply to automation and MIDI controls.

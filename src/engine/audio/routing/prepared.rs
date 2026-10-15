@@ -21,9 +21,37 @@ pub struct Node {
 struct Link {
     source: usize,
     tap: usize,
-    map: Vec<ChannelMap>,
+    map: Vec<Map>,
     send: Option<usize>,
     fixed: Option<(usize,usize)>,
+}
+
+#[derive(Clone, Copy, Debug)]
+struct Map {
+    source: u8,
+    destination: u8,
+    balance: u8,
+    gain: f32,
+}
+
+impl Map {
+    /// Bind balance to the signal's stereo pair before callback admission.
+    /// Takes a validated map and graph; returns source balance for stereo or destination bus-local balance for a mono upmix, with mono destinations unchanged.
+    fn prepare(map: ChannelMap, connection: &Connection, model: &Model, layout: &Layout) -> Self {
+        let balance = if model.width(connection.source.group, layout) == Some(1) {
+            let mut channel = usize::from(map.destination);
+            let width = if let Group::Plugin(id) = connection.destination {
+                model.plugins.iter().find(|plugin| plugin.id == id).unwrap().inputs.iter().find_map(|width| {
+                    let width = usize::from(*width);
+                    if channel < width { Some(width) } else { channel -= width; None }
+                }).unwrap()
+            } else {
+                model.input_width(connection.destination, layout).unwrap()
+            };
+            if width > 1 { channel.min(2) as u8 } else { 2 }
+        } else { map.source.min(2) };
+        Self { source: map.source, destination: map.destination, balance, gain: map.gain }
+    }
 }
 
 #[derive(Debug)]
@@ -122,12 +150,12 @@ impl Prepared {
             incoming[indices[&connection.destination]].push(Link {
                 source: indices[&connection.source.group],
                 tap: connection.source.tap.index(),
-                map: connection.map.clone(),
+                map: connection.map.iter().map(|map| Map::prepare(*map,connection,&model,layout)).collect(),
                 send: link.checked_sub(model.connections.len()),
                 fixed: None,
             });
         }
-        for send in 0..2 {for (slot,track) in layout.tracks.iter().enumerate(){incoming[indices[&Group::FixedReturn(send)]].push(Link{source:indices[&Group::Track(track.id)],tap:Tap::PostMixer.index(),map:vec![ChannelMap{source:0,destination:0,gain:1.},ChannelMap{source:1,destination:1,gain:1.}],send:None,fixed:Some((slot,usize::from(send)))});}}
+        for send in 0..2 {for (slot,track) in layout.tracks.iter().enumerate(){incoming[indices[&Group::FixedReturn(send)]].push(Link{source:indices[&Group::Track(track.id)],tap:Tap::PostMixer.index(),map:vec![Map{source:0,destination:0,balance:0,gain:1.},Map{source:1,destination:1,balance:1,gain:1.}],send:None,fixed:Some((slot,usize::from(send)))});}}
         let scene_nodes = std::array::from_fn(|slot| {
             layout
                 .scenes
@@ -208,7 +236,7 @@ impl Prepared {
                 if !self.mixer.audible(link.source,index,terminal,usize::from(map.destination)>=primary){continue;}
                 let(value,valid)=self.latency.as_ref().map_or((source[usize::from(map.source)],sources[link.source].valid),
                     |latency|latency.routed(link.source,link.tap,index,usize::from(map.source)));
-                let gain=link.send.map_or(1.,|slot|self.mixer.channels[slot].effective.gain(usize::from(map.source)))*link.fixed.map_or(1.,|(slot,send)|self.fixed_levels[slot][send]);
+                let gain=link.send.map_or(1.,|slot|self.mixer.channels[slot].effective.gain(usize::from(map.balance)))*link.fixed.map_or(1.,|(slot,send)|self.fixed_levels[slot][send]);
                 let sample=value*map.gain*gain;
                 destination.input[usize::from(map.destination)] += sample;
                 if let Some(slot)=link.send {self.mixer.channels[slot].peaks[usize::from(map.destination)]=self.mixer.channels[slot].peaks[usize::from(map.destination)].max(sample.abs());}
@@ -229,7 +257,7 @@ impl Prepared {
             for map in &link.map {
                 if map.destination < 2 {
                     let value = self.latency.as_ref().map_or(self.nodes[link.source].taps[link.tap][usize::from(map.source)], |l| l.routed(link.source,link.tap,index,usize::from(map.source)).0);
-                    frame[usize::from(map.destination)] += value * map.gain * link.send.map_or(1.,|slot|self.mixer.channels[slot].effective.gain(usize::from(map.source)));
+                    frame[usize::from(map.destination)] += value * map.gain * link.send.map_or(1.,|slot|self.mixer.channels[slot].effective.gain(usize::from(map.balance)));
                 }
             }
         }
@@ -330,7 +358,7 @@ impl Prepared {
             if !self.mixer.audible(link.source,index,true,false){continue;}
             for map in &link.map {
                 let (value, complete) = latency.routed_monitor(link.source, link.tap, usize::from(map.source));
-                let gain=link.send.map_or(1.,|slot|self.mixer.channels[slot].effective.gain(usize::from(map.source)))*link.fixed.map_or(1.,|(slot,send)|self.fixed_levels[slot][send]);
+                let gain=link.send.map_or(1.,|slot|self.mixer.channels[slot].effective.gain(usize::from(map.balance)))*link.fixed.map_or(1.,|(slot,send)|self.fixed_levels[slot][send]);
                 frame[usize::from(map.destination)] += value * map.gain * gain;
                 if map.gain * gain != 0.0 { valid &= complete; }
             }
@@ -406,7 +434,7 @@ impl Prepared {
                     links.capacity() * std::mem::size_of::<Link>()
                         + links
                             .iter()
-                            .map(|link| link.map.capacity() * std::mem::size_of::<ChannelMap>())
+                            .map(|link| link.map.capacity() * std::mem::size_of::<Map>())
                             .sum::<usize>()
                 })
                 .sum::<usize>()
