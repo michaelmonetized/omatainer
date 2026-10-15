@@ -53,7 +53,7 @@
       "id": "ebu-calibrated-and-lra",
       "test": "audio_delivery::measurement::tests::bs1770_calibrated_tone_and_dynamic_lra_match_independent_ffmpeg",
       "source": "src/audio_delivery/measurement/tests.rs",
-      "source_sha256": "f7e170fb995b468d83d6857bf0254179fb3776cae898f9b11682fcbc2c662d5d",
+      "source_sha256": "165dc2f816e14e8db3dff8622db4404a42bb2b359b93160c0400fd6e6fdd43f4",
       "requirement": "required",
       "acceptance": "analytic 1kHz mono -20dBFS peak expected -23LUFS, dynamic levels, independent FFmpeg ebur128"
     },
@@ -61,7 +61,7 @@
       "id": "ebu-intersample-and-invalid",
       "test": "audio_delivery::measurement::tests::true_peak_intersample_silence_nonfinite_and_layout_targets_are_explicit",
       "source": "src/audio_delivery/measurement/tests.rs",
-      "source_sha256": "f7e170fb995b468d83d6857bf0254179fb3776cae898f9b11682fcbc2c662d5d",
+      "source_sha256": "165dc2f816e14e8db3dff8622db4404a42bb2b359b93160c0400fd6e6fdd43f4",
       "requirement": "required",
       "acceptance": "Smooth-envelope12kHz quadrature peak tight analytic+independent FFmpeg comparison; abrupt-edge difference retained separately as characterization, not strict conformance; silence/LFE/unknown-layout/nonfinite"
     },
@@ -69,7 +69,7 @@
       "id": "post-mp3",
       "test": "audio_delivery::measurement::tests::final_lossy_measurement_binds_decoded_file_and_can_differ_from_source_peak",
       "source": "src/audio_delivery/measurement/tests.rs",
-      "source_sha256": "f7e170fb995b468d83d6857bf0254179fb3776cae898f9b11682fcbc2c662d5d",
+      "source_sha256": "165dc2f816e14e8db3dff8622db4404a42bb2b359b93160c0400fd6e6fdd43f4",
       "requirement": "required",
       "acceptance": "actual encoded MP3 decoded/measured then independently FFmpeg referenced"
     },
@@ -109,7 +109,7 @@
       "id": "native-batch-ui",
       "test": "ui::audio_delivery::tests::native_aligned_batch_review_recipe_reopen_render_and_stale_guard_use_real_worker",
       "source": "src/ui/audio_delivery/tests.rs",
-      "source_sha256": "2acb876c8c011e71965be836d20e2b9cff946c7a99c910dbee5cf01a061e745a",
+      "source_sha256": "558050a099811d20e80434a92726dba6d3a6c632eb64a1f7425d3b1b31e0e86b",
       "requirement": "required",
       "acceptance": "headless egui accesskit actual source review/recipe/reopen/render worker; no native window"
     },
@@ -117,7 +117,7 @@
       "id": "native-project-cli",
       "test": "ui::audio_delivery::tests::native_document_cli_plan_reopen_and_batch_use_same_encoded_delivery_path",
       "source": "src/ui/audio_delivery/tests.rs",
-      "source_sha256": "2acb876c8c011e71965be836d20e2b9cff946c7a99c910dbee5cf01a061e745a",
+      "source_sha256": "558050a099811d20e80434a92726dba6d3a6c632eb64a1f7425d3b1b31e0e86b",
       "requirement": "required",
       "acceptance": "real .omat container/native Document, device-free CLI dispatch, exact project byte binding"
     },
@@ -144,6 +144,14 @@
       "requirement": "required",
       "acceptance": "canonical session reference survives display reorder, deleted/reused source scene refuses even for track-only passes, older optional-field JSON loads but cannot silently bind a scene",
       "source_sha256": "ceac99396c557f1f5bcb60642a6f9e7357a958c681884c80470368ac02a6bb9d"
+    },
+    {
+      "id": "native-delivery-keyboard-fields",
+      "test": "ui::audio_delivery::tests::native_delivery_named_fields_accept_keyboard_text_and_keep_live_music_unchanged",
+      "source": "src/ui/audio_delivery/tests.rs",
+      "requirement": "required",
+      "acceptance": "Native egui named-field focus/Ctrl+A/text editing for metadata/pass/recipe path, realworker recipe save/reopen, unchanged live project/play state; no native window",
+      "source_sha256": "558050a099811d20e80434a92726dba6d3a6c632eb64a1f7425d3b1b31e0e86b"
     }
   ],
   "proof_axes": {

@@ -83,6 +83,15 @@ impl Gui {
         })]);
         self.frame(vec![]);
     }
+    fn type_named(&mut self,label:&str,value:&str){
+        let labels=self.nodes.iter().filter(|(_,n)|n.label()==Some(label)).map(|(id,_)|*id).collect::<Vec<_>>();
+        let target=self.nodes.iter().find(|(_,n)|n.role()==egui::accesskit::Role::TextInput&&(n.label()==Some(label)||labels.iter().any(|id|n.labelled_by().contains(id)))).map(|(id,_)|*id).unwrap_or_else(||panic!("Missing named text field {label}"));
+        self.frame(vec![egui::Event::AccessKitActionRequest(ActionRequest{target,action:Action::Focus,data:None})]);
+        let modifiers=egui::Modifiers{ctrl:true,command:true,..Default::default()};
+        self.frame(vec![egui::Event::Key{key:Key::A,physical_key:None,pressed:true,repeat:false,modifiers}]);
+        self.frame(vec![egui::Event::Key{key:Key::A,physical_key:None,pressed:false,repeat:false,modifiers},egui::Event::Text(value.into())]);
+        self.frame(vec![]);
+    }
     fn wait(&mut self) {
         let end = Instant::now() + std::time::Duration::from_secs(15);
         loop {
@@ -259,4 +268,15 @@ fn native_document_cli_plan_reopen_and_batch_use_same_encoded_delivery_path(){
     let recipe=files.0.join("cli.json");assert!(data::cli::run(&["delivery-plan".into(),native.to_string_lossy().into_owned(),recipe.to_string_lossy().into_owned()]).unwrap());let mut r=data::batch::Recipe::load(&recipe,&AtomicBool::new(false)).unwrap();r.export.end=0.5;r.export.tail=0.;r.items.truncate(2);std::fs::remove_file(&recipe).unwrap();r.save(&recipe).unwrap();
     let destination=files.0.join("cli-output");assert!(data::cli::run(&["delivery-batch".into(),native.to_string_lossy().into_owned(),recipe.to_string_lossy().into_owned(),destination.to_string_lossy().into_owned()]).unwrap());let report:serde_json::Value=serde_json::from_slice(&std::fs::read(destination.join("batch.json")).unwrap()).unwrap();assert_eq!(report["cases"].as_array().unwrap().len(),2);assert_eq!(report["frames_per_pass"],24000);assert_eq!(report["review"]["recipe"]["project_sha256"],r.project_sha256.as_ref().unwrap().as_str());
     let untouched=files.0.join("changed-plan");r.project_sha256=Some("0".repeat(64));let changed=files.0.join("changed.json");r.save(&changed).unwrap();assert!(data::cli::run(&["delivery-batch".into(),native.to_string_lossy().into_owned(),changed.to_string_lossy().into_owned(),untouched.to_string_lossy().into_owned()]).unwrap_err().contains("Project bytes differ"));assert!(!untouched.exists());
+}
+
+#[test]
+fn native_delivery_named_fields_accept_keyboard_text_and_keep_live_music_unchanged(){
+    let files=Files::new();let mut g=Gui::new(&files);g.click("Review export source");g.wait();let revision=g.app.engine.project.revision();
+    g.click("Delivery metadata & final-file QC");g.type_named("Title","Keyboard mix");g.type_named("ISRC","USAAA2600001");
+    assert_eq!(g.app.audio_delivery.config.metadata.title,"Keyboard mix");assert_eq!(g.app.audio_delivery.config.metadata.isrc,"USAAA2600001");
+    g.click("Delivery metadata & final-file QC");g.click("Aligned stems & versions");g.type_named("New pass name","keyboard-version");
+    assert_eq!(g.app.audio_delivery.version_name,"keyboard-version");
+    let path=files.0.join("keyboard-recipe.json");g.type_named("Batch recipe JSON path",path.to_str().unwrap());g.click("Save batch recipe to new file");g.wait();
+    let reopened=data::batch::Recipe::load(&path,&AtomicBool::new(false)).unwrap();assert_eq!(reopened.config.metadata.title,"Keyboard mix");assert_eq!(reopened.config.metadata.isrc,"USAAA2600001");assert_eq!(g.app.engine.project.revision(),revision);assert!(!g.callback.renderer_for_test().playing);
 }
