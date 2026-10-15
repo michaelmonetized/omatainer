@@ -16,17 +16,13 @@ impl Editor {
             let supported = gui
                 .is_api_supported
                 .ok_or("CLAP GUI API negotiation is unavailable")?;
-            let floating = supported(plugin, ptr::null(), true);
+            let floating = supported(plugin, CLAP_WINDOW_API_X11.as_ptr(), true);
             if !floating && !supported(plugin, CLAP_WINDOW_API_X11.as_ptr(), false) {
                 return Err("CLAP editor requires an unsupported window API; use the generic parameter controls".into());
             }
             if !gui.create.ok_or("Missing CLAP editor create")?(
                 plugin,
-                if floating {
-                    ptr::null()
-                } else {
-                    CLAP_WINDOW_API_X11.as_ptr()
-                },
+                CLAP_WINDOW_API_X11.as_ptr(),
                 floating,
             ) {
                 return Err("CLAP editor creation refused".into());
@@ -99,7 +95,7 @@ impl Editor {
                 Ok(())
             })();
             if let Err(error) = open {
-                result.close(plugin);
+                result.close(plugin, false);
                 return Err(error);
             }
             Ok(result)
@@ -151,14 +147,16 @@ impl Editor {
         Ok(false)
     }
     /// Destroy an owned editor once. Args: plugin. Returns after native resources and the parent display have been released.
-    pub fn close(&mut self, plugin: *const clap_plugin) {
+    pub fn close(&mut self, plugin: *const clap_plugin, destroyed: bool) {
         unsafe {
             if let Ok(gui) = gui(plugin) {
-                if let Some(hide) = gui.hide {
-                    hide(plugin);
-                }
-                if let Some(destroy) = gui.destroy {
-                    destroy(plugin);
+                if !destroyed {
+                    if let Some(hide) = gui.hide {
+                        hide(plugin);
+                    }
+                    if let Some(destroy) = gui.destroy {
+                        destroy(plugin);
+                    }
                 }
             }
             if let Some(x) = self.x.take() {

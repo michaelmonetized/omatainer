@@ -186,6 +186,7 @@ pub(super) struct Instance {
     rate: u32,
     active: bool,
     started: bool,
+    steady: i64,
     editor: Option<editor::Editor>,
     _module: Module,
 }
@@ -235,6 +236,7 @@ impl Instance {
                 rate,
                 active: false,
                 started: false,
+                steady: 0,
                 editor: None,
                 _module: module,
             };
@@ -405,8 +407,8 @@ impl Instance {
                     outputs: metadata.audio_outputs.iter().map(bus).collect(),
                 },
                 parameters,
-                latency: self.latency(),
-                tail: self.tail(),
+                latency: if self.active { self.latency() } else { 0 },
+                tail: if self.active { self.tail() } else { 0 },
                 native: Some(metadata),
             };
             result.validate()?;
@@ -661,7 +663,7 @@ impl Instance {
         let mut outs = buffers(&mut out_ptrs);
         let transport = events::transport(&frame, self.rate);
         let process = clap_process {
-            steady_time: frame.sample_position,
+            steady_time: self.steady,
             frames_count: frame.frames as u32,
             transport: &transport,
             audio_inputs: ins.as_ptr(),
@@ -674,6 +676,7 @@ impl Instance {
         self.callbacks.audio.store(true, Ordering::Release);
         let status = unsafe { (*self.plugin).process.unwrap()(self.plugin, &process) };
         self.callbacks.audio.store(false, Ordering::Release);
+        self.steady = self.steady.saturating_add(frame.frames as i64);
         if status == CLAP_PROCESS_ERROR
             || out.invalid
             || outputs.iter().flatten().flatten().any(|v| !v.is_finite())
@@ -714,13 +717,18 @@ impl Instance {
         if !open {
             self.close_editor();
         } else if self.editor.is_none() {
+            self.callbacks.closed.store(false, Ordering::Release);
+            self.callbacks.destroyed.store(false, Ordering::Release);
             self.editor = Some(editor::Editor::open(self.plugin)?);
         }
         Ok(Response::Ok)
     }
     fn close_editor(&mut self) {
         if let Some(mut editor) = self.editor.take() {
-            editor.close(self.plugin);
+            editor.close(
+                self.plugin,
+                self.callbacks.destroyed.swap(false, Ordering::AcqRel),
+            );
         }
     }
 }
@@ -790,7 +798,14 @@ pub(super) fn probe(binary: &BinaryIdentity) -> Result<Vec<Class>, String> {
         }
     };
     ids.iter()
-        .map(|id| Instance::create(binary, id, &[], 48000).map(|i| i.class.clone()))
+        .map(|id| {
+            Instance::create(binary, id, &[], 48000).and_then(|mut i| {
+                i.activate()?;
+                i.class.latency = i.latency();
+                i.class.tail = i.tail();
+                Ok(i.class.clone())
+            })
+        })
         .collect()
 }
 /// Restore and activate a CLAP processor. Args: saved identity/state and rate. Returns the live instance with the exact saved version.

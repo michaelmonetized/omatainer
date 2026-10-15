@@ -185,7 +185,7 @@ pub(super) fn candidates(roots: &[PathBuf], cancel: &AtomicBool) -> Result<Vec<P
             let entry = entry.map_err(|e| format!("Plugin scan path cannot be read: {e}"))?;
             if entry.file_type().is_dir() && entry.path().extension().is_some_and(|s| s == "vst3") || entry.file_type().is_file() && entry.path().extension().is_some_and(|s| s == "clap") {
                 found.insert(entry.path().to_path_buf());
-                walk.skip_current_dir();
+                if entry.file_type().is_dir() { walk.skip_current_dir(); }
                 if found.len() > 4096 {
                     return Err("Plugin scan exceeds 4096 bundles".into());
                 }

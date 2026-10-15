@@ -52,8 +52,10 @@ unsafe extern "C" fn main(h: *const clap_host) -> bool {
     state(h).main == std::thread::current().id()
 }
 unsafe extern "C" fn log(_h: *const clap_host, _severity: i32, _message: *const c_char) {}
-unsafe extern "C" fn rescan(h: *const clap_host, _flags: u32) {
-    restart(h);
+unsafe extern "C" fn rescan(h: *const clap_host, flags: u32) {
+    if flags & (CLAP_PARAM_RESCAN_ALL | CLAP_PARAM_RESCAN_INFO) != 0 {
+        restart(h);
+    }
 }
 unsafe extern "C" fn clear(h: *const clap_host, _id: u32, _flags: u32) {
     restart(h);

@@ -7,7 +7,7 @@ pub(super) enum Event {
     Midi(clap_event_midi),
 }
 impl Event {
-    fn header(&self) -> &clap_event_header {
+    pub(super) fn header(&self) -> &clap_event_header {
         match self {
             Self::Param(e) => &e.header,
             Self::Note(e) => &e.header,
