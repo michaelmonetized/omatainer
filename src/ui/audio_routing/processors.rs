@@ -60,9 +60,11 @@ impl Draft {
             }
             source = Group::Plugin(*owned.first().unwrap());
         }
-        let width = model
-            .width(source, &self.layout)
-            .ok_or("Return processor source was removed")?;
+        let width = if let Group::Plugin(id)=source {
+            usize::from(model.plugins.iter().find(|p|p.id==id).unwrap().outputs[0])
+        } else {
+            model.width(source, &self.layout).ok_or("Return processor source was removed")?
+        };
         let input = usize::from(plugin.inputs[0]);
         if width > 2 && width != input {
             return Err("Wide return processors require matching primary input width".into());
@@ -82,10 +84,10 @@ impl Draft {
             if route
                 .map
                 .iter()
-                .any(|m| usize::from(m.source) >= plugin.output_width())
+                .any(|m| usize::from(m.source) >= width || m.source >= plugin.outputs[0])
             {
                 return Err(
-                    "Return processor outputs cannot preserve the existing channel routes".into(),
+                    "Return processor primary outputs cannot preserve the existing channel routes; review auxiliary routes separately".into(),
                 );
             }
             route.source.group = Group::Plugin(id);
@@ -239,6 +241,9 @@ mod tests {
             .connections
             .iter()
             .any(|r| r.source.group == Group::Plugin(3) && r.destination == Group::Plugin(4)));
+        let interstage=draft.model.connections.iter().find(|r|r.source.group==Group::Plugin(3)&&r.destination==Group::Plugin(4)).unwrap();
+        assert_eq!(interstage.map.iter().map(|m|(m.source,m.destination)).collect::<Vec<_>>(),[(0,0),(1,1)]);
+        assert!(draft.model.plugins.iter().all(|p|p.inputs==[2,1]&&p.outputs==[2,1]));
         let terminal = draft
             .model
             .connections
@@ -253,6 +258,13 @@ mod tests {
             draft.model,
             serde_json::from_slice::<Model>(&serde_json::to_vec(&draft.model).unwrap()).unwrap()
         );
+        let mut state=crate::engine::project::State::blank();
+        state.session=Some(draft.layout.clone());state.routing=Some(std::sync::Arc::new(draft.model.clone()));
+        let capture=crate::engine::project::Captured {state,media:vec![],revision:0,checkpoint:Default::default(),playback_receipts:[None,None]};
+        let selection=crate::engine::audio::routing::selection::Selection {namespace,targets:vec![crate::engine::audio::routing::selection::Target::Return(2)],policy:Default::default()};
+        let selected=selection.plan(&capture,Some(1)).unwrap();
+        let observer=selected.connections.iter().find(|r|r.source.group==Group::Plugin(4)&&r.destination==Group::Output(1)).unwrap();
+        assert_eq!(observer.map.iter().map(|m|(m.source,m.destination)).collect::<Vec<_>>(),[(0,0),(1,1)]);
         let before = draft.model.clone();
         assert!(draft.attach_return(effect(), [0; 2], 2).is_err());
         assert!(draft.attach_return(effect(), namespace, 99).is_err());
@@ -263,6 +275,11 @@ mod tests {
             .unwrap_err()
             .contains("outputs"));
         assert_eq!(before, draft.model);
+        draft.model.connections.push(Connection {source:Source {group:Group::Plugin(4),tap:Tap::PostMixer},destination:Group::Main,map:vec![ChannelMap {source:2,destination:0,gain:0.125}]});
+        let auxiliary=draft.model.clone();
+        assert!(draft.attach_return(effect(),namespace,2).unwrap_err().contains("auxiliary"));
+        assert_eq!(draft.model,auxiliary);
+        draft.model=before.clone();
         let mut invalid = before.clone();
         invalid.buses.clear();
         assert!(invalid

@@ -38,19 +38,26 @@ impl Map {
     /// Bind balance to the signal's stereo pair before callback admission.
     /// Takes a validated map and graph; returns source balance for stereo or destination bus-local balance for a mono upmix, with mono destinations unchanged.
     fn prepare(map: ChannelMap, connection: &Connection, model: &Model, layout: &Layout) -> Self {
-        let balance = if model.width(connection.source.group, layout) == Some(1) {
-            let mut channel = usize::from(map.destination);
-            let width = if let Group::Plugin(id) = connection.destination {
-                model.plugins.iter().find(|plugin| plugin.id == id).unwrap().inputs.iter().find_map(|width| {
-                    let width = usize::from(*width);
-                    if channel < width { Some(width) } else { channel -= width; None }
-                }).unwrap()
-            } else {
-                model.input_width(connection.destination, layout).unwrap()
-            };
+        let (channel,width)=if let Group::Plugin(id)=connection.source.group {
+            Self::bus_channel(map.source,&model.plugins.iter().find(|p|p.id==id).unwrap().outputs)
+        } else {(usize::from(map.source),model.width(connection.source.group,layout).unwrap())};
+        let balance = if width==1 {
+            let (channel,width)=if let Group::Plugin(id)=connection.destination {
+                Self::bus_channel(map.destination,&model.plugins.iter().find(|p|p.id==id).unwrap().inputs)
+            } else {(usize::from(map.destination),model.input_width(connection.destination,layout).unwrap())};
             if width > 1 { channel.min(2) as u8 } else { 2 }
-        } else { map.source.min(2) };
+        } else { channel.min(2) as u8 };
         Self { source: map.source, destination: map.destination, balance, gain: map.gain }
+    }
+
+    /// Locate a validated channel inside its declared native bus.
+    /// Takes a flattened channel and bus widths; returns its local index and bus width before rendering starts.
+    fn bus_channel(channel:u8,buses:&[u8])->(usize,usize) {
+        let mut channel=usize::from(channel);
+        buses.iter().find_map(|width| {
+            let width=usize::from(*width);
+            if channel<width {Some((channel,width))} else {channel-=width;None}
+        }).unwrap()
     }
 }
 
@@ -444,3 +451,15 @@ impl Prepared {
 /// Read the already prepared topological identities.
 /// Takes node storage; returns a worker-only ordering for mixer preparation.
 fn order_from_nodes(nodes:&[Node])->Vec<Group>{nodes.iter().map(|n|n.group).collect()}
+
+#[cfg(test)]
+mod tests {
+    use super::Map;
+
+    #[test]
+    fn named_native_bus_offsets_keep_sidechain_mono_and_secondary_stereo_separate() {
+        for (channel,expected) in [(0,(0,2)),(1,(1,2)),(2,(0,1)),(3,(0,2)),(4,(1,2))] {
+            assert_eq!(Map::bus_channel(channel,&[2,1,2]),expected);
+        }
+    }
+}

@@ -38,7 +38,7 @@ and mute. Return controls add solo and solo safe. The live mixer shows current
 levels and peaks; changes use the same History journal as other mixer controls.
 Stereo sends balance their source channels before channel mapping, including maps
 to a sidechain. A mono source mapped to a stereo pair balances the destination
-pair; native input buses use their local channel order. Mono-to-mono sends and
+pair; native input and output buses use their local channel order. Mono-to-mono sends and
 mono return strips ignore balance and retain their level. Balance remains unity
 at the center, preserving existing stereo levels.
 Pre FX and post FX taps bypass source mute, solo, fader, pan and crossfader. Post
@@ -58,6 +58,11 @@ Track duplication preserves shared return processors; deleting the return remove
 its owned processor chain and dependent routes. Sidechains and extra plugin outputs
 remain explicit maps. An ambiguous parallel chain or incompatible output width
 refuses the draft rather than dropping channels.
+Appending effects follows the declared primary bus; auxiliary buses retain their
+saved metadata. An auxiliary post-mixer route that cannot follow that primary
+chain requires explicit review and refuses automatic append. Track and return
+contributions observe the final primary bus; auxiliary outputs keep processing
+through their explicit graph routes.
 Owned return effects take the bus pre-FX signal and pass their processed signal to
 the next effect. The last effect's post-mixer tap applies return level, balance and
 mute, so wet tails remain inaudible while muted and keep processing underneath.
