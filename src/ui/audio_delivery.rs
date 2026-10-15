@@ -182,6 +182,8 @@ pub(super) struct Panel {
     version_policy:crate::engine::audio::routing::selection::Policy,
     version_kind:data::batch::Kind,
     recipe_path:String,
+    batch_normalize:bool,
+    batch_dither:bool,
 }
 impl App {
     fn start_audio_delivery(&mut self, operation: Operation) {
@@ -205,7 +207,7 @@ impl App {
             self.audio_delivery.job = None;
             match reply {
                 Ok(Reply::Batched(outcome))=>{self.audio_delivery.message=format!("Saved aligned batch: {} files · {} frames per pass in {}{}",outcome.files,outcome.frames,outcome.folder.display(),outcome.warning.map_or(String::new(),|w|format!(" · {w}")));},
-                Ok(Reply::RecipeLoaded(recipe))=>{self.audio_delivery.request=recipe.export.clone();self.audio_delivery.config=recipe.config.clone();self.audio_delivery.batch=Some(recipe);self.audio_delivery.message="Recipe reopened. Saved contribution IDs will be checked against this reviewed project before rendering.".into();},
+                Ok(Reply::RecipeLoaded(recipe))=>{self.audio_delivery.batch_normalize=recipe.export.options.normalize;self.audio_delivery.batch_dither=recipe.export.options.dither;self.audio_delivery.request=recipe.export.clone();self.audio_delivery.config=recipe.config.clone();self.audio_delivery.batch=Some(recipe);self.audio_delivery.message="Recipe reopened. Saved contribution IDs will be checked against this reviewed project before rendering.".into();},
                 Ok(Reply::RecipeSaved(path))=>{self.audio_delivery.message=format!("Saved batch recipe: {}",path.display());},
                 Ok(Reply::Inspected(plan)) => {
                     self.audio_delivery.batch=Some(plan.batch.clone());

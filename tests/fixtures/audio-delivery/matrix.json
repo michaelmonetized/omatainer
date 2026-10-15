@@ -109,7 +109,7 @@
       "id": "native-batch-ui",
       "test": "ui::audio_delivery::tests::native_aligned_batch_review_recipe_reopen_render_and_stale_guard_use_real_worker",
       "source": "src/ui/audio_delivery/tests.rs",
-      "source_sha256": "bb51ff947a1aff637524ecf7b251c25959b65db968927c95e8ee6255cf793af0",
+      "source_sha256": "0f3dd3646fe740f99d75fb9ffea5abf3f6ec7770050ec271a6da767c8905d51c",
       "requirement": "required",
       "acceptance": "headless egui accesskit actual source review/recipe/reopen/render worker; no native window"
     },
@@ -117,7 +117,7 @@
       "id": "native-project-cli",
       "test": "ui::audio_delivery::tests::native_document_cli_plan_reopen_and_batch_use_same_encoded_delivery_path",
       "source": "src/ui/audio_delivery/tests.rs",
-      "source_sha256": "bb51ff947a1aff637524ecf7b251c25959b65db968927c95e8ee6255cf793af0",
+      "source_sha256": "0f3dd3646fe740f99d75fb9ffea5abf3f6ec7770050ec271a6da767c8905d51c",
       "requirement": "required",
       "acceptance": "real .omat container/native Document, device-free CLI dispatch, exact project byte binding"
     },
