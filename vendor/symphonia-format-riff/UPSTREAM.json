@@ -17,6 +17,7 @@
   },
   "patches": [
     "src/aiff/chunks.rs",
-    "src/aiff/mod.rs"
+    "src/aiff/mod.rs",
+    "src/wave/mod.rs"
   ]
 }
