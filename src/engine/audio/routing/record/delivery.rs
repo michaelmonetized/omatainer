@@ -1,5 +1,6 @@
 use super::*;
 use crate::audio_delivery::{wav, Format, Options};
+use super::super::speakers::OutputContract;
 use std::time::Instant;
 
 pub(crate) const STANDARD_OUTPUT: u64 = u64::MAX;
@@ -20,6 +21,18 @@ pub(crate) struct Outcome {
     pub rate: u32,
     pub channels: u16,
     pub warning: Option<String>,
+}
+
+/// Open a recording segment without inventing speakers.
+/// Takes the reviewed request, path and optional canonical contract; retains the legacy writer unless the new recording path needs a wide extensible header.
+fn segment_writer(request: &Request, path: &Path, contract: Option<&OutputContract>, native_headers: bool) -> Result<wav::Writer, String> {
+    let options = &request.options;
+    if native_headers && options.channels > 2 {
+        wav::Writer::container(path, options.channels, options.rate, options.format.encoding(), options.dither,
+            wav::Settings { wave_mask: contract.and_then(|c| c.wave_mask), ..Default::default() })
+    } else {
+        wav::Writer::new(path, options.channels, options.rate, options.format.encoding(), options.dither)
+    }
 }
 
 impl Recorder {
@@ -139,7 +152,41 @@ impl Recorder {
         destination: &Path,
         stop: &AtomicBool,
     ) -> Result<Outcome, String> {
+        self.write_delivery_inner(request, destination, stop, None, false)
+    }
+
+    /// Record the exact reviewed speaker bed.
+    /// Takes the existing request, new folder, cancellation and optional canonical native contract; writes wide extensible headers and additive speaker metadata while preserving publication and recovery behavior.
+    pub(crate) fn write_delivery_with_contract(
+        &self,
+        request: &Request,
+        destination: &Path,
+        stop: &AtomicBool,
+        contract: Option<&OutputContract>,
+    ) -> Result<Outcome, String> {
+        self.write_delivery_inner(request, destination, stop, contract, true)
+    }
+
+    fn write_delivery_inner(
+        &self,
+        request: &Request,
+        destination: &Path,
+        stop: &AtomicBool,
+        contract: Option<&OutputContract>,
+        native_headers: bool,
+    ) -> Result<Outcome, String> {
         request.options.validate()?;
+        if contract.is_some_and(|c| {
+            c.channel_count != request.options.channels
+                || c.channels.len() != usize::from(c.channel_count)
+                || c.speakers.len() != usize::from(c.channel_count)
+                || c.wave_mask.is_some_and(|m| m.count_ones() != u32::from(c.channel_count))
+                || c.channels.iter().any(|&n| usize::from(n) >= super::super::model::MAX_PHYSICAL_CHANNELS)
+                || c.channels.iter().collect::<std::collections::BTreeSet<_>>().len() != c.channels.len()
+                || request.output_channels.as_ref().is_some_and(|channels| channels != &c.channels)
+        }) {
+            return Err("Recording requires the exact native channel/speaker order; folded or stale contracts are not recording sources".into());
+        }
         if !Format::RECORDING.contains(&request.options.format) {
             return Err("Use offline delivery for BWF/RF64/AIFF; performance recording retains segmented WAV/FLAC/MP3".into());
         }
@@ -203,6 +250,7 @@ impl Recorder {
         self.write_metadata(
             &stage.path,
             request,
+            contract,
             &[current_first.clone()],
             0,
             Some("Preparing recording"),
@@ -239,13 +287,7 @@ impl Recorder {
                 &AtomicBool::new(false),
             )?),
         );
-        let first_writer = wav::Writer::new(
-            &current_first,
-            request.options.channels,
-            request.options.rate,
-            request.options.format.encoding(),
-            request.options.dither,
-        )?;
+        let first_writer = segment_writer(request, &current_first, contract, native_headers)?;
         while self.receiver.lock().pop().is_ok() {}
         {
             let mut activation = self.starting.lock();
@@ -353,13 +395,7 @@ impl Recorder {
             }
             if writer.is_none() {
                 current = destination.join(format!("take-{:04}.wav", files.len() + 1));
-                match wav::Writer::new(
-                    &current,
-                    request.options.channels,
-                    request.options.rate,
-                    request.options.format.encoding(),
-                    request.options.dither,
-                ) {
+                match segment_writer(request, &current, contract, native_headers) {
                     Ok(w) => writer = Some(w),
                     Err(e) => {
                         warning = Some(format!("Cannot open recording segment: {e}"));
@@ -395,6 +431,7 @@ impl Recorder {
                         if let Err(e) = self.write_metadata(
                             destination,
                             request,
+                            contract,
                             &files,
                             total,
                             Some("Recording"),
@@ -507,7 +544,7 @@ impl Recorder {
                 None => committed,
             });
         }
-        if let Err(e) = self.write_metadata(destination, request, &files, total, warning.as_deref())
+        if let Err(e) = self.write_metadata(destination, request, contract, &files, total, warning.as_deref())
         {
             warning = Some(format!(
                 "{}; recording metadata could not flush: {e}",
@@ -531,12 +568,16 @@ impl Recorder {
         &self,
         folder: &Path,
         request: &Request,
+        contract: Option<&OutputContract>,
         files: &[PathBuf],
         frames: u64,
         warning: Option<&str>,
     ) -> Result<(), String> {
         let metadata = serde_json::json!({"schema":1,"source_alias":request.alias.to_string(),"output_channels":request.output_channels,"rate":request.options.rate,"channels":request.options.channels,"format":request.options.format.title(),"frames":frames,"files":files.iter().map(|p|p.file_name().unwrap().to_string_lossy()).collect::<Vec<_>>(),"status":warning.unwrap_or("Complete"),"recoverable_wav_prefixes":true});
         let mut metadata = metadata;
+        metadata["speaker_order"] = serde_json::to_value(contract.map(|c| &c.speakers)).map_err(|e|e.to_string())?;
+        metadata["wave_mask"] = serde_json::json!(contract.and_then(|c|c.wave_mask));
+        metadata["physical_source_channels"] = serde_json::json!(contract.map(|c|&c.channels));
         metadata["wav_encoding"] = match request.options.format.encoding() {
             wav::Encoding::Float32 => "float32",
             wav::Encoding::Pcm16 => "pcm16",

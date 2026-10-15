@@ -6,6 +6,7 @@ use crossbeam_channel::{bounded, Receiver};
 use std::sync::atomic::{AtomicBool, Ordering};
 mod finishing;
 mod batch;
+mod source;
 #[cfg(test)]
 mod tests;
 
@@ -15,13 +16,20 @@ struct RecordSource {
     name: String,
     channels: Option<Vec<u16>>,
     width: u16,
+    contract: Option<crate::engine::audio::routing::speakers::OutputContract>,
+}
+#[derive(Clone, Debug)]
+struct OutputSource {
+    id: u64,
+    name: String,
+    contract: crate::engine::audio::routing::speakers::OutputContract,
 }
 #[derive(Clone, Debug)]
 struct Plan {
     revision: u64,
     namespace: [u64; 2],
     generation: u64,
-    outputs: Vec<(u64, String)>,
+    outputs: Vec<OutputSource>,
     routed: bool,
     scenes: Vec<(u16, String)>,
     scene_refs:Vec<(u16,crate::engine::session::Reference)>,
@@ -114,8 +122,7 @@ impl Job {
                     Operation::Batch{plan,recipe,path}=>{let layout=captured.state.session.as_ref().ok_or("Session identity unavailable")?;if captured.revision!=plan.revision||layout.namespace!=plan.namespace||layout.generation!=plan.generation{return Err("Project changed since batch review; refresh source".into());}let review=recipe.review(&captured)?;data::batch::run(captured,&review,&path,permit.as_ref().unwrap(),&ticket.as_ref().unwrap().reporter(),&batch_status).map(Reply::Batched)},
                     Operation::Inspect=>{
                         let layout=captured.state.session.as_ref().ok_or("Session identity unavailable")?;let model=captured.state.routing.as_ref();
-                        let outputs=model.map_or(Vec::new(),|m|m.ports.iter().filter(|p|p.direction==Direction::Output&&(1..=2).contains(&p.channels.len())&&m.monitor_output!=Some(p.id)).map(|p|(p.id,p.alias.clone())).collect());
-                        let records=model.map_or_else(||vec![RecordSource{id:live::STANDARD_OUTPUT,name:"Standard master output".into(),channels:Some(vec![0,1]),width:2}],|m|m.ports.iter().filter(|p|matches!(p.direction,Direction::Output|Direction::Record)&&p.channels.len()<=26&&m.monitor_output!=Some(p.id)).map(|p|RecordSource{id:p.id,name:format!("{} · {}",p.alias,if p.direction==Direction::Output{"final output"}else{"raw routed source"}),channels:(p.direction==Direction::Output).then(||p.channels.clone()),width:p.channels.len() as u16}).collect());
+                        let (outputs,records)=source::inspect(&captured)?;
                         let scenes=layout.scene_order.iter().filter_map(|&slot|layout.scenes.get(usize::from(slot)).filter(|s|s.active).map(|s|(slot,s.name.clone()))).collect();
                         Ok(Reply::Inspected(Plan{revision:captured.revision,namespace:layout.namespace,generation:layout.generation,outputs,routed:model.is_some(),scenes,scene_refs:layout.scene_order.iter().filter_map(|&slot|layout.reference(crate::engine::session::Axis::Scene,usize::from(slot)).map(|r|(slot,r))).collect(),records,rate:handle.sample_rate(),catalog:data::batch::Recipe::catalog(&captured)?,batch:data::batch::Recipe::aligned(&captured,Export::default(),data::finishing::Config::default())?}))
                     },
@@ -125,9 +132,10 @@ impl Job {
                     },
                     Operation::Record{plan,source,format,dither,seconds,path}=>{
                         let layout=captured.state.session.as_ref().ok_or("Session identity unavailable")?;if layout.namespace!=plan.namespace||layout.generation!=plan.generation||handle.sample_rate()!=plan.rate{return Err("Recording source changed since review; refresh before recording".into());}
-                        if let Some(model)=&captured.state.routing{let direction=if source.channels.is_some(){Direction::Output}else{Direction::Record};let port=model.port(source.id,direction).ok_or("Reviewed recording alias is unavailable")?;if port.channels.len()!=usize::from(source.width)||source.channels.as_ref().is_some_and(|c|c!=&port.channels)||model.monitor_output==Some(source.id){return Err("Recording channel plan changed since review".into());}}else if source.id!=live::STANDARD_OUTPUT{return Err("Reviewed routing source was removed".into());}
+                        let (_,current_sources)=source::inspect(&captured)?;
+                        if current_sources.iter().find(|s|s.id==source.id&&s.channels.is_some()==source.channels.is_some()).is_none_or(|s|s.width!=source.width||s.channels!=source.channels||s.contract!=source.contract){return Err("Recording channel or speaker plan changed since review".into());}
                         let request=live::Request{alias:source.id,output_channels:source.channels,options:data::Options{format,rate:plan.rate,channels:source.width,dither,normalize:false},seconds,epoch};
-                        recorder.write_delivery(&request,&path,&stop).map(Reply::Recorded)
+                        recorder.write_delivery_with_contract(&request,&path,&stop,source.contract.as_ref()).map(Reply::Recorded)
                     }
                 }
             })();if stop.load(Ordering::Acquire){let _=handle.retire_cancelled_capture(&stop);}let _=tx.try_send(result);
@@ -214,7 +222,8 @@ impl App {
                     let needs_batch=self.audio_delivery.batch.as_ref().is_none_or(|r|r.namespace!=plan.namespace);
                     if self.audio_delivery.request.output_alias.is_none() && plan.outputs.len() == 1
                     {
-                        self.audio_delivery.request.output_alias = Some(plan.outputs[0].0);
+                        self.audio_delivery.request.output_alias = Some(plan.outputs[0].id);
+                        self.audio_delivery.request.options.channels = plan.outputs[0].contract.channel_count;
                     }
                     if !plan
                         .scenes
@@ -291,11 +300,12 @@ impl App {
                 if previous_source!=panel.request.source&&panel.request.source==Source::Scene {if let Some(recipe)=&mut panel.batch {recipe.source_scene=plan.scene_refs.iter().find(|(slot,_)|*slot==panel.request.scene).map(|(_,r)|*r);}}
                 if panel.request.source==Source::Scene{egui::ComboBox::from_id_salt("audio-export-scene").selected_text(plan.scenes.iter().find(|(slot,_)|*slot==panel.request.scene).map_or("Choose a scene",|(_,name)|name.as_str())).show_ui(ui,|ui|{for(slot,name)in &plan.scenes{if ui.selectable_value(&mut panel.request.scene,*slot,name).clicked(){if let Some(recipe)=&mut panel.batch{recipe.source_scene=plan.scene_refs.iter().find(|(s,_)|s==slot).map(|(_,r)|*r);}}}});}
                 ui.checkbox(&mut panel.request.decks,tr!("Include loaded decks from their saved cursors"));
-                if plan.routed{egui::ComboBox::from_id_salt("audio-export-alias").selected_text(plan.outputs.iter().find(|(id,_)|Some(*id)==panel.request.output_alias).map_or("Choose program output",|(_,name)|name.as_str())).show_ui(ui,|ui|{for(id,name)in &plan.outputs{ui.selectable_value(&mut panel.request.output_alias,Some(*id),name);}});}else{panel.request.output_alias=None;ui.label(tr!("Standard stereo master output"));}
+                source::output(ui,&mut panel.request,plan);
                 ui.horizontal(|ui|{ui.label(tr!("Range start (seconds)"));ui.add(egui::DragValue::new(&mut panel.request.start).range(0.0..=28800.0).speed(0.1));ui.label(tr!("Range end (seconds)"));ui.add(egui::DragValue::new(&mut panel.request.end).range(0.0..=28800.0).speed(0.1));});
                 ui.horizontal(|ui|{ui.label(tr!("Repeat range"));ui.add(egui::DragValue::new(&mut panel.request.repeats).range(1..=64));ui.label(tr!("Final tail (seconds)"));ui.add(egui::DragValue::new(&mut panel.request.tail).range(0.0..=120.0).speed(0.1));});
                 egui::ComboBox::from_id_salt("audio-export-format").selected_text(panel.request.options.format.title()).show_ui(ui,|ui|{for format in Format::ALL{ui.selectable_value(&mut panel.request.options.format,format,format.title());}});
-                ui.horizontal(|ui|{ui.label(tr!("Sample rate (Hz)"));ui.add(egui::DragValue::new(&mut panel.request.options.rate).range(8000..=192000).speed(100.0));ui.selectable_value(&mut panel.request.options.channels,1,tr!("Mono"));ui.selectable_value(&mut panel.request.options.channels,2,tr!("Stereo"));});
+                ui.horizontal(|ui|{let label=ui.label(tr!("Sample rate (Hz)"));ui.add(egui::DragValue::new(&mut panel.request.options.rate).range(8000..=192000).speed(100.0)).labelled_by(label.id);source::width(ui,&mut panel.request,plan);});
+                if panel.request.options.channels<=2&&plan.outputs.iter().any(|s|Some(s.id)==panel.request.output_alias&&s.contract.channel_count>2){ui.label("Mono and stereo use the saved speaker fold and exclude dedicated LFE.");}
                 if !panel.request.options.format.dither(){panel.request.options.dither=false;}ui.add_enabled(panel.request.options.format.dither(),egui::Checkbox::new(&mut panel.request.options.dither,tr!("Triangular dither for integer quantization")));ui.checkbox(&mut panel.request.options.normalize,tr!("Normalize sample peak to −1 dBFS"));
                 ui.label(tr!("Ranges start at scene zero or the captured session cursor. The session uses its currently launched clips. Effects build from the source start; each repeat copies the same rendered range. Tail keeps the decay after sources stop. Metronome and headphone cue are excluded. FLAC/MP3 require FFmpeg."));
                 finishing::controls(ui,&mut panel.config);

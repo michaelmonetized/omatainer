@@ -105,6 +105,10 @@ pub(crate) fn run(args: &[String]) -> Result<bool, String> {
                     .collect::<Vec<_>>();
                 if outputs.len() == 1 {
                     export.output_alias = Some(outputs[0].id);
+                    export.options.channels = model.channel_contract(
+                        crate::engine::audio::routing::model::Group::Output(outputs[0].id),
+                        outputs[0].channels.len() as u16,
+                    )?.channel_count;
                 }
             }
             let mut recipe = Recipe::aligned(&capture, export, Config::default())?;

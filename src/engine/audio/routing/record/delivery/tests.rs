@@ -1,5 +1,6 @@
 use super::*;
 use crate::engine::{audio::OutputCallback, dsp::Sample, Command, Engine};
+mod contract_tests;
 struct Files(PathBuf);
 impl Files {
     fn new() -> Self {

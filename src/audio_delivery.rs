@@ -21,6 +21,8 @@ mod process;
 pub(crate) mod recovery;
 mod render;
 #[cfg(test)]
+pub(crate) mod fixture;
+#[cfg(test)]
 mod tests;
 pub(crate) mod wav;
 

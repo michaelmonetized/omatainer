@@ -5,7 +5,8 @@
     "file_safety": "78e5b50ac3c8bfdfd1f5834d3d1ad04bc6825db2",
     "containers": null,
     "qc": null,
-    "batch": null
+    "batch": null,
+    "surround_consumer": null
   },
   "route": {
     "build": "Only parent-authorized global serialized helper; no direct Cargo",
@@ -21,7 +22,7 @@
       "id": "pcm24-padding-recovery",
       "test": "audio_delivery::recovery::tests::recovery_odd_pcm24_legacy_padded_and_partial_prefixes_keep_exact_frames",
       "source": "src/audio_delivery/recovery.rs",
-      "source_sha256": "3d12cdb39e14dfa7c835426711abc410fa9f1f9165afd30bc432da35ceafd316",
+      "source_sha256": "dd3129e6670bd74186095c6ab8e855ed267ac8e3b366fafbe456345e5d332ff5",
       "requirement": "required",
       "acceptance": "exact whole frames legacy/padded/interrupted"
     },
@@ -109,7 +110,7 @@
       "id": "native-batch-ui",
       "test": "ui::audio_delivery::tests::native_aligned_batch_review_recipe_reopen_render_and_stale_guard_use_real_worker",
       "source": "src/ui/audio_delivery/tests.rs",
-      "source_sha256": "17bd1a6eb5a8baf2d88b499a1cbdf8568c87c2223c6f9485ed6c891a678e5ff0",
+      "source_sha256": "109af7c3bc30556255b6a0be8658c2b6dec72adcbf6e86df0db76ab2f5fbf331",
       "requirement": "required",
       "acceptance": "headless egui accesskit actual source review/recipe/reopen/render worker; no native window"
     },
@@ -117,7 +118,7 @@
       "id": "native-project-cli",
       "test": "ui::audio_delivery::tests::native_document_cli_plan_reopen_and_batch_use_same_encoded_delivery_path",
       "source": "src/ui/audio_delivery/tests.rs",
-      "source_sha256": "17bd1a6eb5a8baf2d88b499a1cbdf8568c87c2223c6f9485ed6c891a678e5ff0",
+      "source_sha256": "109af7c3bc30556255b6a0be8658c2b6dec72adcbf6e86df0db76ab2f5fbf331",
       "requirement": "required",
       "acceptance": "real .omat container/native Document, device-free CLI dispatch, exact project byte binding; ordinary and canonically-deleted scene0 both create/render/reopen a plan bound to first active scene ID"
     },
@@ -151,7 +152,31 @@
       "source": "src/ui/audio_delivery/tests.rs",
       "requirement": "required",
       "acceptance": "Native egui named-field focus/Ctrl+A/text editing for metadata/pass/recipe path, realworker recipe save/reopen, unchanged live project/play state; no native window",
-      "source_sha256": "17bd1a6eb5a8baf2d88b499a1cbdf8568c87c2223c6f9485ed6c891a678e5ff0"
+      "source_sha256": "109af7c3bc30556255b6a0be8658c2b6dec72adcbf6e86df0db76ab2f5fbf331"
+    },
+    {
+      "id": "native-declared-speaker-delivery-ui-cli",
+      "test": "ui::audio_delivery::tests::speakers::native_declared_speaker_controls_export_and_cli_reopen_share_actual_ordered_graph",
+      "source": "src/ui/audio_delivery/tests/speakers.rs",
+      "requirement": "required",
+      "acceptance": "actual 2.1 graph/ordered physical alias, native width UI/mono switch, RF64 render, independent analytic PCM and native project/CLI recipe/batch reopen",
+      "source_sha256": "2c08e5278bbebe08e469674687640f527190d2e2ef1ba3a2ea90b8f3729b4f44"
+    },
+    {
+      "id": "native-recording-speaker-contract",
+      "test": "engine::audio::routing::record::delivery::tests::contract_tests::declared_and_unknown_native_recording_headers_keep_pcm_order_and_recovery",
+      "source": "src/engine/audio/routing/record/delivery/tests/contract_tests.rs",
+      "requirement": "required",
+      "acceptance": "actual Recorder converted capture, declared/unknown 3ch float/PCM24 extensible headers, independent FFmpeg ordered PCM, odd/partial recovery, metadata retained and stale/fold refusal",
+      "source_sha256": "9f42be901370077fb489366790c2552e7886943e5c4da45d094ddce3b07423c1"
+    },
+    {
+      "id": "recovery-fifo-manifest",
+      "test": "engine::audio::routing::record::delivery::tests::contract_tests::recovery_rejects_fifo_manifest_without_waiting_for_a_writer",
+      "source": "src/engine/audio/routing/record/delivery/tests/contract_tests.rs",
+      "requirement": "required",
+      "acceptance": "actual FIFO recording manifest without writer rejected via nonblocking regular descriptor validation",
+      "source_sha256": "9f42be901370077fb489366790c2552e7886943e5c4da45d094ddce3b07423c1"
     }
   ],
   "proof_axes": {

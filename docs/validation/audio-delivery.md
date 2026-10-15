@@ -55,3 +55,13 @@ The independent private controller app and old CLI follower retained their exact
 processes and executable hashes. Playback stayed paused with master 1 before and
 after installation. The default is for the next normal launch. No physical audio
 or device capture is opened for this qualification.
+
+## Declared speaker delivery and recording
+
+The separate surround consumer derives native width, physical order and speaker metadata from routing's sole channel contract. The UI offers the declared bed plus explicit mono/stereo folds. CLI single-output plans adopt the native declared count. The existing published-folder path, cancellation and committed-warning outcomes are retained.
+
+Recorder::write_delivery_with_contract accepts the existing request plus an optional reviewed native OutputContract; existing write_delivery and Writer::new callers retain the legacy path. The new wide path writes extensible WAV headers and additive recording.json speaker/order fields. Unknown wide captures use mask zero and no invented speaker identity. Folded or stale physical plans are refused before publication. No new codec or recording container is added.
+
+Recovery originally supported only44-byte headers. It now reads bounded RIFF chunks, validates the exact PCM/extensible subtype and tagged native header, retains metadata and speaker masks, scans finite float prefixes, and rewrites only RIFF/data/fact sizes and the final pad. Header/manifest mask disagreement, foreign headers, changed files and FIFO manifests are refused. Existing fingerprints, ownership locks, publication and legacy repair semantics remain in place.
+
+The fixture matrix adds actual2.1 graph UI/CLI/native-project reopen with independent analytic/FFmpeg PCM, converted recording of declared/unknown wide sources, odd/partial recovery and FIFO refusal. Qualification is source-bound in the external implementation handoff; source-only tests are not passes. No native window, device, listening, physical timing or endurance proof is inferred.

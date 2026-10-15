@@ -1,6 +1,7 @@
 use super::*;
 use crate::engine::audio::OutputCallback;
 use egui::accesskit::{Action, ActionRequest, Node, NodeId};
+mod speakers;
 struct Files(PathBuf);
 impl Files {
     fn new() -> Self {
@@ -23,10 +24,15 @@ struct Gui {
     ctx: egui::Context,
     nodes: Vec<(NodeId, Node)>,
     time: f64,
+    channels: usize,
 }
 impl Gui {
     fn new(files: &Files) -> Self {
+        Self::configured(files, 2, |_| {})
+    }
+    fn configured(files: &Files, channels: usize, configure: impl FnOnce(&mut crate::engine::RtEngine)) -> Self {
         let (engine, mut rt) = Engine::headless_for_test(48000, 256);
+        configure(&mut rt);
         rt.publish_for_test();
         let mut app = App::with_loader(engine, Theme::default(), None);
         app.library_metadata =
@@ -38,10 +44,11 @@ impl Gui {
         ctx.enable_accesskit();
         let mut g = Self {
             app,
-            callback: OutputCallback::new(rt, 2),
+            callback: OutputCallback::new(rt, channels),
             ctx,
             nodes: vec![],
             time: 0.0,
+            channels,
         };
         g.wait();
         g.click("Audio export & recording");
@@ -61,7 +68,7 @@ impl Gui {
             |ctx| self.app.update_frame(ctx),
         );
         self.nodes = out.platform_output.accesskit_update.unwrap().nodes;
-        self.callback.render(&mut [0.0_f32; 512]);
+        self.callback.render(&mut vec![0.0_f32; 256 * self.channels]);
     }
     fn click(&mut self, label: &str) {
         for _ in 0..2 {
