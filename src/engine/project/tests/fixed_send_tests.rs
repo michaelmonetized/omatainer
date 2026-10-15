@@ -77,3 +77,26 @@ fn named_send_duplicate_undo_removal_and_capture_keep_stable_routes(){
     rt.apply(Command::Redo);assert_eq!(rt.routing.as_ref().unwrap().model.sends.len(),2);
     let saved=captured(&rt);let reopened=Prepared::from_state(serde_json::from_slice(&serde_json::to_vec(&saved.state).unwrap()).unwrap(),saved.media,48000).unwrap();assert_eq!(reopened.rt.routing.as_ref().unwrap().model.sends[1].route.source.group,Group::Track(copied));
 }
+
+#[test]
+fn fixed_send_queued_controls_never_rebind_after_track_identity_reuse(){
+    let(engine,mut rt)=Engine::headless_for_test(48000,144);
+    let id=rt.session.tracks[2].id;
+    engine.send(Command::TrackSend{track:2,send:0,value:0.8}).unwrap();
+    engine.send(Command::TrackCrossfader{track:2,assignment:1}).unwrap();
+    let(request,_)=Request::metadata(&rt.session,captured(&rt).checkpoint.epoch,Action::Delete{axis:Axis::Track,id}).unwrap();rt.apply(Command::session_edit(request));
+    let(request,_)=Request::structural(captured(&rt),48000,Structure::Track{name:"New stable target".into(),audio:true,position:2}).unwrap();rt.apply(Command::session_edit(request));
+    rt.process(&mut []);
+    assert_ne!(rt.session.tracks[2].id,id);assert_eq!(rt.tracks[2].surface,TrackMix::default());
+}
+
+#[test]
+fn named_send_routing_identity_highwater_survives_undo_removal_and_reopen(){
+    use crate::engine::audio::routing::model::*;
+    let(_,mut rt)=Engine::headless_for_test(48000,144);rt.apply(Command::Stop);
+    let mut model=Model::default();model.next_id=10;model.buses.push(Bus{id:9,alias:"Retired return".into(),channels:2,gain:1.,mute:false,mixer:Default::default()});
+    let(request,_)=Request::routing(captured(&rt),48000,Some(Arc::new(model))).unwrap();rt.apply(Command::session_edit(request));rt.apply(Command::Undo);
+    let saved=captured(&rt);assert!(saved.state.routing.is_none());assert_eq!(saved.state.routing_next_id,10);
+    let reopened=Prepared::from_state(serde_json::from_slice(&serde_json::to_vec(&saved.state).unwrap()).unwrap(),saved.media,48000).unwrap();assert_eq!(reopened.rt.routing_next_id,10);
+    assert!(Request::routing(captured(&rt),48000,Some(Arc::new(Model::default()))).unwrap_err().contains("reuse"));
+}

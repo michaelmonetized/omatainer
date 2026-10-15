@@ -51,7 +51,8 @@ impl Prepared {
             sampler_oct,
             musical_context,
             note_seed,
-            sampler_scale
+            sampler_scale,
+            routing_next_id
         );
         rt.timeline_anchor = state.timeline_seconds;
         rt.timeline_frames = 0;
@@ -86,6 +87,7 @@ impl Prepared {
             layout
         };
         if state.version < 7 && rt.fx_view >= 100 { rt.fx_view += session::SCENE_FX_BASE - 100; }
+        rt.routing_next_id=rt.routing_next_id.max(state.routing.as_ref().map_or(2,|model|model.next_id));
         rt.routing = state.routing.take().map(|model| audio::routing::prepared::Prepared::with_cancel(model, &rt.session,rt.sr as u32,cancel).map(Box::new)).transpose().map_err(Error::Invalid)?;
         rt.mic_aux.set(state.mic_aux);
         rt.tracks.clear();
@@ -256,6 +258,7 @@ impl Prepared {
             migration,
             scenes,
             routing,
+            routing_next_id,
             mic_aux,
             last_midi_step,
             quant,

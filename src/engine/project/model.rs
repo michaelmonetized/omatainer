@@ -28,6 +28,8 @@ pub struct State {
     pub(crate) arrangement: Option<Arc<arrangement::Model>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub routing: Option<Arc<audio::routing::model::Model>>,
+    #[serde(default="audio::routing::model::initial_id")]
+    pub routing_next_id:u64,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub(crate) migration: Option<Arc<crate::ableton::Migration>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -84,6 +86,8 @@ struct StateWire {
     arrangement: Option<Arc<arrangement::Model>>,
     #[serde(default)]
     routing: Option<Arc<audio::routing::model::Model>>,
+    #[serde(default="audio::routing::model::initial_id")]
+    routing_next_id:u64,
     #[serde(default)]
     migration: Option<Arc<crate::ableton::Migration>>,
     #[serde(default)]
@@ -227,6 +231,7 @@ impl<'de> Deserialize<'de> for State {
             navigation: wire.navigation,
             arrangement: wire.arrangement,
             routing: wire.routing,
+            routing_next_id:wire.routing_next_id,
             migration: wire.migration,
             mic_aux: wire.mic_aux,
             session: wire.session,
@@ -522,6 +527,7 @@ impl State {
             scene_timing: None,
             arrangement: None,
             routing: None,
+            routing_next_id:2,
             migration: None,
             mic_aux: None,
             session: Some(session::Layout::legacy((0..TRACKS).map(|_| String::new()), SCENES)),

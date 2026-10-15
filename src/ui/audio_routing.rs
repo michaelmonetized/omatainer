@@ -324,6 +324,8 @@ fn endpoint(group: Group, model: &Model, layout: &Layout) -> String {
         Group::Deck(0) => "Deck A".into(),
         Group::Deck(_) => "Deck B".into(),
         Group::Main => "Main mixer".into(),
+        Group::FixedReturn(0)=>"Fixed reverb return".into(),
+        Group::FixedReturn(_)=>"Fixed echo return".into(),
     }
 }
 /// List selectable endpoints.
@@ -345,7 +347,7 @@ fn endpoints(model: &Model, layout: &Layout, source: bool) -> Vec<Group> {
             .map(|item| Group::Scene(item.id)),
     );
     if source {
-        groups.extend([Group::Deck(0), Group::Deck(1)]);
+        groups.extend([Group::Deck(0), Group::Deck(1),Group::FixedReturn(0),Group::FixedReturn(1)]);
     }
     groups.extend(model.buses.iter().map(|bus| Group::Bus(bus.id)));
     groups.extend(model.plugins.iter().filter(|p| source || p.input_width() > 0).map(|p| Group::Plugin(p.id)));
@@ -742,6 +744,7 @@ impl App {
                                     if !send { draft.model.tracks_without_default_send.push(track.id); }
                                 }
                             }
+                            for (index,disabled)in draft.model.fixed_returns_without_default_send.iter_mut().enumerate(){let mut send=!*disabled;if ui.checkbox(&mut send,if index==0{"Fixed reverb return → main"}else{"Fixed echo return → main"}).changed(){*disabled=!send;}}
                             for (deck, disabled) in draft.model.decks_without_default_send.iter_mut().enumerate() {
                                 let mut send = !*disabled;
                                 if ui.checkbox(&mut send, if deck == 0 { "Deck A → main" } else { "Deck B → main" }).changed() { *disabled = !send; }

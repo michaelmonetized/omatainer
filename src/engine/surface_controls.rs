@@ -107,6 +107,7 @@ pub struct Status {
     pub shift: bool,
     pub assignments: [u8; 8],
     pub sends: [[f32; 2]; 8],
+    pub return_peaks:[[f32;2];2],
     pub device_values: [f32; 8],
     pub device_on: bool,
     pub device_master: bool,
@@ -237,17 +238,12 @@ impl State {
     /// Render both accumulated sends and clear their input frame.
     /// Takes samples per beat; returns wet stereo reverb and echo, including their tails.
     pub fn render_sends(&mut self, spb: f64) -> [f32; 2] {
-        let mut output = [0.0; 2];
-        for (index, input) in std::mem::take(&mut self.send_input).into_iter().enumerate() {
-            self.processors[index].configure(1.0, spb);
-            let kind = [super::FxKind::Reverb, super::FxKind::Echo][index];
-            let wet = self.processors[index].process(input, kind, 1.0);
-            for channel in 0..2 {
-                output[channel] += wet[channel];
-            }
-        }
-        output
+        let inputs=std::mem::take(&mut self.send_input);let mut output=[0.;2];
+        for (index,input)in inputs.into_iter().enumerate(){let wet=self.render_send(index,input,spb);for channel in 0..2{output[channel]+=wet[channel];}}output
     }
+    /// Advance one fixed return using its aligned input.
+    /// Takes return index, stereo input and beat clock; returns only wet output and clears its legacy accumulator.
+    pub fn render_send(&mut self,index:usize,input:[f32;2],spb:f64)->[f32;2]{self.send_input[index]=[0.;2];self.processors[index].configure(1.,spb);let output=self.processors[index].process(input,[super::FxKind::Reverb,super::FxKind::Echo][index],1.);for channel in 0..2{self.status.return_peaks[index][channel]=(self.status.return_peaks[index][channel]*0.9995).max(output[channel].abs());}output}
     /// Render independently assigned units before the deck crossfader.
     /// Takes deck, original stereo frame and musical clock; returns dry plus its own retained wet tails.
     pub fn deck(&mut self, deck: usize, input: [f32; 2], spb: f64) -> [f32; 2] {

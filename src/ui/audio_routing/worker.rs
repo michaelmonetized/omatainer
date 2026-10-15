@@ -51,7 +51,8 @@ impl Worker {
                         let layout = captured.state.session.ok_or("Session identity unavailable")?;
                         let channels = output.as_ref().and_then(|handle| handle.status().active.as_ref().map(|active| usize::from(active.plan.channels))).unwrap_or(2);
                         let original = captured.state.routing;
-                        let model = original.as_ref().map(|model| (**model).clone()).unwrap_or_else(|| Model::for_output_channels(channels));
+                        let mut model = original.as_ref().map(|model| (**model).clone()).unwrap_or_else(|| Model::for_output_channels(channels));
+                        model.next_id=model.next_id.max(captured.state.routing_next_id);
                         Ok(Draft { namespace: layout.namespace, generation: layout.generation, revision: captured.revision, rate: project.sample_rate(), layout, enabled: original.is_some(), model, original, controls })
                     })()),
                     Job::Attach(plugin, track, cancel) => Event::Inspected((|| {
@@ -59,7 +60,8 @@ impl Worker {
                         let layout = captured.state.session.ok_or("Session identity unavailable")?;
                         let channels = output.as_ref().and_then(|handle| handle.status().active.as_ref().map(|active| usize::from(active.plan.channels))).unwrap_or(2);
                         let original = captured.state.routing;
-                        let model = original.as_ref().map(|m| (**m).clone()).unwrap_or_else(|| Model::for_output_channels(channels));
+                        let mut model = original.as_ref().map(|m| (**m).clone()).unwrap_or_else(|| Model::for_output_channels(channels));
+                        model.next_id=model.next_id.max(captured.state.routing_next_id);
                         let mut draft = Draft { namespace:layout.namespace,generation:layout.generation,revision:captured.revision,rate:project.sample_rate(),layout,enabled:true,model,original,controls };
                         draft.attach(plugin,track)?;
                         if cancel.load(Ordering::Acquire) { return Err("Plugin attachment cancelled".into()); }

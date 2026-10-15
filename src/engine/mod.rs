@@ -777,6 +777,7 @@ pub struct RtEngine {
     metro: metronome::Click,
     count_in: Option<metronome::CountIn>,
     pub(crate) routing: Option<Box<audio::routing::prepared::Prepared>>,
+    pub(crate) routing_next_id:u64,
     routing_track_input: Option<[f32; 2]>,
     routing_track_taps: [[f32; 2]; 3],
     routing_deck_taps: [[f32; 2]; 2],
@@ -891,6 +892,7 @@ pub struct DeckSnap {
 
 #[derive(Clone, Debug, Default, Serialize)]
 pub struct TrackSnap {
+    pub surface:surface_controls::TrackMix,
     pub name: String,
     pub gain: f32,
     pub pan: f32,
@@ -1407,6 +1409,7 @@ impl RtEngine {
             metro: metronome::Click::new(sr),
             count_in: None,
             routing: None,
+            routing_next_id:2,
             routing_track_input: None,
             routing_track_taps: [[0.0; 2]; 3],
             routing_deck_taps: [[0.0; 2]; 2],

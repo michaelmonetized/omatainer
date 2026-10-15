@@ -70,6 +70,7 @@ pub enum Group {
     Bus(u64),
     Plugin(u64),
     Main,
+    FixedReturn(u8),
     Output(u64),
     Record(u64),
 }
@@ -111,6 +112,8 @@ pub struct Model {
     pub sends: Vec<super::mixer::Send>,
     pub tracks_without_default_send: Vec<Id>,
     pub decks_without_default_send: [bool; 2],
+    #[serde(default)]
+    pub fixed_returns_without_default_send: [bool; 2],
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub input: Option<InputConfig>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -163,6 +166,7 @@ impl Default for Model {
             }],
             tracks_without_default_send: Vec::new(),
             decks_without_default_send: [false; 2],
+            fixed_returns_without_default_send: [false; 2],
             input: None,
             monitor_output: None,
             latency: None,
@@ -184,6 +188,7 @@ impl Model {
             && self.connections == prior.connections && self.sends == prior.sends
             && self.tracks_without_default_send == prior.tracks_without_default_send
             && self.decks_without_default_send == prior.decks_without_default_send
+            && self.fixed_returns_without_default_send == prior.fixed_returns_without_default_send
             && self.input == prior.input && self.monitor_output == prior.monitor_output
     }
 }
@@ -275,6 +280,7 @@ impl Model {
                 .find(|bus| bus.id == id)
                 .map(|bus| usize::from(bus.channels)),
             Group::Main => Some(2),
+            Group::FixedReturn(send)=>(send<2).then_some(2),
             Group::Plugin(id) => self.plugins.iter().find(|p| p.id == id).map(super::plugins::Instance::output_width),
         }
     }
@@ -392,6 +398,7 @@ impl Model {
         }
         let mut graph: BTreeMap<Group, BTreeSet<Group>> = BTreeMap::new();
         graph.insert(Group::Main, BTreeSet::new());
+        for send in 0..2 {graph.insert(Group::FixedReturn(send),layout.tracks.iter().map(|t|Group::Track(t.id)).collect());if !self.fixed_returns_without_default_send[usize::from(send)]{graph.get_mut(&Group::Main).unwrap().insert(Group::FixedReturn(send));}}
         for track in &layout.tracks {
             graph.insert(Group::Track(track.id), BTreeSet::new());
         }
@@ -509,3 +516,7 @@ impl Model {
         else { self.width(source.group, layout) }
     }
 }
+
+/// Start the persistent routing identity allocator.
+/// Takes no arguments; returns the first unused ID after the legacy main output.
+pub(crate) fn initial_id()->u64{2}

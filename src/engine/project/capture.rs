@@ -191,6 +191,7 @@ impl Frame {
         target.scene_timing = rt.scenes.timing;
         target.sync_leader = rt.deck_sync.leader;
         target.routing = rt.routing.as_ref().map(|routing| routing.model.clone());
+        target.routing_next_id=rt.routing_next_id.max(target.routing.as_ref().map_or(2,|m|m.next_id));
         self.plugins.clear();
         self.mixer.clear();
         if let Some(graph) = &rt.routing {
@@ -302,9 +303,10 @@ impl Frame {
     /// Capture live processor state after the native metadata boundary.
     /// Takes worker cancellation; retains missing or failed processor checkpoints with an explicit diagnostic.
     pub(super) fn finish_plugins(&mut self, cancel: &AtomicBool) -> Result<(), Error> {
-        if self.plugins.is_empty() && self.mixer.is_empty() { return Ok(()); }
+        if self.state.routing.is_none(){return Ok(()); }
         let Some(model) = &mut self.state.routing else { return Err(Error::Invalid("Plugin state has no saved routing graph".into())); };
         let model = Arc::make_mut(model);
+        model.next_id=model.next_id.max(self.state.routing_next_id);
         audio::routing::mixer::Runtime::save(&self.mixer,model);
         for (id,control,parameters) in &self.plugins {
             if cancel.load(Ordering::Acquire) { return Err(Error::Cancelled); }

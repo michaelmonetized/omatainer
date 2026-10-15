@@ -80,7 +80,7 @@ pub(super) fn merge(
     }
     drop(identity);
     let resolve = |group: Group| -> Result<Group, String> {
-        if group == Group::Main {
+        if group == Group::Main || matches!(group,Group::FixedReturn(_)) {
             return Ok(group);
         }
         mapped.get(&group).copied().ok_or_else(||"Imported route depends on an unselected track, scene or physical endpoint. Select its musical dependencies or open the complete source project and review its routes".into())

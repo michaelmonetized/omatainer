@@ -9,7 +9,7 @@ fn port(id: &str) -> Endpoint {
 }
 fn binding(action: Action, data: u8) -> Binding {
     let kind = super::super::learn::kind(action);
-    Binding { routing: None,
+    Binding { routing: (action==Action::RoutingMix).then_some(crate::engine::audio::routing::mixer::Assignment{namespace:[1,2],target:crate::engine::audio::routing::mixer::Target::Return(2),parameter:crate::engine::audio::routing::mixer::Parameter::Level}),
         action,
         kind,
         ch: 0,

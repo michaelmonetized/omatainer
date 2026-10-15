@@ -23,12 +23,14 @@ struct Link {
     tap: usize,
     map: Vec<ChannelMap>,
     send: Option<usize>,
+    fixed: Option<(usize,usize)>,
 }
 
 #[derive(Debug)]
 pub struct Prepared {
     pub model: Arc<Model>,
     pub mixer: super::mixer::Runtime,
+    pub(super) fixed_levels: [[f32;2];crate::engine::session::MAX_TRACKS],
     pub nodes: Vec<Node>,
     incoming: Vec<Vec<Link>>,
     outputs: Vec<usize>,
@@ -40,6 +42,7 @@ pub struct Prepared {
     positions: super::positions::Positions,
     pub(crate) plugins: Vec<Plugin>,
     pub(crate) offline: bool,
+    pub(crate) selection:Option<super::selection::Policy>,
 }
 
 #[derive(Debug)]
@@ -120,8 +123,10 @@ impl Prepared {
                 tap: connection.source.tap.index(),
                 map: connection.map.clone(),
                 send: link.checked_sub(model.connections.len()),
+                fixed: None,
             });
         }
+        for send in 0..2 {for (slot,track) in layout.tracks.iter().enumerate(){incoming[indices[&Group::FixedReturn(send)]].push(Link{source:indices[&Group::Track(track.id)],tap:Tap::PostMixer.index(),map:vec![ChannelMap{source:0,destination:0,gain:1.},ChannelMap{source:1,destination:1,gain:1.}],send:None,fixed:Some((slot,usize::from(send)))});}}
         let scene_nodes = std::array::from_fn(|slot| {
             layout
                 .scenes
@@ -162,6 +167,7 @@ impl Prepared {
         let mixer=super::mixer::Runtime::new(&model,&order_from_nodes(&nodes),layout);
         Ok(Self {
             mixer,
+            fixed_levels:[[0.;2];crate::engine::session::MAX_TRACKS],
             model,
             nodes,
             incoming,
@@ -174,6 +180,7 @@ impl Prepared {
             positions,
             plugins,
             offline: false,
+            selection:None,
         })
     }
 
@@ -201,11 +208,11 @@ impl Prepared {
             for map in &link.map {
                 let(value,valid)=self.latency.as_ref().map_or((source[usize::from(map.source)],sources[link.source].valid),
                     |latency|latency.routed(link.source,link.tap,index,usize::from(map.source)));
-                let gain=link.send.map_or(1.,|slot|self.mixer.channels[slot].effective.gain(usize::from(map.destination)));
+                let gain=link.send.map_or(1.,|slot|self.mixer.channels[slot].effective.gain(usize::from(map.destination)))*link.fixed.map_or(1.,|(slot,send)|self.fixed_levels[slot][send]);
                 let sample=value*map.gain*gain;
                 destination.input[usize::from(map.destination)] += sample;
                 if let Some(slot)=link.send {self.mixer.channels[slot].peaks[usize::from(map.destination)]=self.mixer.channels[slot].peaks[usize::from(map.destination)].max(sample.abs());}
-                if map.gain != 0.0 {
+                if map.gain * gain != 0.0 {
                     destination.valid &= valid;
                 }
             }
@@ -260,7 +267,7 @@ impl Prepared {
     /// Align an implicit send through its published original source.
     /// Takes source and destination indices plus fallback audio/continuity; reads the same prepared history used by explicit links.
     pub(super) fn source_send(&mut self,source:usize,destination:usize,frame:[f32;2],valid:bool) {
-        if destination==self.main && !self.mix_audible(source){return;}
+        if destination==self.main && (self.selection==Some(super::selection::Policy::MasteredSolo)||!self.mix_audible(source)){return;}
         if let Some(latency)=&self.latency {
             for channel in 0..2 {
                 let(value,complete)=latency.routed(source,super::model::Tap::PostMixer.index(),destination,channel);

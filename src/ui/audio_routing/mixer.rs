@@ -309,6 +309,88 @@ pub(super) fn live(
     let Some(layout) = &snapshot.session else {
         return;
     };
+    ui.collapsing("Track fixed sends and crossfader assignments", |ui| {
+        for (slot, track) in snapshot
+            .tracks
+            .iter()
+            .enumerate()
+            .filter(|(slot, _)| layout.tracks.get(*slot).is_some_and(|t| t.active))
+        {
+            ui.push_id(("track-fixed-mix", layout.tracks[slot].id.0), |ui| {
+                ui.label(&track.name);
+                let submit =
+                    |ui: &mut Ui, command| match crate::engine::session::Scoped::qualify_layout(
+                        history.wrap(command),
+                        layout,
+                    ) {
+                        Ok(command) => {
+                            if let Err(error) = commands.send(command) {
+                                ui.colored_label(ui.visuals().warn_fg_color, error.to_string());
+                            }
+                        }
+                        Err(_) => {
+                            ui.colored_label(
+                                ui.visuals().warn_fg_color,
+                                "Track identity changed; refresh the mixer",
+                            );
+                        }
+                    };
+                ui.horizontal_wrapped(|ui| {
+                    for (send, label) in [(0, "Reverb send"), (1, "Echo send")] {
+                        if let Some(value) = number(
+                            ui,
+                            &format!("{} {label}", track.name),
+                            track.surface.sends[send],
+                            0.,
+                            1.,
+                            0.01,
+                        ) {
+                            submit(
+                                ui,
+                                Command::TrackSend {
+                                    track: slot as u8,
+                                    send: send as u8,
+                                    value,
+                                },
+                            );
+                        }
+                    }
+                    let mut assignment = track.surface.crossfader;
+                    let response = egui::ComboBox::from_id_salt("track-crossfader")
+                        .selected_text(
+                            ["Crossfader unassigned", "Crossfader A", "Crossfader B"]
+                                [usize::from(assignment)],
+                        )
+                        .show_ui(ui, |ui| {
+                            for (id, label) in ["Unassigned", "A", "B"].into_iter().enumerate() {
+                                ui.selectable_value(&mut assignment, id as u8, label);
+                            }
+                        })
+                        .response;
+                    accessibility::focus(ui, &response);
+                    if assignment != track.surface.crossfader {
+                        submit(
+                            ui,
+                            Command::TrackCrossfader {
+                                track: slot as u8,
+                                assignment,
+                            },
+                        );
+                    }
+                });
+            });
+        }
+        for (index, label) in ["Fixed reverb return", "Fixed echo return"]
+            .into_iter()
+            .enumerate()
+        {
+            let peaks = snapshot.surfaces.return_peaks[index];
+            ui.label(format!(
+                "{label} peak L {:.5} · R {:.5}",
+                peaks[0], peaks[1]
+            ));
+        }
+    });
     for channel in &snapshot.routing_mixer {
         ui.push_id(
             ("live-routing-mix", format!("{:?}", channel.target)),

@@ -3,6 +3,7 @@ pub(crate) mod input;
 pub(crate) mod model;
 pub(crate) mod mixer;
 pub(crate) mod speakers;
+pub(crate) mod selection;
 pub(crate) mod latency;
 pub(crate) mod mic_aux;
 #[cfg(test)]
