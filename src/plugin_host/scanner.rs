@@ -184,7 +184,7 @@ pub(super) fn candidates(roots: &[PathBuf], cancel: &AtomicBool) -> Result<Vec<P
                 );
             }
             let entry = entry.map_err(|e| format!("Plugin scan path cannot be read: {e}"))?;
-            if entry.file_type().is_dir() && entry.path().extension().is_some_and(|s| s == "vst3" || s == "lv2") || entry.file_type().is_file() && entry.path().extension().is_some_and(|s| s == "clap") {
+            if entry.file_type().is_dir() && entry.path().extension().is_some_and(|s| matches!(s.to_str(),Some("vst3"|"lv2"|"component"|"vst"))) || entry.file_type().is_file() && entry.path().extension().is_some_and(|s| matches!(s.to_str(),Some("clap"|"dll"|"so"|"vst2"|"fxp"|"fxb"|"aupreset"))) {
                 found.insert(entry.path().to_path_buf());
                 if entry.file_type().is_dir() { walk.skip_current_dir(); }
                 if found.len() > 4096 {

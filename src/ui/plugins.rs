@@ -20,7 +20,7 @@ impl App {
         let mut selected = self.plugins.selected;
         let mut attach = None;
         egui::Window::new("Native plugins").id(egui::Id::new("plugin-browser")).open(&mut open).default_width(650.).vscroll(true).show(ctx,|ui|{
-            ui.label("Native Linux VST3, CLAP and LV2 instruments and effects are inspected in isolated workers. Select a class to review its ports and extension support.");
+            ui.label("Native Linux VST3, CLAP and LV2 instruments and effects are inspected in isolated workers. Select a class to review its ports and extension support. AU requires a macOS host. Windows and legacy VST2 bridges are not bundled; compatible native editions and aligned rendered stems remain the migration paths.");
             let label=ui.label("Plugin folders (one absolute path per line)");
             let edit=ui.add_enabled(!protected && !busy,egui::TextEdit::multiline(&mut self.plugins.roots).char_limit(65536).desired_rows(3).hint_text("/home/you/.vst3").id_source("plugin-roots")).labelled_by(label.id);
             edit.widget_info(||egui::WidgetInfo::labeled(egui::WidgetType::TextEdit,edit.enabled(),"Plugin folders"));
