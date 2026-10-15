@@ -2,6 +2,10 @@
 use serde::{Deserialize, Serialize};
 pub(crate) mod monitor;
 #[cfg(test)]
+mod native_tests;
+#[cfg(test)]
+mod surround_tests;
+#[cfg(test)]
 pub(crate) mod tests;
 pub(crate) const MAX_BINDINGS: usize = 256;
 
@@ -19,6 +23,7 @@ pub enum Layout {
     #[default]
     Stereo,
     StereoLfe,
+    Surround51Side,
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -27,6 +32,8 @@ pub enum Speaker {
     FrontRight,
     FrontCenter,
     LowFrequency,
+    SideLeft,
+    SideRight,
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -42,7 +49,12 @@ pub struct BassManagement {
     pub level: f32,
 }
 impl Layout {
-    pub const ALL: &'static [Self] = &[Self::Mono, Self::Stereo, Self::StereoLfe];
+    pub const ALL: &'static [Self] = &[
+        Self::Mono,
+        Self::Stereo,
+        Self::StereoLfe,
+        Self::Surround51Side,
+    ];
     /// Name the canonical speaker order for a saved choice.
     /// Takes this layout; returns a human-readable label shared by routing and delivery controls.
     pub fn label(self) -> &'static str {
@@ -50,6 +62,17 @@ impl Layout {
             Self::Mono => "Mono (FC)",
             Self::Stereo => "Stereo (FL FR)",
             Self::StereoLfe => "2.1 (FL FR LFE)",
+            Self::Surround51Side => "5.1 side (FL FR FC LFE SL SR)",
+        }
+    }
+    /// Name a canonical bed without repeating its channel list.
+    /// Takes this layout; returns a stable short label for named routing controls.
+    pub fn short_label(self) -> &'static str {
+        match self {
+            Self::Mono => "Mono",
+            Self::Stereo => "Stereo",
+            Self::StereoLfe => "2.1",
+            Self::Surround51Side => "5.1 side",
         }
     }
     /// Read the declared interleaved speaker order.
@@ -63,6 +86,14 @@ impl Layout {
                 Speaker::FrontRight,
                 Speaker::LowFrequency,
             ],
+            Self::Surround51Side => &[
+                Speaker::FrontLeft,
+                Speaker::FrontRight,
+                Speaker::FrontCenter,
+                Speaker::LowFrequency,
+                Speaker::SideLeft,
+                Speaker::SideRight,
+            ],
         }
     }
     /// Read the exact WAVE speaker mask.
@@ -72,6 +103,7 @@ impl Layout {
             Self::Mono => 4,
             Self::Stereo => 3,
             Self::StereoLfe => 0xB,
+            Self::Surround51Side => 0x60F,
         }
     }
     /// Read the declared bed width.
@@ -85,9 +117,25 @@ impl Layout {
         match self {
             Self::Mono => [frame[0]; 2],
             Self::Stereo | Self::StereoLfe => [frame[0], frame[1]],
+            Self::Surround51Side => {
+                let q = std::f32::consts::FRAC_1_SQRT_2;
+                [
+                    frame[0] + q * (frame[2] + frame[4]),
+                    frame[1] + q * (frame[2] + frame[5]),
+                ]
+            }
         }
     }
-    /// Position a mono source between the two full-range front speakers.
+    /// Read the explicit mono panner angle span.
+    /// Takes this layout; returns degrees represented by normalized Pan1, keeping the front-pair policy for2.1.
+    pub fn pan_extent(self) -> f32 {
+        if self == Self::Surround51Side {
+            180.
+        } else {
+            30.
+        }
+    }
+    /// Position a mono source between adjacent full-range speakers.
     /// Takes canonical destination channel and normalized pan; returns equal-power gain with endpoints held, never feeding LFE.
     pub fn pan_gain(self, channel: usize, pan: f32) -> f32 {
         self.pan_frame(pan).get(channel).copied().unwrap_or(0.)
@@ -96,6 +144,30 @@ impl Layout {
     /// Takes normalized mono position; returns at most eight bounded gains with no LFE contribution.
     pub fn pan_frame(self, pan: f32) -> [f32; 8] {
         let mut gains = [0.; 8];
+        if self == Self::Surround51Side {
+            let anchors = &[(-110_f32, 4_usize), (-30., 0), (0., 2), (30., 1), (110., 5)];
+            let mut angle = pan.clamp(-1., 1.) * 180.;
+            if angle < anchors[0].0 {
+                angle += 360.;
+            }
+            let (left, right) = anchors
+                .windows(2)
+                .find(|pair| angle >= pair[0].0 && angle <= pair[1].0)
+                .map_or((anchors[4], (anchors[0].0 + 360., anchors[0].1)), |pair| {
+                    (pair[0], pair[1])
+                });
+            let position = ((angle - left.0) / (right.0 - left.0)).clamp(0., 1.);
+            if position <= 1e-6 {
+                gains[left.1] = 1.;
+            } else if position >= 1. - 1e-6 {
+                gains[right.1] = 1.;
+            } else {
+                let (r, l) = (position * std::f32::consts::FRAC_PI_2).sin_cos();
+                gains[left.1] = l;
+                gains[right.1] = r;
+            }
+            return gains;
+        }
         if self != Self::StereoLfe {
             return gains;
         }
@@ -110,6 +182,70 @@ impl Layout {
             gains[1] = right;
         }
         gains
+    }
+    /// Sum one canonical bed into another declared bed.
+    /// Takes source and destination speaker identities and fixed frames; applies the explicit mono/stereo fold or speaker-preserving upmix without feeding LFE from full-range audio.
+    pub(crate) fn mix_into(self, destination: Self, frame: &[f32], output: &mut [f32]) {
+        if destination.channels() <= 2 {
+            let pair = self.downmix(frame);
+            output[0] += if destination == Self::Mono {
+                0.5 * (pair[0] + pair[1])
+            } else {
+                pair[0]
+            };
+            if destination == Self::Stereo {
+                output[1] += pair[1];
+            }
+        } else if self == Self::Mono {
+            if let Some(center) = destination
+                .speakers()
+                .iter()
+                .position(|s| *s == Speaker::FrontCenter)
+            {
+                output[center] += frame[0];
+            } else {
+                output[0] += frame[0] * std::f32::consts::FRAC_1_SQRT_2;
+                output[1] += frame[0] * std::f32::consts::FRAC_1_SQRT_2;
+            }
+        } else if destination == Self::StereoLfe && self.channels() > 3 {
+            let pair = self.downmix(frame);
+            output[0] += pair[0];
+            output[1] += pair[1];
+            if let Some(lfe) = self
+                .speakers()
+                .iter()
+                .position(|s| *s == Speaker::LowFrequency)
+            {
+                output[2] += frame[lfe];
+            }
+        } else {
+            for (channel, speaker) in self.speakers().iter().enumerate() {
+                if let Some(target) = destination.speakers().iter().position(|s| s == speaker) {
+                    output[target] += frame[channel];
+                }
+            }
+        }
+    }
+    /// Prepare explicit maps from the same canonical bed conversion used by live sends.
+    /// Takes source and destination layouts; returns bounded producer-owned channel maps for contribution rendering.
+    pub(crate) fn maps_to(self, destination: Self) -> Vec<super::model::ChannelMap> {
+        let mut maps = Vec::new();
+        for source in 0..self.channels() {
+            let mut frame = [0.; 8];
+            frame[source] = 1.;
+            let mut output = [0.; 8];
+            self.mix_into(destination, &frame, &mut output);
+            for (target, &gain) in output[..destination.channels()].iter().enumerate() {
+                if gain != 0. {
+                    maps.push(super::model::ChannelMap {
+                        source: source as u8,
+                        destination: target as u8,
+                        gain,
+                    });
+                }
+            }
+        }
+        maps
     }
 }
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
@@ -347,13 +483,15 @@ impl super::model::Model {
             }
         }
         if let Some(bass) = self.monitor_bass {
-            if self.speaker_layout(Group::Output(bass.output)) != Some(Layout::StereoLfe)
+            if self
+                .speaker_layout(Group::Output(bass.output))
+                .is_none_or(|layout| !layout.speakers().contains(&Speaker::LowFrequency))
                 || !bass.cutoff.is_finite()
                 || !(20.0..=200.0).contains(&bass.cutoff)
                 || !bass.level.is_finite()
                 || !(0.0..=1.5).contains(&bass.level)
             {
-                return Err("Monitor bass management requires a declared 2.1 output, 20–200 Hz cutoff and level0–1.5".into());
+                return Err("Monitor bass management requires a declared LFE output, 20–200 Hz cutoff and level0–1.5".into());
             }
         }
         Ok(())
