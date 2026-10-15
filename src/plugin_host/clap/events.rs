@@ -83,10 +83,28 @@ pub(super) fn input(frame: &Frame, class: &Class) -> Result<Vec<Event>, String> 
                 key: data[1] as i16,
                 velocity: data[2] as f64 / 127.,
             }));
+        } else if port.dialects & CLAP_NOTE_DIALECT_CLAP != 0 {
+            let (kind,key,value)=match data[0]&0xf0 {
+                0xa0 => (CLAP_NOTE_EXPRESSION_PRESSURE,data[1] as i16,data[2] as f64/127.),
+                0xd0 => (CLAP_NOTE_EXPRESSION_PRESSURE,-1,data[1] as f64/127.),
+                0xe0 => (CLAP_NOTE_EXPRESSION_TUNING,-1,((data[1] as u16|((data[2] as u16)<<7)) as f64-8192.)/8192.*2.),
+                0xb0 => match data[1] {7=>(CLAP_NOTE_EXPRESSION_VOLUME,-1,data[2] as f64/127.),10=>(CLAP_NOTE_EXPRESSION_PAN,-1,data[2] as f64/127.),11=>(CLAP_NOTE_EXPRESSION_EXPRESSION,-1,data[2] as f64/127.),74=>(CLAP_NOTE_EXPRESSION_BRIGHTNESS,-1,data[2] as f64/127.),_=>return Err("This CLAP-only note port cannot receive the MIDI controller; select a MIDI-capable dialect for sustain, RPN or other raw controllers".into())},
+                _ => return Err("CLAP-only note port cannot receive this MIDI message".into()),
+            };
+            result.push(Event::Expression(clap_event_note_expression {
+                header: header::<clap_event_note_expression>(
+                    time as u32,
+                    CLAP_EVENT_NOTE_EXPRESSION,
+                ),
+                expression_id: kind,
+                note_id: -1,
+                port_index: 0,
+                channel: (data[0] & 15) as i16,
+                key,
+                value,
+            }));
         } else {
-            return Err(
-                "CLAP note port cannot receive this MIDI message; use a compatible dialect".into(),
-            );
+            return Err("CLAP note port has no supported MIDI or native note dialect".into());
         }
     }
     for &(time, event) in &frame.native {
