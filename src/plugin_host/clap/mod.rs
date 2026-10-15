@@ -254,6 +254,7 @@ impl Instance {
                 instance.restore(state)?;
             }
             instance.class = instance.report()?;
+            instance.callbacks.restart.store(false, Ordering::Release);
             if instance.class.info.uid != format!("clap:{id}") {
                 return Err("CLAP descriptor identity changed".into());
             }
@@ -542,8 +543,8 @@ impl Instance {
         Ok(())
     }
     pub(super) fn state(&mut self) -> Result<Response, String> {
-        self.deactivate();
-        let result = (|| {
+        self.service()?;
+        (|| {
             let mut bytes = Vec::<u8>::new();
             let stream = clap_ostream {
                 ctx: (&mut bytes as *mut Vec<u8>).cast(),
@@ -571,9 +572,7 @@ impl Instance {
                 saved,
                 parameters: self.values()?,
             })
-        })();
-        self.activate()?;
-        result
+        })()
     }
     fn values(&self) -> Result<Vec<(u32, f64)>, String> {
         unsafe {
@@ -700,6 +699,32 @@ impl Instance {
         })
     }
     pub(super) fn service(&mut self) -> Result<(), String> {
+        if self.callbacks.flush.swap(false, Ordering::AcqRel) {
+            let queue = Vec::<events::Event>::new();
+            let mut output = events::Output::new(BLOCK);
+            let input = clap_input_events {
+                ctx: (&queue as *const Vec<events::Event>).cast_mut().cast(),
+                size: Some(events::size),
+                get: Some(events::get),
+            };
+            let out = clap_output_events {
+                ctx: (&mut output as *mut events::Output).cast(),
+                try_push: Some(events::push),
+            };
+            self.callbacks.audio.store(self.active, Ordering::Release);
+            unsafe {
+                if let Some(flush) = self
+                    .extension::<clap_plugin_params>(CLAP_EXT_PARAMS)
+                    .and_then(|p| p.flush)
+                {
+                    flush(self.plugin, &input, &out);
+                }
+            }
+            self.callbacks.audio.store(false, Ordering::Release);
+            if output.invalid {
+                return Err("CLAP parameter flush returned invalid events".into());
+            }
+        }
         if self.callbacks.callback.swap(false, Ordering::AcqRel) {
             unsafe {
                 if let Some(f) = (*self.plugin).on_main_thread {

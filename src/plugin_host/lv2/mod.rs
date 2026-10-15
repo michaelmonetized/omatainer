@@ -143,6 +143,20 @@ impl World {
     }
     fn report(&self, plugin: P, binary: &BinaryIdentity) -> Result<Class, String> {
         unsafe {
+            let library = (self.api.node_get_path)(
+                (self.api.plugin_get_library_uri)(plugin),
+                ptr::null_mut(),
+            );
+            if library.is_null() {
+                return Err("LV2 processor binary is not a native local file".into());
+            }
+            let library_path = PathBuf::from(CStr::from_ptr(library).to_string_lossy().as_ref());
+            (self.api.free)(library.cast());
+            let bundle_root = binary.bundle.canonicalize().map_err(|e| e.to_string())?;
+            let library_path = library_path.canonicalize().map_err(|e| e.to_string())?;
+            if !library_path.starts_with(&bundle_root) {
+                return Err("LV2 processor binary escapes its inspected bundle".into());
+            }
             let count = (self.api.plugin_get_num_ports)(plugin);
             if count > 512 {
                 return Err("LV2 plugin exceeds 512 ports".into());
@@ -202,7 +216,11 @@ impl World {
                 let name = self.owned_text((self.api.port_get_name)(plugin, port))?;
                 let integer = self.has(plugin, port, "http://lv2plug.in/ns/lv2core#integer")?;
                 let latency =
-                    self.has(plugin, port, "http://lv2plug.in/ns/lv2core#reportsLatency")?;
+                    self.has(plugin, port, "http://lv2plug.in/ns/lv2core#reportsLatency")?
+                        || self
+                            .property(plugin, port, "http://lv2plug.in/ns/lv2core#designation")?
+                            .iter()
+                            .any(|v| v == "http://lv2plug.in/ns/lv2core#latency");
                 let (kind, bus, channel) = if audio {
                     let group = self
                         .property(plugin, port, "http://lv2plug.in/ns/ext/port-groups#group")?
@@ -927,7 +945,7 @@ fn append_atoms(buffer: &mut [u64], port: u32, pending: &[(u32, Vec<u8>)]) -> Re
         std::slice::from_raw_parts_mut(buffer.as_mut_ptr().cast::<u8>(), buffer.len() * 8)
     };
     let mut position = u32::from_ne_bytes(bytes[..4].try_into().unwrap()) as usize + 8;
-    for (_, atom) in pending.iter().filter(|(p, _)| *p == port) {
+    for (_, atom) in pending.iter().filter(|(p, _)| *p == port).rev() {
         if atom.len() < 8
             || u32::from_ne_bytes(atom[..4].try_into().unwrap()) as usize + 8 != atom.len()
         {

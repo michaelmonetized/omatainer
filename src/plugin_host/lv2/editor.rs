@@ -112,8 +112,17 @@ impl Editor {
             }
             let path_string = CStr::from_ptr(path).to_string_lossy().into_owned();
             (world.api.free)(path.cast());
-            let path = PathBuf::from(path_string);
-            if !path.starts_with(&instance.saved.binary.bundle) {
+            let path = PathBuf::from(path_string)
+                .canonicalize()
+                .map_err(|e| e.to_string())?;
+            if !path.starts_with(
+                instance
+                    .saved
+                    .binary
+                    .bundle
+                    .canonicalize()
+                    .map_err(|e| e.to_string())?,
+            ) {
                 return Err("LV2 UI binary escapes its inspected bundle".into());
             }
             let library = libloading::Library::new(&path).map_err(|e| e.to_string())?;
