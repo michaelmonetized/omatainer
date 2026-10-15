@@ -456,7 +456,7 @@ impl App {
                                 }
                             }
                             if fields::action(ui, "Arrange panels…", true).clicked() {
-                                self.workspace.panel_keyboard.open = true;
+                                self.workspace.panel_keyboard.begin();
                                 ui.close();
                             }
                         });

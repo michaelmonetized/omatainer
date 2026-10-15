@@ -2,9 +2,13 @@
 use super::*;
 use crate::panel_workspace::{Book, Place};
 use crate::property_fields as fields;
+use std::sync::atomic::{AtomicU64, Ordering};
+
+static NEXT_DRAFT: AtomicU64 = AtomicU64::new(1);
 
 pub(super) struct Controls {
     pub open: bool,
+    draft_instance: u64,
     panel: String,
     tab_with: String,
     loaded: Option<(String, String, String)>,
@@ -16,6 +20,7 @@ impl Default for Controls {
     fn default() -> Self {
         Self {
             open: false,
+            draft_instance: 0,
             panel: "midi".into(),
             tab_with: String::new(),
             loaded: None,
@@ -25,12 +30,21 @@ impl Default for Controls {
     }
 }
 
+impl Controls {
+    /// Begin a fresh native size draft without reusing canceled text ownership.
+    /// Args: none. Returns no value; document, workspace and panel identities stay unchanged.
+    pub(super) fn begin(&mut self) {
+        self.draft_instance = NEXT_DRAFT.fetch_add(1, Ordering::Relaxed);
+        self.loaded = None;
+        self.open = true;
+    }
+}
+
 impl App {
     /// Open native layout commands using the existing task workspaces.
     /// Args: none. Returns no value; Classic enters the existing Decks task.
     pub(super) fn open_panel_keyboard(&mut self) {
-        self.workspace.panel_keyboard.open = true;
-        self.workspace.panel_keyboard.loaded = None;
+        self.workspace.panel_keyboard.begin();
         if !self.studio_workspace_active() {
             self.settings
                 .applied
@@ -75,7 +89,7 @@ impl App {
         egui::Window::new("Panel layout").id(egui::Id::new("keyboard-panel-layout")).open(&mut open)
             .resizable(true).default_width(480.0).show(ctx, |ui| {
             keyboard::block_for_dialog(ctx);
-            keyboard_authoring::form(ui,egui::Id::new(("panel-layout",&profile,&task)),|ui| {
+            keyboard_authoring::form(ui,egui::Id::new(("panel-layout",&profile,&task,state.draft_instance)),|ui| {
             ui.label(format!("{task} workspace. The main surface stays visible. Layouts belong to Preferences."));
             ui.add_enabled_ui(enabled,|ui| {
                 let chooser=egui::ComboBox::from_label("Panel to arrange")
@@ -143,8 +157,8 @@ impl App {
                     }
                 });
             });
-            ui.label("Save workspace layouts in the Workspace menu to keep these settings after reopening.");
-            if keyboard_authoring::action(ui,"Close panel layout",true).clicked() {close=true;}
+            ui.label("Size changes use Apply. Cancel drops unapplied size text. Save workspace layouts in the Workspace menu to keep applied changes after reopening.");
+            if keyboard_authoring::action(ui,"Cancel size draft",true).clicked() {close=true;}
             });
         });
         state.open = open && !close;

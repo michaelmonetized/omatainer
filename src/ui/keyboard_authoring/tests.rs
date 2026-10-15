@@ -326,6 +326,21 @@ fn keyboard_access_empty_project_tracks_clips_notes_controllers_song_timing_save
     gui.text("Session track name", "Keyboard track");
     gui.press("Rename track");
     gui.until(|gui| gui.rt.tracks[track].name == "Keyboard track" && gui.enabled("Rename track"));
+    let position_id = gui.native.node("Session position").0;
+    let rename_id = gui.native.node("Rename track").0;
+    gui.tab_to("Use custom color");
+    gui.key(Key::Space, egui::Modifiers::NONE);
+    assert_eq!(
+        gui.native.node("Session position").0,
+        position_id,
+        "RGB row preserves native property identity"
+    );
+    assert_eq!(
+        gui.native.node("Rename track").0,
+        rename_id,
+        "RGB row preserves native command identity"
+    );
+    gui.key(Key::Space, egui::Modifiers::NONE);
     gui.press("Close Session editor");
     gui.route("Create and edit Session clips");
     gui.until(|gui| gui.enabled("Create MIDI clip"));
@@ -484,6 +499,8 @@ struct Fields {
     live: bool,
     owner: u64,
     mixed: bool,
+    second: bool,
+    second_value: f64,
 }
 impl Fields {
     fn new() -> Self {
@@ -496,6 +513,8 @@ impl Fields {
             live: true,
             owner: 17,
             mixed: false,
+            second: false,
+            second_value: 2.0,
         };
         fields.idle();
         fields
@@ -520,6 +539,22 @@ impl Keyboard for Fields {
                         ui.add_enabled_ui(!self.locked && self.live, |ui| {
                             mixed(ui, "Amount", self.mixed);
                             number(ui, "Amount", &mut self.amount, 0.0, 10.0, 0.01, 6, " beats");
+                            if self.second {
+                                ui.push_id(("persisted-owner", 99_u64), |ui| {
+                                    accessibility::scope(ui, "Second owner", |ui| {
+                                        number(
+                                            ui,
+                                            "Amount",
+                                            &mut self.second_value,
+                                            0.0,
+                                            10.0,
+                                            0.01,
+                                            6,
+                                            " beats",
+                                        );
+                                    })
+                                });
+                            }
                             if action(ui, "Apply draft", !invalid(ui)).clicked() {
                                 self.accepted += 1;
                             }
@@ -529,6 +564,27 @@ impl Keyboard for Fields {
             });
         });
     }
+}
+
+#[test]
+fn keyboard_access_repeated_property_keeps_existing_native_owner_scopes_distinct() {
+    let mut fields = Fields::new();
+    fields.second = true;
+    fields.idle();
+    let first = fields.native.node("Amount (beats)").0;
+    let second = fields.native.node("Second owner: Amount (beats)").0;
+    assert_ne!(
+        first, second,
+        "existing persisted owner scopes survive the numeric decorator"
+    );
+    fields.number("Amount (beats)", "1.75");
+    assert_eq!((fields.amount, fields.second_value), (1.75, 2.0));
+    fields.number("Second owner: Amount (beats)", "8.25");
+    assert_eq!((fields.amount, fields.second_value), (1.75, 8.25));
+    fields.tab_to("Show preceding row");
+    fields.key(Key::Space, egui::Modifiers::NONE);
+    assert_eq!(fields.native.node("Amount (beats)").0, first);
+    assert_eq!(fields.native.node("Second owner: Amount (beats)").0, second);
 }
 
 #[test]
@@ -686,7 +742,7 @@ fn keyboard_access_native_panel_size_invalid_refusal_repeated_focus_and_rendered
         gui.idle();
         gui.native.focused("MIDI");
     }
-    gui.press("Close panel layout");
+    gui.press("Cancel size draft");
     gui.tab_to("Workspace: Decks");
     gui.key(Key::Space, egui::Modifiers::NONE);
     gui.press("Save workspace layouts");
@@ -711,7 +767,7 @@ fn keyboard_access_floating_window_native_json_reopen_allows_later_manual_resize
     gui.number("Floating panel width (px)", "680");
     gui.number("Floating panel height (px)", "440");
     gui.press("Apply floating panel size");
-    gui.press("Close panel layout");
+    gui.press("Cancel size draft");
     gui.tab_to("Workspace: Decks");
     gui.key(Key::Space, egui::Modifiers::NONE);
     gui.press("Save workspace layouts");
@@ -763,4 +819,45 @@ fn keyboard_access_floating_window_native_json_reopen_allows_later_manual_resize
         after.width() > before.width() + 40.0 && after.height() > before.height() + 25.0,
         "manual native resize remains available: {before:?} -> {after:?}"
     );
+}
+
+#[test]
+fn keyboard_access_cancelled_invalid_size_draft_reopens_with_fresh_native_owner_and_applies() {
+    let mut gui = Gui::new();
+    gui.route("Arrange workspace panels");
+    gui.press("Float panel");
+    gui.idle();
+    gui.idle();
+    let before = gui.floating_rect("midi");
+    gui.text("Floating panel width (px)", "-");
+    let invalid_owner = gui.native.node("Floating panel width (px)").0;
+    assert_eq!(
+        gui.native.node("Floating panel width (px)").1.invalid(),
+        Some(Invalid::True)
+    );
+    assert!(gui.native.node("Apply floating panel size").1.is_disabled());
+    gui.press("Cancel size draft");
+    gui.idle();
+    assert_eq!(gui.floating_rect("midi"), before);
+    gui.route("Arrange workspace panels");
+    assert_ne!(
+        gui.native.node("Floating panel width (px)").0,
+        invalid_owner,
+        "a reopened native edit is a new draft owner"
+    );
+    assert!(gui
+        .native
+        .node("Floating panel width (px)")
+        .1
+        .invalid()
+        .is_none());
+    gui.number("Floating panel width (px)", "760");
+    gui.number("Floating panel height (px)", "500");
+    assert!(!gui.native.node("Apply floating panel size").1.is_disabled());
+    gui.press("Apply floating panel size");
+    for _ in 0..5 {
+        gui.idle();
+        let rect = gui.floating_rect("midi");
+        assert!((rect.width() - 760.0).abs() < 1.0 && (rect.height() - 500.0).abs() < 1.0);
+    }
 }

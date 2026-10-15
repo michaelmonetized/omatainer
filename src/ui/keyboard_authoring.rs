@@ -117,11 +117,15 @@ pub(super) fn number(
     decimals: usize,
     unit: &str,
 ) -> (egui::Response, bool) {
-    let id = property(ui, label);
+    let property_key = property(ui, label);
+    let id = property_key.with(ui.id());
     native(ui, id, |ui| {
         let label_response = ui.label(label);
         let escaping = ui.input(|input| input.key_pressed(Key::Escape));
-        let mixed = ui.data(|data| data.get_temp::<bool>(id.with("mixed")).unwrap_or(false));
+        let mixed = ui.data(|data| {
+            data.get_temp::<bool>(property_key.with("mixed"))
+                .unwrap_or(false)
+        });
         let before = *value;
         let attempted = RefCell::new(None);
         let parse = |text: &str| {
@@ -161,7 +165,7 @@ pub(super) fn number(
             if cancelled {
                 data.remove::<String>(key);
             }
-            data.insert_temp(id.with("native-response"), response.id);
+            data.insert_temp(property_key.with("native-response"), response.id);
         });
         let invalid = ui.data(|data| data.get_temp::<String>(key).is_some()) || !value.is_finite();
         if invalid || cancelled || !response.enabled() {

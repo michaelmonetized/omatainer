@@ -335,11 +335,11 @@ impl App {
             let name=name.clone(); let new_position=*new_position; let color=*color;
             ui.add_enabled_ui(!self.session_editor.busy() && !self.project.committing() && !keyboard_authoring::invalid(ui), |ui| {
                 ui.horizontal_wrapped(|ui| {
-                    if ui.button(crate::localization::format("Rename {label}", &[format!("{}", label)])).help(ui,HelpControl::SessionLayout).clicked() {self.session_editor.metadata(&self.engine,&layout,Action::Rename {axis,id,name:name.clone()});}
-                    if ui.button(crate::localization::format("Reorder {label}", &[format!("{}", label)])).help(ui,HelpControl::SessionLayout).clicked() {self.session_editor.metadata(&self.engine,&layout,Action::Move {axis,id,position:new_position-1});}
-                    if ui.button(crate::localization::format("Color {label}", &[format!("{}", label)])).help(ui,HelpControl::SessionLayout).clicked() {self.session_editor.metadata(&self.engine,&layout,Action::Color {axis,id,color});}
-                    if ui.button(crate::localization::format("Duplicate {label}", &[format!("{}", label)])).help(ui,HelpControl::SessionLayout).clicked() {self.session_editor.structure(&self.engine,&layout,Structure::Duplicate {axis,id,name:format!("{name} copy"),position:position+1});}
-                    if ui.button(crate::localization::format("Delete {label}", &[format!("{}", label)])).help(ui,HelpControl::SessionLayout).clicked() {self.session_editor.metadata(&self.engine,&layout,Action::Delete {axis,id});}
+                    if keyboard_authoring::action(ui,&crate::localization::format("Rename {label}", &[format!("{}", label)]),true).help(ui,HelpControl::SessionLayout).clicked() {self.session_editor.metadata(&self.engine,&layout,Action::Rename {axis,id,name:name.clone()});}
+                    if keyboard_authoring::action(ui,&crate::localization::format("Reorder {label}", &[format!("{}", label)]),true).help(ui,HelpControl::SessionLayout).clicked() {self.session_editor.metadata(&self.engine,&layout,Action::Move {axis,id,position:new_position-1});}
+                    if keyboard_authoring::action(ui,&crate::localization::format("Color {label}", &[format!("{}", label)]),true).help(ui,HelpControl::SessionLayout).clicked() {self.session_editor.metadata(&self.engine,&layout,Action::Color {axis,id,color});}
+                    if keyboard_authoring::action(ui,&crate::localization::format("Duplicate {label}", &[format!("{}", label)]),true).help(ui,HelpControl::SessionLayout).clicked() {self.session_editor.structure(&self.engine,&layout,Structure::Duplicate {axis,id,name:format!("{name} copy"),position:position+1});}
+                    if keyboard_authoring::action(ui,&crate::localization::format("Delete {label}", &[format!("{}", label)]),true).help(ui,HelpControl::SessionLayout).clicked() {self.session_editor.metadata(&self.engine,&layout,Action::Delete {axis,id});}
                 });
             });
             });
