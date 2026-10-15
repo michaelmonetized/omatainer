@@ -1,0 +1,136 @@
+{
+  "schema": 1,
+  "license": "MIT; authored deterministic fixtures under repository LICENSE",
+  "qualified_revisions": {
+    "file_safety": "78e5b50ac3c8bfdfd1f5834d3d1ad04bc6825db2",
+    "containers": null,
+    "qc": null,
+    "batch": null
+  },
+  "route": {
+    "build": "Only parent-authorized global serialized helper; no direct Cargo",
+    "execute": "qualified test binary --exact TEST --nocapture --test-threads=1",
+    "env": {
+      "OMATAINER_DELIVERY_RECEIPTS": "/home/.../new-per-case-receipt-directory",
+      "OMATAINER_DELIVERY_REVISION": "exact full source commit"
+    },
+    "receipt_schema": "schema1 per-case JSON; status, source_revision, input_sha256/input_bytes where encoded fixture, report/tool hashes or native residual/status cases, independent_reference.raw, boundaries. Failures remain test failures; runner must preserve them separately."
+  },
+  "cases": [
+    {
+      "id": "pcm24-padding-recovery",
+      "test": "audio_delivery::recovery::tests::recovery_odd_pcm24_legacy_padded_and_partial_prefixes_keep_exact_frames",
+      "source": "src/audio_delivery/recovery.rs",
+      "source_sha256": "3d12cdb39e14dfa7c835426711abc410fa9f1f9165afd30bc432da35ceafd316",
+      "requirement": "required",
+      "acceptance": "exact whole frames legacy/padded/interrupted"
+    },
+    {
+      "id": "native-containers-order-tags",
+      "test": "audio_delivery::wav::container_tests::native_interchange_headers_and_independent_decoder_preserve_order_tags_and_frames",
+      "source": "src/audio_delivery/wav/container_tests.rs",
+      "source_sha256": "3dd79b70e036d1af881185f534054fc813c502117adb76bc4ec9c68886ce5ee6",
+      "requirement": "required",
+      "acceptance": "1/2/3/6/8ch PCM24; literal chunk parser, independent FFmpeg PCM/semantic layout and native engine readback"
+    },
+    {
+      "id": "rf64-boundary",
+      "test": "audio_delivery::wav::container_tests::rf64_counting_header_uses_64_bit_sizes_without_allocating_audio",
+      "source": "src/audio_delivery/wav/container_tests.rs",
+      "source_sha256": "3dd79b70e036d1af881185f534054fc813c502117adb76bc4ec9c68886ce5ee6",
+      "requirement": "required",
+      "acceptance": "header arithmetic64, no allocated audio, not endurance"
+    },
+    {
+      "id": "rf64-real-sparse-over4g",
+      "test": "audio_delivery::wav::container_tests::valid_sparse_rf64_over_four_gib_has_independent_exact_bytecount_and_is_removed",
+      "source": "src/audio_delivery/wav/container_tests.rs",
+      "source_sha256": "3dd79b70e036d1af881185f534054fc813c502117adb76bc4ec9c68886ce5ee6",
+      "requirement": "optional",
+      "acceptance": "requires sparse-capable filesystem and logical >4GiB allowance; independent FFprobe byte/frame extents, immediate owned cleanup; not sustained IO proof"
+    },
+    {
+      "id": "ebu-calibrated-and-lra",
+      "test": "audio_delivery::measurement::tests::bs1770_calibrated_tone_and_dynamic_lra_match_independent_ffmpeg",
+      "source": "src/audio_delivery/measurement/tests.rs",
+      "source_sha256": "fd424004a95440aeebea5e7d571883b8720fb1ec7ca48c3121f3db2153115524",
+      "requirement": "required",
+      "acceptance": "analytic 1kHz mono -20dBFS peak expected -23LUFS, dynamic levels, independent FFmpeg ebur128"
+    },
+    {
+      "id": "ebu-intersample-and-invalid",
+      "test": "audio_delivery::measurement::tests::true_peak_intersample_silence_nonfinite_and_layout_targets_are_explicit",
+      "source": "src/audio_delivery/measurement/tests.rs",
+      "source_sha256": "fd424004a95440aeebea5e7d571883b8720fb1ec7ca48c3121f3db2153115524",
+      "requirement": "required",
+      "acceptance": "12kHz quadrature intersample peak; silence/null, LFE weighting, undeclared wide and nonfinite refusal"
+    },
+    {
+      "id": "post-mp3",
+      "test": "audio_delivery::measurement::tests::final_lossy_measurement_binds_decoded_file_and_can_differ_from_source_peak",
+      "source": "src/audio_delivery/measurement/tests.rs",
+      "source_sha256": "fd424004a95440aeebea5e7d571883b8720fb1ec7ca48c3121f3db2153115524",
+      "requirement": "required",
+      "acceptance": "actual encoded MP3 decoded/measured then independently FFmpeg referenced"
+    },
+    {
+      "id": "every-codec-metadata",
+      "test": "audio_delivery::finishing::tests::every_final_codec_embeds_metadata_without_changing_encoded_audio_and_enforces_targets",
+      "source": "src/audio_delivery/finishing.rs",
+      "source_sha256": "156ee9eb786c89af4cba2402eeecff33e8becc7603bdb7879c8199fd967dc170",
+      "requirement": "required",
+      "acceptance": "all11 output options; tags, decoded PCM hash invariance, warn/block"
+    },
+    {
+      "id": "aligned-native-null",
+      "test": "audio_delivery::batch::tests::aligned_encoded_stems_null_sum_explicit_version_and_normal_graph_oracle_after_reopen",
+      "source": "src/audio_delivery/batch/tests.rs",
+      "source_sha256": "cd9ff75b2bbc5fd419322e86667f6225fe2d361d6db97db0668f9925f525ee75",
+      "requirement": "required",
+      "acceptance": "encoded stems sum vs explicitly selected combined pass, normal nonlinear master oracle, recipe reopen/live state"
+    },
+    {
+      "id": "batch-atomic-refusals",
+      "test": "audio_delivery::batch::tests::batch_stale_missing_ids_collision_cancel_and_failed_qc_never_publish_partial_folder",
+      "source": "src/audio_delivery/batch/tests.rs",
+      "source_sha256": "cd9ff75b2bbc5fd419322e86667f6225fe2d361d6db97db0668f9925f525ee75",
+      "requirement": "required",
+      "acceptance": "namespace/deleted identity, stale revision, case collision, existing folder, QC failure statuses"
+    },
+    {
+      "id": "batch-mid-cancel",
+      "test": "audio_delivery::batch::tests::batch_cancel_during_second_pass_keeps_only_failure_receipt_and_no_final_audio",
+      "source": "src/audio_delivery/batch/tests.rs",
+      "source_sha256": "cd9ff75b2bbc5fd419322e86667f6225fe2d361d6db97db0668f9925f525ee75",
+      "requirement": "required",
+      "acceptance": "cancel after first pass, passed/failed/skipped receipt, no final folder"
+    },
+    {
+      "id": "native-batch-ui",
+      "test": "ui::audio_delivery::tests::native_aligned_batch_review_recipe_reopen_render_and_stale_guard_use_real_worker",
+      "source": "src/ui/audio_delivery/tests.rs",
+      "source_sha256": "cbd2993dc69c33fe25414defa57ca400f4ba0c0363a319126c805f965b0af490",
+      "requirement": "required",
+      "acceptance": "headless egui accesskit actual source review/recipe/reopen/render worker; no native window"
+    },
+    {
+      "id": "native-project-cli",
+      "test": "ui::audio_delivery::tests::native_document_cli_plan_reopen_and_batch_use_same_encoded_delivery_path",
+      "source": "src/ui/audio_delivery/tests.rs",
+      "source_sha256": "cbd2993dc69c33fe25414defa57ca400f4ba0c0363a319126c805f965b0af490",
+      "requirement": "required",
+      "acceptance": "real .omat container/native Document, device-free CLI dispatch, exact project byte binding"
+    }
+  ],
+  "proof_axes": {
+    "headless_native": "candidate pending exact-source checks",
+    "native_window": "unproven/not run",
+    "audio_device": "unproven/not run",
+    "physical_listening": "unproven/not run",
+    "appearance": "native accesskit controls only; no visual human QA",
+    "editability": "batch recipe and metadata controls; project edits not within this format stream",
+    "undo": "not applicable to nonmutating export",
+    "save_reopen": "native project + recipe reopen checks authored",
+    "expected_loss": "PCM16/24 quantization, explicitly enabled dither/normalization, MP3 lossy; no exact sum claim for these or nonlinear master"
+  }
+}
