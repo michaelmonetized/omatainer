@@ -73,8 +73,18 @@ impl Gui {
         let target = self
             .root_nodes
             .iter()
-            .rev()
-            .find(|(_, node)| node.label() == Some(label) && node.supports_action(Action::Click))
+            .filter(|(_, node)| node.label() == Some(label) && node.supports_action(Action::Click))
+            .max_by_key(|(_, node)| {
+                node.bounds().is_some_and(|bounds| {
+                    let point = Pos2::new(
+                        ((bounds.x0 + bounds.x1) * 0.5) as f32,
+                        ((bounds.y0 + bounds.y1) * 0.5) as f32,
+                    ) / self.ctx.pixels_per_point();
+                    self.ctx
+                        .layer_id_at(point)
+                        .is_some_and(|layer| layer.order == egui::Order::Foreground)
+                })
+            })
             .unwrap_or_else(|| {
                 panic!(
                     "Missing root action {label}; {:?}",
@@ -352,7 +362,7 @@ fn studio_task_panels_move_tab_float_close_restore_reset_and_keep_the_main_surfa
     gui.root_click("Restore Sampler");
     assert!(!studio(&gui).tasks["Decks"].hidden.contains_key("sampler"));
     gui.panel_menu("Sampler");
-    gui.root_click("Tab with");
+    gui.root_click("Tab with ⏵");
     gui.root_click("Library");
     assert!(studio(&gui).tasks["Decks"]
         .groups

@@ -127,6 +127,22 @@ impl Gui {
         })]);
         self.frame(vec![]);
     }
+    fn menu_click(&mut self, name: &str) {
+        let target = self.nodes.iter().find(|(_, node)| {
+            node.label() == Some(name) && node.supports_action(Action::Click)
+                && node.bounds().is_some_and(|bounds| {
+                    let point = Pos2::new(
+                        ((bounds.x0 + bounds.x1) * 0.5) as f32,
+                        ((bounds.y0 + bounds.y1) * 0.5) as f32,
+                    ) / self.ctx.pixels_per_point();
+                    self.ctx.layer_id_at(point).is_some_and(|layer| layer.order == egui::Order::Foreground)
+                })
+        }).unwrap_or_else(|| panic!("Missing visible menu action {name}" )).0;
+        self.frame(vec![egui::Event::AccessKitActionRequest(ActionRequest {
+            target, action: Action::Click, data: None,
+        })]);
+        self.frame(vec![]);
+    }
     fn wait(&mut self) {
         let end = Instant::now() + std::time::Duration::from_secs(15);
         while self.fixture.app.settings.busy() {
@@ -164,7 +180,8 @@ fn studio_workspace_menu_saves_each_task_with_conflict_checked_reopen() {
     let mut active = "Classic";
     for task in ["Library", "Decks", "Session", "Arrangement", "MIDI", "Mixer"] {
         gui.click(&format!("Workspace: {active}"));
-        gui.click(task);
+        gui.menu_click(task);
+        assert_eq!(gui.fixture.app.settings.profile().workspaces.studio.active, task);
         active = task;
     }
     assert_eq!(gui.fixture.app.settings.profile().workspaces.studio.active, "Mixer");
@@ -177,9 +194,9 @@ fn studio_workspace_menu_saves_each_task_with_conflict_checked_reopen() {
     }
     gui.frame(vec![]);
     gui.click("Workspace: Mixer");
-    gui.click("Decks");
+    gui.menu_click("Decks");
     gui.click("Workspace: Decks");
-    gui.click("Save workspace layouts");
+    gui.menu_click("Save workspace layouts");
     gui.wait();
     let loaded = storage::load(&gui.dir.join("preferences.json"), &AtomicBool::new(false)).unwrap();
     let expected = gui.fixture.app.settings.profile().workspaces.clone();
