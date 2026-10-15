@@ -103,7 +103,7 @@ impl Writer {
             .ok_or("WAV frame count overflow")?;
         if frames
             .checked_mul(width as u64 * self.encoding.bytes() as u64)
-            .is_none_or(|n| n > u64::from(u32::MAX) - 36)
+            .is_none_or(|n| n + (n & 1) > u64::from(u32::MAX) - 36)
         {
             return Err("WAV size limit reached; split the recording".into());
         }
@@ -156,7 +156,7 @@ impl Writer {
         let bytes = (self.frames * u64::from(block)) as u32;
         let mut header = [0_u8; 44];
         header[..4].copy_from_slice(b"RIFF");
-        header[4..8].copy_from_slice(&(36 + bytes).to_le_bytes());
+        header[4..8].copy_from_slice(&(36 + bytes + (bytes & 1)).to_le_bytes());
         header[8..16].copy_from_slice(b"WAVEfmt ");
         header[16..20].copy_from_slice(&16_u32.to_le_bytes());
         header[20..22].copy_from_slice(
@@ -183,9 +183,16 @@ impl Writer {
     /// Finalize the valid audio prefix.
     /// Takes this writer; truncates incomplete frame bytes, fixes the header and flushes the file, returning the exact frame count.
     pub fn finish(mut self) -> Result<u64, String> {
+        let data = self.frames * u64::from(self.channels) * self.encoding.bytes() as u64;
         self.file
-            .set_len(44 + self.frames * u64::from(self.channels) * self.encoding.bytes() as u64)
+            .set_len(44 + data + (data & 1))
             .map_err(|e| format!("Cannot trim audio prefix at {}: {e}", self.path.display()))?;
+        if data & 1 != 0 {
+            self.file
+                .seek(SeekFrom::Start(44 + data))
+                .and_then(|_| self.file.write_all(&[0]))
+                .map_err(|e| format!("Cannot pad audio prefix at {}: {e}", self.path.display()))?;
+        }
         self.header().map_err(|e| {
             format!(
                 "Cannot finalize audio prefix at {}: {e}",
@@ -292,6 +299,40 @@ mod tests {
         let before = std::fs::read(&path).unwrap();
         assert!(Writer::new(&path, 2, 48000, Encoding::Float32, false).is_err());
         assert_eq!(before, std::fs::read(path).unwrap());
+        std::fs::remove_dir_all(root).unwrap();
+    }
+    #[test]
+    fn odd_pcm24_word_pad_is_outside_data_and_partial_frame_is_trimmed() {
+        let root = directory();
+        for channels in [1_u16, 3] {
+            for frames in [1, 2, 3, 4097] {
+                for dither in [false, true] {
+                    let path = root.join(format!("{channels}-{frames}-{dither}.wav"));
+                    let mut writer =
+                        Writer::new(&path, channels, 48000, Encoding::Pcm24, dither).unwrap();
+                    let samples = vec![0.125; channels as usize * frames];
+                    for chunk in samples.chunks(channels as usize * 13) {
+                        writer.append(chunk, 1.).unwrap();
+                    }
+                    writer.file.write_all(&[0xa5, 0x5a]).unwrap();
+                    assert_eq!(writer.finish().unwrap(), frames as u64);
+                    let bytes = std::fs::read(&path).unwrap();
+                    let data = frames * channels as usize * 3;
+                    assert_eq!(bytes.len(), 44 + data + (data & 1));
+                    assert_eq!(
+                        u32::from_le_bytes(bytes[4..8].try_into().unwrap()) as usize,
+                        bytes.len() - 8
+                    );
+                    assert_eq!(
+                        u32::from_le_bytes(bytes[40..44].try_into().unwrap()) as usize,
+                        data
+                    );
+                    if data & 1 != 0 {
+                        assert_eq!(bytes[44 + data], 0);
+                    }
+                }
+            }
+        }
         std::fs::remove_dir_all(root).unwrap();
     }
 }

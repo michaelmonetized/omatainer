@@ -159,7 +159,13 @@ fn inspect(
     if length < 44 || length - 44 > u64::from(u32::MAX) - 36 {
         return Err("Recording segment size is unsupported".into());
     }
-    let mut frames = (length - 44) / u64::from(block);
+    let declared = u64::from(u32::from_le_bytes(header[40..44].try_into().unwrap()));
+    let riff = u64::from(u32::from_le_bytes(header[4..8].try_into().unwrap()));
+    let finalized = declared > 0
+        && declared % u64::from(block) == 0
+        && declared <= length - 44
+        && (riff == 36 + declared || riff == 36 + declared + (declared & 1));
+    let mut frames = if finalized { declared } else { length - 44 } / u64::from(block);
     if encoding == Encoding::Float32 {
         let mut buffer = vec![0; usize::from(block) * 1024];
         let mut scanned = 0;
@@ -185,8 +191,11 @@ fn inspect(
         }
     }
     let data = frames * u64::from(block);
-    let repair = length != 44 + data
-        || header[4..8] != (36 + data as u32).to_le_bytes()
+    if data + (data & 1) > u64::from(u32::MAX) - 36 {
+        return Err("Recording segment cannot fit a padded RIFF data chunk".into());
+    }
+    let repair = length != 44 + data + (data & 1)
+        || header[4..8] != (36 + data as u32 + (data as u32 & 1)).to_le_bytes()
         || header[40..44] != (data as u32).to_le_bytes();
     Ok((frames, repair))
 }
@@ -325,9 +334,17 @@ pub(crate) fn recover(plan: &Plan, cancel: &AtomicBool) -> Result<Plan, String> 
         if segment.repair {
             let bytes =
                 (segment.frames * u64::from(plan.channels) * plan.encoding.bytes() as u64) as u32;
-            f.set_len(44 + u64::from(bytes))
+            f.set_len(44 + u64::from(bytes) + u64::from(bytes & 1))
+                .and_then(|_| {
+                    if bytes & 1 != 0 {
+                        f.seek(SeekFrom::Start(44 + u64::from(bytes)))?;
+                        f.write_all(&[0])
+                    } else {
+                        Ok(())
+                    }
+                })
                 .and_then(|_| f.seek(SeekFrom::Start(4)))
-                .and_then(|_| f.write_all(&(36 + bytes).to_le_bytes()))
+                .and_then(|_| f.write_all(&(36 + bytes + (bytes & 1)).to_le_bytes()))
                 .and_then(|_| f.seek(SeekFrom::Start(40)))
                 .and_then(|_| f.write_all(&bytes.to_le_bytes()))
                 .and_then(|_| f.sync_all())
@@ -558,5 +575,46 @@ mod tests {
         assert_eq!((p.frames, p.repairs), (512, 0));
         let decoded = crate::engine::decode::decode_audio(&files.0.join("take-0001.wav")).unwrap();
         assert_eq!(decoded.sample.data, [0.125, -0.25].repeat(512));
+    }
+    #[test]
+    fn recovery_odd_pcm24_legacy_padded_and_partial_prefixes_keep_exact_frames() {
+        for channels in [1_u16, 3] {
+            for frames in [1_u64, 2, 3, 4097] {
+                for kind in ["legacy", "padded", "interrupted"] {
+                    let files = Files::new();
+                    persist(&files.0,&serde_json::json!({"schema":1,"recoverable_wav_prefixes":true,"rate":48000,"channels":channels,"wav_encoding":"pcm24","frames":0,"status":"Recording"})).unwrap();
+                    let path = files.0.join("take-0001.wav");
+                    let mut writer =
+                        Writer::new(&path, channels, 48000, Encoding::Pcm24, false).unwrap();
+                    writer
+                        .append(&vec![0.125; frames as usize * channels as usize], 1.)
+                        .unwrap();
+                    let data = frames * u64::from(channels) * 3;
+                    if kind == "interrupted" {
+                        drop(writer);
+                        let mut f = OpenOptions::new().append(true).open(&path).unwrap();
+                        f.write_all(&vec![0x55; channels as usize * 3 - 1]).unwrap();
+                    } else {
+                        writer.finish().unwrap();
+                        if kind == "legacy" {
+                            let mut f = OpenOptions::new().write(true).open(&path).unwrap();
+                            f.set_len(44 + data).unwrap();
+                            f.seek(SeekFrom::Start(4)).unwrap();
+                            f.write_all(&(36 + data as u32).to_le_bytes()).unwrap();
+                        }
+                    }
+                    let plan = review(&files.0, &AtomicBool::new(false)).unwrap();
+                    assert_eq!(plan.frames, frames, "{channels}/{frames}/{kind}");
+                    let repaired = recover(&plan, &AtomicBool::new(false)).unwrap();
+                    assert_eq!((repaired.frames, repaired.repairs), (frames, 0));
+                    let bytes = std::fs::read(&path).unwrap();
+                    assert_eq!(bytes.len() as u64, 44 + data + (data & 1));
+                    assert_eq!(
+                        u32::from_le_bytes(bytes[40..44].try_into().unwrap()) as u64,
+                        data
+                    );
+                }
+            }
+        }
     }
 }
