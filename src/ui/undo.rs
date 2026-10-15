@@ -155,9 +155,12 @@ impl App {
                 .map(|item| format!("Undo {}", item.label()))
                 .unwrap_or_else(|| "Undo".into());
             let response = ui.add_enabled(
-                    undo.is_some(),
-                    egui::Button::new(label).shortcut_text(shortcuts::action_label(self.settings.profile(), shortcuts::Action::Undo)),
-                );
+                undo.is_some(),
+                egui::Button::new(label).shortcut_text(shortcuts::action_label(
+                    self.settings.profile(),
+                    shortcuts::Action::Undo,
+                )),
+            );
             help::annotate(ui, &response, help::Control::Undo);
             if response.clicked() {
                 self.history_action(false);
@@ -167,9 +170,12 @@ impl App {
                 .map(|item| format!("Redo {}", item.label()))
                 .unwrap_or_else(|| "Redo".into());
             let response = ui.add_enabled(
-                    redo.is_some(),
-                    egui::Button::new(label).shortcut_text(shortcuts::action_label(self.settings.profile(), shortcuts::Action::Redo)),
-                );
+                redo.is_some(),
+                egui::Button::new(label).shortcut_text(shortcuts::action_label(
+                    self.settings.profile(),
+                    shortcuts::Action::Redo,
+                )),
+            );
             help::annotate(ui, &response, help::Control::Redo);
             if response.clicked() {
                 self.history_action(true);
