@@ -15,6 +15,7 @@ pub struct Node {
     pub input: Frame,
     pub valid: bool,
     pub taps: [Frame; 3],
+    pub peaks: Frame,
     pub generated: bool,
 }
 
@@ -24,7 +25,15 @@ struct Link {
     tap: usize,
     map: Vec<Map>,
     send: Option<usize>,
+    spatial: Option<super::speakers::Layout>,
     fixed: Option<(usize,usize)>,
+}
+impl Link {
+    /// Read the admitted send's gain for one explicit destination map.
+    /// Takes prepared mixer controls and map; returns unchanged legacy balance or the declared mono panner, without allocation or route lookup.
+    fn gain(&self,mixer:&super::mixer::Runtime,map:&Map)->f32{
+        self.send.map_or(1.,|slot|{let channel=&mixer.channels[slot];let values=channel.effective;if self.spatial.is_some(){values.gain(2)*channel.spatial_gains.get(usize::from(map.destination)).copied().unwrap_or(0.)}else{values.gain(usize::from(map.balance))}})
+    }
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -80,6 +89,7 @@ pub struct Prepared {
     pub(crate) plugins: Vec<Plugin>,
     pub(crate) offline: bool,
     pub(crate) selection:Option<super::selection::Policy>,
+    pub(super) bass:Option<super::speakers::monitor::Runtime>,
 }
 
 #[derive(Debug)]
@@ -161,10 +171,11 @@ impl Prepared {
                 tap: connection.source.tap.index(),
                 map: connection.map.iter().map(|map| Map::prepare(*map,connection,&model,layout)).collect(),
                 send: link.checked_sub(model.connections.len()),
+                spatial:link.checked_sub(model.connections.len()).and_then(|slot|model.sends[slot].spatial.then(||model.speaker_layout(connection.destination).unwrap())),
                 fixed: None,
             });
         }
-        for send in 0..2 {for (slot,track) in layout.tracks.iter().enumerate(){incoming[indices[&Group::FixedReturn(send)]].push(Link{source:indices[&Group::Track(track.id)],tap:Tap::PostMixer.index(),map:vec![Map{source:0,destination:0,balance:0,gain:1.},Map{source:1,destination:1,balance:1,gain:1.}],send:None,fixed:Some((slot,usize::from(send)))});}}
+        for send in 0..2 {for (slot,track) in layout.tracks.iter().enumerate(){incoming[indices[&Group::FixedReturn(send)]].push(Link{source:indices[&Group::Track(track.id)],tap:Tap::PostMixer.index(),map:vec![Map{source:0,destination:0,balance:0,gain:1.},Map{source:1,destination:1,balance:1,gain:1.}],send:None,spatial:None,fixed:Some((slot,usize::from(send)))});}}
         let scene_nodes = std::array::from_fn(|slot| {
             layout
                 .scenes
@@ -194,6 +205,7 @@ impl Prepared {
                 input: [0.0; MAX_PORT_CHANNELS],
                 valid: true,
                 taps: [[0.0; MAX_PORT_CHANNELS]; 3],
+                peaks: [0.;MAX_PORT_CHANNELS],
                 generated: false,
             })
             .collect();
@@ -204,6 +216,7 @@ impl Prepared {
             (id, [usize::from(port.channels[0]), usize::from(port.channels[1])])
         });
         let mixer=super::mixer::Runtime::new(&model,&order_from_nodes(&nodes),layout,latency.as_ref().map(|l|&l.plan));
+        let bass=model.monitor_bass.map(|config|super::speakers::monitor::Runtime::new(config,&model,rate));
         Ok(Self {
             mixer,
             fixed_levels:[[0.;2];crate::engine::session::MAX_TRACKS],
@@ -220,6 +233,7 @@ impl Prepared {
             plugins,
             offline: false,
             selection:None,
+            bass,
         })
     }
 
@@ -246,7 +260,7 @@ impl Prepared {
                 if !self.mixer.audible(link.source,index,terminal,usize::from(map.destination)>=primary){continue;}
                 let(value,valid)=self.latency.as_ref().map_or((source[usize::from(map.source)],sources[link.source].valid),
                     |latency|latency.routed(link.source,link.tap,index,usize::from(map.source)));
-                let gain=link.send.map_or(1.,|slot|self.mixer.channels[slot].effective.gain(usize::from(map.balance)))*link.fixed.map_or(1.,|(slot,send)|self.fixed_levels[slot][send]);
+                let gain=link.gain(&self.mixer,map)*link.fixed.map_or(1.,|(slot,send)|self.fixed_levels[slot][send]);
                 let sample=value*map.gain*gain;
                 destination.input[usize::from(map.destination)] += sample;
                 if let Some(slot)=link.send {self.mixer.channels[slot].peaks[usize::from(map.destination)]=self.mixer.channels[slot].peaks[usize::from(map.destination)].max(sample.abs());}
@@ -273,7 +287,7 @@ impl Prepared {
             for map in &link.map {
                 if usize::from(map.destination)<self.nodes[index].width {
                     let value = self.latency.as_ref().map_or(self.nodes[link.source].taps[link.tap][usize::from(map.source)], |l| l.routed(link.source,link.tap,index,usize::from(map.source)).0);
-                    frame[usize::from(map.destination)] += value * map.gain * link.send.map_or(1.,|slot|self.mixer.channels[slot].effective.gain(usize::from(map.balance)));
+                    frame[usize::from(map.destination)] += value * map.gain * link.gain(&self.mixer,map);
                 }
             }
         }
@@ -287,6 +301,7 @@ impl Prepared {
         for (destination, source) in node.taps.iter_mut().zip(&taps) {
             destination[..node.width].copy_from_slice(&source[..node.width]);
         }
+        for (peak,sample) in node.peaks.iter_mut().zip(node.taps[2]){*peak=(*peak*0.9995).max(sample.abs());}
         if let Some(latency)=&mut self.latency {latency.publish(index,&node.taps,node.valid);}
     }
 
@@ -298,6 +313,7 @@ impl Prepared {
         for (destination, source) in node.taps.iter_mut().zip(taps) {
             destination[..2].copy_from_slice(&source);
         }
+        for (peak,sample) in node.peaks.iter_mut().zip(node.taps[2]){*peak=(*peak*0.9995).max(sample.abs());}
         if let Some(latency)=&mut self.latency {latency.publish(index,&node.taps,node.valid);}
     }
 
@@ -315,7 +331,7 @@ impl Prepared {
         if destination==self.main && self.selection==Some(super::selection::Policy::MasteredSolo) || !self.mixer.audible(source,destination,destination==self.main,false){return;}
         let width=if let Group::Plugin(id)=self.nodes[source].group{usize::from(self.model.plugins.iter().find(|p|p.id==id).unwrap().outputs[0])}else{self.nodes[source].width};
         let mut frame=[0.;MAX_PORT_CHANNELS];
-        let mut complete=valid;
+        let mut complete=self.latency.is_some()||valid;
         for channel in 0..width {let(value,ok)=self.latency.as_ref().map_or((self.nodes[source].taps[2][channel],valid),|l|l.routed(source,Tap::PostMixer.index(),destination,channel));frame[channel]=value;complete&=ok;}
         let source_layout=self.nodes[source].speakers;
         let destination_layout=self.nodes[destination].speakers;
@@ -385,7 +401,7 @@ impl Prepared {
             if !self.mixer.audible(link.source,index,true,false){continue;}
             for map in &link.map {
                 let (value, complete) = latency.routed_monitor(link.source, link.tap, usize::from(map.source));
-                let gain=link.send.map_or(1.,|slot|self.mixer.channels[slot].effective.gain(usize::from(map.balance)))*link.fixed.map_or(1.,|(slot,send)|self.fixed_levels[slot][send]);
+                let gain=link.gain(&self.mixer,map)*link.fixed.map_or(1.,|(slot,send)|self.fixed_levels[slot][send]);
                 frame[usize::from(map.destination)] += value * map.gain * gain;
                 if map.gain * gain != 0.0 { valid &= complete; }
             }

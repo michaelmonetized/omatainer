@@ -365,3 +365,14 @@ fn snapshot_full_and_disconnected_handoffs_retain_payload_without_callback_drops
     drop(free_tx);
     assert!(retired.upgrade().is_none());
 }
+
+#[test]
+fn stereo_lfe_snapshot_meters_publish_each_retained_speaker_without_callback_allocation(){
+    let (_engine,mut rt)=audio::routing::speakers::tests::fixture(48000);
+    rt.apply(Command::LaunchScene{scene:0});rt.process_interleaved(&mut[0.;64*6],6);
+    let mut frame=Frame::new(rt.publisher.empty_peaks.clone());frame.capture(&rt);frame.prepare();
+    assert_eq!(test_alloc::measure(||frame.capture(&rt)),Default::default());assert!(frame.complete);
+    let meter=frame.values.routing_speakers.iter().find(|m|m.group==audio::routing::model::Group::Main).unwrap();
+    assert_eq!(meter.layout,audio::routing::speakers::Layout::StereoLfe);
+    assert!(meter.peaks[..3].iter().all(|p|*p>0.));assert!(meter.peaks[3..].iter().all(|p|*p==0.));
+}

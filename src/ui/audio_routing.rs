@@ -10,6 +10,7 @@ mod worker;
 mod latency;
 mod mixer;
 mod processors;
+mod speakers;
 use worker::{Event, Job, Worker};
 
 #[derive(Clone)]
@@ -33,23 +34,25 @@ impl Draft {
     fn attach(&mut self, mut plugin: crate::engine::audio::routing::plugins::Instance, track: crate::engine::session::Id) -> Result<(),String> {
         if !self.layout.tracks.iter().any(|t| t.id == track && t.active) { return Err("Selected track changed before plugin inspection".into()); }
         if self.model.plugins.len() >= crate::engine::audio::routing::plugins::MAX_PLUGINS || self.model.next_id == u64::MAX { return Err("This graph has no remaining processor capacity".into()); }
+        let track_width=self.model.width(Group::Track(track),&self.layout).ok_or("Track channel layout changed")?;
+        if track_width>2&&(!plugin.instrument&&(plugin.inputs.first().copied().map(usize::from)!=Some(track_width)||plugin.outputs.first().copied().map(usize::from)!=Some(track_width))||plugin.instrument&&plugin.outputs.first().is_some_and(|width|usize::from(*width)>2&&usize::from(*width)!=track_width)){return Err("A wide track processor must preserve its declared primary speaker bed; use explicit reviewed conversion routes".into());}
         plugin.id = self.model.next_id; self.model.next_id += 1;
         plugin.name = format!("{} {}",plugin.name,plugin.id);
         plugin.midi_track = Some(track);
         plugin.return_bus = None;
         let maps = |source: usize, destination: usize| {
             if destination == 1 && source >= 2 { vec![ChannelMap {source:0,destination:0,gain:0.5},ChannelMap {source:1,destination:0,gain:0.5}] }
-            else { (0..destination.min(2)).map(|i| ChannelMap {source:if source == 1 {0}else{i as u8},destination:i as u8,gain:1.}).collect() }
+            else { (0..destination.min(source.max(2))).map(|i| ChannelMap {source:if source == 1 {0}else{i as u8},destination:i as u8,gain:1.}).collect() }
         };
         if plugin.instrument {
             if self.model.plugins.iter().any(|p| p.instrument && p.midi_track == Some(track)) { return Err("This track already has a native plugin instrument; review its replacement explicitly".into()); }
-            self.model.connections.push(Connection { source:Source {group:Group::Plugin(plugin.id),tap:Tap::PostMixer},destination:Group::Track(track),map:maps(plugin.output_width(),2) });
+            self.model.connections.push(Connection { source:Source {group:Group::Plugin(plugin.id),tap:Tap::PostMixer},destination:Group::Track(track),map:maps(usize::from(plugin.outputs[0]),track_width) });
         } else {
             if plugin.input_width() == 0 { return Err("This class has no audio input; choose an instrument or route its outputs manually".into()); }
             let previous = self.model.plugins.iter_mut().find(|p| p.scene_track == Some(track));
-            let (source,width) = if let Some(previous) = previous { previous.scene_track = None; (Group::Plugin(previous.id),previous.output_width()) } else { (Group::Track(track),2) };
+            let (source,width) = if let Some(previous) = previous { previous.scene_track = None; (Group::Plugin(previous.id),usize::from(previous.outputs[0])) } else { (Group::Track(track),track_width) };
             plugin.scene_track = Some(track);
-            self.model.connections.push(Connection {source:Source {group:source,tap:Tap::PostMixer},destination:Group::Plugin(plugin.id),map:maps(width,plugin.input_width())});
+            self.model.connections.push(Connection {source:Source {group:source,tap:Tap::PostMixer},destination:Group::Plugin(plugin.id),map:maps(width,usize::from(plugin.inputs[0]))});
             if !self.model.tracks_without_default_send.contains(&track) { self.model.tracks_without_default_send.push(track); }
         }
         self.model.plugins.push(plugin); self.model.version = 3;
@@ -404,6 +407,8 @@ fn remove_alias(model: &mut Model, id: u64) {
     model.plugins.retain(|p|!processors.contains(&p.id));
     model.ports.retain(|port| port.id != id);
     model.buses.retain(|bus| bus.id != id);
+    model.speaker_layouts.retain(|b|!matches!(b.group,Group::Input(value)|Group::Output(value)|Group::Record(value)|Group::Bus(value)if value==id)&&!matches!(b.group,Group::Plugin(value)if processors.contains(&value)));
+    if model.monitor_bass.is_some_and(|bass|bass.output==id){model.monitor_bass=None;}
     model.sends.retain(|s|!matches!(s.route.source.group,Group::Input(value)|Group::Bus(value)if value==id)&&!matches!(s.route.destination,Group::Bus(value)|Group::Output(value)|Group::Record(value)if value==id));
     model.connections.retain(|connection| !matches!(connection.source.group, Group::Input(value) | Group::Bus(value) if value == id)
         && !matches!(connection.destination, Group::Output(value) | Group::Record(value) | Group::Bus(value) if value == id));
@@ -748,6 +753,7 @@ impl App {
                             }); }
                         });
                         headphones::output(ui, &mut draft.model);
+                        ui.collapsing("Speaker layouts and monitoring",|ui|speakers::controls(ui,draft));
                         ui.collapsing(tr!("Default sends"), |ui| {
                             for track in draft.layout.tracks.iter().filter(|item| item.active) {
                                 let mut send = !draft.model.tracks_without_default_send.contains(&track.id);

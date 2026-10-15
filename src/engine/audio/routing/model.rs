@@ -105,6 +105,8 @@ pub struct Model {
     pub next_id: u64,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub speaker_layouts: Vec<super::speakers::Binding>,
+    #[serde(default,skip_serializing_if="Option::is_none")]
+    pub monitor_bass:Option<super::speakers::BassManagement>,
     pub ports: Vec<Port>,
     pub buses: Vec<Bus>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
@@ -139,6 +141,7 @@ impl Default for Model {
             version: 1,
             next_id: 2,
             speaker_layouts: Vec::new(),
+            monitor_bass:None,
             ports: vec![Port {
                 id: 1,
                 alias: "Main output".into(),
@@ -187,6 +190,7 @@ impl Model {
         self.latency.as_ref().zip(prior.latency.as_ref()).is_some_and(|(next, old)| next.reserve_micros == old.reserve_micros)
             && self.version == prior.version && self.next_id == prior.next_id
             && self.speaker_layouts == prior.speaker_layouts
+            && self.monitor_bass == prior.monitor_bass
             && self.ports == prior.ports && self.buses == prior.buses
             && self.plugins == prior.plugins
             && self.connections == prior.connections && self.sends == prior.sends
@@ -378,6 +382,7 @@ impl Model {
         for send in &self.sends {
             if send.id==0 || send.id>=self.next_id || !ids.insert(send.id) || !named(&send.name) || !names.insert(send.name.as_str()) || !super::mixer::Parameter::Level.valid(send.level) || !super::mixer::Parameter::Pan.valid(send.pan) {return Err("Named sends need unique retained identities, names and finite mixer values".into());}
             super::mixer::validate_lanes(&send.automation,false)?;
+            if send.spatial&&(self.source_width(send.route.source,layout)!=Some(1)||matches!(send.route.destination,Group::Plugin(_))||self.speaker_layout(send.route.destination).is_none_or(|l|l.channels()<3)){return Err("Positional sends require a mono source and an explicitly declared wide destination; native input buses use an explicit return or channel map".into());}
         }
         let mut plugin_bytes = 0usize;
         let mut instruments = BTreeSet::new();

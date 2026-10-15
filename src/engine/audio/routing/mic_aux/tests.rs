@@ -112,6 +112,16 @@ fn capture(engine: &Engine, rt: &mut RtEngine) -> crate::engine::project::Captur
     }
     j.join().unwrap()
 }
+
+#[test]
+fn stereo_lfe_mic_aux_uses_declared_front_pair_and_ducks_the_whole_bed_without_lfe_feed(){
+    use crate::engine::audio::routing::speakers::Layout;
+    let mut model=Model::default();model.next_id=3;model.ports[0].channels=vec![0,1,2];model.ports.push(Port{id:2,alias:"Voice".into(),direction:Direction::Input,channels:vec![0]});
+    let mut config=Configuration::default();config.channels[0]=Channel{input:Some(2),mute:false,master:Some(1),..Default::default()};assert!(config.validate(Some(&model)).is_err());model.set_speaker_layout(Group::Output(1),Layout::StereoLfe);config.validate(Some(&model)).unwrap();
+    let mixer=Mixer::new(Some(config),48000.);let mut frame=[0.;32];frame[..3].copy_from_slice(&[0.4,0.2,0.6]);let mut valid=true;
+    assert_eq!(test_alloc::measure(||mixer.add_aligned(Group::Output(1),3,&mut frame,&mut valid,0.5,[[0.1,0.2],[0.,0.]],[true,true],0.25)),Default::default());
+    assert!((frame[0]-0.15).abs()<1e-7);assert!((frame[1]-0.15).abs()<1e-7);assert!((frame[2]-0.15).abs()<1e-7);assert!(valid);
+}
 #[test]
 fn selected_inputs_reach_independent_master_booth_record_and_master_headphones_without_callback_heap(
 ) {

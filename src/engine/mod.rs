@@ -984,6 +984,7 @@ pub struct Snapshot {
     pub monitor: monitor::Status,
     pub(crate) latency: audio::routing::latency::Status,
     pub(crate) routing_mixer: Vec<audio::routing::mixer::Channel>,
+    pub(crate) routing_speakers: Vec<audio::routing::speakers::Meter>,
     pub(crate) mic_aux: audio::routing::mic_aux::Status,
     pub(crate) arrangement_enabled: bool,
     pub(crate) arrangement_end: f64,
@@ -1068,6 +1069,7 @@ impl Default for Snapshot {
             monitor: monitor::Status::default(),
             latency: audio::routing::latency::Status::default(),
             routing_mixer: Vec::with_capacity(audio::routing::mixer::MAX_SENDS+audio::routing::model::MAX_BUSES),
+            routing_speakers: Vec::with_capacity(audio::routing::speakers::MAX_BINDINGS),
             mic_aux: audio::routing::mic_aux::Status::default(),
             arrangement_enabled: false,
             arrangement_end: 0.0,
@@ -2162,11 +2164,10 @@ impl RtEngine {
             raw[0] += input[0] * input_gain; raw[1] += input[1] * input_gain;
         }
         for channel in 2..speaker_width {raw[channel]+=self.routing_track_wide_generated[channel]+self.routing_track_wide_input[channel]*input_gain;}
-        if speaker_width==1{raw[1]=raw[0];}
         let l = track.eq.tick(raw[0]);
         let r = track.eq_right.tick(raw[1]);
         let [fl, fr] = self.load_profile.chain(&mut track.fx, [l, r], self.sr, false, ti);
-        track.meter = track.meter * 0.93 + if silent { 0.0 } else { (l.abs() + r.abs()) * 0.035 };
+        track.meter = track.meter * 0.93 + if silent { 0.0 } else if speaker_width>2 {0.07*(l.abs()+r.abs()+raw[2..speaker_width].iter().map(|s|s.abs()).sum::<f32>())/speaker_width as f32} else { (l.abs() + r.abs()) * 0.035 };
         let [gl, gr] = {
             #[cfg(test)]
             if self.legacy_gain_math {
@@ -2177,9 +2178,8 @@ impl RtEngine {
         };
         let bed_gain={#[cfg(test)]{if self.legacy_gain_math{track.gain}else{track.bed_gain.tick()[0]}}#[cfg(not(test))]{track.bed_gain.tick()[0]}};
         let mut post_fx=raw;post_fx[0]=fl;post_fx[1]=fr;
-        if self.routing_track_layout==audio::routing::speakers::Layout::Mono {post_fx[0]=0.5*(fl+fr);}
         let mut output=[0.;audio::routing::model::MAX_PORT_CHANNELS];
-        if !silent {for channel in 0..speaker_width{output[channel]=post_fx[channel]*if speaker_width==1||channel>=2{bed_gain}else{[gl,gr][channel]};}}
+        if !silent {for channel in 0..speaker_width{output[channel]=post_fx[channel]*if channel>=2{bed_gain}else{[gl,gr][channel]};}}
         let output = self.surface.track(track, output);
         self.routing_track_wide_taps=[raw,post_fx,output];
         self.routing_track_taps=std::array::from_fn(|tap|[self.routing_track_wide_taps[tap][0],self.routing_track_wide_taps[tap][1]]);

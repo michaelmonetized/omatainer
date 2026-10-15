@@ -93,10 +93,15 @@ pub struct Send {
     pub route: Connection,
     pub level: f32,
     pub pan: f32,
+    #[serde(default, skip_serializing_if = "no_spatial")]
+    pub spatial: bool,
     pub mute: bool,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub automation: Vec<Lane>,
 }
+/// Omit the legacy panning default from saved state.
+/// Takes its mode switch; returns true while the original stereo balance policy applies.
+fn no_spatial(value:&bool)->bool{!*value}
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "kind", content = "id", rename_all = "snake_case")]
 pub enum Target {
@@ -234,10 +239,16 @@ impl Send {
 pub struct Channel {
     pub name: Name,
     pub width: u8,
+    pub speakers: Option<super::speakers::Layout>,
+    pub spatial: bool,
     pub target: Target,
     pub values: Values,
     pub effective: Values,
     pub peaks: [f32; MAX_PORT_CHANNELS],
+    #[serde(skip)]
+    pub(super) spatial_gains:[f32;8],
+    #[serde(skip)]
+    panning_key:Option<u32>,
     #[serde(skip)]
     pub automation_delay: u32,
     #[serde(skip)]
@@ -314,10 +325,14 @@ impl Runtime {
                 Channel {
                     name,
                     width,
+                    speakers:model.speaker_layout(group).filter(|l|l.channels()==usize::from(width)),
+                    spatial:matches!(target,Target::Send(id)if model.sends.iter().find(|s|s.id==id).unwrap().spatial),
                     target,
                     values,
                     effective: values,
                     peaks: [0.; MAX_PORT_CHANNELS],
+                    spatial_gains:[0.;8],
+                    panning_key:None,
                     automation_delay: plan
                         .map_or(0, |p| tap.map_or(p.inputs[node], |tap| p.taps[node][tap])),
                     automation_node: node,
@@ -484,6 +499,10 @@ impl Runtime {
                         .effective
                         .set(lane.parameter, lane.at(beat(channel.automation_delay)));
                 }
+            }
+            if channel.spatial&&channel.panning_key!=Some(channel.effective.pan.to_bits()){
+                channel.spatial_gains=channel.speakers.unwrap().pan_frame(channel.effective.pan);
+                channel.panning_key=Some(channel.effective.pan.to_bits());
             }
             for peak in &mut channel.peaks[..usize::from(channel.width)] {
                 *peak *= 0.9995;

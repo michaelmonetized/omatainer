@@ -3,6 +3,34 @@ use crate::ui::piano_roll::tests::Gui;
 use std::time::Duration;
 
 #[test]
+fn stereo_lfe_routing_widgets_declare_order_position_monitoring_undo_and_reopen(){
+    use crate::engine::audio::routing::speakers::Layout as SpeakerLayout;
+    use egui::accesskit::{Action,ActionData};
+    let mut gui=Gui::new();
+    let mut baseline=Model::default();baseline.next_id=3;baseline.ports.push(Port{id:2,alias:"Existing mono position source".into(),direction:Direction::Input,channels:vec![0]});
+    gui.rt.routing=Some(Box::new(crate::engine::audio::routing::prepared::Prepared::at_rate(Arc::new(baseline),&gui.rt.session,48000).unwrap()));gui.frame(vec![]);
+    gui.click("Audio routing");gui.click("Refresh routes");settled(&mut gui);gui.click("Speaker layouts and monitoring");
+    assert!(gui.node("Program speaker layout").1.supports_action(Action::Focus));
+    gui.click("Program speaker layout");gui.click("2.1 (FL FR LFE)");gui.click("Map program speakers to Main output");
+    gui.click("Track speaker layouts");let track_name=gui.rt.tracks[0].name.clone();gui.click(&format!("{track_name} track speaker layout"));gui.click("2.1 (FL FR LFE)");gui.click("Track speaker layouts");
+    gui.click("Add declared 2.1 return");gui.click("Enable monitor bass management");
+    assert!(gui.node("Bass cutoff (Hz)").1.supports_action(Action::Focus));
+    gui.action("Bass cutoff (Hz)",Action::SetValue,Some(ActionData::NumericValue(110.)));
+    gui.action("Monitor sub level",Action::SetValue,Some(ActionData::NumericValue(0.75)));
+    let model=&gui.app.audio_routing.draft.as_ref().unwrap().model;
+    let contract=model.channel_contract(Group::Output(1),3).unwrap();assert_eq!(contract.wave_mask,Some(11));assert_eq!(contract.channels,[0,1,2]);assert_eq!(model.buses[0].channels,3);
+    gui.click("Speaker layouts and monitoring");gui.click("Named auxiliary sends and returns");gui.click("Add named send");gui.click("Send source");gui.click("Existing mono position source");gui.click("Position mono source across full-range speakers");
+    gui.action("Saved send level",Action::SetValue,Some(ActionData::NumericValue(0.5)));gui.action("Saved send angle (degrees)",Action::SetValue,Some(ActionData::NumericValue(15.)));
+    gui.click("Named auxiliary sends and returns");gui.click("Review routing change…");gui.click("Cancel routing change");assert!(gui.rt.routing.as_ref().unwrap().model.sends.is_empty());
+    gui.click("Review routing change…");gui.click("Apply routing");settled(&mut gui);assert!(gui.app.audio_routing.error.is_none(),"{:?}",gui.app.audio_routing.error);
+    let saved=gui.rt.routing.as_ref().unwrap().model.clone();assert_eq!(saved.sends[0].pan,0.5);assert!(saved.sends[0].spatial);assert_eq!(saved.monitor_bass.unwrap().cutoff,110.);
+    gui.rt.apply(Command::Undo);assert!(gui.rt.routing.as_ref().unwrap().model.sends.is_empty());gui.rt.apply(Command::Redo);assert_eq!(gui.rt.routing.as_ref().unwrap().model,saved);
+    let captured=crate::engine::audio::routing::speakers::tests::capture(&gui.app.engine,&mut gui.rt);
+    let state=serde_json::from_slice(&serde_json::to_vec(&captured.state).unwrap()).unwrap();let reopened=crate::engine::project::Prepared::from_state(state,captured.media,48000).unwrap().into_offline();
+    let model=&reopened.routing.as_ref().unwrap().model;assert_eq!(model.speaker_layout(Group::Main),Some(SpeakerLayout::StereoLfe));assert_eq!(model.channel_contract(Group::Output(1),3).unwrap().wave_mask,Some(11));assert_eq!(model.monitor_bass.unwrap().level,0.75);assert!(model.sends[0].spatial);
+}
+
+#[test]
 fn named_send_return_widgets_create_review_keyboard_edit_undo_and_reopen_saved_controls() {
     use crate::engine::audio::routing::mixer::{Parameter,Target};
     use egui::accesskit::{Action,ActionData};
