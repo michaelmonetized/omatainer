@@ -113,17 +113,13 @@ pub(super) fn error(ui: &mut Ui, response: &egui::Response, text: &str) {
 /// Args: displayed value and native decimal range. Returns precise text with the native minimum padding.
 fn number_text(value: f64, decimals: std::ops::RangeInclusive<usize>) -> String {
     let (minimum, maximum) = decimals.into_inner();
-    let mut text = format!("{value:.maximum$}");
-    let zeroes = text
-        .chars()
-        .rev()
-        .take_while(|character| *character == '0')
-        .count();
-    text.truncate(text.len() - zeroes.min(maximum.saturating_sub(minimum)));
-    if text.ends_with('.') {
-        text.pop();
+    for precision in minimum..maximum {
+        let text = format!("{value:.precision$}");
+        if text.parse::<f64>().ok() == Some(value) {
+            return text;
+        }
     }
-    text
+    format!("{value:.maximum$}")
 }
 
 /// Draw the existing precise DragValue with public draft observation.
