@@ -210,8 +210,8 @@ impl Model {
                 .iter()
                 .map(|port| port.alias.capacity() + port.channels.capacity() * 2)
                 .sum::<usize>()
-            + self.sends.capacity()*std::mem::size_of::<super::mixer::Send>() + self.sends.iter().map(|s|s.name.capacity()+s.route.map.capacity()*std::mem::size_of::<ChannelMap>()+s.automation.iter().map(|a|a.points.capacity()*16).sum::<usize>()).sum::<usize>()
-            + self.buses.iter().flat_map(|b|&b.mixer.automation).map(|a|a.points.capacity()*16).sum::<usize>()
+            + self.sends.capacity()*std::mem::size_of::<super::mixer::Send>() + self.sends.iter().map(|s|s.name.capacity()+s.route.map.capacity()*std::mem::size_of::<ChannelMap>()+s.automation.capacity()*std::mem::size_of::<super::mixer::Lane>()+s.automation.iter().map(|a|a.points.capacity()*16).sum::<usize>()).sum::<usize>()
+            + self.buses.iter().map(|b|b.mixer.automation.capacity()*std::mem::size_of::<super::mixer::Lane>()+b.mixer.automation.iter().map(|a|a.points.capacity()*16).sum::<usize>()).sum::<usize>()
             + self.buses.capacity() * std::mem::size_of::<Bus>()
             + self.plugins.iter().map(super::plugins::Instance::bytes).sum::<usize>()
             + self

@@ -282,3 +282,74 @@ fn named_mixer_total_automation_budget_refuses_before_replacing_the_graph() {
     assert!(next.order(&rt.session).unwrap_err().contains("65536"));
     assert_eq!(original, model());
 }
+
+#[test]
+fn named_return_solo_before_shared_sums_keeps_feeders_and_monitor_equivalent() {
+    for rate in [44100, 48000, 96000] {
+        let (_, mut rt) = Engine::headless_for_test(rate, 256);
+        rt.apply(Command::Stop);
+        let mut m = model();
+        m.sends.clear();
+        m.next_id = 9;
+        m.buses.push(Bus {
+            id: 8,
+            alias: "Shared downstream sum".into(),
+            channels: 2,
+            gain: 1.,
+            mute: false,
+            mixer: Default::default(),
+        });
+        m.connections = vec![
+            route(Group::Input(2), Group::Bus(3)),
+            route(Group::Input(2), Group::Bus(4)),
+            route(Group::Bus(3), Group::Bus(8)),
+            route(Group::Bus(4), Group::Bus(8)),
+            route(Group::Bus(8), Group::Output(1)),
+        ];
+        m.latency = Some(Default::default());
+        let mut graph = Prepared::at_rate(Arc::new(m), &rt.session, rate).unwrap();
+        graph.mix_control(Target::Return(3), Parameter::Solo, 1.);
+        rt.routing_input_frame[..2].copy_from_slice(&[0.125, -0.0625]);
+        for _ in 0..4 {
+            graph.render(&mut rt, false, 0., 2);
+        }
+        let left = graph
+            .nodes
+            .iter()
+            .position(|n| n.group == Group::Bus(3))
+            .unwrap();
+        let right = graph
+            .nodes
+            .iter()
+            .position(|n| n.group == Group::Bus(4))
+            .unwrap();
+        let sum = graph
+            .nodes
+            .iter()
+            .position(|n| n.group == Group::Bus(8))
+            .unwrap();
+        assert_eq!(&graph.nodes[left].taps[2][..2], &[0.0625, -0.03125]);
+        assert_eq!(
+            &graph.nodes[right].taps[2][..2],
+            &[0.125, -0.0625],
+            "Unselected return still processes its feeders"
+        );
+        assert_eq!(&graph.nodes[sum].taps[2][..2], &[0.0625, -0.03125]);
+        let output = graph
+            .nodes
+            .iter()
+            .position(|n| n.group == Group::Output(1))
+            .unwrap();
+        let monitor = graph.monitor_mix(output).unwrap().0;
+        assert_eq!(&monitor[..2], &[0.0625, -0.03125]);
+        graph.mix_control(Target::Return(4), Parameter::SoloSafe, 1.);
+        graph.render(&mut rt, false, 0., 2);
+        assert_eq!(&graph.nodes[sum].taps[2][..2], &[0.1875, -0.09375]);
+        assert_eq!(
+            test_alloc::measure(|| {
+                graph.render(&mut rt, false, 0., 2);
+            }),
+            test_alloc::Counts::default()
+        );
+    }
+}

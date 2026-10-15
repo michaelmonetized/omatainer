@@ -94,6 +94,9 @@ impl Positions {
                 }
             };
             match group {
+                Group::FixedReturn(_) => {
+                    for track in &layout.tracks { implicit(indices[&Group::Track(track.id)]); }
+                }
                 Group::Scene(_) => {
                     for track in layout.tracks.iter().filter(|track| {
                         track.active && !model.tracks_without_default_send.contains(&track.id)
@@ -102,6 +105,7 @@ impl Positions {
                     }
                 }
                 Group::Main => {
+                    for send in 0..2 {if !model.fixed_returns_without_default_send[send] {implicit(indices[&Group::FixedReturn(send as u8)]);}}
                     for scene in layout.scenes.iter().filter(|scene| scene.active) {
                         implicit(indices[&Group::Scene(scene.id)]);
                     }
@@ -154,7 +158,7 @@ impl Positions {
                     processed[0] = stereo;
                     processed[1] = stereo;
                 }
-                Group::Plugin(_) => {
+                Group::Plugin(_) | Group::FixedReturn(_) => {
                     let mixed = std::array::from_fn(|deck| {
                         if input.iter().all(|channel| channel[deck] == Delay::Absent) {
                             Delay::Absent
@@ -166,11 +170,7 @@ impl Positions {
                 }
                 _ => {}
             }
-            let mut post_mixer = processed;
-            if matches!(group, Group::Bus(id) if model.buses.iter().any(|bus| bus.id == id && (bus.mute || bus.gain == 0.0)))
-            {
-                post_mixer.fill([Delay::Absent; DECKS]);
-            }
+            let post_mixer = processed;
             taps[index] = [input, processed, post_mixer];
             if let Group::Output(id) = group {
                 let port = model.port(id, Direction::Output).unwrap();
