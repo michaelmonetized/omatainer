@@ -166,7 +166,7 @@ pub(crate) fn measure(
     {
         return Err("Final encoded file changed the reviewed sample rate or channel count".into());
     }
-    let (meter, supported) = api::Meter::new(rate, channels, mask)?;
+    let (meter, supported) = api::Meter::new(rate, channels, mask, cancel)?;
     let mut pending = Vec::new();
     let mut pcm = Sha256::new();
     let mut frames = 0_u64;
@@ -278,7 +278,7 @@ fn meter_tool(version: &str) -> Result<Tool, String> {
 /// Args: cancellation. Returns bundled meter source/ABI and actual decoder/probe identities, or a useful missing-tool error.
 pub(crate) fn preflight(cancel: &AtomicBool) -> Result<serde_json::Value, String> {
     let api = api::Api::open()?;
-    let (meter, valid) = api::Meter::new(48000, 2, Some(3))?;
+    let (meter, valid) = api::Meter::new(48000, 2, Some(3), cancel)?;
     if !valid {
         return Err("Bundled stereo meter refused standard layout".into());
     }

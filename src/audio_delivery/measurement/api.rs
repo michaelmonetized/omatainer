@@ -39,6 +39,7 @@ impl Api {
 pub(super) struct Meter {
     pub api: Api,
     state: *mut c_void,
+    _exclusive: std::sync::MutexGuard<'static, ()>,
 }
 impl Drop for Meter {
     fn drop(&mut self) {
@@ -48,7 +49,23 @@ impl Drop for Meter {
 impl Meter {
     /// Prepare bounded loudness/peak measurement.
     /// Args: actual rate/count and canonical mask. Returns native state plus whether layout weights are qualified; unknown wide layouts retain peak-only measurement.
-    pub fn new(rate: u32, channels: u16, mask: Option<u32>) -> Result<(Self, bool), String> {
+    pub fn new(
+        rate: u32,
+        channels: u16,
+        mask: Option<u32>,
+        cancel: &std::sync::atomic::AtomicBool,
+    ) -> Result<(Self, bool), String> {
+        static EXCLUSIVE: std::sync::Mutex<()> = std::sync::Mutex::new(());
+        let exclusive = loop {
+            crate::audio_delivery::active(cancel)?;
+            match EXCLUSIVE.try_lock() {
+                Ok(guard) => break guard,
+                Err(std::sync::TryLockError::WouldBlock) => {
+                    std::thread::sleep(std::time::Duration::from_millis(2))
+                }
+                Err(_) => return Err("Native meter serialization was interrupted".into()),
+            }
+        };
         let api = Api::open()?;
         let supported = match mask {
             Some(m) => m.count_ones() == u32::from(channels) && m & !0x63f == 0,
@@ -64,7 +81,11 @@ impl Meter {
         if state.is_null() {
             return Err("Cannot allocate bounded delivery loudness meter".into());
         }
-        let meter = Self { api, state };
+        let meter = Self {
+            api,
+            state,
+            _exclusive: exclusive,
+        };
         let map = if let Some(mask) = mask {
             (0..32)
                 .filter(|bit| mask & (1 << bit) != 0)
