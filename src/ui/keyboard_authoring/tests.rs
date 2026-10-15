@@ -139,7 +139,7 @@ trait Keyboard {
     }
     fn text(&mut self, label: &str, text: &str) {
         self.tab_to(label);
-        self.key(Key::A, egui::Modifiers::CTRL);
+        self.key(Key::A, egui::Modifiers::CTRL | egui::Modifiers::COMMAND);
         self.frame(vec![egui::Event::Text(text.into())], egui::Modifiers::NONE);
     }
     fn number(&mut self, label: &str, text: &str) {
