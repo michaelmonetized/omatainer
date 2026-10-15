@@ -53,6 +53,10 @@ Track duplication preserves shared return processors; deleting the return remove
 its owned processor chain and dependent routes. Sidechains and extra plugin outputs
 remain explicit maps. An ambiguous parallel chain or incompatible output width
 refuses the draft rather than dropping channels.
+Owned return effects take the bus pre-FX signal and pass their processed signal to
+the next effect. The last effect's post-mixer tap applies return level, balance and
+mute, so wet tails remain inaudible while muted and keep processing underneath.
+Its post-FX tap remains available for an explicit pre-fader route.
 
 Automation uses absolute song beats. Level and pan interpolate linearly; mute,
 solo and solo safe step at each point. Endpoints hold outside the lane. While song

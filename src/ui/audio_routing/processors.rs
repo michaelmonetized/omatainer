@@ -29,7 +29,12 @@ impl Draft {
                 .links()
                 .filter(|c| {
                     c.source.group == source
-                        && c.source.tap == Tap::PostMixer
+                        && c.source.tap
+                            == if matches!(source, Group::Bus(_)) {
+                                Tap::PreFx
+                            } else {
+                                Tap::PostFx
+                            }
                         && c.map.iter().any(|m| m.gain != 0.)
                 })
                 .collect::<Vec<_>>();
@@ -110,7 +115,11 @@ impl Draft {
         model.connections.push(Connection {
             source: Source {
                 group: source,
-                tap: Tap::PostMixer,
+                tap: if matches!(source, Group::Bus(_)) {
+                    Tap::PreFx
+                } else {
+                    Tap::PostFx
+                },
             },
             destination: Group::Plugin(id),
             map,

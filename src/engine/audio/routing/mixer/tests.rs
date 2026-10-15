@@ -353,3 +353,59 @@ fn named_return_solo_before_shared_sums_keeps_feeders_and_monitor_equivalent() {
         );
     }
 }
+
+#[test]
+fn named_send_automation_uses_compensated_source_time_against_independent_pcm_equation() {
+    use super::super::latency::{Configuration, Report};
+    for rate in [8000, 44100, 48000, 96000] {
+        let (_, mut rt) = Engine::headless_for_test(rate, 256);
+        rt.apply(Command::Stop);
+        rt.playing = true;
+        rt.bpm = 120.;
+        let mut m = model();
+        m.buses.truncate(1);
+        m.buses[0].gain = 1.;
+        m.sends.truncate(1);
+        m.sends[0].pan = 0.;
+        m.sends[0].automation = vec![Lane {
+            parameter: Parameter::Level,
+            points: vec![[0., 0.], [0.01, 1.]],
+        }];
+        m.connections = vec![route(Group::Bus(3), Group::Output(1))];
+        m.latency = Some(Configuration {
+            reports: vec![Report {
+                group: Group::Input(2),
+                external_micros: 7000,
+                processing_micros: 0,
+            }],
+            ..Default::default()
+        });
+        let mut graph = Prepared::at_rate(Arc::new(m), &rt.session, rate).unwrap();
+        let offset = ((u64::from(rate) * 7 + 500) / 1000) as usize;
+        assert_eq!(graph.output_delay(1), offset as u32);
+        let step = 2. / f64::from(rate);
+        for frame in 0..offset + rate as usize / 100 {
+            rt.timeline_frames = frame as u64 + 1;
+            rt.beat = (frame as f64 + 1.) * step;
+            rt.midi_beat = rt.beat;
+            rt.midi_beat_reference = rt.beat;
+            rt.last_midi_step = step;
+            rt.routing_input_frame.fill(0.);
+            if frame >= offset {
+                rt.routing_input_frame[..2].copy_from_slice(&[0.125, -0.0625]);
+            }
+            let actual = graph.render(&mut rt, false, 0., 2);
+            let elapsed = frame.saturating_sub(offset) as f64 * step;
+            let level = (elapsed / 0.01).clamp(0., 1.) as f32;
+            let expected = [(0.125 * level).tanh(), (-0.0625 * level).tanh()];
+            for channel in 0..2 {
+                assert!(
+                    (actual[channel] - expected[channel]).abs() < 1e-7,
+                    "Compensated automation equation at {rate}/{frame}/{channel}: {} != {}",
+                    actual[channel],
+                    expected[channel]
+                );
+            }
+        }
+    }
+}

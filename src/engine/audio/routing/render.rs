@@ -13,7 +13,7 @@ impl Prepared {
         channels: usize,
     ) -> [f32; MAX_PHYSICAL_CHANNELS] {
         self.begin_plugins(rt);
-        self.mixer.evaluate(&self.model,rt.precise_midi_beat(),rt.playing);
+        self.mixer.evaluate_at(&self.model,rt.playing,|delay|super::render_plugins::context(rt,delay).beat);
         self.fixed_levels.fill([0.;2]);for (slot,track)in rt.tracks.iter().enumerate(){if rt.session.tracks[slot].active{self.fixed_levels[slot]=track.surface.sends;}}
         self.begin();
         rt.mic_aux.begin();
@@ -174,7 +174,7 @@ impl Prepared {
                             let slot=self.model.sends.len()+self.nodes[index].slot.unwrap();
                             let values=self.mixer.channels[slot].effective;
                             let output=std::array::from_fn(|channel|input[channel]*values.gain(channel));
-                            for (peak,sample)in self.mixer.channels[slot].peaks.iter_mut().zip(output){*peak=peak.max(sample.abs());}
+                            if !self.model.plugins.iter().any(|p|p.return_bus==Some(bus.id)){for (peak,sample)in self.mixer.channels[slot].peaks.iter_mut().zip(output){*peak=peak.max(sample.abs());}}
                             let _=bus;
                             [input, input, output]
                         }

@@ -87,7 +87,12 @@ impl Prepared {
             self.nodes[node].valid = plugin.dry.valid(intrinsic);
         }
         if saved.output_width() == 1 { output[1] = output[0]; }
-        self.publish(node, [input,output,output]);
+        let post_fx=output;
+        if let Some(bus)=self.plugins[slot].return_slot {
+            let channel=&mut self.mixer.channels[self.model.sends.len()+bus];
+            for (index,sample) in output.iter_mut().enumerate().take(saved.output_width()) {*sample*=channel.effective.gain(index);channel.peaks[index]=channel.peaks[index].max(sample.abs());}
+        }
+        self.publish(node, [input,post_fx,output]);
         if let Some(track) = self.plugins[slot].scene_slot.filter(|track|rt.session.tracks.get(*track).is_some_and(|t|t.active&&Some(t.id)==self.model.plugins[slot].scene_track)) {
             if let Some(scene) = self.scene_nodes[rt.tracks[track].scene_bus] { self.source_send(node,scene,[output[0],output[if self.model.plugins[slot].output_width() == 1 {0} else {1}]],self.nodes[node].valid); }
         }
@@ -118,7 +123,7 @@ impl Prepared {
 
 /// Resolve the musical context belonging to the delayed processor input.
 /// Takes the native renderer and complete upstream delay; returns absolute sample/quarter-note positions, tempo, meter and playing state.
-fn context(rt: &RtEngine, delay: u32) -> Context {
+pub(super) fn context(rt: &RtEngine, delay: u32) -> Context {
     let seconds = (rt.timeline_seconds() - if rt.playing { 1. / f64::from(rt.sr) } else { 0. } - f64::from(delay) / f64::from(rt.sr)).max(0.);
     let beat = rt.conductor.as_ref().map_or_else(|| (rt.precise_midi_beat() - if rt.playing { rt.last_midi_step } else { 0. } - f64::from(delay) / f64::from(rt.sr) * f64::from(rt.bpm) / 60.).max(0.), |c| c.beat_at_seconds(seconds));
     let signature = rt.conductor.as_ref().map(|c| { let meter=c.position(beat).2; [i32::from(meter.numerator), 1i32 << meter.denominator_power] }).unwrap_or_else(|| rt.scenes.timing.map_or([4,4], |timing| [i32::from(timing.signature.numerator),1i32 << timing.signature.denominator_power]));
