@@ -372,7 +372,7 @@ fn mono_normalization_integer_formats_and_lossless_compressed_delivery_decode_co
             assert!(decoded.sample.data.iter().any(|v| v.abs() > 0.5));
         } else {
             assert_eq!(decoded.sample.frames(), 4096);
-            let tolerance = if matches!(format, Format::Pcm16 | Format::Flac16) {
+            let tolerance = if matches!(format, Format::Pcm16 | Format::Flac16 | Format::Aiff16) {
                 0.00007
             } else {
                 0.0000003

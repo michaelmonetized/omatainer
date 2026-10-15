@@ -17,7 +17,7 @@ mod render;
 mod tests;
 pub(crate) mod wav;
 
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub(crate) enum Format {
     #[default]
     Float32,
@@ -26,15 +26,33 @@ pub(crate) enum Format {
     Flac16,
     Flac24,
     Mp3,
+    Bwf24,
+    Rf64Float32,
+    Rf64Pcm24,
+    Aiff16,
+    Aiff24,
 }
 impl Format {
-    pub const ALL: [Self; 6] = [
+    pub const RECORDING: [Self; 6] = [
         Self::Float32,
         Self::Pcm16,
         Self::Pcm24,
         Self::Flac16,
         Self::Flac24,
         Self::Mp3,
+    ];
+    pub const ALL: [Self; 11] = [
+        Self::Float32,
+        Self::Pcm16,
+        Self::Pcm24,
+        Self::Flac16,
+        Self::Flac24,
+        Self::Mp3,
+        Self::Bwf24,
+        Self::Rf64Float32,
+        Self::Rf64Pcm24,
+        Self::Aiff16,
+        Self::Aiff24,
     ];
     pub fn title(self) -> &'static str {
         match self {
@@ -44,33 +62,57 @@ impl Format {
             Self::Flac16 => "FLAC · 16-bit",
             Self::Flac24 => "FLAC · 24-bit",
             Self::Mp3 => "MP3 · 320 kbps",
+            Self::Bwf24 => "BWF · 24-bit PCM",
+            Self::Rf64Float32 => "RF64 · 32-bit float",
+            Self::Rf64Pcm24 => "RF64 · 24-bit PCM",
+            Self::Aiff16 => "AIFF · 16-bit PCM",
+            Self::Aiff24 => "AIFF · 24-bit PCM",
         }
     }
     pub fn extension(self) -> &'static str {
         match self {
             Self::Flac16 | Self::Flac24 => "flac",
             Self::Mp3 => "mp3",
+            Self::Aiff16 | Self::Aiff24 => "aiff",
             _ => "wav",
         }
     }
     pub fn encoding(self) -> wav::Encoding {
         match self {
-            Self::Pcm16 | Self::Flac16 => wav::Encoding::Pcm16,
-            Self::Pcm24 | Self::Flac24 => wav::Encoding::Pcm24,
+            Self::Pcm16 | Self::Flac16 | Self::Aiff16 => wav::Encoding::Pcm16,
+            Self::Pcm24 | Self::Flac24 | Self::Bwf24 | Self::Rf64Pcm24 | Self::Aiff24 => {
+                wav::Encoding::Pcm24
+            }
             _ => wav::Encoding::Float32,
         }
     }
     pub fn dither(self) -> bool {
         matches!(
             self,
-            Self::Pcm16 | Self::Pcm24 | Self::Flac16 | Self::Flac24
+            Self::Pcm16
+                | Self::Pcm24
+                | Self::Flac16
+                | Self::Flac24
+                | Self::Bwf24
+                | Self::Rf64Pcm24
+                | Self::Aiff16
+                | Self::Aiff24
         )
+    }
+    fn container(self) -> wav::Container {
+        match self {
+            Self::Bwf24 => wav::Container::Bwf,
+            Self::Rf64Float32 | Self::Rf64Pcm24 => wav::Container::Rf64,
+            Self::Aiff16 | Self::Aiff24 => wav::Container::Aiff,
+            _ => wav::Container::Wave,
+        }
     }
     fn external(self) -> bool {
         matches!(self, Self::Flac16 | Self::Flac24 | Self::Mp3)
     }
 }
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
+#[serde(default, deny_unknown_fields)]
 pub(crate) struct Options {
     pub format: Format,
     pub rate: u32,
@@ -117,7 +159,8 @@ pub(crate) enum Source {
     Scene,
     Arrangement,
 }
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
+#[serde(default, deny_unknown_fields)]
 pub(crate) struct Export {
     pub source: Source,
     pub scene: u16,
@@ -174,7 +217,11 @@ impl Export {
                 u64::from(self.options.channels) * self.options.format.encoding().bytes() as u64,
             )
             .ok_or("Export size overflow")?;
-        if body == 0 || bytes > u64::from(u32::MAX) - 36 {
+        if body == 0
+            || (!self.options.format.external()
+                && self.options.format.container() != wav::Container::Rf64
+                && bytes > u64::from(u32::MAX) - 16384)
+        {
             return Err("Export exceeds the supported single-file size; shorten the range or reduce repeats/rate".into());
         }
         Ok((start, body, tail, total))
@@ -219,6 +266,32 @@ pub(crate) fn encode(
     cancel: &AtomicBool,
     progress: &crate::background::Reporter,
 ) -> Result<(f32, f64), String> {
+    encode_with_settings(
+        raw,
+        destination,
+        body,
+        tail,
+        repeats,
+        options,
+        None,
+        cancel,
+        progress,
+    )
+}
+
+/// Encode the same delivery path with authored container metadata.
+/// Args: bounded spool, exact ranges, codec, optional canonical mask/tags and worker controls. Returns source peak and named sample-peak gain.
+pub(crate) fn encode_with_settings(
+    raw: &Path,
+    destination: &Path,
+    body: u64,
+    tail: u64,
+    repeats: u16,
+    options: &Options,
+    settings: Option<&wav::Settings>,
+    cancel: &AtomicBool,
+    progress: &crate::background::Reporter,
+) -> Result<(f32, f64), String> {
     options.validate()?;
     active(cancel)?;
     let width = usize::from(options.channels);
@@ -259,14 +332,33 @@ pub(crate) fn encode(
     } else {
         destination
     };
-    let mut writer = wav::Writer::new(
-        native,
-        options.channels,
-        options.rate,
-        options.format.encoding(),
-        options.dither,
-    )?;
     let total = body * u64::from(repeats) + tail;
+    let mut config = settings.cloned().unwrap_or_default();
+    config.container = options.format.container();
+    if options.format.external() {
+        config.container = wav::Container::Rf64;
+    }
+    let mut writer = if settings.is_some()
+        || options.format.container() != wav::Container::Wave
+        || options.format.external()
+    {
+        wav::Writer::container(
+            native,
+            options.channels,
+            options.rate,
+            options.format.encoding(),
+            options.dither,
+            config,
+        )?
+    } else {
+        wav::Writer::new(
+            native,
+            options.channels,
+            options.rate,
+            options.format.encoding(),
+            options.dither,
+        )?
+    };
     let mut done = 0;
     progress.progress(0, Some(total));
     for repeat in 0..repeats {

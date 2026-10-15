@@ -140,6 +140,9 @@ impl Recorder {
         stop: &AtomicBool,
     ) -> Result<Outcome, String> {
         request.options.validate()?;
+        if !Format::RECORDING.contains(&request.options.format) {
+            return Err("Use offline delivery for BWF/RF64/AIFF; performance recording retains segmented WAV/FLAC/MP3".into());
+        }
         if stop.load(Ordering::Acquire) {
             return Err("Recording cancelled before activation".into());
         }

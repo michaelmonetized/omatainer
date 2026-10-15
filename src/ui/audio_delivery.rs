@@ -274,7 +274,7 @@ impl App {
             ui.add_enabled_ui(!busy,|ui|{if let Some(plan)=&panel.plan{
                 if panel.record_seconds==0{panel.record_seconds=3600;}
                 egui::ComboBox::from_id_salt("performance-record-source").selected_text(plan.records.iter().find(|s|Some(s.id)==panel.record_source).map_or("Choose a recording source",|s|s.name.as_str())).show_ui(ui,|ui|{for source in &plan.records{ui.selectable_value(&mut panel.record_source,Some(source.id),&source.name);}});
-                egui::ComboBox::from_id_salt("performance-record-format").selected_text(panel.record_format.title()).show_ui(ui,|ui|{for format in Format::ALL{ui.selectable_value(&mut panel.record_format,format,format.title());}});
+                egui::ComboBox::from_id_salt("performance-record-format").selected_text(panel.record_format.title()).show_ui(ui,|ui|{for format in Format::RECORDING{ui.selectable_value(&mut panel.record_format,format,format.title());}});
                 if !panel.record_format.dither(){panel.record_dither=false;}ui.add_enabled(panel.record_format.dither(),egui::Checkbox::new(&mut panel.record_dither,tr!("Dither the recording to integer PCM")));
                 ui.horizontal(|ui|{ui.label(tr!("Maximum recording seconds"));ui.add(egui::DragValue::new(&mut panel.record_seconds).range(1..=43200));});
                 ui.label(tr!("New recording folder"));ui.add(egui::TextEdit::singleline(&mut panel.record_path).hint_text("/home/you/Music/Recordings/new-set").desired_width(f32::INFINITY));

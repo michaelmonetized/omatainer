@@ -4,7 +4,7 @@ This is the pinned `symphonia-format-riff` 0.5.5 source, with its MPL-2.0
 license and original file notices retained. `UPSTREAM.json` records the
 upstream archive digest and unmodified source hashes.
 
-Only `src/aiff/chunks.rs` and `src/aiff/mod.rs` change behavior: subtract the
+`src/aiff/chunks.rs` and `src/aiff/mod.rs` retain their existing bounds behavior: subtract the
 SSND offset/block-size header from the audio-data extent, reject a shorter
 chunk, and require the resulting frame count to agree with COMM. Upstream
 0.5.5 counts the eight header bytes as audio: an ordinary 12,000-frame stereo
@@ -15,7 +15,7 @@ SSND must also contain a whole number of audio frames. Its length excludes the
 optional outer even-byte chunk pad, so valid odd-length 8-bit mono audio remains
 supported while an incomplete interleaved sample frame is rejected.
 
-Wave handling and codecs are unchanged. Offset/block-aligned AIFF remains
+Wave codecs are unchanged. RF64 handling is described below. Offset/block-aligned AIFF remains
 explicitly unsupported, as in the pinned upstream release. The integration
 regressions use actual FFmpeg-generated AIFF, Unicode tags after SSND, exact
 production-decoded PCM, and malformed chunk/frame-count refusal.
@@ -23,3 +23,7 @@ production-decoded PCM, and malformed chunk/frame-count refusal.
 Modified source is retained here and published as part of Omatainer. The
 release provenance inventory must bind all of these files and distinguish this
 modified component from the upstream archive before packaging.
+
+## RF64 single data extent
+
+`src/wave/mod.rs` also recognizes RF64 and reads mandatory ds64 64-bit RIFF/data/sample counts. It refuses truncated, overflowing, inconsistent or size-table extents before decoding. Single data extent files authored by delivery retain exact declared frames, including beyond the 32-bit data limit; existing decode memory admission still applies. Ordinary RIFF behavior is retained. Original MPL notices remain; this source is retained in the package.
