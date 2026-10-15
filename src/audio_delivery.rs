@@ -13,6 +13,10 @@ use std::{
 pub(crate) mod publication;
 pub(crate) use render::output_contract;
 pub(crate) use render::run_selected as render_selected;
+pub(crate) mod cli;
+pub(crate) mod finishing;
+pub(crate) mod measurement;
+mod process;
 pub(crate) mod recovery;
 mod render;
 #[cfg(test)]
@@ -438,9 +442,37 @@ pub(crate) fn run(
     permit: &WorkPermit,
     progress: &crate::background::Reporter,
 ) -> Result<Outcome, String> {
+    run_selected(
+        captured,
+        request,
+        None,
+        &finishing::Config::default(),
+        destination,
+        permit,
+        progress,
+    )
+}
+
+/// Publish an exact captured contribution with final-file QC.
+/// Args: coherent capture, reviewed request, optional canonical selection, metadata/targets, new folder and admitted work. Returns only after atomic publication; source state and playback remain untouched.
+pub(crate) fn run_selected(
+    captured: Captured,
+    request: &Export,
+    selection: Option<&crate::engine::audio::routing::selection::Selection>,
+    config: &finishing::Config,
+    destination: &Path,
+    permit: &WorkPermit,
+    progress: &crate::background::Reporter,
+) -> Result<Outcome, String> {
     let cancel = permit.cancel();
     active(&cancel)?;
+    config.validate()?;
+    let contract = output_contract(&captured.state, request)?;
+    if let Some(selection) = selection {
+        selection.plan(&captured, request.output_alias)?;
+    }
     let bounds = request.frames()?;
+    measurement::preflight(&cancel)?;
     if !destination.is_absolute() || destination.as_os_str().len() > 4096 || destination.exists() {
         return Err("Choose a new absolute export folder".into());
     }
@@ -481,23 +513,59 @@ pub(crate) fn run(
         ));
     }
     let raw = stage.path.join("render.f32");
-    render::run(captured, request, &raw, bounds, &cancel, progress)?;
+    render_selected(
+        captured, request, selection, &raw, bounds, &cancel, progress,
+    )?;
     let file = stage
         .path
         .join(format!("master.{}", request.options.format.extension()));
-    let (peak, gain) = encode(
+    let mut settings = wav::Settings {
+        wave_mask: contract.wave_mask,
+        metadata: config.metadata.clone(),
+        ..Default::default()
+    };
+    settings.metadata.time_reference = settings
+        .metadata
+        .time_reference
+        .checked_add(bounds.0)
+        .ok_or("BWF time reference overflow")?;
+    let (peak, gain) = encode_with_settings(
         &raw,
         &file,
         bounds.1,
         bounds.2,
         request.repeats,
         &request.options,
+        Some(&settings),
         &cancel,
         progress,
     )?;
     std::fs::remove_file(raw).map_err(|e| e.to_string())?;
     let mut receipt = create(&stage.path.join("export.json"))?;
-    let metadata = serde_json::json!({"schema":1,"project_revision":revision,"source":format!("{:?}",request.source),"scene":request.scene,"decks_included":request.decks,"output_alias":request.output_alias,"range_seconds":[request.start,request.end],"repeats":request.repeats,"tail_seconds":request.tail,"rate":request.options.rate,"channels":request.options.channels,"format":request.options.format.title(),"frames":bounds.3,"source_peak":peak,"normalization_gain":gain,"dither":request.options.dither,"render":"independent native graph; fresh DSP state; actual preroll; source channels in saved order; no physical input or device opened"});
+    let mut metadata = serde_json::json!({"schema":2,"project_revision":revision,"source":format!("{:?}",request.source),"scene":request.scene,"decks_included":request.decks,"output_alias":request.output_alias,"range_seconds":[request.start,request.end],"repeats":request.repeats,"tail_seconds":request.tail,"rate":request.options.rate,"channels":request.options.channels,"format":request.options.format.title(),"frames":bounds.3,"source_peak":peak,"normalization_gain":gain,"dither":request.options.dither,"render":"independent native graph; fresh DSP state; actual preroll; source channels in saved order; no physical input or device opened"});
+    metadata["selection"] = serde_json::to_value(selection).map_err(|e| e.to_string())?;
+    metadata["speakers"] = serde_json::to_value(&contract.speakers).map_err(|e| e.to_string())?;
+    metadata["physical_source_channels"] = serde_json::json!(contract.channels);
+    metadata["wave_mask"] = serde_json::json!(contract.wave_mask);
+    metadata["tap_boundary"]=serde_json::json!("Track after own devices before shared scene FX; Scene includes shared scene FX; Return saved bus; FixedReturn 0 reverb/1 echo. PostDevice/Dry bypass master and terminal limiter; MasteredSolo includes normal master/limiter and is not exact-sum. All sources and sidechain feeders continue processing.");
+    let mut effective = config.clone();
+    effective.metadata = settings.metadata;
+    let finished = finishing::finish(
+        &file,
+        &request.options,
+        contract.wave_mask,
+        &effective,
+        &serde_json::json!({"project_revision":revision,"selection":selection,"range_start_frame":bounds.0,"frames":bounds.3}),
+        &cancel,
+    )?;
+    if finished.report.frames != bounds.3 {
+        return Err("Final encoded frame count differs from the reviewed range".into());
+    }
+    metadata["metadata"] = serde_json::to_value(&effective.metadata).map_err(|e| e.to_string())?;
+    metadata["qc"] = serde_json::to_value(&finished.report).map_err(|e| e.to_string())?;
+    metadata["targets"] = serde_json::to_value(&effective.targets).map_err(|e| e.to_string())?;
+    metadata["violations"] = serde_json::json!(finished.violations);
+    metadata["file_sha256"] = serde_json::json!(finished.sha256);
     receipt
         .write_all(&serde_json::to_vec_pretty(&metadata).map_err(|e| e.to_string())?)
         .and_then(|_| receipt.sync_all())
@@ -511,6 +579,11 @@ pub(crate) fn run(
             &cancel,
         )?),
     );
+    let warning = [finished.warning, warning]
+        .into_iter()
+        .flatten()
+        .collect::<Vec<_>>();
+    let warning = (!warning.is_empty()).then(|| warning.join("; "));
     Ok(Outcome {
         folder: destination.to_owned(),
         frames: bounds.3,
