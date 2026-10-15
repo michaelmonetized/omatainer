@@ -148,8 +148,8 @@ pub(crate) fn run_selected(mut captured:Captured,request:&Export,selection:Optio
     rt.offline_plugin_cancel = cancel.clone();
     if rt.routing.as_ref().is_some_and(|graph| graph.model.plugins.iter().zip(&graph.plugins).any(|(saved,plugin)| !saved.bypass && plugin.endpoint.is_none())) { return Err("A native plugin is unavailable; relink its exact identity or explicitly bypass it before exporting".into()); }
     let mut output = create(raw)?;
-    let mut rendered = [0_f32; 1024 * MAX_PHYSICAL_CHANNELS];
-    let mut bytes = [0_u8; 1024 * MAX_PHYSICAL_CHANNELS * 4];
+    let mut rendered = vec![0_f32; 1024 * width];
+    let mut bytes = vec![0_u8; 1024 * usize::from(_contract.channel_count) * 4];
     let mut position = 0_u64;
     let stop = bounds.0 + bounds.1;
     let delay = u64::from(source_request.output_alias.and_then(|alias| rt.routing.as_ref().map(|graph| graph.output_delay(alias))).unwrap_or(0));

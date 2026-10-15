@@ -13117,7 +13117,7 @@
     "src/ableton/timing.rs": "a79c3f631bcb2bbe87683ed0df232ef3aca174beb9d120e5d530ccff707f4230",
     "src/audio_delivery.rs": "340d4214c96fcfb905b43dd85fa49a6dbce9f9004ae6c9c770f6ba78d1838313",
     "src/audio_delivery/recovery.rs": "004fec1d8facd116bd4466e0860158dfcdc17ba20b1638e8185f2cfeb0af166f",
-    "src/audio_delivery/render.rs": "f37801b6fd33456d818670019507e6f54a123d48873133c19106654a14ca2a11",
+    "src/audio_delivery/render.rs": "b8989e55873bea68c4563b67a154af55291e1e489794736b97bea5086dc20e32",
     "src/audio_delivery/tests.rs": "fc651db6b274723e0a5eea0cd71efb6659b68b2327c054792c65c5e9867943e8",
     "src/audio_delivery/tests/fixed_send_tests.rs": "09f1c00ce9410739cb73ed533bda1237425519526c2c3c54b67554deca9f46c3",
     "src/audio_delivery/wav.rs": "f17edb504de9784e09158b0189933fa8a86d1f04afb3cf8ada1fe01ad9d3a1ce",
