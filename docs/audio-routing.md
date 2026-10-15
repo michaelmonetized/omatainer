@@ -41,6 +41,7 @@ to a sidechain. A mono source mapped to a stereo pair balances the destination
 pair; native input and output buses use their local channel order. Mono-to-mono sends and
 mono return strips ignore balance and retain their level. Balance remains unity
 at the center, preserving existing stereo levels.
+Native pre-FX taps use input bus order; processed taps use output bus order.
 Pre FX and post FX taps bypass source mute, solo, fader, pan and crossfader. Post
 mixer includes those controls. A return's mute changes its post-mixer tap; pre taps
 continue processing. These tap rules also apply to automation and MIDI controls.

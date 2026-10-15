@@ -39,8 +39,9 @@ impl Map {
     /// Takes a validated map and graph; returns source balance for stereo or destination bus-local balance for a mono upmix, with mono destinations unchanged.
     fn prepare(map: ChannelMap, connection: &Connection, model: &Model, layout: &Layout) -> Self {
         let (channel,width)=if let Group::Plugin(id)=connection.source.group {
-            Self::bus_channel(map.source,&model.plugins.iter().find(|p|p.id==id).unwrap().outputs)
-        } else {(usize::from(map.source),model.width(connection.source.group,layout).unwrap())};
+            let plugin=model.plugins.iter().find(|p|p.id==id).unwrap();
+            Self::bus_channel(map.source,if connection.source.tap==Tap::PreFx {&plugin.inputs} else {&plugin.outputs})
+        } else {(usize::from(map.source),model.source_width(connection.source,layout).unwrap())};
         let balance = if width==1 {
             let (channel,width)=if let Group::Plugin(id)=connection.destination {
                 Self::bus_channel(map.destination,&model.plugins.iter().find(|p|p.id==id).unwrap().inputs)
@@ -454,12 +455,25 @@ fn order_from_nodes(nodes:&[Node])->Vec<Group>{nodes.iter().map(|n|n.group).coll
 
 #[cfg(test)]
 mod tests {
-    use super::Map;
+    use super::*;
 
     #[test]
     fn named_native_bus_offsets_keep_sidechain_mono_and_secondary_stereo_separate() {
         for (channel,expected) in [(0,(0,2)),(1,(1,2)),(2,(0,1)),(3,(0,2)),(4,(1,2))] {
             assert_eq!(Map::bus_channel(channel,&[2,1,2]),expected);
+        }
+    }
+
+    #[test]
+    fn named_native_pre_fx_maps_use_input_bus_identity_before_mono_output() {
+        let layout=Layout::legacy((0..8).map(|n|format!("Track {n}")),8);
+        let mut model=Model::default();model.next_id=3;
+        let saved=crate::plugin_host::Saved {schema:1,binary:crate::plugin_host::BinaryIdentity {bundle:"/home/michael/missing/Tap.clap".into(),binary:"/home/michael/missing/Tap.clap".into(),sha256:"0".repeat(64),arch:std::env::consts::ARCH.into()},class_id:"clap:org.omatainer.tap".into(),plugin_version:"1".into(),state_codec:"clap-state-1".into(),state:vec![]};
+        model.plugins.push(super::super::plugins::Instance {id:2,name:"Different native input/output widths".into(),saved,inputs:vec![2,1],outputs:vec![1],midi_track:None,scene_track:None,return_bus:None,instrument:false,bypass:true,latency:0,parameters:vec![],automation:vec![],unavailable:None});
+        for (tap,source,destination,expected) in [(Tap::PreFx,0,1,0),(Tap::PreFx,1,0,1),(Tap::PreFx,2,1,1),(Tap::PostFx,0,1,1),(Tap::PostMixer,0,0,0)] {
+            let map=ChannelMap {source,destination,gain:1.};
+            let connection=Connection {source:Source {group:Group::Plugin(2),tap},destination:Group::Output(1),map:vec![map]};
+            assert_eq!(Map::prepare(map,&connection,&model,&layout).balance,expected);
         }
     }
 }
