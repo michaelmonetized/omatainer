@@ -160,7 +160,7 @@
       "source": "src/ui/audio_delivery/tests/speakers.rs",
       "requirement": "required",
       "acceptance": "actual 2.1 graph/ordered physical alias, native width UI/mono switch, RF64 render, independent analytic PCM and native project/CLI recipe/batch reopen",
-      "source_sha256": "0939460f141468d3492b2ff2c3f9efe98a7df74a9ab9612e54df87a7d3edf889"
+      "source_sha256": "0a5972154b25b1fd19b40855760ba7acb096ada754cf08fae9b8246d9a771dee"
     },
     {
       "id": "native-recording-speaker-contract",
@@ -168,7 +168,7 @@
       "source": "src/engine/audio/routing/record/delivery/tests/contract_tests.rs",
       "requirement": "required",
       "acceptance": "actual Recorder converted capture, declared/unknown 3ch float/PCM24 extensible headers, independent FFmpeg ordered PCM, odd/partial recovery, metadata retained and stale/fold refusal",
-      "source_sha256": "9f42be901370077fb489366790c2552e7886943e5c4da45d094ddce3b07423c1"
+      "source_sha256": "42ac3f73deb8f9b79e2c98a2e8050113733633ea8baf340d48138ea8619920d7"
     },
     {
       "id": "recovery-fifo-manifest",
@@ -176,7 +176,23 @@
       "source": "src/engine/audio/routing/record/delivery/tests/contract_tests.rs",
       "requirement": "required",
       "acceptance": "actual FIFO recording manifest without writer rejected via nonblocking regular descriptor validation",
-      "source_sha256": "9f42be901370077fb489366790c2552e7886943e5c4da45d094ddce3b07423c1"
+      "source_sha256": "42ac3f73deb8f9b79e2c98a2e8050113733633ea8baf340d48138ea8619920d7"
+    },
+    {
+      "id": "surround-51-encoded-ui-cli-retained",
+      "test": "ui::audio_delivery::tests::speakers::surround_51_native_encoded_graph_ui_cli_reopen_retains_actual_speaker_files",
+      "source": "src/ui/audio_delivery/tests/speakers.rs",
+      "requirement": "required",
+      "acceptance": "actual6ch canonical graph RF64 header0x60F, independent FFprobe5.1(side)/FFmpeg PCM, real native-save/reopen CLI selected contribution, retained input/native/encoded paths+size+SHA+source/test identity",
+      "source_sha256": "0a5972154b25b1fd19b40855760ba7acb096ada754cf08fae9b8246d9a771dee"
+    },
+    {
+      "id": "surround-51-recording-recovery-retained",
+      "test": "engine::audio::routing::record::delivery::tests::contract_tests::surround_51_recording_headers_recovery_keep_six_ordered_speakers_and_retained_files",
+      "source": "src/engine/audio/routing/record/delivery/tests/contract_tests.rs",
+      "requirement": "required",
+      "acceptance": "actual declared/unknown6ch Float32/PCM24 recordings, independent headers/PCM, finite/partial exact5frame recovery on private copies; retained original19frame files, stale/fold/mask mismatch refusal",
+      "source_sha256": "42ac3f73deb8f9b79e2c98a2e8050113733633ea8baf340d48138ea8619920d7"
     }
   ],
   "proof_axes": {

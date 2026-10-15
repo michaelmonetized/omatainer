@@ -3514,3 +3514,5 @@ A declared program output offers its native channel count in **Audio export & re
 Performance recording keeps its existing WAV/FLAC/MP3 choices. The reviewed native recording contract supplies speaker metadata and wide WAV extensible headers. Unknown wide recording sources retain an unspecified mask and no invented speaker names. Recording accepts the actual source width and order; offline mono/stereo folds are not live recording contracts. Source review must be refreshed after a channel or speaker declaration changes.
 
 Recovery preserves legacy 44-byte files and the recording path's tagged extensible RIFF headers. It retains complete finite frames, speaker masks and metadata, and updates data/RIFF/fact counts and the final word pad. A header/manifest speaker mismatch is refused before repair.
+
+The declared **5.1 side (FL FR FC LFE SL SR)** bed uses mask0x60F and the same native delivery/recording contract. Those are encoded speaker identities; physical source indices can be in a different order. Choose the saved native bed to retain all six channels. The explicit mono/stereo fold follows routing's declared monitoring policy and excludes LFE.
