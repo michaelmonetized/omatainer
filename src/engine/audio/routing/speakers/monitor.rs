@@ -3,38 +3,52 @@ use crate::engine::audio::routing::model::{Direction, Model, MAX_PHYSICAL_CHANNE
 
 #[derive(Debug)]
 pub(crate) struct Runtime {
-    channels: [usize; 3],
+    channels: [usize; 8],
+    width: usize,
+    lfe: usize,
     blend: f32,
-    low: [f32; 2],
+    low: [f32; 8],
     level: f32,
 }
 impl Runtime {
     /// Prepare the explicitly selected software monitoring split.
-    /// Takes a validated 2.1 alias, cutoff, level and actual sample rate; returns fixed filter history without opening a device.
+    /// Takes a validated declared LFE alias, cutoff, level and actual sample rate; returns fixed filter history without opening a device.
     pub fn new(config: BassManagement, model: &Model, rate: u32) -> Self {
         let channels = &model
             .port(config.output, Direction::Output)
             .unwrap()
             .channels;
+        let layout = model
+            .speaker_layout(super::super::model::Group::Output(config.output))
+            .unwrap();
         Self {
-            channels: std::array::from_fn(|i| usize::from(channels[i])),
+            channels: std::array::from_fn(|i| channels.get(i).map_or(0, |c| usize::from(*c))),
+            width: layout.channels(),
+            lfe: layout
+                .speakers()
+                .iter()
+                .position(|s| *s == super::Speaker::LowFrequency)
+                .unwrap(),
             blend: 1. - (-std::f32::consts::TAU * config.cutoff / rate.max(1) as f32).exp(),
-            low: [0.; 2],
+            low: [0.; 8],
             level: config.level,
         }
     }
-    /// Split front-channel bass only in the physical monitoring path.
-    /// Takes the completed physical frame; replaces each front channel with its complementary high pass and adds their averaged low pass to the existing unity LFE.
+    /// Split full-range channel bass only in the physical monitoring path.
+    /// Takes the completed physical frame; replaces each full-range channel with its complementary high pass and adds their averaged low pass to the existing unity LFE.
     pub fn process(&mut self, frame: &mut [f32; MAX_PHYSICAL_CHANNELS]) {
         let mut bass = 0.;
-        for channel in 0..2 {
+        for channel in 0..self.width {
+            if channel == self.lfe {
+                continue;
+            }
             let index = self.channels[channel];
             let source = frame[index];
             self.low[channel] += self.blend * (source - self.low[channel]);
             frame[index] = source - self.low[channel];
-            bass += self.low[channel] * 0.5;
+            bass += self.low[channel] / (self.width - 1) as f32;
         }
-        frame[self.channels[2]] += bass * self.level;
+        frame[self.channels[self.lfe]] += bass * self.level;
     }
 }
 
@@ -47,6 +61,10 @@ mod tests {
         for rate in [44100, 48000, 96000] {
             let mut model = Model::default();
             model.ports[0].channels = vec![3, 0, 5];
+            model.set_speaker_layout(
+                super::super::super::model::Group::Output(1),
+                super::super::Layout::StereoLfe,
+            );
             let config = BassManagement {
                 output: 1,
                 cutoff: 80.,
