@@ -120,7 +120,7 @@ fn named_mixer_independent_impulses_taps_solo_mute_pan_and_no_callback_heap() {
                     rt.routing_input_frame[..2].copy_from_slice(&x);
                     let actual = graph.render(&mut rt, false, 0., 2);
                     let dry = if solo { 0. } else { 0.25 };
-                    let wet = if mute && !pre { 0. } else { 1. };
+                    let wet = if pre { 2. } else if mute { 0. } else { 1. };
                     let expected = [
                         (x[0] * (dry + 0.25 * wet)).tanh(),
                         (x[1] * (dry + 0.125 * wet)).tanh(),
@@ -266,6 +266,10 @@ fn named_mixer_typed_journal_stable_targets_capture_and_worker_checkpoint() {
         0.7
     );
     rt.apply(Command::Undo);
+    let values=rt.routing.as_ref().unwrap().mix_values(Target::Return(4)).unwrap();
+    assert!(!values.solo_safe);
+    assert_eq!(values.pan,-0.5);
+    rt.apply(Command::Undo);
     assert_eq!(
         rt.routing
             .as_ref()
@@ -275,6 +279,7 @@ fn named_mixer_typed_journal_stable_targets_capture_and_worker_checkpoint() {
             .pan,
         0.
     );
+    rt.apply(Command::Redo);
     rt.apply(Command::Redo);
     assert_eq!(
         rt.routing

@@ -147,9 +147,11 @@ impl Selection {
                 Tap::PostMixer
             };
             let source = Source { group, tap };
-            let source_width = model
+            let source_width = if let Group::Plugin(id)=group {
+                usize::from(model.plugins.iter().find(|p|p.id==id).unwrap().outputs[0])
+            } else {model
                 .source_width(source, layout)
-                .ok_or("Contribution source no longer exists")?;
+                .ok_or("Contribution source no longer exists")?};
             if source_width > width {
                 return Err(
                     "Choose a program alias wide enough for every selected contribution".into(),
