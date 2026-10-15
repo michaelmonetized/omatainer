@@ -112,19 +112,19 @@ fn surfaces_apc_knob_modes_assignments_and_master_device_controls_change_real_va
     assert_eq!(rt.surface_status().sends[1][1], 64.0 / 127.0);
     send(&mut input, &mut rt, &[0x90, 0x42, 127]);
     assert_eq!(rt.surface_status().assignments[0], 1);
-    rt.surface.prepare(48000.0, 1.0, 1.0);
+    rt.surface.prepare(48000.0, 1.0, 1.0, &rt.tracks);
     for _ in 0..240 {
-        rt.surface.track(0, [0.0; 2]);
+        rt.surface.track(0, rt.tracks[0].surface, [0.0; 2]);
     }
-    let dry = rt.surface.track(0, [0.2, -0.3]);
+    let dry = rt.surface.track(0, rt.tracks[0].surface, [0.2, -0.3]);
     assert_eq!(dry, [0.0, 0.0]);
     send(&mut input, &mut rt, &[0x90, 0x42, 127]);
     assert_eq!(rt.surface_status().assignments[0], 2);
-    rt.surface.prepare(48000.0, 1.0, 1.0);
+    rt.surface.prepare(48000.0, 1.0, 1.0, &rt.tracks);
     for _ in 0..240 {
-        rt.surface.track(0, [0.0; 2]);
+        rt.surface.track(0, rt.tracks[0].surface, [0.0; 2]);
     }
-    let dry = rt.surface.track(0, [0.2, -0.3]);
+    let dry = rt.surface.track(0, rt.tracks[0].surface, [0.2, -0.3]);
     assert_eq!(dry, [0.2, -0.3]);
     send(&mut input, &mut rt, &[0x90, 0x50, 127]);
     send(&mut input, &mut rt, &[0xb0, 0x10, 80]);
@@ -439,8 +439,8 @@ fn surfaces_controls_render_without_callback_allocations_and_send_stereo_effect_
         send: 0,
         value: 1.0,
     }));
-    rt.surface.prepare(48000.0, 0.5, 0.0);
-    rt.surface.track(0, [1.0, -0.5]);
+    rt.surface.prepare(48000.0, 0.5, 0.0, &rt.tracks);
+    rt.surface.track(0, rt.tracks[0].surface, [1.0, -0.5]);
     let mut energy = [0.0; 2];
     for _ in 0..8000 {
         let output = rt.surface.render_sends(24000.0);

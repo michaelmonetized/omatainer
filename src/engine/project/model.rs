@@ -273,6 +273,8 @@ pub struct Track {
     pub launch: Option<Launch>,
     pub gain: f32,
     pub pan: f32,
+    #[serde(default, skip_serializing_if = "surface_controls::TrackMix::is_default")]
+    pub surface: surface_controls::TrackMix,
     pub mute: bool,
     pub solo: bool,
     pub armed: bool,
@@ -556,6 +558,7 @@ impl State {
                 launch: None,
                 gain: 0.8,
                 pan: 0.0,
+                surface: Default::default(),
                 mute: false,
                 solo: false,
                 armed: false,
@@ -714,6 +717,7 @@ impl State {
                 || !valid_synth(&track.synth)
                 || !finite_range(track.gain as f64, 0.0, 1.5)
                 || !finite_range(track.pan as f64, -1.0, 1.0)
+                || !track.surface.valid()
                 || !valid_eq(track.eq)
                 || track.drums.iter().any(|i| !reference(*i))
                 || !valid_fx(&track.fx, false)

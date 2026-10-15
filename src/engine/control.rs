@@ -748,6 +748,7 @@ impl CommandPort {
         if matches!(&command, Command::ClockFollow(config) if !config.valid()) {return fail(SubmissionError::InvalidTarget);}
         if matches!(&command, Command::MidiPitch(input) if !input.valid()) { return fail(SubmissionError::InvalidTarget); }
         if matches!(&command, Command::MidiAdjust(adjust) if !adjust.valid()) { return fail(SubmissionError::InvalidTarget); }
+        if matches!(&command, Command::TrackSend { track, send, value } if usize::from(*track) >= super::session::MAX_TRACKS || *send >= 2 || !value.is_finite() || !(0.0..=1.0).contains(value)) || matches!(&command, Command::TrackCrossfader { track, assignment } if usize::from(*track) >= super::session::MAX_TRACKS || *assignment > 2) { return fail(SubmissionError::InvalidTarget); }
         if matches!(&command, Command::Surface(input) if !input.valid()) { return fail(SubmissionError::InvalidTarget); }
         if matches!(&command, Command::MidiSamplerPad { pad, pressure, .. } if *pad >= 16 || !pressure.is_finite() || !(0.0..=1.0).contains(pressure)) { return fail(SubmissionError::InvalidTarget); }
         if matches!(&command,Command::ClipPress(super::clip_launch::Press {target:super::clip_launch::Target::Apc(pad),..}) if *pad>=40)
@@ -1262,6 +1263,7 @@ fn parameter_key(command: &Command) -> Option<(u8, usize, usize)> {
         Command::Monitor(crate::engine::monitor::Control::Mix(_)) => Some((15, 0, 0)),
         Command::Monitor(crate::engine::monitor::Control::Volume(_)) => Some((16, 0, 0)),
         Command::Monitor(crate::engine::monitor::Control::Fader { deck, .. }) => Some((17, deck as usize, 0)),
+        Command::TrackSend { track, send, .. } => Some((25, track as usize, send as usize)),
         Command::TrackGain { track, .. } => Some((4, track as usize, 0)),
         Command::TrackPan { track, .. } => Some((5, track as usize, 0)),
         Command::DeckPitch { deck, .. } => Some((6, deck as usize, 0)),

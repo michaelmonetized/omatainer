@@ -50,7 +50,9 @@ impl Plan {
             SamplerScale(_) => (Target::Global, Name::Sampler, 33),
             SamplerBank(_) | SamplerInst(_) | SamplerOct(_) => (Target::Global, Name::Sampler, 20),
             SamplerEdit(edit) => (Target::Sampler(rt.sampler_edit_index(edit)?), Name::Sampler, 21),
-            TrackGain { track, .. }
+            TrackSend { track, .. }
+            | TrackCrossfader { track, .. }
+            | TrackGain { track, .. }
             | TrackPan { track, .. }
             | Mute { track }
             | Solo { track }
