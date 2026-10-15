@@ -12,6 +12,8 @@ pub(super) struct State {
     editing: Option<Vec<(usize, Reference)>>,
     gain_draft: Option<f32>,
     pan_draft: Option<f32>,
+    gain_focused: bool,
+    pan_focused: bool,
 }
 
 impl App {
@@ -119,6 +121,8 @@ impl App {
             self.mixer.editing = Some(selected.clone());
             self.mixer.gain_draft = None;
             self.mixer.pan_draft = None;
+            self.mixer.gain_focused = false;
+            self.mixer.pan_focused = false;
         }
         if selected.is_empty() {
             ui.label("Select a track to inspect its properties. Shift-click adds tracks.");
@@ -149,6 +153,7 @@ impl App {
             ui,
             &format!("Track properties · {} selected", tracks.len()),
             |ui| {
+                let enter = ui.input(|input| input.key_pressed(Key::Enter));
                 if locked {
                     ui.label("Track properties are locked");
                 }
@@ -194,8 +199,33 @@ impl App {
                 if pan_field.changed {
                     self.mixer.pan_draft = Some(pan);
                 }
-                let commit_gain = gain_field.committed && self.mixer.gain_draft.is_some();
-                let commit_pan = pan_field.committed && self.mixer.pan_draft.is_some();
+                let explicit_commit = |response: &egui::Response| {
+                    ui.input(|input| {
+                        input
+                            .accesskit_action_requests(
+                                response.id,
+                                egui::accesskit::Action::SetValue,
+                            )
+                            .next()
+                            .is_some()
+                    }) || (enter && response.has_focus())
+                };
+                let gain_focused = gain_field.response.has_focus();
+                let pan_focused = pan_field.response.has_focus();
+                let commit_gain = !locked
+                    && !gain_field.cancelled
+                    && self.mixer.gain_draft.is_some()
+                    && (gain_field.committed
+                        || explicit_commit(&gain_field.response)
+                        || (self.mixer.gain_focused && !gain_focused));
+                let commit_pan = !locked
+                    && !pan_field.cancelled
+                    && self.mixer.pan_draft.is_some()
+                    && (pan_field.committed
+                        || explicit_commit(&pan_field.response)
+                        || (self.mixer.pan_focused && !pan_focused));
+                self.mixer.gain_focused = gain_focused;
+                self.mixer.pan_focused = pan_focused;
                 if gain_field.cancelled || commit_gain {
                     self.mixer.gain_draft = None;
                 }

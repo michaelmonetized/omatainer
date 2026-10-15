@@ -1,5 +1,5 @@
 use super::*;
-use crate::engine::{session::Axis, RtEngine};
+use crate::engine::{RtEngine, session::Axis};
 use egui::accesskit::{Action, ActionData, ActionRequest, Node, NodeId};
 
 struct Gui {
@@ -59,7 +59,7 @@ impl Gui {
         let target = self
             .nodes
             .iter()
-            .find(|(_, node)| node.label() == Some(label))
+            .find(|(_, node)| node.label() == Some(label) && node.supports_action(action))
             .unwrap_or_else(|| panic!("Missing {label}"))
             .0;
         self.frame(vec![egui::Event::AccessKitActionRequest(ActionRequest {
@@ -290,7 +290,7 @@ fn inspector_track_values_survive_native_project_save_and_reopen() {
 
 #[test]
 fn shared_control_idle_large_values_and_disabled_accesskit_leave_values_unchanged() {
-    use crate::property_fields::{number, FieldState};
+    use crate::property_fields::{FieldState, number};
     for scale in [1.0, 1.5, 2.0] {
         for original in [-1.0e12_f64, 1.0e12, 1.0e8, 1080.0] {
             let ctx = egui::Context::default();
