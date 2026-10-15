@@ -84,7 +84,7 @@ impl Gui {
         self.frame(vec![]);
     }
     fn type_named(&mut self,label:&str,value:&str){
-        let labels=self.nodes.iter().filter(|(_,n)|n.label()==Some(label)).map(|(id,_)|*id).collect::<Vec<_>>();
+        let labels=self.nodes.iter().filter(|(_,n)|n.label()==Some(label)||(n.role()==egui::accesskit::Role::Label&&n.value()==Some(label))).map(|(id,_)|*id).collect::<Vec<_>>();
         let target=self.nodes.iter().find(|(_,n)|n.role()==egui::accesskit::Role::TextInput&&(n.label()==Some(label)||labels.iter().any(|id|n.labelled_by().contains(id)))).map(|(id,_)|*id).unwrap_or_else(||panic!("Missing named text field {label}"));
         self.frame(vec![egui::Event::AccessKitActionRequest(ActionRequest{target,action:Action::Focus,data:None})]);
         let modifiers=egui::Modifiers{ctrl:true,command:true,..Default::default()};
