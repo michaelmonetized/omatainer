@@ -13553,7 +13553,7 @@
     "src/plugin_host/clap/events.rs": "a6803f6828e594f125fe7aa92024fdf854e7d632d6fdd7c9ff347ed39af4bd07",
     "src/plugin_host/clap/expression.rs": "5dd5f478d30175a51ecc0948698727d5d38c1b814e73d6e6033d47380c7b20d1",
     "src/plugin_host/clap/mod.rs": "cc9dbaba9297acad92f52a36540182dca81117dbc0eb9b3d33ab558e0eb4cd2a",
-    "src/plugin_host/clap/tests.rs": "0be5bace1ec6342bd512bb96d329d71de34936ab6f2f7e9b09cad42872d145b5",
+    "src/plugin_host/clap/tests.rs": "0cec5641db943824997c9b5ebaf84dcda8b3f429c8d4416d9ae061e600cd9458",
     "src/plugin_host/lv2/api.rs": "013b87e80e006ebe9af4e404d0af246e20fab0de0ee5afad13770b4f71b33d20",
     "src/plugin_host/lv2/editor.rs": "c3b1a88527e0d2b8bd2187c84e8fd24750227cdaa42a6d7dc491076b7f99f564",
     "src/plugin_host/lv2/features.rs": "11c2b5904b06b706c76a8383c1be03dcea812b4e8e5b353093c427d1daa1f5a0",
