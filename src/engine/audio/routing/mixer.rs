@@ -240,6 +240,10 @@ pub struct Channel {
     pub peaks: [f32; MAX_PORT_CHANNELS],
     #[serde(skip)]
     pub automation_delay: u32,
+    #[serde(skip)]
+    automation_node: usize,
+    #[serde(skip)]
+    automation_tap: Option<usize>,
 }
 #[derive(Debug)]
 pub struct Runtime {
@@ -277,28 +281,18 @@ impl Runtime {
                     b.channels,
                 )
             }))
-            .map(|(target, values, name, width)| Channel {
-                name,
-                width,
-                target,
-                values,
-                effective: values,
-                peaks: [0.; MAX_PORT_CHANNELS],
-                automation_delay: plan.map_or(0, |plan| match target {
-                    Target::Send(id) => {
-                        plan.inputs[order
+            .map(|(target, values, name, width)| {
+                let (group, tap) = match target {
+                    Target::Send(id) => (
+                        model
+                            .sends
                             .iter()
-                            .position(|g| {
-                                *g == model
-                                    .sends
-                                    .iter()
-                                    .find(|s| s.id == id)
-                                    .unwrap()
-                                    .route
-                                    .destination
-                            })
-                            .unwrap()]
-                    }
+                            .find(|s| s.id == id)
+                            .unwrap()
+                            .route
+                            .destination,
+                        None,
+                    ),
                     Target::Return(id) => model
                         .plugins
                         .iter()
@@ -312,19 +306,23 @@ impl Runtime {
                                         })
                                 })
                         })
-                        .map_or_else(
-                            || {
-                                plan.inputs
-                                    [order.iter().position(|g| *g == Group::Bus(id)).unwrap()]
-                            },
-                            |p| {
-                                plan.taps[order
-                                    .iter()
-                                    .position(|g| *g == Group::Plugin(p.id))
-                                    .unwrap()][Tap::PostFx.index()]
-                            },
-                        ),
-                }),
+                        .map_or((Group::Bus(id), None), |p| {
+                            (Group::Plugin(p.id), Some(Tap::PostFx.index()))
+                        }),
+                };
+                let node = order.iter().position(|g| *g == group).unwrap();
+                Channel {
+                    name,
+                    width,
+                    target,
+                    values,
+                    effective: values,
+                    peaks: [0.; MAX_PORT_CHANNELS],
+                    automation_delay: plan
+                        .map_or(0, |p| tap.map_or(p.inputs[node], |tap| p.taps[node][tap])),
+                    automation_node: node,
+                    automation_tap: tap,
+                }
             })
             .collect();
         let indices = order
@@ -449,6 +447,19 @@ impl Runtime {
             || self.feeders[destination] & selected != 0
             || self.ancestry[source] & selected != 0
             || !terminal && self.ancestry[destination] & selected == 0
+    }
+    /// Follow the current native compensation plan.
+    /// Takes admitted delay tables; refreshes scalar lane clocks after offline-floor or native latency adoption without graph searches or allocation.
+    pub(super) fn delays(&mut self, plan: Option<&super::latency::Plan>) {
+        for channel in &mut self.channels {
+            channel.automation_delay = plan.map_or(0, |p| {
+                channel
+                    .automation_tap
+                    .map_or(p.inputs[channel.automation_node], |tap| {
+                        p.taps[channel.automation_node][tap]
+                    })
+            });
+        }
     }
     /// Evaluate sample-accurate saved automation.
     /// Takes graph and current song clock; updates effective controls while leaving recalled manual values intact.

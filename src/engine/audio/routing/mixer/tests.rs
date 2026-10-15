@@ -409,3 +409,61 @@ fn named_send_automation_uses_compensated_source_time_against_independent_pcm_eq
         }
     }
 }
+
+#[test]
+fn named_send_automation_follows_adopted_offline_floor_without_cached_clock_or_heap() {
+    use super::super::latency::{Configuration, Report};
+    for rate in [44100, 48000, 96000] {
+        let (_, mut rt) = Engine::headless_for_test(rate, 256);
+        rt.apply(Command::Stop);
+        rt.playing = true;
+        rt.bpm = 120.;
+        let mut m = model();
+        m.sends.truncate(1);
+        m.sends[0].pan = 0.;
+        m.sends[0].route.destination = Group::Output(1);
+        m.sends[0].automation = vec![Lane {
+            parameter: Parameter::Level,
+            points: vec![[0., 0.], [0.01, 1.]],
+        }];
+        m.connections.clear();
+        m.latency = Some(Configuration {
+            reports: vec![Report {
+                group: Group::Input(2),
+                external_micros: 7000,
+                processing_micros: 0,
+            }],
+            ..Default::default()
+        });
+        let mut graph = Prepared::at_rate(Arc::new(m), &rt.session, rate).unwrap();
+        let external = ((u64::from(rate) * 7 + 500) / 1000) as usize;
+        assert_eq!(graph.mixer.channels[0].automation_delay, external as u32);
+        graph.latency.as_mut().unwrap().offline();
+        let floor = graph.output_delay(1) as usize;
+        assert!(floor > external);
+        let step = 2. / f64::from(rate);
+        let heap = test_alloc::measure(|| {
+            for frame in 0..floor + rate as usize / 100 {
+                rt.timeline_frames = frame as u64 + 1;
+                rt.beat = (frame as f64 + 1.) * step;
+                rt.midi_beat = rt.beat;
+                rt.midi_beat_reference = rt.beat;
+                rt.last_midi_step = step;
+                rt.routing_input_frame.fill(0.);
+                if frame >= external {
+                    rt.routing_input_frame[..2].copy_from_slice(&[0.125, -0.0625]);
+                }
+                let actual = graph.render(&mut rt, false, 0., 2);
+                let level = (frame.saturating_sub(floor) as f64 * step / 0.01).clamp(0., 1.) as f32;
+                let expected = [(0.125 * level).tanh(), (-0.0625 * level).tanh()];
+                assert!(
+                    (actual[0] - expected[0]).abs() < 1e-7
+                        && (actual[1] - expected[1]).abs() < 1e-7,
+                    "Adopted source clock at {rate}/{frame}"
+                );
+            }
+        });
+        assert_eq!(heap, test_alloc::Counts::default());
+        assert_eq!(graph.mixer.channels[0].automation_delay, floor as u32);
+    }
+}
