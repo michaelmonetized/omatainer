@@ -760,6 +760,20 @@ fn keyboard_access_precise_native_invalid_mixed_escape_and_disabled_target_seman
         fields.native.node("Amount (beats)").1.numeric_value(),
         Some(1.250001)
     );
+    fields.tab_to("Amount (beats)");
+    fields.key(Key::Tab, egui::Modifiers::NONE);
+    fields.native.focused("Apply draft");
+    fields.key(Key::Tab, egui::Modifiers::SHIFT);
+    fields.native.focused("Amount (beats)");
+    fields.key(Key::Tab, egui::Modifiers::NONE);
+    assert_eq!(
+        fields.amount, 1.250001,
+        "native refocus and blur retain precise values"
+    );
+    assert_eq!(
+        fields.native.node("Amount (beats)").1.numeric_value(),
+        Some(1.250001)
+    );
     fields.press("Apply draft");
     assert_eq!(fields.accepted, 1);
     fields.locked = true;

@@ -109,6 +109,23 @@ pub(super) fn error(ui: &mut Ui, response: &egui::Response, text: &str) {
     });
 }
 
+/// Keep the native decimal limits without rounding through f32 comparisons.
+/// Args: displayed value and native decimal range. Returns precise text with the native minimum padding.
+fn number_text(value: f64, decimals: std::ops::RangeInclusive<usize>) -> String {
+    let (minimum, maximum) = decimals.into_inner();
+    let mut text = format!("{value:.maximum$}");
+    let zeroes = text
+        .chars()
+        .rev()
+        .take_while(|character| *character == '0')
+        .count();
+    text.truncate(text.len() - zeroes.min(maximum.saturating_sub(minimum)));
+    if text.ends_with('.') {
+        text.pop();
+    }
+    text
+}
+
 /// Draw the existing precise DragValue with public draft observation.
 /// Args: UI, property label, value, native range, step, precision and unit. Returns the actual response and accepted-change decision.
 pub(super) fn number(
@@ -146,6 +163,7 @@ pub(super) fn number(
             .speed(step)
             .max_decimals(decimals)
             .suffix(unit)
+            .custom_formatter(number_text)
             .custom_parser(|text| {
                 attempted.replace(Some(text.to_owned()));
                 parse(text)
@@ -194,16 +212,14 @@ pub(super) fn number(
                 *value = f64::from(next);
             }
         }
+        let formatted = number_text(*value, 0..=decimals);
         ui.ctx().accesskit_node_builder(response.id, |node| {
             node.set_numeric_value(*value);
             node.set_min_numeric_value(min);
             node.set_max_numeric_value(max);
             node.set_numeric_value_step(step);
             if node.role() != egui::accesskit::Role::TextInput {
-                node.set_value(format!(
-                    "{}{unit}",
-                    ui.style().number_formatter.format(*value, 0..=decimals)
-                ));
+                node.set_value(format!("{formatted}{unit}"));
             }
         });
         if response.has_focus() {
