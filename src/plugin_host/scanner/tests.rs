@@ -20,6 +20,7 @@ fn frame_rejects_nonfinite_audio_and_out_of_block_events() {
         signature: [4, 4],
         parameters: vec![],
         midi: vec![],
+        native: vec![],
     };
     assert!(f.validate().is_ok());
     f.midi.push((256, [0x90, 60, 127]));
@@ -141,6 +142,7 @@ fn frame(class: &Class) -> Frame {
         signature: [4, 4],
         parameters: vec![],
         midi: vec![],
+        native: vec![],
     }
 }
 fn outputs(p: &mut process::Process, f: Frame) -> Vec<Vec<Vec<f32>>> {

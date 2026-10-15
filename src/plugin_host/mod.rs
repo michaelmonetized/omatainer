@@ -278,6 +278,8 @@ pub(crate) struct Frame {
     pub signature: [i32; 2],
     pub parameters: Vec<(u32, f64, i32)>,
     pub midi: Vec<(i32, [u8; 3])>,
+    #[serde(default)]
+    pub native: Vec<(i32, clap::expression::NativeEvent)>,
 }
 impl Frame {
     pub fn validate(&self) -> Result<(), String> {
@@ -298,7 +300,11 @@ impl Frame {
             || !(1..=64).contains(&self.signature[0])
             || ![1, 2, 4, 8, 16, 32, 64].contains(&self.signature[1])
             || self.parameters.len() > 512
-            || self.midi.len() > 512
+            || self.midi.len().saturating_add(self.native.len()) > 512
+            || self
+                .native
+                .iter()
+                .any(|(time, event)| *time < 0 || *time >= self.frames as i32 || !event.valid())
         {
             return Err("Plugin processing frame exceeds audio/event/context limits".into());
         }

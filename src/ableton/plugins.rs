@@ -482,7 +482,7 @@ fn parameters(
                 }
             }
             if !points.is_empty() {
-                automation.push(Automation { id, points });
+                automation.push(Automation { id, points, modulation:false });
             }
         }
     }

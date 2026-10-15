@@ -19,6 +19,7 @@ use std::{
 mod callbacks;
 mod editor;
 pub(super) mod events;
+pub(crate) mod expression;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]

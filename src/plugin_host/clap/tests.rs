@@ -72,6 +72,7 @@ fn input_events_preserve_offsets_channels_and_plain_parameter_ranges() {
         signature: [4, 4],
         parameters: vec![(9, 0.75, 64)],
         midi: vec![(10, [0x93, 60, 100]), (128, [0x83, 60, 0])],
+        native: vec![],
     };
     frame.validate().unwrap();
     let e = events::input(&frame, &class).unwrap();
@@ -109,6 +110,7 @@ fn block(class: &Class) -> Frame {
         signature: [4, 4],
         parameters: vec![],
         midi: vec![],
+        native: vec![],
     }
 }
 

@@ -41,6 +41,8 @@ struct Midi {
     offset: i32,
     bytes: [u8; 3],
 }
+#[derive(Clone,Copy,Debug,Default)]
+struct Native { offset:i32, event:Option<clap::expression::NativeEvent> }
 struct Packet {
     sequence: u64,
     latency: u32,
@@ -51,6 +53,8 @@ struct Packet {
     parameter_count: usize,
     midi: [Midi; 512],
     midi_count: usize,
+    native: [Native;512],
+    native_count: usize,
 }
 impl Packet {
     fn new() -> Self {
@@ -64,6 +68,8 @@ impl Packet {
             parameter_count: 0,
             midi: [Midi::default(); 512],
             midi_count: 0,
+            native: [Native::default();512],
+            native_count: 0,
         }
     }
 }
@@ -197,6 +203,8 @@ pub(crate) struct Endpoint {
     offset: usize,
     pending_midi: [Midi; 512],
     pending_midi_count: usize,
+    pending_native: [Native;512],
+    pending_native_count: usize,
     held_notes: [[bool;128];16],
     pending_parameters: [Parameter; 512],
     pending_parameter_count: usize,
@@ -288,6 +296,8 @@ impl Endpoint {
             offset: 0,
             pending_midi: [Midi::default(); 512],
             pending_midi_count: 0,
+            pending_native: [Native::default();512],
+            pending_native_count: 0,
             held_notes: [[false;128];16],
             pending_parameters: [Parameter::default(); 512],
             pending_parameter_count: 0,
@@ -334,6 +344,7 @@ impl Endpoint {
             packet.context = context;
             packet.parameter_count = 0;
             packet.midi_count = 0;
+            packet.native_count = 0;
         }
     }
     /// Publish a block's reported delay before graph alignment begins.
@@ -362,8 +373,8 @@ impl Endpoint {
     /// Queue a channel message at the current sample offset.
     /// Takes three MIDI bytes; returns false on the fixed event/pool bound without allocation or waiting.
     pub fn midi(&mut self, bytes: [u8; 3]) -> bool {
-        let occupied = self.current.as_ref().map_or(0, |p| p.midi_count);
-        if self.pending_midi_count + occupied >= 512 {
+        let occupied = self.current.as_ref().map_or(0, |p| p.midi_count+p.native_count);
+        if self.pending_midi_count + self.pending_native_count + occupied >= 512 {
             return false;
         }
         self.pending_midi[self.pending_midi_count] = Midi {
@@ -373,6 +384,19 @@ impl Endpoint {
         self.pending_midi_count += 1;
         if matches!(bytes[0] & 0xf0,0x80 | 0x90) && bytes[1] < 128 { self.held_notes[(bytes[0] & 15) as usize][bytes[1] as usize] = bytes[0] & 0xf0 == 0x90 && bytes[2] > 0; }
         true
+    }
+    /// Queue a native CLAP event at the current sample. Args: validated expression, note or modulation. Returns bounded admission without allocation or waiting.
+    pub fn native(&mut self,event:clap::expression::NativeEvent) -> bool {
+        let occupied=self.current.as_ref().map_or(0,|p|p.midi_count+p.native_count);
+        if self.faulted() || self.control.class.native.is_none() || !event.valid() || self.pending_midi_count+self.pending_native_count+occupied>=512 {return false;}
+        self.pending_native[self.pending_native_count]=Native {offset:self.offset as i32,event:Some(event)}; self.pending_native_count+=1; true
+    }
+    /// Queue a normalized bipolar modulation amount. Args: parameter identity and amount from minus one to one. Returns whether this CLAP parameter supports global modulation and the queue admits it.
+    pub fn modulation(&mut self,id:u32,amount:f64) -> bool {
+        if !amount.is_finite() || !(-1.0..=1.).contains(&amount) {return false;}
+        let Some(parameter)=self.control.class.native.as_ref().and_then(|m|m.parameters.iter().find(|p|p.id==id)).filter(|p|p.flags & clap_sys::ext::params::CLAP_PARAM_IS_MODULATABLE !=0) else {return false;};
+        let amount=amount*(parameter.max-parameter.min);
+        self.native(clap::expression::NativeEvent::Modulation {target:clap::expression::Target::all(),parameter:id,amount})
     }
     /// Release the notes this processor actually received.
     /// Takes exclusive endpoint ownership; queues individual note offs or stops an overflowing processor without relying on optional controller mappings.
@@ -414,12 +438,14 @@ impl Endpoint {
                 packet.midi[packet.midi_count] = *event;
                 packet.midi_count += 1;
             }
+            for event in &self.pending_native[..self.pending_native_count] { packet.native[packet.native_count]=*event; packet.native_count+=1; }
             for event in &self.pending_parameters[..self.pending_parameter_count] {
                 packet.parameters[packet.parameter_count] = *event;
                 packet.parameter_count += 1;
             }
         }
         self.pending_midi_count = 0;
+        self.pending_native_count = 0;
         self.pending_parameter_count = 0;
         if let Some(packet) = &mut self.current {
             for (channel, value) in packet.input.iter_mut().zip(input) {
@@ -562,6 +588,7 @@ fn owner(
                 .iter()
                 .map(|p| (p.id, p.value, p.offset))
                 .collect(),
+            native: packet.native[..packet.native_count].iter().filter_map(|e|e.event.map(|event|(e.offset,event))).collect(),
             midi: packet.midi[..packet.midi_count]
                 .iter()
                 .map(|m| (m.offset, m.bytes))

@@ -685,6 +685,7 @@ impl Instance {
     }
     pub fn process(&mut self, frame: Frame) -> Result<Response, String> {
         frame.validate()?;
+        if !frame.native.is_empty() { return Err("CLAP native expression events cannot be sent to LV2; use supported MIDI/Atom events".into()); }
         if frame.inputs.len() != self.class.layout.inputs.len()
             || frame
                 .inputs
