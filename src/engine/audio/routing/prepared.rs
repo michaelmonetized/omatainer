@@ -59,6 +59,7 @@ pub(crate) struct Plugin {
     pub parameters: [Option<super::plugins::Parameter>; super::plugins::MAX_PARAMETERS],
     pub midi_slot: Option<usize>,
     pub scene_slot: Option<usize>,
+    pub return_slot: Option<usize>,
 }
 
 impl Prepared {
@@ -103,7 +104,7 @@ impl Prepared {
             let (endpoint, error) = match result { Ok(endpoint) => { resolved.plugins[slot].unavailable = None; (Some(endpoint), None) }, Err(error) => { resolved.plugins[slot].unavailable = Some(error.clone()); (None, Some(error)) } };
             let mut parameters = [None; super::plugins::MAX_PARAMETERS];
             for (out,value) in parameters.iter_mut().zip(&saved.parameters) { *out = Some(*value); }
-            plugins.push(Plugin { node: order.iter().position(|group| *group == Group::Plugin(saved.id)).unwrap(), endpoint, error, initial: true, observed_editor: false, dry: super::latency::History::new(saved.input_width().max(saved.output_width()),reserve), midi: std::collections::VecDeque::with_capacity(8192), frame:0, automation_beat:None, parameters, midi_slot:saved.midi_track.and_then(|id|layout.tracks.iter().position(|t|t.id==id)),scene_slot:saved.scene_track.and_then(|id|layout.tracks.iter().position(|t|t.id==id)) });
+            plugins.push(Plugin { node: order.iter().position(|group| *group == Group::Plugin(saved.id)).unwrap(), endpoint, error, initial: true, observed_editor: false, dry: super::latency::History::new(saved.input_width().max(saved.output_width()),reserve), midi: std::collections::VecDeque::with_capacity(8192), frame:0, automation_beat:None, parameters, midi_slot:saved.midi_track.and_then(|id|layout.tracks.iter().position(|t|t.id==id)),scene_slot:saved.scene_track.and_then(|id|layout.tracks.iter().position(|t|t.id==id)),return_slot:saved.return_bus.filter(|bus|!model.links().any(|c|c.source.group==Group::Plugin(saved.id)&&model.plugins.iter().any(|p|c.destination==Group::Plugin(p.id)&&p.return_bus==Some(*bus)))).and_then(|id|model.buses.iter().position(|b|b.id==id)) });
         }
         if cancel.load(std::sync::atomic::Ordering::Acquire) { return Err("Plugin graph preparation cancelled".into()); }
         let model = if model.plugins.is_empty() { model } else { Arc::new(resolved) };

@@ -87,7 +87,12 @@ impl Prepared {
             self.nodes[node].valid = plugin.dry.valid(intrinsic);
         }
         if saved.output_width() == 1 { output[1] = output[0]; }
-        self.publish(node, [input,output,output]);
+        let post_fx=output;
+        if let Some(bus)=self.plugins[slot].return_slot {
+            let channel=&mut self.mixer.channels[self.model.sends.len()+bus];
+            for (index,sample) in output.iter_mut().enumerate().take(saved.output_width()) {*sample*=channel.effective.gain(index);channel.peaks[index]=channel.peaks[index].max(sample.abs());}
+        }
+        self.publish(node, [input,post_fx,output]);
         if let Some(track) = self.plugins[slot].scene_slot.filter(|track|rt.session.tracks.get(*track).is_some_and(|t|t.active&&Some(t.id)==self.model.plugins[slot].scene_track)) {
             if let Some(scene) = self.scene_nodes[rt.tracks[track].scene_bus] { self.source_send(node,scene,[output[0],output[if self.model.plugins[slot].output_width() == 1 {0} else {1}]],self.nodes[node].valid); }
         }
