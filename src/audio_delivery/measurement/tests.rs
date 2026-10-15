@@ -22,7 +22,7 @@ fn tone(path: &Path, channels: u16, seconds: u32, mut value: impl FnMut(u64, usi
     for start in (0..u64::from(seconds) * 48000).step_by(1024) {
         let n = (u64::from(seconds) * 48000 - start).min(1024) as usize;
         let samples: Vec<_> = (0..n)
-            .flat_map(|i| (0..channels as usize).map(|c| (start + i as u64, c)))
+            .flat_map(|i| (0..channels as usize).map(move |c| (start + i as u64, c)))
             .map(|(i, c)| value(i, c))
             .collect();
         w.append(&samples, 1.).unwrap();
