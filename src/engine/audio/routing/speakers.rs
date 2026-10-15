@@ -1,7 +1,16 @@
 //! One channel identity contract belongs to routing, rendering and delivery.
 use serde::{Deserialize, Serialize};
+pub(crate) mod monitor;
 #[cfg(test)]
-mod tests;
+pub(crate) mod tests;
+pub(crate) const MAX_BINDINGS: usize = 256;
+
+#[derive(Clone, Copy, Debug, Serialize)]
+pub(crate) struct Meter {
+    pub group: super::model::Group,
+    pub layout: Layout,
+    pub peaks: [f32; 8],
+}
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -25,7 +34,24 @@ pub struct Binding {
     pub group: super::model::Group,
     pub layout: Layout,
 }
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct BassManagement {
+    pub output: u64,
+    pub cutoff: f32,
+    pub level: f32,
+}
 impl Layout {
+    pub const ALL: &'static [Self] = &[Self::Mono, Self::Stereo, Self::StereoLfe];
+    /// Name the canonical speaker order for a saved choice.
+    /// Takes this layout; returns a human-readable label shared by routing and delivery controls.
+    pub fn label(self) -> &'static str {
+        match self {
+            Self::Mono => "Mono (FC)",
+            Self::Stereo => "Stereo (FL FR)",
+            Self::StereoLfe => "2.1 (FL FR LFE)",
+        }
+    }
     /// Read the declared interleaved speaker order.
     /// Takes the saved layout; returns channel identities in ascending WAVE speaker-bit order.
     pub fn speakers(self) -> &'static [Speaker] {
@@ -60,6 +86,30 @@ impl Layout {
             Self::Mono => [frame[0]; 2],
             Self::Stereo | Self::StereoLfe => [frame[0], frame[1]],
         }
+    }
+    /// Position a mono source between the two full-range front speakers.
+    /// Takes canonical destination channel and normalized pan; returns equal-power gain with endpoints held, never feeding LFE.
+    pub fn pan_gain(self, channel: usize, pan: f32) -> f32 {
+        self.pan_frame(pan).get(channel).copied().unwrap_or(0.)
+    }
+    /// Prepare one positional gain vector for reuse by all channel maps.
+    /// Takes normalized mono position; returns at most eight bounded gains with no LFE contribution.
+    pub fn pan_frame(self, pan: f32) -> [f32; 8] {
+        let mut gains = [0.; 8];
+        if self != Self::StereoLfe {
+            return gains;
+        }
+        let phase = (pan.clamp(-1., 1.) + 1.) * std::f32::consts::FRAC_PI_4;
+        if pan <= -1. {
+            gains[0] = 1.;
+        } else if pan >= 1. {
+            gains[1] = 1.;
+        } else {
+            let (right, left) = phase.sin_cos();
+            gains[0] = left;
+            gains[1] = right;
+        }
+        gains
     }
 }
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
@@ -232,11 +282,19 @@ impl super::model::Model {
         session: &crate::engine::session::Layout,
     ) -> Result<(), String> {
         use super::model::Group;
-        if self.speaker_layouts.len() > 256 {
+        if self.speaker_layouts.len() > MAX_BINDINGS {
             return Err("Speaker declarations exceed 256 retained endpoints".into());
         }
         let mut groups = std::collections::BTreeSet::new();
         for binding in &self.speaker_layouts {
+            if binding.layout == Layout::Mono
+                && matches!(
+                    binding.group,
+                    Group::Track(_) | Group::Scene(_) | Group::Main
+                )
+            {
+                return Err("Track, scene and main beds retain stereo or an explicitly declared wide layout; mono sources use a mono alias or return".into());
+            }
             let width = if let Group::Plugin(id) = binding.group {
                 self.plugins
                     .iter()
@@ -257,24 +315,45 @@ impl super::model::Model {
             }
         }
         for plugin in &self.plugins {
-            if usize::from(plugin.outputs.first().copied().unwrap_or(0)) > 2
-                && (plugin.scene_track.is_some()
-                    || plugin.return_bus.is_some()
-                    || plugin.instrument)
-                && self.speaker_layout(Group::Plugin(plugin.id)).is_none()
+            if let Some(layout) = plugin
+                .scene_track
+                .or(plugin.midi_track)
+                .and_then(|id| self.speaker_layout(Group::Track(id)))
+                .filter(|l| l.channels() > 2)
             {
-                return Err(
-                    "A native wide primary output requires an exact declared speaker layout".into(),
-                );
+                let width = layout.channels();
+                if !plugin.instrument
+                    && (plugin.inputs.first().copied().map(usize::from) != Some(width)
+                        || plugin.outputs.first().copied().map(usize::from) != Some(width))
+                    || plugin.instrument
+                        && plugin
+                            .outputs
+                            .first()
+                            .is_some_and(|n| usize::from(*n) > 2 && usize::from(*n) != width)
+                {
+                    return Err("A declared wide track needs a matching native primary bed or explicit format-conversion routes".into());
+                }
             }
             if let Some(layout) = plugin
                 .return_bus
                 .and_then(|id| self.speaker_layout(Group::Bus(id)))
                 .filter(|l| l.channels() > 2)
             {
-                if plugin.outputs.first().copied().map(usize::from) != Some(layout.channels()) {
+                if plugin.inputs.first().copied().map(usize::from) != Some(layout.channels())
+                    || plugin.outputs.first().copied().map(usize::from) != Some(layout.channels())
+                {
                     return Err("A native return must preserve its declared wide primary speaker bed; use explicit reviewed maps for a format conversion".into());
                 }
+            }
+        }
+        if let Some(bass) = self.monitor_bass {
+            if self.speaker_layout(Group::Output(bass.output)) != Some(Layout::StereoLfe)
+                || !bass.cutoff.is_finite()
+                || !(20.0..=200.0).contains(&bass.cutoff)
+                || !bass.level.is_finite()
+                || !(0.0..=1.5).contains(&bass.level)
+            {
+                return Err("Monitor bass management requires a declared 2.1 output, 20–200 Hz cutoff and level0–1.5".into());
             }
         }
         Ok(())

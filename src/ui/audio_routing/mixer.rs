@@ -154,11 +154,17 @@ pub(super) fn draft(ui: &mut Ui, draft: &mut Draft) {
                 &model,
                 &draft.layout,
             );
+            let position_layout=model.speaker_layout(send.route.destination).filter(|l|l.channels()>2);
+            let positional=model.source_width(send.route.source,&draft.layout)==Some(1)&&position_layout.is_some()&&!matches!(send.route.destination,Group::Plugin(_));
+            if ui.add_enabled(positional||send.spatial,egui::Checkbox::new(&mut send.spatial,"Position mono source across full-range speakers")).changed()&&send.spatial{
+                send.route.map=position_layout.unwrap().speakers().iter().enumerate().filter(|(_,speaker)|**speaker!=crate::engine::audio::routing::speakers::Speaker::LowFrequency).map(|(channel,_)|ChannelMap{source:0,destination:channel as u8,gain:1.}).collect();
+            }
+            if send.spatial{ui.label("Equal-power position: Pan automation and MIDI −1…1 spans −30°…30°. LFE is never part of this panner. Dedicated LFE feeds use explicit maps with positional mode off.");}
             if let Some(level) = number(ui, "Saved send level", send.level, 0., 1.5, 0.01) {
                 send.level = level;
             }
-            if let Some(pan) = number(ui, "Saved send pan", send.pan, -1., 1., 0.01) {
-                send.pan = pan;
+            if let Some(pan) = number(ui, if send.spatial{"Saved send angle (degrees)"}else{"Saved send pan"}, if send.spatial{send.pan*30.}else{send.pan}, if send.spatial{-30.}else{-1.}, if send.spatial{30.}else{1.}, if send.spatial{1.}else{0.01}) {
+                send.pan = if send.spatial{pan/30.}else{pan};
             }
             ui.checkbox(&mut send.mute, "Saved send mute");
             let source = model
@@ -311,6 +317,7 @@ pub(super) fn draft(ui: &mut Ui, draft: &mut Draft) {
                 },
                 level: 0.,
                 pan: 0.,
+                spatial:false,
                 mute: false,
                 automation: vec![],
             });
@@ -329,6 +336,12 @@ pub(super) fn live(
     let Some(layout) = &snapshot.session else {
         return;
     };
+    ui.collapsing("Declared bed meters before physical monitoring",|ui|{
+        for meter in &snapshot.routing_speakers {
+            ui.label(endpoint(meter.group,&Model::default(),layout));
+            ui.horizontal_wrapped(|ui|{for (speaker,peak) in meter.layout.speakers().iter().zip(meter.peaks){ui.label(format!("{speaker:?} {peak:.5}"));}});
+        }
+    });
     ui.collapsing("Track fixed sends and crossfader assignments", |ui| {
         for (slot, track) in snapshot
             .tracks
@@ -442,13 +455,13 @@ pub(super) fn live(
                     }
                     if let Some(value) = number(
                         ui,
-                        &format!("{name} pan"),
-                        channel.values.pan,
-                        -1.,
-                        1.,
-                        0.01,
+                        &format!("{name} {}",if channel.spatial{"angle (degrees)"}else if channel.width>2{"front balance"}else{"pan"}),
+                        if channel.spatial{channel.values.pan*30.}else{channel.values.pan},
+                        if channel.spatial{-30.}else{-1.},
+                        if channel.spatial{30.}else{1.},
+                        if channel.spatial{1.}else{0.01},
                     ) {
-                        submit(ui, Parameter::Pan, value);
+                        submit(ui, Parameter::Pan, if channel.spatial{value/30.}else{value});
                     }
                     let mut mute = channel.values.mute;
                     if ui.checkbox(&mut mute, format!("{name} mute")).changed() {
@@ -472,6 +485,7 @@ pub(super) fn live(
                     "Peak L {:.5} · R {:.5} · active level {:.3}",
                     channel.peaks[0], channel.peaks[1], channel.effective.level
                 ));
+                if let Some(layout)=channel.speakers{for (index,speaker)in layout.speakers().iter().enumerate(){ui.label(format!("{name} {speaker:?} peak {:.5}",channel.peaks[index]));}}
             },
         );
     }

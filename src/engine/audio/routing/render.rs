@@ -85,7 +85,7 @@ impl Prepared {
                         let timer = rt.load_profile.start();
                         let output = rt.load_profile.chain(
                             &mut rt.scene_fx[slot],
-                            [input[0], input[1]],
+                            input,
                             rt.sr,
                             true,
                             slot,
@@ -201,7 +201,7 @@ impl Prepared {
                 }
                 Group::Plugin(_) => unreachable!(),
             };
-            if let Some(taps)=wide_taps{self.publish(index,taps);}else{self.publish_stereo(index, taps);}
+            if let Some(taps)=wide_taps{self.publish(index,taps);}else if self.nodes[index].width==2{self.publish_stereo(index,taps);}else{self.publish(index,std::array::from_fn(|tap|std::array::from_fn(|channel|if channel<2{taps[tap][channel]}else{0.})));}
             if let Some((destination,frame,valid))=send {self.source_send(index,destination,frame,valid);}
             if let Some(frame)=cue_source {for(channel,value)in cue.iter_mut().enumerate(){*value+=if matches!(group,Group::Deck(_)){frame[channel]}else{self.latency.as_ref().map_or(frame[channel],|latency|latency.cue(index,Tap::PostFx.index(),channel))};}}
         }
@@ -219,6 +219,7 @@ impl Prepared {
         let headphone = rt.render_monitor(program, cue);
         let monitor_pair = rt.monitor.status.channels.filter(|_| rt.monitor.status.available);
         if let Some(pair) = monitor_pair { for (channel, value) in pair.into_iter().zip(headphone) { output[channel] = value; } }
+        if !self.offline{if let Some(bass)=&mut self.bass{bass.process(&mut output);}}
         let mut peak = [0.0_f32; 2];
         for (channel, value) in output
             .iter()
