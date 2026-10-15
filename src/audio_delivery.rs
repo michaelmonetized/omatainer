@@ -13,6 +13,7 @@ use std::{
 pub(crate) mod publication;
 pub(crate) use render::output_contract;
 pub(crate) use render::run_selected as render_selected;
+pub(crate) mod batch;
 pub(crate) mod cli;
 pub(crate) mod finishing;
 pub(crate) mod measurement;
@@ -198,17 +199,16 @@ impl Export {
     /// Takes a reviewed range and format; returns preroll, body, tail and final frame counts or an explicit size refusal.
     pub fn frames(&self) -> Result<(u64, u64, u64, u64), String> {
         self.options.validate()?;
-        if self.options.channels > 2
-            || ![self.start, self.end, self.tail]
-                .iter()
-                .all(|v| v.is_finite())
+        if ![self.start, self.end, self.tail]
+            .iter()
+            .all(|v| v.is_finite())
             || self.start < 0.0
             || self.end <= self.start
             || self.end > 28800.0
             || !(0.0..=120.0).contains(&self.tail)
             || !(1..=64).contains(&self.repeats)
         {
-            return Err("Export needs a positive range within eight hours, mono/stereo, 1–64 repeats and a tail of at most 120 seconds".into());
+            return Err("Export needs a positive range within eight hours, a supported output contract, 1–64 repeats and a tail of at most 120 seconds".into());
         }
         let frame = |v: f64| (v * f64::from(self.options.rate)).round() as u64;
         let start = frame(self.start);

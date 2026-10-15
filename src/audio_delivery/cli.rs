@@ -4,6 +4,9 @@ use std::{path::Path, sync::atomic::AtomicBool};
 /// Handle device-free delivery diagnostics before native application startup.
 /// Args: process arguments without executable. Returns whether a delivery command was handled, or an explicit input/tool error.
 pub(crate) fn run(args: &[String]) -> Result<bool, String> {
+    if super::batch::cli::run(args)? {
+        return Ok(true);
+    }
     let Some(command) = args.first().map(String::as_str) else {
         return Ok(false);
     };

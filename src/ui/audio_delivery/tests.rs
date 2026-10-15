@@ -235,3 +235,23 @@ fn native_final_file_policy_blocks_before_publication_then_warns_with_metadata()
     let value:serde_json::Value=serde_json::from_slice(&std::fs::read(warned.join("export.json")).unwrap()).unwrap();
     assert_eq!(value["metadata"]["title"],"Keyboard reachable delivery");assert!(value["qc"]["integrated_lufs"].is_null());assert_eq!(value["qc"]["frames"],24000);assert_eq!(value["file_sha256"].as_str().unwrap().len(),64);
 }
+
+#[test]
+fn native_aligned_batch_review_recipe_reopen_render_and_stale_guard_use_real_worker() {
+    let files=Files::new();let mut g=Gui::new(&files);g.click("Review export source");g.wait();
+    g.app.audio_delivery.request.end=0.5;g.app.audio_delivery.request.tail=0.;
+    g.app.audio_delivery.batch.as_mut().unwrap().items.truncate(2);
+    g.click("Aligned stems & versions");
+    let recipe=files.0.join("reviewed.json");g.app.audio_delivery.recipe_path=recipe.to_string_lossy().into_owned();g.frame(vec![]);g.click("Save batch recipe to new file");g.wait();assert!(recipe.is_file());
+    g.app.audio_delivery.batch.as_mut().unwrap().items.clear();g.click("Reopen batch recipe");g.wait();assert_eq!(g.app.audio_delivery.batch.as_ref().unwrap().items.len(),2);
+    let folder=files.0.join("batch");g.app.audio_delivery.path=folder.to_string_lossy().into_owned();let before=g.app.snap.project_revision;g.frame(vec![]);g.click("Render aligned batch");g.wait();assert!(g.app.audio_delivery.message.starts_with("Saved aligned batch"),"{}",g.app.audio_delivery.message);assert!(folder.join("batch.json").is_file());assert_eq!(g.app.snap.project_revision,before);
+    g.callback.renderer_mut_for_test().apply(Command::SetBpm(131.));let stale=files.0.join("stale-batch");g.app.audio_delivery.path=stale.to_string_lossy().into_owned();g.frame(vec![]);g.click("Render aligned batch");g.wait();assert!(g.app.audio_delivery.message.contains("changed since batch review"),"{}",g.app.audio_delivery.message);assert!(!stale.exists());
+}
+
+#[test]
+fn native_document_cli_plan_reopen_and_batch_use_same_encoded_delivery_path(){
+    let files=Files::new();let mut g=Gui::new(&files);let handle=g.app.engine.project.clone();let capture=std::thread::spawn(move||handle.capture(&AtomicBool::new(false)).unwrap());let end=Instant::now()+std::time::Duration::from_secs(15);while !capture.is_finished(){g.frame(vec![]);assert!(Instant::now()<end);std::thread::sleep(std::time::Duration::from_millis(1));}let captured=capture.join().unwrap();let document=project::Document{engine:captured.state,view:project::UiState::default(),mapping_schema:project::FACTORY_MAPPING_SCHEMA};document.validate().unwrap();let bundle=crate::project_file::Bundle{state:document,media:captured.media};let native=files.0.join("source.omat");crate::project_file::save(&native,&bundle,crate::project_file::Overwrite::Never,&Default::default(),&AtomicBool::new(false)).unwrap();
+    let recipe=files.0.join("cli.json");assert!(data::cli::run(&["delivery-plan".into(),native.to_string_lossy().into_owned(),recipe.to_string_lossy().into_owned()]).unwrap());let mut r=data::batch::Recipe::load(&recipe).unwrap();r.export.end=0.5;r.export.tail=0.;r.items.truncate(2);std::fs::remove_file(&recipe).unwrap();r.save(&recipe).unwrap();
+    let destination=files.0.join("cli-output");assert!(data::cli::run(&["delivery-batch".into(),native.to_string_lossy().into_owned(),recipe.to_string_lossy().into_owned(),destination.to_string_lossy().into_owned()]).unwrap());let report:serde_json::Value=serde_json::from_slice(&std::fs::read(destination.join("batch.json")).unwrap()).unwrap();assert_eq!(report["cases"].as_array().unwrap().len(),2);assert_eq!(report["frames_per_pass"],24000);assert_eq!(report["review"]["recipe"]["project_sha256"],r.project_sha256.as_ref().unwrap().as_str());
+    let untouched=files.0.join("changed-plan");r.project_sha256=Some("0".repeat(64));let changed=files.0.join("changed.json");r.save(&changed).unwrap();assert!(data::cli::run(&["delivery-batch".into(),native.to_string_lossy().into_owned(),changed.to_string_lossy().into_owned(),untouched.to_string_lossy().into_owned()]).unwrap_err().contains("Project bytes differ"));assert!(!untouched.exists());
+}
