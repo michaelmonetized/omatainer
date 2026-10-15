@@ -222,8 +222,7 @@ impl Gui {
         self.has(label) && !self.native.node(label).1.is_disabled()
     }
     fn cursor_values(&self) -> (u8, f32, f32, u8) {
-        let cursor = self.app.piano_roll.draft.as_ref().unwrap().cursor;
-        (cursor.pitch, cursor.start, cursor.length, cursor.velocity)
+        self.app.piano_roll.keyboard_values_for_test().unwrap()
     }
     fn route(&mut self, label: &str) {
         self.idle();
@@ -401,10 +400,8 @@ fn keyboard_access_empty_project_tracks_clips_notes_controllers_song_timing_save
         let added = gui
             .app
             .piano_roll
-            .draft
-            .as_ref()
+            .keyboard_notes_for_test()
             .unwrap()
-            .notes
             .last()
             .unwrap();
         assert_eq!(
@@ -444,7 +441,7 @@ fn keyboard_access_empty_project_tracks_clips_notes_controllers_song_timing_save
         "precise native start edit preserves other cursor values"
     );
     gui.press("MIDI piano roll: Set selected note values");
-    let changed = &gui.app.piano_roll.draft.as_ref().unwrap().notes[0];
+    let changed = &gui.app.piano_roll.keyboard_notes_for_test().unwrap()[0];
     assert_eq!(
         (changed.pitch, changed.start, changed.len, changed.vel),
         (67, 9.125001_f32, 0.500001_f32, 91),
@@ -474,7 +471,7 @@ fn keyboard_access_empty_project_tracks_clips_notes_controllers_song_timing_save
         point_id,
         "wire order keeps native identity after sorting"
     );
-    let unchanged = &gui.app.piano_roll.draft.as_ref().unwrap().notes[0];
+    let unchanged = &gui.app.piano_roll.keyboard_notes_for_test().unwrap()[0];
     assert_eq!(
         (
             unchanged.pitch,

@@ -344,6 +344,23 @@ fn pitch_name(pitch: u8) -> String {
     )
 }
 impl Editor {
+    /// Read captured inspector values for native keyboard regressions.
+    /// Args: none. Returns the current cursor values without changing selection or the draft.
+    #[cfg(test)]
+    pub(super) fn keyboard_values_for_test(&self) -> Option<(u8, f32, f32, u8)> {
+        self.draft.as_ref().map(|draft| {
+            let cursor = draft.cursor;
+            (cursor.pitch, cursor.start, cursor.length, cursor.velocity)
+        })
+    }
+
+    /// Read captured notes after real native edit actions.
+    /// Args: none. Returns the current notes without loading, selecting or editing a target.
+    #[cfg(test)]
+    pub(super) fn keyboard_notes_for_test(&self) -> Option<&[MidiNote]> {
+        self.draft.as_ref().map(|draft| draft.notes.as_slice())
+    }
+
     fn busy(&self) -> bool {
         self.comparison.busy()
             || self.loading.is_some()
