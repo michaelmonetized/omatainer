@@ -351,23 +351,9 @@ fn studio_task_panels_move_tab_float_close_restore_reset_and_keep_the_main_surfa
     gui.root_click("Panels");
     gui.root_click("Restore Sampler");
     assert!(!studio(&gui).tasks["Decks"].hidden.contains_key("sampler"));
-    {
-        let book = &mut gui
-            .app
-            .settings
-            .applied
-            .profiles
-            .get_mut("Studio")
-            .unwrap()
-            .workspaces
-            .studio;
-        assert!(book
-            .tasks
-            .get_mut("Decks")
-            .unwrap()
-            .tab_with("sampler", "library"));
-    }
-    gui.frame(vec![]);
+    gui.panel_menu("Sampler");
+    gui.root_click("Tab with");
+    gui.root_click("Library");
     assert!(studio(&gui).tasks["Decks"]
         .groups
         .iter()
@@ -513,6 +499,15 @@ fn studio_layout_serde_defaults_roundtrip_and_scale_recovery_keep_panels_reachab
         let reopened: Config =
             serde_json::from_slice(&serde_json::to_vec(&config).unwrap()).unwrap();
         assert_eq!(config, reopened);
+        gui.app
+            .settings
+            .applied
+            .profiles
+            .get_mut("Studio")
+            .unwrap()
+            .workspaces = reopened.clone();
+        gui.frame(vec![]);
+        gui.frame(vec![]);
         let group = reopened.studio.tasks["Mixer"]
             .groups
             .iter()

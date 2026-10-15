@@ -161,8 +161,12 @@ fn studio_workspace_menu_saves_each_task_with_conflict_checked_reopen() {
     let mut gui = Gui::new();
     let audio = gui.fixture.app.settings.profile().audio.clone();
     let midi = gui.fixture.app.settings.profile().midi_inputs.clone();
-    gui.click("Workspace: Classic");
-    gui.click("Mixer");
+    let mut active = "Classic";
+    for task in ["Library", "Decks", "Session", "Arrangement", "MIDI", "Mixer"] {
+        gui.click(&format!("Workspace: {active}"));
+        gui.click(task);
+        active = task;
+    }
     assert_eq!(gui.fixture.app.settings.profile().workspaces.studio.active, "Mixer");
     {
         let book = &mut gui.fixture.app.settings.applied.profiles.get_mut("Studio").unwrap().workspaces.studio;
