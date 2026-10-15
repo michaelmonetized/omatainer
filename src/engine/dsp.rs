@@ -631,28 +631,23 @@ impl Sample {
         }
     }
     pub fn at(&self, pos: f64) -> (f32, f32) {
+        let frame=self.at_channels::<2>(pos);
+        (frame[0],frame[1])
+    }
+    /// Read ordered source channels at one shared fractional position.
+    /// Takes the sample position and a fixed output width; returns bounded interpolation, duplicating mono only into the legacy stereo pair and leaving absent wider channels silent.
+    pub fn at_channels<const N:usize>(&self,pos:f64)->[f32;N]{
         if self.data.is_empty() {
-            return (0.0, 0.0);
+            return [0.0;N];
         }
         let frames = self.frames() as f64;
         if pos < 0.0 || pos >= frames - 1.0 {
-            return (0.0, 0.0);
+            return [0.0;N];
         }
         let i = pos.floor() as usize;
         let f = (pos - i as f64) as f32;
         let ch = self.ch as usize;
-        if ch >= 2 {
-            let l0 = self.data[i * ch];
-            let r0 = self.data[i * ch + 1];
-            let l1 = self.data[(i + 1) * ch];
-            let r1 = self.data[(i + 1) * ch + 1];
-            (l0 + (l1 - l0) * f, r0 + (r1 - r0) * f)
-        } else {
-            let a = self.data[i];
-            let b = self.data[i + 1];
-            let y = a + (b - a) * f;
-            (y, y)
-        }
+        std::array::from_fn(|channel|{let channel=if ch==1&&channel==1 {0}else{channel};if channel>=ch{return 0.;}let a=self.data[i*ch+channel];let b=self.data[(i+1)*ch+channel];a+(b-a)*f})
     }
 }
 

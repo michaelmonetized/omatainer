@@ -34,6 +34,7 @@ impl Prepared {
         for index in 0..self.nodes.len() {
             let mut send = None;
             let mut cue_source = None;
+            let mut wide_taps=None;
             self.gather(index);
             let input = [self.nodes[index].input[0], self.nodes[index].input[1]];
             let group = self.nodes[index].group;
@@ -47,15 +48,22 @@ impl Prepared {
                             .is_some_and(|item| item.active && item.id == id)
                     }) {
                         let timer = rt.load_profile.start();
-                        let generated = self.generated_input(index);
+                        let generated = self.generated_frame(index);
+                        rt.routing_track_layout=self.nodes[index].speakers.unwrap_or_default();
+                        rt.routing_track_wide_input=std::array::from_fn(|channel|self.nodes[index].input[channel]-generated[channel]);
+                        rt.routing_track_wide_generated=generated;
                         rt.routing_track_input = Some([input[0] - generated[0], input[1] - generated[1]]);
-                        rt.routing_track_generated = generated;
+                        rt.routing_track_generated = [generated[0],generated[1]];
                         let latency=&mut self.latency;
                         let (left, right, pfl) = rt.render_track_aligned(slot, any_solo,|frame|latency.as_mut().map_or(frame,|latency|latency.generated(index,frame)));
-                        if pfl {cue_source=Some(rt.routing_track_taps[1]);}
+                        wide_taps=Some(rt.routing_track_wide_taps);
+                        if pfl {cue_source=Some(rt.routing_track_layout.downmix(&rt.routing_track_wide_taps[1]));}
                         if !self.nodes[index].generated && !rt.tracks[slot].input_enabled(rt.recording || rt.routing_pipe.recorder.monitoring_inputs()) { self.nodes[index].valid = true; }
                         rt.routing_track_input = None;
                         rt.routing_track_generated = [0.;2];
+                        rt.routing_track_layout=Default::default();
+                        rt.routing_track_wide_input.fill(0.);
+                        rt.routing_track_wide_generated.fill(0.);
                         rt.load_profile.track(slot, timer);
                         if !self.model.tracks_without_default_send.contains(&id) {
                             if let Some(scene) = self.scene_nodes[rt.tracks[slot].scene_bus] {
@@ -77,12 +85,15 @@ impl Prepared {
                         let timer = rt.load_profile.start();
                         let output = rt.load_profile.chain(
                             &mut rt.scene_fx[slot],
-                            [input[0], input[1]],
+                            input,
                             rt.sr,
                             true,
                             slot,
                         );
                         rt.load_profile.scene(slot, timer);
+                        let before=self.nodes[index].input;
+                        let mut after=before;after[..2].copy_from_slice(&output);
+                        wide_taps=Some([before,after,after]);
                         send=Some((self.main,output,self.nodes[index].valid));
                         [input, output, output]
                     } else {
@@ -133,6 +144,10 @@ impl Prepared {
                         output[channel] = (output[channel] + preview[channel]) * rt.master;
                     }
                     output = rt.surface.master_fx_at(crate::engine::surface_controls::fx::Placement::PostFader,output,f64::from(rt.sr)*60.0/f64::from(rt.bpm.max(1.0)),rt.sr);
+                    let mut wide_before=self.nodes[index].input;wide_before[..2].copy_from_slice(&before);
+                    let mut wide_post=wide_before;wide_post[..2].copy_from_slice(&post_fx);
+                    let mut wide_output=wide_post;for value in &mut wide_output[2..self.nodes[index].width]{*value*=rt.master;}wide_output[..2].copy_from_slice(&output);
+                    wide_taps=Some([wide_before,wide_post,wide_output]);
                     [before, post_fx, output]
                 }
                 Group::Output(_) => {
@@ -186,7 +201,7 @@ impl Prepared {
                 }
                 Group::Plugin(_) => unreachable!(),
             };
-            self.publish_stereo(index, taps);
+            if let Some(taps)=wide_taps{self.publish(index,taps);}else if self.nodes[index].width==2{self.publish_stereo(index,taps);}else{self.publish(index,std::array::from_fn(|tap|std::array::from_fn(|channel|if channel<2{taps[tap][channel]}else{0.})));}
             if let Some((destination,frame,valid))=send {self.source_send(index,destination,frame,valid);}
             if let Some(frame)=cue_source {for(channel,value)in cue.iter_mut().enumerate(){*value+=if matches!(group,Group::Deck(_)){frame[channel]}else{self.latency.as_ref().map_or(frame[channel],|latency|latency.cue(index,Tap::PostFx.index(),channel))};}}
         }
@@ -194,16 +209,17 @@ impl Prepared {
         let program_source = rt.mic_aux.program_alias().and_then(|id| self.nodes.iter().position(|node| node.group == Group::Output(id)));
         let main = [self.nodes[self.main].taps[2][0], self.nodes[self.main].taps[2][1]];
         let main = self.latency.as_mut().map_or(main, |latency| latency.monitor_program(self.main, main));
-        let program = program_source.map_or(main, |index| { let node = &self.nodes[index]; [node.input[0], node.input[if node.width == 1 { 0 } else { 1 }]] });
+        let program = program_source.map_or(main, |index| { let node = &self.nodes[index]; node.speakers.map_or([node.input[0],node.input[if node.width==1 {0}else{1}]],|layout|layout.downmix(&node.input)) });
         let program = if let Some((index, (mut frame, mut valid))) = program_source.and_then(|index| self.monitor_mix(index).map(|mix| (index, mix))) {
             let node = &self.nodes[index];
             let (frames, continuity, duck) = self.latency.as_ref().unwrap().auxiliary_monitor();
             rt.mic_aux.add_aligned(node.group, node.width, &mut frame, &mut valid, rt.master, frames, continuity, duck);
-            [frame[0], frame[if node.width == 1 { 0 } else { 1 }]]
+            node.speakers.map_or([frame[0],frame[if node.width==1 {0}else{1}]],|layout|layout.downmix(&frame))
         } else { program };
         let headphone = rt.render_monitor(program, cue);
         let monitor_pair = rt.monitor.status.channels.filter(|_| rt.monitor.status.available);
         if let Some(pair) = monitor_pair { for (channel, value) in pair.into_iter().zip(headphone) { output[channel] = value; } }
+        if !self.offline{if let Some(bass)=&mut self.bass{bass.process(&mut output);}}
         let mut peak = [0.0_f32; 2];
         for (channel, value) in output
             .iter()

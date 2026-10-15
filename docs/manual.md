@@ -3508,3 +3508,9 @@ The included loudness meter uses pinned libebur1281.2.6 with a finite49-tap Hann
 Conformance receipts retain FFmpeg raw linear frame-peak metadata with its0.001 linear rounding interval and the derived dB interval. Neither the0.1dB text summary nor the3-decimal linear metadata is infinitely precise. Controlled analytic checks remain separate from the original unqualified strict abrupt-edge comparison.
 
 A new CLI delivery plan chooses the first active scene in saved display order and binds its canonical scene identity. Removing scene slot0 cannot silently select a replacement slot; saved recipes continue to refuse removed identities until explicitly reviewed/rebound.
+
+A declared program output offers its native channel count in **Audio export & recording**, alongside explicit mono/stereo folds. The native choice uses the saved speaker order; folds exclude dedicated LFE. A wide output without a speaker declaration cannot be exported by guessing its layout. A new CLI plan with one program output adopts that output's declared native count.
+
+Performance recording keeps its existing WAV/FLAC/MP3 choices. The reviewed native recording contract supplies speaker metadata and wide WAV extensible headers. Unknown wide recording sources retain an unspecified mask and no invented speaker names. Recording accepts the actual source width and order; offline mono/stereo folds are not live recording contracts. Source review must be refreshed after a channel or speaker declaration changes.
+
+Recovery preserves legacy 44-byte files and the recording path's tagged extensible RIFF headers. It retains complete finite frames, speaker masks and metadata, and updates data/RIFF/fact counts and the final word pad. A header/manifest speaker mismatch is refused before repair.

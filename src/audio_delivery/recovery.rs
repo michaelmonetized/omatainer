@@ -6,6 +6,7 @@ use std::os::fd::AsRawFd;
 use std::os::unix::fs::{MetadataExt, OpenOptionsExt};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
+mod header;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 struct Identity {
@@ -21,6 +22,7 @@ struct Segment {
     identity: Identity,
     frames: u64,
     repair: bool,
+    header: header::Header,
 }
 #[derive(Clone, Debug)]
 pub(crate) struct Plan {
@@ -39,7 +41,7 @@ fn open(path: &Path, write: bool) -> Result<File, String> {
     let f = OpenOptions::new()
         .read(true)
         .write(write)
-        .custom_flags(libc::O_NOFOLLOW)
+        .custom_flags(libc::O_NOFOLLOW | libc::O_NONBLOCK)
         .open(path)
         .map_err(|e| format!("Cannot open {}: {e}", path.display()))?;
     if !f.metadata().map_err(|e| e.to_string())?.is_file() {
@@ -132,40 +134,20 @@ fn inspect(
     rate: u32,
     encoding: Encoding,
     cancel: &AtomicBool,
-) -> Result<(u64, bool), String> {
-    f.seek(SeekFrom::Start(0)).map_err(|e| e.to_string())?;
-    let mut header = [0; 44];
-    f.read_exact(&mut header).map_err(|e| e.to_string())?;
+) -> Result<(u64, bool, header::Header), String> {
+    let header = header::Header::read(f, channels, rate, encoding)?;
     let block = channels * encoding.bytes() as u16;
-    let expected_format = if encoding == Encoding::Float32 {
-        3_u16
-    } else {
-        1
-    };
-    if &header[..4] != b"RIFF"
-        || &header[8..16] != b"WAVEfmt "
-        || header[16..20] != 16_u32.to_le_bytes()
-        || header[20..22] != expected_format.to_le_bytes()
-        || header[22..24] != channels.to_le_bytes()
-        || header[24..28] != rate.to_le_bytes()
-        || header[28..32] != (rate * u32::from(block)).to_le_bytes()
-        || header[32..34] != block.to_le_bytes()
-        || header[34..36] != encoding.bits().to_le_bytes()
-        || &header[36..40] != b"data"
-    {
-        return Err("WAV does not match this recording's native format; no repair was made".into());
-    }
     let length = f.metadata().map_err(|e| e.to_string())?.len();
-    if length < 44 || length - 44 > u64::from(u32::MAX) - 36 {
+    let overhead = header.data_offset - 8;
+    if length < header.data_offset || length - header.data_offset > u64::from(u32::MAX) - overhead {
         return Err("Recording segment size is unsupported".into());
     }
-    let declared = u64::from(u32::from_le_bytes(header[40..44].try_into().unwrap()));
-    let riff = u64::from(u32::from_le_bytes(header[4..8].try_into().unwrap()));
-    let finalized = declared > 0
-        && declared % u64::from(block) == 0
-        && declared <= length - 44
-        && (riff == 36 + declared || riff == 36 + declared + (declared & 1));
-    let mut frames = if finalized { declared } else { length - 44 } / u64::from(block);
+    let declared = header.declared;
+    let finalized = declared > 0 && declared % u64::from(block) == 0
+        && declared <= length - header.data_offset
+        && (header.riff == overhead + declared || header.riff == overhead + declared + (declared & 1));
+    let mut frames = if finalized { declared } else { length - header.data_offset } / u64::from(block);
+    f.seek(SeekFrom::Start(header.data_offset)).map_err(|e| e.to_string())?;
     if encoding == Encoding::Float32 {
         let mut buffer = vec![0; usize::from(block) * 1024];
         let mut scanned = 0;
@@ -191,13 +173,11 @@ fn inspect(
         }
     }
     let data = frames * u64::from(block);
-    if data + (data & 1) > u64::from(u32::MAX) - 36 {
+    if data + (data & 1) > u64::from(u32::MAX) - overhead {
         return Err("Recording segment cannot fit a padded RIFF data chunk".into());
     }
-    let repair = length != 44 + data + (data & 1)
-        || header[4..8] != (36 + data as u32 + (data as u32 & 1)).to_le_bytes()
-        || header[40..44] != (data as u32).to_le_bytes();
-    Ok((frames, repair))
+    let repair = header.needs_repair(frames, data, length);
+    Ok((frames, repair, header))
 }
 /// Review an interrupted native recording.
 /// Takes its folder and cancellation flag; returns exact valid prefixes and fingerprints without changing files or opening audio devices.
@@ -240,7 +220,8 @@ pub(crate) fn review(folder: &Path, cancel: &AtomicBool) -> Result<Plan, String>
     for name in segments(folder)? {
         let mut f = open(&folder.join(&name), false)?;
         let fingerprint = identity(&mut f, cancel)?;
-        let (frames, repair) = inspect(&mut f, channels, rate, encoding, cancel)?;
+        let (frames, repair, header) = inspect(&mut f, channels, rate, encoding, cancel)?;
+        if metadata["wave_mask"].as_u64().is_some_and(|mask| header.wave_mask.map(u64::from) != Some(mask)) { return Err("Recording speaker metadata differs from its WAV header; no repair was made".into()); }
         plan.frames += frames;
         plan.repairs += usize::from(repair);
         plan.segments.push(Segment {
@@ -248,6 +229,7 @@ pub(crate) fn review(folder: &Path, cancel: &AtomicBool) -> Result<Plan, String>
             identity: fingerprint,
             frames,
             repair,
+            header,
         });
     }
     if directory != self::directory(folder)? {
@@ -334,20 +316,7 @@ pub(crate) fn recover(plan: &Plan, cancel: &AtomicBool) -> Result<Plan, String> 
         if segment.repair {
             let bytes =
                 (segment.frames * u64::from(plan.channels) * plan.encoding.bytes() as u64) as u32;
-            f.set_len(44 + u64::from(bytes) + u64::from(bytes & 1))
-                .and_then(|_| {
-                    if bytes & 1 != 0 {
-                        f.seek(SeekFrom::Start(44 + u64::from(bytes)))?;
-                        f.write_all(&[0])
-                    } else {
-                        Ok(())
-                    }
-                })
-                .and_then(|_| f.seek(SeekFrom::Start(4)))
-                .and_then(|_| f.write_all(&(36 + bytes + (bytes & 1)).to_le_bytes()))
-                .and_then(|_| f.seek(SeekFrom::Start(40)))
-                .and_then(|_| f.write_all(&bytes.to_le_bytes()))
-                .and_then(|_| f.sync_all())
+            segment.header.repair(f, segment.frames, bytes)
                 .map_err(|e| {
                     format!(
                         "Repair stopped at {}: {e}; review the folder again",

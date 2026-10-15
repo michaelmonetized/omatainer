@@ -1,7 +1,7 @@
 use super::*;
 use crate::engine::{project, test_alloc, ClipKind};
 
-fn fixture(rate: u32, sends: [f32; 2]) -> (Engine, RtEngine) {
+fn fixture(rate: u32, sends: [f32; 2]) -> (Engine, Box<RtEngine>) {
     let (engine, mut rt) = Engine::headless_for_test(rate, 256);
     rt.apply(Command::Stop);
     for track in &mut rt.tracks {
@@ -61,7 +61,7 @@ fn fixture(rate: u32, sends: [f32; 2]) -> (Engine, RtEngine) {
         track: 0,
         assignment: 1,
     });
-    (engine, rt)
+    (engine, Box::new(rt))
 }
 fn pcm(rt: &mut RtEngine, rate: u32, block: usize) -> Vec<f32> {
     rt.apply(Command::LaunchScene { scene: 0 });

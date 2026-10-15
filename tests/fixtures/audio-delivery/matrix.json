@@ -5,7 +5,8 @@
     "file_safety": "78e5b50ac3c8bfdfd1f5834d3d1ad04bc6825db2",
     "containers": null,
     "qc": null,
-    "batch": null
+    "batch": null,
+    "surround_consumer": null
   },
   "route": {
     "build": "Only parent-authorized global serialized helper; no direct Cargo",
@@ -21,7 +22,7 @@
       "id": "pcm24-padding-recovery",
       "test": "audio_delivery::recovery::tests::recovery_odd_pcm24_legacy_padded_and_partial_prefixes_keep_exact_frames",
       "source": "src/audio_delivery/recovery.rs",
-      "source_sha256": "3d12cdb39e14dfa7c835426711abc410fa9f1f9165afd30bc432da35ceafd316",
+      "source_sha256": "dd3129e6670bd74186095c6ab8e855ed267ac8e3b366fafbe456345e5d332ff5",
       "requirement": "required",
       "acceptance": "exact whole frames legacy/padded/interrupted"
     },
@@ -85,7 +86,7 @@
       "id": "aligned-native-null",
       "test": "audio_delivery::batch::tests::aligned_encoded_stems_null_sum_explicit_version_and_normal_graph_oracle_after_reopen",
       "source": "src/audio_delivery/batch/tests.rs",
-      "source_sha256": "ceac99396c557f1f5bcb60642a6f9e7357a958c681884c80470368ac02a6bb9d",
+      "source_sha256": "b96c54b4a402a681c8cf448b7ba12ae365b9f8c3c07bfe5aa9628040e85f724e",
       "requirement": "required",
       "acceptance": "encoded stems sum vs explicitly selected combined pass, normal nonlinear master oracle, recipe reopen/live state"
     },
@@ -93,7 +94,7 @@
       "id": "batch-atomic-refusals",
       "test": "audio_delivery::batch::tests::batch_stale_missing_ids_collision_cancel_and_failed_qc_never_publish_partial_folder",
       "source": "src/audio_delivery/batch/tests.rs",
-      "source_sha256": "ceac99396c557f1f5bcb60642a6f9e7357a958c681884c80470368ac02a6bb9d",
+      "source_sha256": "b96c54b4a402a681c8cf448b7ba12ae365b9f8c3c07bfe5aa9628040e85f724e",
       "requirement": "required",
       "acceptance": "namespace/deleted identity, stale revision, case collision, existing folder, QC failure statuses"
     },
@@ -101,7 +102,7 @@
       "id": "batch-mid-cancel",
       "test": "audio_delivery::batch::tests::batch_cancel_during_second_pass_keeps_only_failure_receipt_and_no_final_audio",
       "source": "src/audio_delivery/batch/tests.rs",
-      "source_sha256": "ceac99396c557f1f5bcb60642a6f9e7357a958c681884c80470368ac02a6bb9d",
+      "source_sha256": "b96c54b4a402a681c8cf448b7ba12ae365b9f8c3c07bfe5aa9628040e85f724e",
       "requirement": "required",
       "acceptance": "cancel after first pass, passed/failed/skipped receipt, no final folder"
     },
@@ -109,7 +110,7 @@
       "id": "native-batch-ui",
       "test": "ui::audio_delivery::tests::native_aligned_batch_review_recipe_reopen_render_and_stale_guard_use_real_worker",
       "source": "src/ui/audio_delivery/tests.rs",
-      "source_sha256": "17bd1a6eb5a8baf2d88b499a1cbdf8568c87c2223c6f9485ed6c891a678e5ff0",
+      "source_sha256": "ca562b746a53c1c1ae9dcccd9b6ad42fa64ccecba67baea0551d526cd8b1ceeb",
       "requirement": "required",
       "acceptance": "headless egui accesskit actual source review/recipe/reopen/render worker; no native window"
     },
@@ -117,7 +118,7 @@
       "id": "native-project-cli",
       "test": "ui::audio_delivery::tests::native_document_cli_plan_reopen_and_batch_use_same_encoded_delivery_path",
       "source": "src/ui/audio_delivery/tests.rs",
-      "source_sha256": "17bd1a6eb5a8baf2d88b499a1cbdf8568c87c2223c6f9485ed6c891a678e5ff0",
+      "source_sha256": "ca562b746a53c1c1ae9dcccd9b6ad42fa64ccecba67baea0551d526cd8b1ceeb",
       "requirement": "required",
       "acceptance": "real .omat container/native Document, device-free CLI dispatch, exact project byte binding; ordinary and canonically-deleted scene0 both create/render/reopen a plan bound to first active scene ID"
     },
@@ -127,7 +128,7 @@
       "source": "src/audio_delivery/batch/tests.rs",
       "requirement": "required",
       "acceptance": "actual FIFO with no writer promptly refused via opened-descriptor regular-file check, valid regular recipe preserved, cancellation observed",
-      "source_sha256": "ceac99396c557f1f5bcb60642a6f9e7357a958c681884c80470368ac02a6bb9d"
+      "source_sha256": "b96c54b4a402a681c8cf448b7ba12ae365b9f8c3c07bfe5aa9628040e85f724e"
     },
     {
       "id": "incremental-digest-cancel",
@@ -143,7 +144,7 @@
       "source": "src/audio_delivery/batch/tests.rs",
       "requirement": "required",
       "acceptance": "canonical session reference survives display reorder, deleted/reused source scene refuses even for track-only passes, older optional-field JSON loads but cannot silently bind a scene",
-      "source_sha256": "ceac99396c557f1f5bcb60642a6f9e7357a958c681884c80470368ac02a6bb9d"
+      "source_sha256": "b96c54b4a402a681c8cf448b7ba12ae365b9f8c3c07bfe5aa9628040e85f724e"
     },
     {
       "id": "native-delivery-keyboard-fields",
@@ -151,7 +152,31 @@
       "source": "src/ui/audio_delivery/tests.rs",
       "requirement": "required",
       "acceptance": "Native egui named-field focus/Ctrl+A/text editing for metadata/pass/recipe path, realworker recipe save/reopen, unchanged live project/play state; no native window",
-      "source_sha256": "17bd1a6eb5a8baf2d88b499a1cbdf8568c87c2223c6f9485ed6c891a678e5ff0"
+      "source_sha256": "ca562b746a53c1c1ae9dcccd9b6ad42fa64ccecba67baea0551d526cd8b1ceeb"
+    },
+    {
+      "id": "native-declared-speaker-delivery-ui-cli",
+      "test": "ui::audio_delivery::tests::speakers::native_declared_speaker_controls_export_and_cli_reopen_share_actual_ordered_graph",
+      "source": "src/ui/audio_delivery/tests/speakers.rs",
+      "requirement": "required",
+      "acceptance": "actual 2.1 graph/ordered physical alias, native width UI/mono switch, RF64 render, independent analytic PCM and native project/CLI recipe/batch reopen",
+      "source_sha256": "cff3c9e1825731469f87c7cf468a0ed2bfa131d45b3da12a0dc80d2ed4b71151"
+    },
+    {
+      "id": "native-recording-speaker-contract",
+      "test": "engine::audio::routing::record::delivery::tests::contract_tests::declared_and_unknown_native_recording_headers_keep_pcm_order_and_recovery",
+      "source": "src/engine/audio/routing/record/delivery/tests/contract_tests.rs",
+      "requirement": "required",
+      "acceptance": "actual Recorder converted capture, declared/unknown 3ch float/PCM24 extensible headers, independent FFmpeg ordered PCM, odd/partial recovery, metadata retained and stale/fold refusal",
+      "source_sha256": "9f42be901370077fb489366790c2552e7886943e5c4da45d094ddce3b07423c1"
+    },
+    {
+      "id": "recovery-fifo-manifest",
+      "test": "engine::audio::routing::record::delivery::tests::contract_tests::recovery_rejects_fifo_manifest_without_waiting_for_a_writer",
+      "source": "src/engine/audio/routing/record/delivery/tests/contract_tests.rs",
+      "requirement": "required",
+      "acceptance": "actual FIFO recording manifest without writer rejected via nonblocking regular descriptor validation",
+      "source_sha256": "9f42be901370077fb489366790c2552e7886943e5c4da45d094ddce3b07423c1"
     }
   ],
   "proof_axes": {

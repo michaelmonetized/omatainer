@@ -406,7 +406,16 @@ impl Frame {
         target.cue_mix = rt.cue_mix;
         target.monitor = rt.monitor.status;
         target.routing_mixer.clear();
-        if let Some(graph)=&rt.routing {target.routing_mixer.extend_from_slice(&graph.mixer.channels);}
+        target.routing_speakers.clear();
+        if let Some(graph)=&rt.routing {
+            target.routing_mixer.extend_from_slice(&graph.mixer.channels);
+            for node in &graph.nodes {
+                if let Some(layout)=node.speakers.filter(|layout|layout.channels()>2&&matches!(node.group,audio::routing::model::Group::Track(_)|audio::routing::model::Group::Scene(_)|audio::routing::model::Group::Main)){
+                    debug_assert!(target.routing_speakers.len()<target.routing_speakers.capacity());
+                    target.routing_speakers.push(audio::routing::speakers::Meter{group:node.group,layout,peaks:std::array::from_fn(|i|node.peaks[i])});
+                }
+            }
+        }
         target.latency = rt.routing.as_ref().map_or(Default::default(), |graph| graph.latency_status());
         target.mic_aux = rt.mic_aux.status();
         target.surfaces = rt.surface_status();

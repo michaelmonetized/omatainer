@@ -115,10 +115,11 @@ impl Configuration {
                 (c.record, Direction::Record),
             ] {
                 if let Some(target) = target {
+                    let group=if direction==Direction::Output{Group::Output(target)}else{Group::Record(target)};
                     let port = m
                         .port(target, direction)
-                        .filter(|p| (1..=2).contains(&p.channels.len()))
-                        .ok_or("Mic/aux destination needs one or two available channels")?;
+                        .filter(|p| (1..=2).contains(&p.channels.len())||m.speaker_layout(group).is_some_and(|l|l.channels()==p.channels.len()))
+                        .ok_or("Mic/aux destination needs mono/stereo or an exact declared wide speaker bed")?;
                     if m.monitor_output == Some(target) {
                         return Err("Headphone monitoring cannot be a mic/aux destination");
                     }

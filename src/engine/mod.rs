@@ -272,6 +272,7 @@ pub struct TrackRt {
     pub surface: surface_controls::TrackMix,
     surface_gain: mixer_gain::GainPair,
     mixer_gain: mixer_gain::GainPair,
+    bed_gain: mixer_gain::GainPair,
     pub mute: bool,
     pub solo: bool,
     pub armed: bool,
@@ -302,7 +303,7 @@ impl TrackRt {
         clips.reserve(session::MAX_SCENES - clips.len());
         Self {
             name, clips, playing: None, launch: Default::default(), project_resume: None, scene_bus: 0,
-            gain: 0.8, pan: 0.0, surface: Default::default(), surface_gain: Default::default(), mixer_gain: mixer_gain::GainPair::default(),
+            gain: 0.8, pan: 0.0, surface: Default::default(), surface_gain: Default::default(), mixer_gain: mixer_gain::GainPair::default(), bed_gain:Default::default(),
             mute: false, solo: false, armed: false, kind,
             input_monitor: None, input_gain: mixer_gain::GainPair::default(), pfl: false,
             poly: Poly::new(sr, match kind { 0 => SynthInstrument::Analog, 1 => SynthInstrument::Keys, _ => SynthInstrument::Pad }, 8),
@@ -781,6 +782,10 @@ pub struct RtEngine {
     pub(crate) routing_next_id:u64,
     routing_track_input: Option<[f32; 2]>,
     routing_track_taps: [[f32; 2]; 3],
+    routing_track_wide_taps: [audio::routing::prepared::Frame;3],
+    routing_track_wide_input: audio::routing::prepared::Frame,
+    routing_track_wide_generated: audio::routing::prepared::Frame,
+    routing_track_layout: audio::routing::speakers::Layout,
     routing_deck_taps: [[f32; 2]; 2],
     pub(crate) routing_input_frame: [f32; audio::routing::model::MAX_PHYSICAL_CHANNELS],
     pub(crate) routing_track_generated: [f32;2],
@@ -979,6 +984,7 @@ pub struct Snapshot {
     pub monitor: monitor::Status,
     pub(crate) latency: audio::routing::latency::Status,
     pub(crate) routing_mixer: Vec<audio::routing::mixer::Channel>,
+    pub(crate) routing_speakers: Vec<audio::routing::speakers::Meter>,
     pub(crate) mic_aux: audio::routing::mic_aux::Status,
     pub(crate) arrangement_enabled: bool,
     pub(crate) arrangement_end: f64,
@@ -1063,6 +1069,7 @@ impl Default for Snapshot {
             monitor: monitor::Status::default(),
             latency: audio::routing::latency::Status::default(),
             routing_mixer: Vec::with_capacity(audio::routing::mixer::MAX_SENDS+audio::routing::model::MAX_BUSES),
+            routing_speakers: Vec::with_capacity(audio::routing::speakers::MAX_BINDINGS),
             mic_aux: audio::routing::mic_aux::Status::default(),
             arrangement_enabled: false,
             arrangement_end: 0.0,
@@ -1413,6 +1420,10 @@ impl RtEngine {
             routing_next_id:2,
             routing_track_input: None,
             routing_track_taps: [[0.0; 2]; 3],
+            routing_track_wide_taps:[[0.;audio::routing::model::MAX_PORT_CHANNELS];3],
+            routing_track_wide_input:[0.;audio::routing::model::MAX_PORT_CHANNELS],
+            routing_track_wide_generated:[0.;audio::routing::model::MAX_PORT_CHANNELS],
+            routing_track_layout:Default::default(),
             routing_deck_taps: [[0.0; 2]; 2],
             routing_input_frame: [0.0; audio::routing::model::MAX_PHYSICAL_CHANNELS],
             routing_track_generated: [0.;2],
@@ -1481,7 +1492,7 @@ impl RtEngine {
         self.undo.prepare_sample_rate(self.sr,active_history);
         self.metro = metronome::Click::new(self.sr);
         self.xfader_gain = mixer_gain::GainPair::default();
-        for track in &mut self.tracks { track.mixer_gain = mixer_gain::GainPair::default(); track.input_gain = mixer_gain::GainPair::default(); }
+        for track in &mut self.tracks { track.mixer_gain = mixer_gain::GainPair::default(); track.bed_gain=Default::default(); track.input_gain = mixer_gain::GainPair::default(); }
         // Rate changes reconstruct all preallocated master histories; type and
         // wet controls remain intact and are configured on the next block.
         self.master_fx = std::array::from_fn(|_| master_fx::MasterSlot::new(sr as f32));
@@ -1938,6 +1949,7 @@ impl RtEngine {
     fn render_track(&mut self, ti: usize, any_solo: bool) -> (f32, f32, bool) {
         let track = &mut self.tracks[ti];
         track.mixer_gain.prepare([track.gain, track.pan], self.sr, mixer_gain::pan_gains);
+        track.bed_gain.prepare([track.gain,0.],self.sr,mixer_gain::pan_gains);
         self.render_track_cached(ti, any_solo)
     }
 
@@ -1975,11 +1987,12 @@ impl RtEngine {
 
     /// Render generated and routed track sources on one compensated timeline.
     /// Takes the exact track, solo policy and prepared native-source alignment; returns post-mixer stereo and the original cue flag.
-    fn render_track_aligned(&mut self, ti: usize, any_solo: bool, mut align: impl FnMut([f32;2])->[f32;2]) -> (f32, f32, bool) {
+    fn render_track_aligned(&mut self, ti: usize, any_solo: bool, mut align: impl FnMut(audio::routing::prepared::Frame)->audio::routing::prepared::Frame) -> (f32, f32, bool) {
         let arrangement_enabled=self.arrangement.enabled();
         if !arrangement_enabled { self.clip_launch_tick(ti); }
-        let (arrangement_audio,arrangement_sounding)=if arrangement_enabled{self.render_arrangement(ti)}else{self.render_midi_output(ti);([0.0;2],false)};
-        let mut fallback = [0.0; 2];
+        let (arrangement_audio,arrangement_sounding)=if arrangement_enabled{self.render_arrangement(ti)}else{self.render_midi_output(ti);([0.0;audio::routing::model::MAX_PORT_CHANNELS],false)};
+        let mut fallback = [0.0; audio::routing::model::MAX_PORT_CHANNELS];
+        let speaker_width=self.routing_track_layout.channels();
         let silent = self.tracks[ti].mute || (any_solo && !self.tracks[ti].solo);
         let playing = if arrangement_enabled{None}else{self.tracks[ti].playing};
         // Pending launches do not emit or advance clip-local state. The
@@ -2013,8 +2026,9 @@ impl RtEngine {
                 if !ending && (self.tracks[ti].clips[scene].kind == ClipKind::Audio || self.tracks[ti].kind != 0 && self.tracks[ti].poly.offline.is_some()) {
                     let clip = &self.tracks[ti].clips[scene];
                     if let Some(audio) = &clip.audio {
-                        let (l,r)=if let Some(plan)=audio_region {let frame=plan.faded_sample(audio,sample_elapsed,p.looping,step*self.sr as f64);(frame[0],frame[1])}else{let phase = local / (f64::from(clip.bars) * 4.0) * audio.frames() as f64;audio.at(phase)};
-                        let gain = clip_gain(clip.gain) * clip_gain_value; fallback = [l * gain, r * gain];
+                        let frame=if let Some(plan)=audio_region {plan.faded_channels::<{audio::routing::model::MAX_PORT_CHANNELS}>(audio,sample_elapsed,p.looping,step*self.sr as f64)}else{let phase=local/(f64::from(clip.bars)*4.)*audio.frames() as f64;audio.at_channels::<{audio::routing::model::MAX_PORT_CHANNELS}>(phase)};
+                        let gain = clip_gain(clip.gain) * clip_gain_value;
+                        for channel in 0..speaker_width.max(2){fallback[channel]=frame[channel]*gain;}
                     }
                 }
                 let prev = p.last_beat;
@@ -2130,7 +2144,7 @@ impl RtEngine {
         }
         // Mute/solo gates the output, never the musical clock or DSP history.
         // Drum one-shots, synth releases and effect tails advance naturally.
-        fallback[0]+=arrangement_audio[0]*clip_gain_value;fallback[1]+=arrangement_audio[1]*clip_gain_value;
+        for channel in 0..speaker_width.max(2){fallback[channel]+=arrangement_audio[channel]*clip_gain_value;}
         let plugin_instrument = self.routing_plugin_instruments & (1u128 << ti) != 0;
         let s = if self.tracks[ti].kind == 0 {
             self.tick_drums(ti)
@@ -2143,15 +2157,17 @@ impl RtEngine {
         track.eq_right.low_g = track.eq.low_g;
         track.eq_right.mid_g = track.eq.mid_g;
         track.eq_right.high_g = track.eq.high_g;
-        let mut raw = align([s + pad_l + fallback[0], s + pad_r + fallback[1]]);
+        fallback[0]+=s+pad_l;fallback[1]+=s+pad_r;
+        let mut raw = align(fallback);
         raw[0] += self.routing_track_generated[0]; raw[1] += self.routing_track_generated[1];
         if let Some(input) = self.routing_track_input {
             raw[0] += input[0] * input_gain; raw[1] += input[1] * input_gain;
         }
+        for channel in 2..speaker_width {raw[channel]+=self.routing_track_wide_generated[channel]+self.routing_track_wide_input[channel]*input_gain;}
         let l = track.eq.tick(raw[0]);
         let r = track.eq_right.tick(raw[1]);
         let [fl, fr] = self.load_profile.chain(&mut track.fx, [l, r], self.sr, false, ti);
-        track.meter = track.meter * 0.93 + if silent { 0.0 } else { (l.abs() + r.abs()) * 0.035 };
+        track.meter = track.meter * 0.93 + if silent { 0.0 } else if speaker_width>2 {0.07*(l.abs()+r.abs()+raw[2..speaker_width].iter().map(|s|s.abs()).sum::<f32>())/speaker_width as f32} else { (l.abs() + r.abs()) * 0.035 };
         let [gl, gr] = {
             #[cfg(test)]
             if self.legacy_gain_math {
@@ -2160,10 +2176,13 @@ impl RtEngine {
             #[cfg(not(test))]
             track.mixer_gain.tick()
         };
-        let output = if silent { [0.0; 2] } else { [fl * gl, fr * gr] };
-        self.routing_track_taps = [raw, [fl, fr], output];
+        let bed_gain={#[cfg(test)]{if self.legacy_gain_math{track.gain}else{track.bed_gain.tick()[0]}}#[cfg(not(test))]{track.bed_gain.tick()[0]}};
+        let mut post_fx=raw;post_fx[0]=fl;post_fx[1]=fr;
+        let mut output=[0.;audio::routing::model::MAX_PORT_CHANNELS];
+        if !silent {for channel in 0..speaker_width{output[channel]=post_fx[channel]*if channel>=2{bed_gain}else{[gl,gr][channel]};}}
         let output = self.surface.track(track, output);
-        self.routing_track_taps[2] = output;
+        self.routing_track_wide_taps=[raw,post_fx,output];
+        self.routing_track_taps=std::array::from_fn(|tap|[self.routing_track_wide_taps[tap][0],self.routing_track_wide_taps[tap][1]]);
         (output[0], output[1], track.pfl)
     }
 

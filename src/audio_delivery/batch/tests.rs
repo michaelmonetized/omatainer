@@ -17,7 +17,7 @@ impl Drop for Files {
         let _ = std::fs::remove_dir_all(&self.0);
     }
 }
-fn fixture() -> (Engine, RtEngine) {
+fn fixture() -> (Engine, Box<RtEngine>) {
     let (engine, mut rt) = Engine::headless_for_test(48000, 256);
     rt.apply(Command::Stop);
     rt.quantize = false;
@@ -70,7 +70,7 @@ fn fixture() -> (Engine, RtEngine) {
         track.clips[0].bars = (region.duration_beats / 4.) as f32;
         track.clips[0].audio_region = Some(region);
     }
-    (engine, rt)
+    (engine, Box::new(rt))
 }
 fn capture(engine: &Engine, rt: &mut RtEngine) -> Captured {
     let h = engine.project.clone();
