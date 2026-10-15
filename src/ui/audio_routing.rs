@@ -380,7 +380,7 @@ fn choose(
     model: &Model,
     layout: &Layout,
 ) {
-    egui::ComboBox::from_id_salt(label)
+    egui::ComboBox::from_label(label)
         .selected_text(endpoint(*group, model, layout))
         .show_ui(ui, |ui| {
             for choice in choices {
