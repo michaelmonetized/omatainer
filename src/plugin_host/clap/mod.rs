@@ -18,7 +18,7 @@ use std::{
 };
 mod callbacks;
 mod editor;
-mod events;
+pub(super) mod events;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]

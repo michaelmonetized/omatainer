@@ -5,6 +5,7 @@ use std::{
     ptr,
 };
 mod api;
+mod editor;
 mod features;
 mod state;
 use api::{Api, Feature, RawInstance, M, P};
@@ -376,7 +377,12 @@ impl World {
                     audio_outputs: layouts[1].len() as u32,
                     has_midi_input: midi[0],
                     has_midi_output: midi[1],
-                    has_gui: false,
+                    has_gui: {
+                        let uis = (self.api.plugin_get_uis)(plugin);
+                        let present = !(self.api.uis_is_end)(uis, (self.api.uis_begin)(uis));
+                        (self.api.uis_free)(uis);
+                        present
+                    },
                 },
                 layout: vst3_host::AudioBusLayout {
                     inputs: layouts[0].clone(),
@@ -395,6 +401,7 @@ impl World {
 }
 impl Drop for World {
     fn drop(&mut self) {
+        self.editor = None;
         unsafe {
             (self.api.world_free)(self.raw);
         }
@@ -507,6 +514,9 @@ pub(super) struct Instance {
     atoms: Vec<Vec<u64>>,
     active: bool,
     audio: Vec<Vec<f32>>,
+    editor: Option<editor::Editor>,
+    pending_atoms: Vec<(u32, Vec<u8>)>,
+    output_atoms: Vec<(u32, Vec<u8>)>,
 }
 impl Instance {
     /// Restore an LV2 processor. Args: saved class and rate. Returns an active instance whose feature requirements were checked before native instantiation.
@@ -604,6 +614,9 @@ impl Instance {
             atoms,
             active: false,
             audio,
+            editor: None,
+            pending_atoms: Vec::with_capacity(64),
+            output_atoms: Vec::with_capacity(64),
         };
         unsafe {
             if (*raw).descriptor.is_null()
@@ -689,6 +702,7 @@ impl Instance {
             .map(|b| vec![vec![0.; frame.frames]; b.channel_count])
             .collect();
         let mut inputs = frame.inputs.clone();
+        let mut midi_output = Vec::new();
         let mut cuts = vec![0, frame.frames];
         cuts.extend(frame.parameters.iter().map(|p| p.2 as usize));
         cuts.sort_unstable();
@@ -741,6 +755,9 @@ impl Instance {
                             end,
                             if port.midi { &frame.midi } else { &[] },
                         )?;
+                        if port.input && start == 0 {
+                            append_atoms(&mut self.atoms[index], port.index, &self.pending_atoms)?;
+                        }
                         self.atoms[index].as_mut_ptr().cast()
                     }
                     _ => ptr::null_mut(),
@@ -756,7 +773,28 @@ impl Instance {
             unsafe {
                 (*(*self.raw).descriptor).run.unwrap()((*self.raw).handle, (end - start) as u32);
             }
+            for port in self
+                .class
+                .lv2
+                .as_ref()
+                .unwrap()
+                .ports
+                .iter()
+                .filter(|p| !p.input && p.kind == "atom")
+            {
+                parse_atoms(
+                    &self.atoms[port.index as usize],
+                    port.index,
+                    end - start,
+                    self.features.id("http://lv2plug.in/ns/ext/atom#Sequence")?,
+                    self.features
+                        .id("http://lv2plug.in/ns/ext/midi#MidiEvent")?,
+                    &mut midi_output,
+                    &mut self.output_atoms,
+                )?;
+            }
         }
+        self.pending_atoms.clear();
         if outputs.iter().flatten().flatten().any(|v| !v.is_finite()) {
             return Err("LV2 processor returned non-finite audio".into());
         }
@@ -774,17 +812,33 @@ impl Instance {
             latency,
             tail: 0,
             restart: 0,
-            editor_open: false,
+            editor_open: self.editor.is_some(),
             parameters: self.values()?,
-            midi: Vec::new(),
+            midi: midi_output,
         })
     }
     pub fn editor(&mut self, open: bool) -> Result<Response, String> {
-        if open {
-            Err("This LV2 editor toolkit is unavailable; use the native browser's generic parameter controls".into())
-        } else {
-            Ok(Response::Ok)
+        if !open {
+            self.editor = None;
+        } else if self.editor.is_none() {
+            self.editor = Some(editor::Editor::open(self)?);
         }
+        Ok(Response::Ok)
+    }
+    pub fn service(&mut self) -> Result<(), String> {
+        if let Some(editor) = &mut self.editor {
+            if editor.service(
+                &mut self.controls,
+                &self.class.lv2.as_ref().unwrap().ports,
+                &mut self.pending_atoms,
+                &mut self.output_atoms,
+            )? {
+                self.editor = None;
+            }
+        } else {
+            self.output_atoms.clear();
+        }
+        Ok(())
     }
 }
 impl Drop for Instance {
@@ -863,3 +917,82 @@ fn fill_atom(
 
 #[cfg(test)]
 mod tests;
+
+/// Append UI patch atoms to an input sequence. Args: aligned port buffer, port index and bounded native messages. Returns a capacity/shape diagnostic on malformed atoms.
+fn append_atoms(buffer: &mut [u64], port: u32, pending: &[(u32, Vec<u8>)]) -> Result<(), String> {
+    let bytes = unsafe {
+        std::slice::from_raw_parts_mut(buffer.as_mut_ptr().cast::<u8>(), buffer.len() * 8)
+    };
+    let mut position = u32::from_ne_bytes(bytes[..4].try_into().unwrap()) as usize + 8;
+    for (_, atom) in pending.iter().filter(|(p, _)| *p == port) {
+        if atom.len() < 8
+            || u32::from_ne_bytes(atom[..4].try_into().unwrap()) as usize + 8 != atom.len()
+        {
+            return Err("LV2 UI sent a malformed patch Atom".into());
+        }
+        let length = (atom.len() + 8 + 7) & !7;
+        if position + length > bytes.len() {
+            return Err("LV2 UI patch queue exceeds the Atom port capacity".into());
+        }
+        bytes.copy_within(16..position, 16 + length);
+        bytes[16..24].copy_from_slice(&0i64.to_ne_bytes());
+        bytes[24..24 + atom.len()].copy_from_slice(atom);
+        position += length;
+    }
+    bytes[..4].copy_from_slice(&((position - 8) as u32).to_ne_bytes());
+    Ok(())
+}
+/// Read native output events. Args: aligned Atom sequence, port, segment length and URI IDs. Returns bounded MIDI and patch notifications or an invalid-output diagnostic.
+fn parse_atoms(
+    buffer: &[u64],
+    port: u32,
+    frames: usize,
+    sequence: u32,
+    midi: u32,
+    notes: &mut Vec<vst3_host::MidiEvent>,
+    atoms: &mut Vec<(u32, Vec<u8>)>,
+) -> Result<(), String> {
+    let bytes =
+        unsafe { std::slice::from_raw_parts(buffer.as_ptr().cast::<u8>(), buffer.len() * 8) };
+    let size = u32::from_ne_bytes(bytes[..4].try_into().unwrap()) as usize;
+    let kind = u32::from_ne_bytes(bytes[4..8].try_into().unwrap());
+    if kind != sequence {
+        return Ok(());
+    }
+    if size < 8 || size + 8 > bytes.len() || bytes[8..12] != [0, 0, 0, 0] {
+        return Err("LV2 processor returned an invalid Atom sequence".into());
+    }
+    let mut pos = 16;
+    let end = size + 8;
+    let mut last = 0;
+    while pos < end {
+        if pos + 16 > end {
+            return Err("LV2 processor truncated an Atom event".into());
+        }
+        let time = i64::from_ne_bytes(bytes[pos..pos + 8].try_into().unwrap());
+        let length = u32::from_ne_bytes(bytes[pos + 8..pos + 12].try_into().unwrap()) as usize;
+        let kind = u32::from_ne_bytes(bytes[pos + 12..pos + 16].try_into().unwrap());
+        if time < last || time < 0 || time as usize >= frames || length > end - pos - 16 {
+            return Err("LV2 output event has invalid time or size".into());
+        }
+        last = time;
+        if kind == midi {
+            if length != 3 || notes.len() >= 512 {
+                return Err("LV2 MIDI output exceeds its supported event bound".into());
+            }
+            let data = bytes[pos + 16..pos + 19].try_into().unwrap();
+            notes.push(
+                super::clap::events::midi(data).ok_or("LV2 output MIDI message is malformed")?,
+            );
+        } else if atoms.len() < 64 {
+            atoms.push((port, bytes[pos + 8..pos + 16 + length].to_vec()));
+        }
+        pos = pos
+            .checked_add((16 + length + 7) & !7)
+            .ok_or("LV2 Atom event length overflow")?;
+    }
+    if pos != end {
+        return Err("LV2 Atom output is misaligned".into());
+    }
+    Ok(())
+}

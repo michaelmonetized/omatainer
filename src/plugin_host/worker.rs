@@ -344,6 +344,7 @@ pub(crate) fn run() -> Result<(), String> {
             Err(std::sync::mpsc::RecvTimeoutError::Disconnected) => return Ok(()),
             Err(std::sync::mpsc::RecvTimeoutError::Timeout) => {}
         }
+        if let Some(plugin) = lv2.as_mut() { plugin.service()?; }
         if let Some(plugin) = clap.as_mut() { plugin.service()?; }
         if let Some(instance) = instance.as_mut() {
             instance.plugin.lock().map_err(|e| e.to_string())?.service_run_loop();
