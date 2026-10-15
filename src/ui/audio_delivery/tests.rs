@@ -28,11 +28,10 @@ struct Gui {
 }
 impl Gui {
     fn new(files: &Files) -> Self {
-        Self::configured(files, 2, |_| {})
+        let (engine, rt) = Engine::headless_for_test(48000, 256);
+        Self::with_renderer(files, 2, engine, rt)
     }
-    fn configured(files: &Files, channels: usize, configure: impl FnOnce(&mut crate::engine::RtEngine)) -> Self {
-        let (engine, mut rt) = Engine::headless_for_test(48000, 256);
-        configure(&mut rt);
+    fn with_renderer(files: &Files, channels: usize, engine: Engine, mut rt: crate::engine::RtEngine) -> Self {
         rt.publish_for_test();
         let mut app = App::with_loader(engine, Theme::default(), None);
         app.library_metadata =

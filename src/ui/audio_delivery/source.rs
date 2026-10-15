@@ -1,5 +1,8 @@
 use super::*;
-use crate::engine::audio::routing::{model::Group, speakers::OutputContract};
+use crate::engine::audio::routing::{
+    model::Group,
+    speakers::{Layout, OutputContract},
+};
 
 /// Review the saved output and recording aliases.
 /// Takes one immutable capture; returns native encoded contracts without guessing speaker identity for wide aliases.
@@ -109,10 +112,10 @@ pub(super) fn width(ui: &mut egui::Ui, request: &mut Export, plan: &Plan) {
         ui.selectable_value(
             &mut request.options.channels,
             source.contract.channel_count,
-            format!(
-                "{} channels · saved speaker order",
-                source.contract.channel_count
-            ),
+            Layout::ALL
+                .iter()
+                .find(|layout| layout.speakers() == source.contract.speakers.as_slice())
+                .map_or("Saved speaker order", |layout| layout.label()),
         );
     }
 }

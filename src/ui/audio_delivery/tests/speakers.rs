@@ -1,77 +1,6 @@
 use super::*;
-use crate::engine::{
-    audio::routing::{model::*, speakers::Layout},
-    ClipKind, Command,
-};
-
-fn source(rt: &mut crate::engine::RtEngine, layout: Layout, physical: &[u16]) {
-    rt.apply(Command::Stop);
-    rt.quantize = false;
-    rt.bpm = 120.;
-    rt.master = 0.25;
-    for track in &mut rt.tracks {
-        for clip in &mut track.clips {
-            *clip = crate::engine::Clip::empty();
-        }
-        track.fx.slots.clear();
-    }
-    for rack in &mut rt.scene_fx {
-        rack.slots.clear();
-    }
-    let count = layout.channels();
-    let mut data = vec![0.; 4096 * count];
-    for channel in 0..count {
-        data[(8 + 13 * channel) * count + channel] = (channel + 1) as f32 / 32.;
-    }
-    let sample = Arc::new(crate::engine::Sample {
-        name: "Original delivery speaker impulses".into(),
-        sr: 48000,
-        ch: count as u16,
-        data,
-        peaks: Default::default(),
-        spectrum: None,
-        bpm: 120.,
-        path: String::new(),
-    });
-    let region = crate::engine::audio_clip::Region::full(&sample, 120.)
-        .unwrap()
-        .prepare(&sample)
-        .unwrap();
-    let track = &mut rt.tracks[0];
-    track.gain = 1.;
-    track.pan = 0.;
-    track.kind = 4;
-    track.eq.low_g = 1.;
-    track.eq.mid_g = 1.;
-    track.eq.high_g = 1.;
-    track.clips[0].kind = ClipKind::Audio;
-    track.clips[0].audio = Some(sample);
-    track.clips[0].audio_region = Some(region);
-    track.clips[0].bars = region.duration_beats as f32 / 4.;
-    let mut model = Model::default();
-    model.ports[0].channels = physical.to_vec();
-    model.connections[0].map = (0..count)
-        .map(|i| ChannelMap {
-            source: i as u8,
-            destination: i as u8,
-            gain: 1.,
-        })
-        .collect();
-    model.set_speaker_layout(Group::Track(rt.session.tracks[0].id), layout);
-    for scene in &rt.session.scenes {
-        model.set_speaker_layout(Group::Scene(scene.id), layout);
-    }
-    model.set_speaker_layout(Group::Main, layout);
-    model.set_speaker_layout(Group::Output(1), layout);
-    rt.routing = Some(Box::new(
-        crate::engine::audio::routing::prepared::Prepared::at_rate(
-            Arc::new(model),
-            &rt.session,
-            48000,
-        )
-        .unwrap(),
-    ));
-}
+use crate::engine::audio::routing::speakers::tests::fixture;
+use sha2::{Digest, Sha256};
 
 fn independent(path: &Path, tools: &serde_json::Value) -> Vec<f32> {
     let result = std::process::Command::new(tools["ffmpeg"]["path"].as_str().unwrap())
@@ -95,7 +24,21 @@ fn independent(path: &Path, tools: &serde_json::Value) -> Vec<f32> {
 #[test]
 fn native_declared_speaker_controls_export_and_cli_reopen_share_actual_ordered_graph() {
     let files = Files::new();
-    let mut gui = Gui::configured(&files, 6, |rt| source(rt, Layout::StereoLfe, &[3, 0, 5]));
+    let (engine, rt) = fixture(48000);
+    let input = rt.tracks[0].clips[0]
+        .audio
+        .as_ref()
+        .unwrap()
+        .data
+        .iter()
+        .flat_map(|v| v.to_le_bytes())
+        .collect::<Vec<_>>();
+    let input_sha256 = format!("{:x}", Sha256::digest(&input));
+    assert_eq!(
+        input_sha256,
+        "510c775f101b3b688dc304e676820ec3a5887dc64dbd2992ca517b7bfcfa3da1"
+    );
+    let mut gui = Gui::with_renderer(&files, 6, engine, rt);
     let revision = gui.app.engine.project.revision();
     gui.click("Review export source");
     gui.wait();
@@ -108,7 +51,7 @@ fn native_declared_speaker_controls_export_and_cli_reopen_share_actual_ordered_g
     );
     gui.click("Mono");
     assert_eq!(gui.app.audio_delivery.request.options.channels, 1);
-    gui.click("3 channels · saved speaker order");
+    gui.click("2.1 (FL FR LFE)");
     assert_eq!(gui.app.audio_delivery.request.options.channels, 3);
     gui.app.audio_delivery.request.end = 0.01;
     gui.app.audio_delivery.request.tail = 0.;
@@ -215,6 +158,6 @@ fn native_declared_speaker_controls_export_and_cli_reopen_share_actual_ordered_g
     assert!(post_residual < 2e-6, "{post_residual}");
     data::fixture::retain(
         "native-declared-speaker-delivery-ui-cli",
-        serde_json::json!({"status":"passed","layout":"2.1","native_channels":3,"wave_mask":11,"physical_channels":[3,0,5],"frames":480,"master_analytic_residual":residual,"post_device_analytic_residual":post_residual,"live_state_unchanged":true,"native_project_recipe_reopened":true,"export":metadata,"batch":manifest,"tools":tools}),
+        serde_json::json!({"status":"passed","input_sha256":input_sha256,"input_bytes":input.len(),"master_file_sha256":format!("{:x}",Sha256::digest(std::fs::read(folder.join("master.wav")).unwrap())),"selected_file_sha256":format!("{:x}",Sha256::digest(std::fs::read(&audio).unwrap())),"layout":"2.1","native_channels":3,"wave_mask":11,"physical_channels":[3,0,5],"frames":480,"master_analytic_residual":residual,"post_device_analytic_residual":post_residual,"live_state_unchanged":true,"native_project_recipe_reopened":true,"export":metadata,"batch":manifest,"tools":tools}),
     );
 }
