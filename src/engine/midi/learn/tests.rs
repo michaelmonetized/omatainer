@@ -15,12 +15,12 @@ fn channel_effect_assignment_applies_only_pressed_selected_deck_and_existing_kno
     let revision = rt.project.revision();
     input.push(&[0x80, 60, 0]); rt.process(&mut []);
     assert_eq!(rt.project.revision(), revision);
-    for invalid in [Binding { extra: 3, ..selected }, Binding { deck: 2, ..selected }, Binding { kind: MsgKind::Cc, ..selected }] { assert!(validate_binding(&invalid).is_err()); }
+    for invalid in [Binding { routing: None, extra: 3, ..selected }, Binding { routing: None, deck: 2, ..selected }, Binding { routing: None, kind: MsgKind::Cc, ..selected }] { assert!(validate_binding(&invalid).is_err()); }
 }
 
 fn binding(action: Action) -> Binding {
     let kind = kind(action);
-    Binding {
+    Binding { routing: None,
         kind,
         ch: 0,
         data: 60,
@@ -88,14 +88,14 @@ fn one_gesture_conflict_review_replacement_and_release_do_not_swallow_other_inpu
             &[0x90, 60, 100],
             &builtin
         ),
-        Dispatch::Binding(Binding {
+        Dispatch::Binding(Binding { routing: None,
             action: Action::DeckCue,
             ..
         })
     ));
     assert!(matches!(
         shared.input(7, "Fixture controller", "port-a", &[0x80, 60, 0], &builtin),
-        Dispatch::Binding(Binding {
+        Dispatch::Binding(Binding { routing: None,
             action: Action::DeckCue,
             ..
         })
@@ -108,7 +108,7 @@ fn one_gesture_conflict_review_replacement_and_release_do_not_swallow_other_inpu
             &[0x90, 60, 100],
             &builtin
         ),
-        Dispatch::Binding(Binding {
+        Dispatch::Binding(Binding { routing: None,
             action: Action::DeckCue,
             ..
         })
@@ -267,7 +267,7 @@ fn bounded_storage_invalid_targets_and_overlapping_addresses_are_refused_atomica
         mappings: (0..256)
             .map(|index| Mapping {
                 endpoint: endpoint.clone(),
-                binding: Binding {
+                binding: Binding { routing: None,
                     ch: (index / 128) as u8,
                     data: (index % 128) as u8,
                     ..binding(Action::DeckPlay)
@@ -397,7 +397,7 @@ fn learned_chromatic_mode_retains_ninth_bit_and_old_manufacturer_modes_without_o
     reopened.validate().unwrap();
     shared.configure(reopened).unwrap();
     assert_eq!(shared.view().devices[0].pad_modes, 511);
-    assert!(matches!(shared.input(7, "Fixture controller", "port-a", &[0x90,60,127], &map(vec![])), Dispatch::Binding(Binding { action: Action::DeckPadMode, extra: 8, .. })));
+    assert!(matches!(shared.input(7, "Fixture controller", "port-a", &[0x90,60,127], &map(vec![])), Dispatch::Binding(Binding { routing: None, action: Action::DeckPadMode, extra: 8, .. })));
     let mut invalid = shared.view().config;
     invalid.mappings[0].binding.extra = 9;
     assert!(invalid.validate().is_err());

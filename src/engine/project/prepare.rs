@@ -51,7 +51,8 @@ impl Prepared {
             sampler_oct,
             musical_context,
             note_seed,
-            sampler_scale
+            sampler_scale,
+            routing_next_id
         );
         rt.timeline_anchor = state.timeline_seconds;
         rt.timeline_frames = 0;
@@ -86,6 +87,7 @@ impl Prepared {
             layout
         };
         if state.version < 7 && rt.fx_view >= 100 { rt.fx_view += session::SCENE_FX_BASE - 100; }
+        rt.routing_next_id=rt.routing_next_id.max(state.routing.as_ref().map_or(2,|model|model.next_id));
         rt.routing = state.routing.take().map(|model| audio::routing::prepared::Prepared::with_cancel(model, &rt.session,rt.sr as u32,cancel).map(Box::new)).transpose().map_err(Error::Invalid)?;
         rt.mic_aux.set(state.mic_aux);
         rt.tracks.clear();
@@ -256,6 +258,7 @@ impl Prepared {
             migration,
             scenes,
             routing,
+            routing_next_id,
             mic_aux,
             last_midi_step,
             quant,
@@ -266,6 +269,7 @@ impl Prepared {
             master,
             cue_mix,
             tracks,
+            surface,
             session,
             decks,
             master_fx,
@@ -335,7 +339,7 @@ pub(in crate::engine) fn prepare_track(saved: Track, media: &[Arc<Sample>], sr: 
     let drums = saved.drums.map(|index| media[index].clone());
     let mut track = Box::new(TrackRt::empty(sr as f32, saved.name, saved.kind, drums, 0));
     track.scene_bus = saved.scene_bus;
-    track.gain = saved.gain; track.pan = saved.pan;
+    track.gain = saved.gain; track.pan = saved.pan; track.surface = saved.surface;
     track.mute = saved.mute; track.solo = saved.solo; track.armed = saved.armed; track.input_monitor = saved.input_monitor;
     track.poly = synth(saved.synth, sr); track.eq = eq(saved.eq, sr); track.eq_right = track.eq;
     track.fx = effects(saved.fx, sr);

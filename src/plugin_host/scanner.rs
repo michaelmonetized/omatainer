@@ -28,9 +28,11 @@ pub(crate) struct Catalog {
 }
 impl Default for Catalog {
     fn default() -> Self {
-        let mut roots = vec!["/usr/lib/vst3".into(), "/usr/local/lib/vst3".into()];
+        let mut roots = vec!["/usr/lib/vst3".into(), "/usr/local/lib/vst3".into(), "/usr/lib/clap".into(), "/usr/local/lib/clap".into(), "/usr/lib/lv2".into(), "/usr/local/lib/lv2".into()];
         if let Some(home) = std::env::var_os("HOME") {
-            roots.insert(0, PathBuf::from(home).join(".vst3"));
+            roots.insert(0, PathBuf::from(&home).join(".vst3"));
+            roots.insert(1, PathBuf::from(&home).join(".clap"));
+            roots.insert(2, PathBuf::from(home).join(".lv2"));
         }
         Self {
             schema: 1,
@@ -182,9 +184,9 @@ pub(super) fn candidates(roots: &[PathBuf], cancel: &AtomicBool) -> Result<Vec<P
                 );
             }
             let entry = entry.map_err(|e| format!("Plugin scan path cannot be read: {e}"))?;
-            if entry.file_type().is_dir() && entry.path().extension().is_some_and(|s| s == "vst3") {
+            if entry.file_type().is_dir() && entry.path().extension().is_some_and(|s| matches!(s.to_str(),Some("vst3"|"lv2"|"component"|"vst"))) || entry.file_type().is_file() && entry.path().extension().is_some_and(|s| matches!(s.to_str(),Some("clap"|"dll"|"so"|"vst2"|"fxp"|"fxb"|"aupreset"))) {
                 found.insert(entry.path().to_path_buf());
-                walk.skip_current_dir();
+                if entry.file_type().is_dir() { walk.skip_current_dir(); }
                 if found.len() > 4096 {
                     return Err("Plugin scan exceeds 4096 bundles".into());
                 }

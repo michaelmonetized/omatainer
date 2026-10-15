@@ -43,6 +43,7 @@ impl MidiMap {
                 "MIDI profile {:?}: binding {index} has invalid relative encoding/scale metadata",
                 self.name
             );
+            anyhow::ensure!(binding.routing.is_some()==(binding.action==Action::RoutingMix)&&binding.routing.is_none_or(|target|target.valid()),"MIDI routing controls require a saved project namespace and stable send/return identity");
             anyhow::ensure!(binding.controls.is_none_or(|spec| spec.valid(binding.action))
                 && (binding.pair_order.is_none() || binding.kind == MsgKind::Cc14)
                 && (!matches!(binding.kind, MsgKind::Cc14 | MsgKind::Pitch) || super::controls::continuous(binding.action))

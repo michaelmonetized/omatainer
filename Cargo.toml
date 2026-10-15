@@ -24,6 +24,9 @@ crossbeam-channel = "0.5"
 eframe = { version = "0.32", default-features = true }
 egui = "0.32"
 libc = "0.2"
+clap-sys = "=0.5.0"
+libloading = "=0.8.9"
+x11-dl = "=2.21.0"
 icu_normalizer = "=2.3.0"
 icu_casemap = "=2.3.0"
 image = { version = "=0.25.10", default-features = false, features = ["png", "jpeg"] }

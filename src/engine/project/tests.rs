@@ -4,6 +4,7 @@ mod sampler_tests;
 mod gain_tests;
 mod dependency_tests;
 mod template_tests;
+mod fixed_send_tests;
 #[test]
 fn channel_effects_native_archive_reopen_rate_change_and_legacy_migration_preserve_both_decks() {
     let mut original = rt();
@@ -232,6 +233,7 @@ fn captured(rt: &RtEngine) -> Captured {
         frame.capture(rt);
         assert!(frame.error.is_none(), "{:?}", frame.error);
         if frame.complete {
+            frame.finish_plugins(&AtomicBool::new(false)).unwrap();
             frame.state.deduplicate(&mut frame.media);
             frame.state.validate(&frame.media).unwrap();
             return Captured {

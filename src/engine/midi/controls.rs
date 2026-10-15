@@ -71,6 +71,7 @@ pub(crate) fn continuous(action: Action) -> bool {
             | Action::TrackPan
             | Action::TrackSendA
             | Action::TrackSendB
+            | Action::RoutingMix
             | Action::FxWet
     )
 }
@@ -162,8 +163,9 @@ impl Adjust {
             Action::TrackFader => rt.tracks.get(track)?.gain,
             Action::TrackPan => (rt.tracks.get(track)?.pan + 1.0) * 0.5,
             Action::TrackSendA | Action::TrackSendB => {
-                rt.surface.sends.get(track)?[usize::from(binding.action == Action::TrackSendB)]
+                rt.tracks.get(track)?.surface.sends[usize::from(binding.action == Action::TrackSendB)]
             }
+            Action::RoutingMix => {let assignment=binding.routing?;if assignment.namespace!=rt.session.namespace{return None;}let values=rt.routing.as_ref()?.mix_values(assignment.target)?;match assignment.parameter{super::super::audio::routing::mixer::Parameter::Level=>values.level/1.5,super::super::audio::routing::mixer::Parameter::Pan=>(values.pan+1.)*0.5,super::super::audio::routing::mixer::Parameter::Mute=>if values.mute{1.}else{0.},super::super::audio::routing::mixer::Parameter::Solo=>if values.solo{1.}else{0.},super::super::audio::routing::mixer::Parameter::SoloSafe=>if values.solo_safe{1.}else{0.}}},
             Action::FxWet => rt.fx_wet[track],
             _ => return None,
         };
@@ -210,6 +212,7 @@ impl Adjust {
                     value,
                 })
             }
+            Action::RoutingMix => binding.routing?.command(value),
             Action::FxWet => Command::FxWet {
                 slot: binding.extra as u8,
                 value,

@@ -359,7 +359,7 @@ fn native_container_and_navigation_midi_presets_roundtrip_with_strict_legacy_gua
     assert_eq!(reopened.state.navigation, saved.state.navigation);
     reopened.state.validate(&reopened.media).unwrap();
     std::fs::remove_file(path).unwrap();
-    let binding = Binding {
+    let binding = Binding { routing: None,
         kind: MsgKind::Note,
         ch: 3,
         data: 60,
@@ -414,7 +414,7 @@ fn native_container_and_navigation_midi_presets_roundtrip_with_strict_legacy_gua
         crate::preferences::storage::decode(&serde_json::to_vec(&value).unwrap()).unwrap();
     assert!(migrated);
     assert_eq!(old.version, crate::preferences::VERSION);
-    let encoder = Binding {
+    let encoder = Binding { routing: None,
         kind: MsgKind::Cc,
         action: midi::Action::Master,
         extra: 0,
@@ -461,7 +461,7 @@ fn learned_navigation_uses_stable_ids_and_only_press_edges_through_production_in
     let mut rt = Box::new(rt);
     let (request, _) = prepare(&engine, &mut rt, model(), false, None);
     rt.apply(Command::SongNavigationEdit(request));
-    let binding = Binding {
+    let binding = Binding { routing: None,
         kind: MsgKind::Note,
         ch: 3,
         data: 60,
@@ -518,12 +518,12 @@ fn learned_navigation_uses_stable_ids_and_only_press_edges_through_production_in
         std::thread::sleep(std::time::Duration::from_millis(1));
     }
     assert_eq!(rt.beat, 7.0);
-    let bad = Binding {
+    let bad = Binding { routing: None,
         extra: 0,
         ..binding
     };
     assert!(midi::learn::validate_binding(&bad).is_err());
-    assert!(midi::learn::validate_binding(&Binding {
+    assert!(midi::learn::validate_binding(&Binding { routing: None,
         kind: MsgKind::Cc,
         ..binding
     })

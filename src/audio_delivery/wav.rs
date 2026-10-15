@@ -3,6 +3,12 @@ use std::io::{Seek, SeekFrom, Write};
 use std::os::fd::AsRawFd;
 use std::os::unix::fs::OpenOptionsExt;
 use std::path::{Path, PathBuf};
+mod headers;
+mod metadata;
+pub(crate) use metadata::embed as embed_report;
+#[cfg(test)]
+mod container_tests;
+pub(crate) use headers::{Container, Metadata, Settings};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum Encoding {
@@ -33,6 +39,8 @@ pub(crate) struct Writer {
     random: u64,
     bytes: Vec<u8>,
     frames: u64,
+    data_offset: u64,
+    settings: Option<Settings>,
 }
 impl Writer {
     /// Create a new bounded audio file.
@@ -44,7 +52,7 @@ impl Writer {
         encoding: Encoding,
         dither: bool,
     ) -> Result<Self, String> {
-        if !(1..=26).contains(&channels)
+        if !(1..=64).contains(&channels)
             || !(8000..=384000).contains(&rate)
             || dither && encoding == Encoding::Float32
         {
@@ -69,8 +77,32 @@ impl Writer {
             random: 0x706572666f726d31,
             bytes: Vec::with_capacity(16384 * encoding.bytes()),
             frames: 0,
+            data_offset: 44,
+            settings: None,
         };
         writer.header()?;
+        Ok(writer)
+    }
+    /// Create a metadata-bearing streamed container.
+    /// Args: path, actual width/rate, quantization and canonical mask metadata. Returns a no-overwrite writer with bounded conversion storage.
+    pub fn container(
+        path: &Path,
+        channels: u16,
+        rate: u32,
+        encoding: Encoding,
+        dither: bool,
+        settings: Settings,
+    ) -> Result<Self, String> {
+        let header = settings.header(channels, rate, encoding, 0)?;
+        let mut writer = Self::new(path, channels, rate, encoding, dither)?;
+        writer.random = settings.seed.max(1);
+        writer.settings = Some(settings);
+        writer.data_offset = header.len() as u64;
+        writer
+            .file
+            .seek(SeekFrom::Start(0))
+            .and_then(|_| writer.file.write_all(&header))
+            .map_err(|e| e.to_string())?;
         Ok(writer)
     }
     pub fn frames(&self) -> u64 {
@@ -103,7 +135,16 @@ impl Writer {
             .ok_or("WAV frame count overflow")?;
         if frames
             .checked_mul(width as u64 * self.encoding.bytes() as u64)
-            .is_none_or(|n| n > u64::from(u32::MAX) - 36)
+            .is_none_or(|n| {
+                n.checked_add(n & 1)
+                    .and_then(|n| n.checked_add(self.data_offset - 8))
+                    .is_none_or(|size| {
+                        self.settings
+                            .as_ref()
+                            .is_none_or(|s| s.container != Container::Rf64)
+                            && size > u64::from(u32::MAX)
+                    })
+            })
         {
             return Err("WAV size limit reached; split the recording".into());
         }
@@ -130,16 +171,26 @@ impl Writer {
                             .round()
                             .clamp(-f64::from(maximum + 1), f64::from(maximum))
                             as i32;
-                        let bytes = quantized.to_le_bytes();
-                        self.bytes
-                            .extend_from_slice(&bytes[..self.encoding.bytes()]);
+                        if self
+                            .settings
+                            .as_ref()
+                            .is_some_and(|s| s.container == Container::Aiff)
+                        {
+                            self.bytes.extend_from_slice(
+                                &quantized.to_be_bytes()[4 - self.encoding.bytes()..],
+                            );
+                        } else {
+                            self.bytes.extend_from_slice(
+                                &quantized.to_le_bytes()[..self.encoding.bytes()],
+                            );
+                        }
                     }
                 }
             }
             if let Err(error) = self.file.write_all(&self.bytes) {
                 if let Ok(length) = self.file.metadata().map(|m| m.len()) {
-                    self.frames =
-                        length.saturating_sub(44) / (width * self.encoding.bytes()) as u64;
+                    self.frames = length.saturating_sub(self.data_offset)
+                        / (width * self.encoding.bytes()) as u64;
                 }
                 return Err(format!(
                     "Audio write failed after {} complete frames at {}: {error}",
@@ -152,11 +203,22 @@ impl Writer {
         Ok(())
     }
     fn header(&mut self) -> Result<(), String> {
+        if let Some(settings) = &self.settings {
+            let header = settings.header(self.channels, self.rate, self.encoding, self.frames)?;
+            if header.len() as u64 != self.data_offset {
+                return Err("Container header length changed during streaming".into());
+            }
+            return self
+                .file
+                .seek(SeekFrom::Start(0))
+                .and_then(|_| self.file.write_all(&header))
+                .map_err(|e| e.to_string());
+        }
         let block = self.channels * self.encoding.bytes() as u16;
         let bytes = (self.frames * u64::from(block)) as u32;
         let mut header = [0_u8; 44];
         header[..4].copy_from_slice(b"RIFF");
-        header[4..8].copy_from_slice(&(36 + bytes).to_le_bytes());
+        header[4..8].copy_from_slice(&(36 + bytes + (bytes & 1)).to_le_bytes());
         header[8..16].copy_from_slice(b"WAVEfmt ");
         header[16..20].copy_from_slice(&16_u32.to_le_bytes());
         header[20..22].copy_from_slice(
@@ -183,9 +245,16 @@ impl Writer {
     /// Finalize the valid audio prefix.
     /// Takes this writer; truncates incomplete frame bytes, fixes the header and flushes the file, returning the exact frame count.
     pub fn finish(mut self) -> Result<u64, String> {
+        let data = self.frames * u64::from(self.channels) * self.encoding.bytes() as u64;
         self.file
-            .set_len(44 + self.frames * u64::from(self.channels) * self.encoding.bytes() as u64)
+            .set_len(self.data_offset + data + (data & 1))
             .map_err(|e| format!("Cannot trim audio prefix at {}: {e}", self.path.display()))?;
+        if data & 1 != 0 {
+            self.file
+                .seek(SeekFrom::Start(self.data_offset + data))
+                .and_then(|_| self.file.write_all(&[0]))
+                .map_err(|e| format!("Cannot pad audio prefix at {}: {e}", self.path.display()))?;
+        }
         self.header().map_err(|e| {
             format!(
                 "Cannot finalize audio prefix at {}: {e}",
@@ -292,6 +361,40 @@ mod tests {
         let before = std::fs::read(&path).unwrap();
         assert!(Writer::new(&path, 2, 48000, Encoding::Float32, false).is_err());
         assert_eq!(before, std::fs::read(path).unwrap());
+        std::fs::remove_dir_all(root).unwrap();
+    }
+    #[test]
+    fn odd_pcm24_word_pad_is_outside_data_and_partial_frame_is_trimmed() {
+        let root = directory();
+        for channels in [1_u16, 3] {
+            for frames in [1, 2, 3, 4097] {
+                for dither in [false, true] {
+                    let path = root.join(format!("{channels}-{frames}-{dither}.wav"));
+                    let mut writer =
+                        Writer::new(&path, channels, 48000, Encoding::Pcm24, dither).unwrap();
+                    let samples = vec![0.125; channels as usize * frames];
+                    for chunk in samples.chunks(channels as usize * 13) {
+                        writer.append(chunk, 1.).unwrap();
+                    }
+                    writer.file.write_all(&[0xa5, 0x5a]).unwrap();
+                    assert_eq!(writer.finish().unwrap(), frames as u64);
+                    let bytes = std::fs::read(&path).unwrap();
+                    let data = frames * channels as usize * 3;
+                    assert_eq!(bytes.len(), 44 + data + (data & 1));
+                    assert_eq!(
+                        u32::from_le_bytes(bytes[4..8].try_into().unwrap()) as usize,
+                        bytes.len() - 8
+                    );
+                    assert_eq!(
+                        u32::from_le_bytes(bytes[40..44].try_into().unwrap()) as usize,
+                        data
+                    );
+                    if data & 1 != 0 {
+                        assert_eq!(bytes[44 + data], 0);
+                    }
+                }
+            }
+        }
         std::fs::remove_dir_all(root).unwrap();
     }
 }

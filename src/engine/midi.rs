@@ -62,6 +62,8 @@ pub enum MsgKind {
 #[derive(Clone, Copy, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Binding {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub routing: Option<super::audio::routing::mixer::Assignment>,
     pub kind: MsgKind,
     pub ch: u8, // 0-15, 0xFF = any
     pub data: u8,
@@ -134,6 +136,7 @@ pub enum Action {
     TrackPan,
     TrackSendA,
     TrackSendB,
+    RoutingMix,
     Play,
     Stop,
     Record,
@@ -662,6 +665,7 @@ fn dispatch_value_key(
         Action::TrackSolo if pressed => { let _ = send(Command::Solo { track: b.extra as u8 }); }
         Action::TrackArm if pressed => { let _ = send(Command::Arm { track: b.extra as u8 }); }
         Action::TrackPan => { let _ = send(Command::TrackPan { track: b.extra as u8, value: rel }); }
+        Action::RoutingMix => {if let Some(target)=b.routing {let _=send(target.command(rel));}}
         Action::TrackSendA | Action::TrackSendB => { let _ = send(Command::Surface(super::surface_controls::Input::TrackSend { track: b.extra as u8, send: u8::from(b.action == Action::TrackSendB), value: rel })); }
         Action::SongLocator if pressed => { let _ = send(Command::SongNavigation(super::song_navigation::Action::Locator { id:b.extra, grid:super::clip_launch::Grid::Global })); }
         Action::SongPrevious if pressed => { let _ = send(Command::SongNavigation(super::song_navigation::Action::Previous(super::clip_launch::Grid::Global))); }
@@ -710,7 +714,7 @@ fn pick_map(maps: &[MidiMap], name: &str) -> MidiMap {
 }
 
 fn nbind(ch: u8, note: u8, action: Action, deck: u8, extra: u8) -> Binding {
-    Binding {
+    Binding { routing: None,
         kind: MsgKind::Note,
         ch,
         data: note,
@@ -723,7 +727,7 @@ fn nbind(ch: u8, note: u8, action: Action, deck: u8, extra: u8) -> Binding {
     }
 }
 fn cbind(ch: u8, cc: u8, action: Action, deck: u8, extra: u8) -> Binding {
-    Binding {
+    Binding { routing: None,
         kind: MsgKind::Cc,
         ch,
         data: cc,
@@ -736,7 +740,7 @@ fn cbind(ch: u8, cc: u8, action: Action, deck: u8, extra: u8) -> Binding {
     }
 }
 fn rbind(ch: u8, cc: u8, action: Action, deck: u8, extra: u8, relative: RelativeSpec) -> Binding {
-    Binding {
+    Binding { routing: None,
         kind: MsgKind::CcRel,
         ch,
         data: cc,

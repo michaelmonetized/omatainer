@@ -180,7 +180,7 @@ fn captured_hardware_order_and_changed_file_load_fail_without_consuming_queue() 
             name: "Prepare fixture".into(),
             matchers: vec![],
             unmapped_notes: crate::engine::midi::UnmappedNotes::Ignore,
-            bindings: vec![crate::engine::midi::Binding {
+            bindings: vec![crate::engine::midi::Binding { routing: None,
                 kind: crate::engine::midi::MsgKind::Note,
                 ch: 0,
                 data: 60,

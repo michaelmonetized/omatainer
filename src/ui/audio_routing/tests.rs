@@ -3,6 +3,104 @@ use crate::ui::piano_roll::tests::Gui;
 use std::time::Duration;
 
 #[test]
+fn named_send_return_widgets_create_review_keyboard_edit_undo_and_reopen_saved_controls() {
+    use crate::engine::audio::routing::mixer::{Parameter,Target};
+    use egui::accesskit::{Action,ActionData};
+    let mut gui=Gui::new();
+    gui.click("Audio routing");gui.click("Refresh routes");settled(&mut gui);
+    gui.click("Use explicit routing");gui.click("Named auxiliary sends and returns");
+    gui.click("Add named stereo return");gui.click("Add named send");
+    for label in ["Send 3 name","Saved send level","Saved send pan"] {
+        assert!(gui.node(label).1.supports_action(Action::Focus),"{label}");
+    }
+    gui.action("Send 3 name",Action::Focus,None);
+    gui.key(egui::Key::A,egui::Modifiers {ctrl:true,command:true,..Default::default()});
+    gui.frame(vec![egui::Event::Text("Hall send".into())]);gui.key(egui::Key::Enter,Default::default());
+    gui.action("Saved send level",Action::SetValue,Some(ActionData::NumericValue(0.62)));
+    gui.action("Saved send level",Action::Focus,None);gui.key(egui::Key::ArrowUp,Default::default());
+    gui.action("Saved send pan",Action::SetValue,Some(ActionData::NumericValue(-0.25)));
+    let draft=&gui.app.audio_routing.draft.as_ref().unwrap().model;
+    assert_eq!(draft.sends[0].name,"Hall send");
+    assert!((draft.sends[0].level-0.63).abs()<1e-6);
+    assert_eq!(draft.sends[0].pan,-0.25);
+    gui.click("Named auxiliary sends and returns");
+    gui.click("Review routing change…");gui.click("Cancel routing change");assert!(gui.rt.routing.is_none());
+    gui.click("Review routing change…");gui.click("Apply routing");settled(&mut gui);
+    assert!(gui.app.audio_routing.error.is_none(),"{:?}",gui.app.audio_routing.error);
+    let saved=gui.rt.routing.as_ref().unwrap().model.clone();
+    assert_eq!(saved.sends[0].name,"Hall send");
+    gui.rt.apply(Command::Undo);assert!(gui.rt.routing.is_none());gui.rt.apply(Command::Redo);
+    assert_eq!(gui.rt.routing.as_ref().unwrap().model,saved);
+    gui.frame(vec![]);gui.click("Live sends and returns");
+    for label in ["Hall send level","Hall send pan","Return 2 level","Return 2 pan"] {
+        let node=gui.node(label).1;
+        assert!(node.supports_action(Action::Focus)&&node.supports_action(Action::SetValue),"{label}");
+    }
+    gui.action("Hall send level",Action::SetValue,Some(ActionData::NumericValue(0.73)));
+    gui.action("Hall send pan",Action::SetValue,Some(ActionData::NumericValue(0.25)));
+    gui.action("Return 2 level",Action::SetValue,Some(ActionData::NumericValue(0.5)));
+    gui.action("Return 2 solo",Action::Focus,None);gui.key(egui::Key::Space,Default::default());
+    assert!(!gui.rt.playing,"Space on a focused routing control must not start transport");
+    let graph=gui.rt.routing.as_ref().unwrap();
+    assert_eq!(graph.mix_values(Target::Send(3)).unwrap().level,0.73);
+    assert_eq!(graph.mix_values(Target::Send(3)).unwrap().pan,0.25);
+    assert_eq!(graph.mix_values(Target::Return(2)).unwrap().level,0.5);
+    assert!(graph.mix_values(Target::Return(2)).unwrap().solo);
+    let namespace=gui.rt.session.namespace;
+    gui.rt.apply(Command::RoutingMix {namespace,target:Target::Return(2),parameter:Parameter::Solo,value:0.});
+    gui.frame(vec![]);
+    gui.click("Track fixed sends and crossfader assignments");
+    let fixed_send=format!("{} Reverb send",gui.rt.tracks[0].name);
+    gui.action(&fixed_send,Action::SetValue,Some(ActionData::NumericValue(0.37)));
+    assert_eq!(gui.rt.tracks[0].surface.sends[0],0.37);
+    let handle=gui.app.engine.project.clone();
+    let capture=std::thread::spawn(move||handle.capture(&AtomicBool::new(false)));
+    let deadline=Instant::now()+Duration::from_secs(15);
+    while !capture.is_finished(){gui.frame(vec![]);assert!(Instant::now()<deadline);std::thread::sleep(Duration::from_millis(1));}
+    let captured=capture.join().unwrap().unwrap();
+    let state=serde_json::from_slice(&serde_json::to_vec(&captured.state).unwrap()).unwrap();
+    let reopened=crate::engine::project::Prepared::from_state(state,captured.media,48000).unwrap().into_offline();
+    let graph=reopened.routing.as_ref().unwrap();
+    assert_eq!(graph.model.sends[0].name,"Hall send");
+    assert_eq!(graph.model.sends[0].level,0.73);
+    assert_eq!(graph.model.sends[0].pan,0.25);
+    assert_eq!(graph.model.buses[0].gain,0.5);
+    assert_eq!(reopened.tracks[0].surface.sends[0],0.37);
+}
+
+#[test]
+#[ignore="requires the pinned native CLAP MVerb worker fixture; no editor or audio device"]
+fn named_return_browser_widget_appends_native_shared_effect_through_review_cancel_and_undo() {
+    let root=PathBuf::from(std::env::var_os("OMATAINER_CLAP_FIXTURES").expect("Pinned CLAP fixtures are required"));
+    let (class,saved)=crate::engine::audio::routing::plugin_tests::probe(root.join("MVerb.clap"),false);
+    let mut gui=Gui::new();
+    gui.click("Audio routing");gui.click("Refresh routes");settled(&mut gui);
+    gui.click("Use explicit routing");gui.click("Named auxiliary sends and returns");gui.click("Add named stereo return");
+    gui.click("Named auxiliary sends and returns");gui.click("Review routing change…");gui.click("Apply routing");settled(&mut gui);
+    assert!(gui.app.audio_routing.error.is_none(),"{:?}",gui.app.audio_routing.error);
+    gui.app.audio_routing.open=false;
+    gui.app.plugins.catalog.records=vec![crate::plugin_host::scanner::Record {path:saved.binary.bundle.clone(),binary:Some(saved.binary),classes:vec![class],failure:None}];
+    gui.app.plugins.selected=Some((0,0));gui.app.plugins.open=true;gui.frame(vec![]);
+    assert!(gui.node("Return for effect").1.supports_action(egui::accesskit::Action::Focus));
+    gui.click("Return for effect");gui.click("Return 2");gui.click("Append return effect");settle_graph(&mut gui);
+    gui.app.plugins.open=false;gui.frame(vec![]);
+    assert!(gui.app.audio_routing.error.is_none(),"{:?}",gui.app.audio_routing.error);
+    let draft=&gui.app.audio_routing.draft.as_ref().unwrap().model;
+    assert_eq!(draft.plugins.len(),1);assert_eq!(draft.plugins[0].return_bus,Some(2));
+    assert!(draft.plugins[0].midi_track.is_none()&&draft.plugins[0].scene_track.is_none());
+    gui.click("Review routing change…");gui.click("Cancel routing change");
+    assert!(gui.rt.routing.as_ref().unwrap().model.plugins.is_empty());
+    gui.click("Review routing change…");gui.click("Apply routing");settled(&mut gui);
+    assert!(gui.app.audio_routing.error.is_none(),"{:?}",gui.app.audio_routing.error);
+    let graph=gui.rt.routing.as_ref().unwrap();
+    assert_eq!(graph.model.plugins[0].return_bus,Some(2));
+    assert!(graph.plugins.iter().all(|p|p.error.is_none()));
+    let model=graph.model.clone();
+    gui.rt.apply(Command::Undo);assert!(gui.rt.routing.as_ref().unwrap().model.plugins.is_empty());
+    gui.rt.apply(Command::Redo);assert_eq!(gui.rt.routing.as_ref().unwrap().model,model);
+}
+
+#[test]
 fn native_latency_controls_preview_confirm_live_policy_and_undo_without_device_owners() {
     let mut gui = Gui::new();
     gui.click("Audio routing");

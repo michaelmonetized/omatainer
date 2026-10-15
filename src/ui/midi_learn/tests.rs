@@ -18,7 +18,7 @@ fn map(bindings: Vec<Binding>) -> MidiMap {
     }
 }
 fn note(action: Action, data: u8) -> Binding {
-    Binding {
+    Binding { routing: None,
         kind: MsgKind::Note,
         ch: 0,
         data,
@@ -35,12 +35,12 @@ fn note(action: Action, data: u8) -> Binding {
 fn native_sync_assignment_choosers_use_fixed_mode_and_global_leader_ids() {
     use crate::engine::deck_sync::{Leader, Mode};
     let files = Files::new(); let mut gui = setup(&files);
-    gui.app.midi_learn.binding = Binding { deck: 1, extra: 0, ..note(Action::DeckSyncMode, 61) };
+    gui.app.midi_learn.binding = Binding { routing: None, deck: 1, extra: 0, ..note(Action::DeckSyncMode, 61) };
     gui.frame(vec![]);
     gui.click("MIDI sync mode"); gui.click(&format!("MIDI sync mode {}", Mode::Bar.label()));
     assert_eq!(gui.app.midi_learn.binding.extra, 3);
     assert_eq!(gui.app.midi_learn.binding.deck, 1);
-    gui.app.midi_learn.binding = Binding { deck: 1, extra: 0, ..note(Action::DeckSyncLeader, 62) };
+    gui.app.midi_learn.binding = Binding { routing: None, deck: 1, extra: 0, ..note(Action::DeckSyncLeader, 62) };
     gui.frame(vec![]);
     gui.click("MIDI sync leader"); gui.click(&format!("MIDI sync leader {}", Leader::DeckB.label()));
     assert_eq!(gui.app.midi_learn.binding.extra, 2);

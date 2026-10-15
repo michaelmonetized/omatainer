@@ -66,7 +66,7 @@ fn model() -> (Model, Layout) {
             channels: vec![channel],
         });
     }
-    model.buses.push(Bus {
+    model.buses.push(Bus { mixer: Default::default(),
         id: 4,
         alias: "Parallel null".into(),
         channels: 1,

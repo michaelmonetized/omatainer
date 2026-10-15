@@ -156,9 +156,10 @@ impl Plan {
             required[from][source.tap.index()] = true;
             incoming[indices[&destination]].push((from, source.tap.index()));
         };
-        for connection in &model.connections {
+        for connection in model.links() {
             connect(connection.source, connection.destination);
         }
+        for send in 0..2 {for track in &layout.tracks{connect(Source{group:Group::Track(track.id),tap:Tap::PostMixer},Group::FixedReturn(send));}if !model.fixed_returns_without_default_send[usize::from(send)]{connect(Source{group:Group::FixedReturn(send),tap:Tap::PostMixer},Group::Main);}}
         for track in &layout.tracks {
             if !model.tracks_without_default_send.contains(&track.id) {
                 for scene in &layout.scenes {
@@ -921,4 +922,14 @@ impl Runtime {
                 })
                 .sum::<usize>()
     }
+}
+
+/// Inspect the selected output's canonical offline trim.
+/// Takes a saved graph, retained session, actual rate and output alias; returns the same causal input delay used by offline preparation without starting processors.
+pub(crate) fn offline_output_delay(model:&Model,layout:&Layout,rate:u32,alias:u64)->Result<u32,String>{
+    let order=model.order(layout)?;
+    let Some(mut plan)=Plan::new(model,layout,&order,rate)? else{return Ok(0)};
+    if !model.plugins.is_empty(){plan.terminal_floor=plan.reserve;if !plan.refresh(){return Err("Offline latency plan exceeds its prepared reserve".into());}}
+    let index=order.iter().position(|group|*group==Group::Output(alias)).ok_or("Reviewed output alias was removed")?;
+    Ok(plan.inputs[index])
 }

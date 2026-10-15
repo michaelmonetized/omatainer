@@ -7,6 +7,8 @@ use std::{
     path::{Path, PathBuf},
 };
 
+pub(crate) mod clap;
+pub(crate) mod lv2;
 pub(crate) mod process;
 pub(crate) mod realtime;
 pub(crate) mod scanner;
@@ -31,6 +33,12 @@ pub(crate) struct BinaryIdentity {
 /// Identify a native VST3 bundle without loading code.
 /// Takes an absolute bundle path; returns its native ELF path and bounded content digest, or an architecture/format/access diagnostic.
 pub(crate) fn identify(path: &Path) -> Result<BinaryIdentity, String> {
+    if path.extension().is_some_and(|s| s == "lv2") {
+        return lv2::identify(path);
+    }
+    if path.extension().is_some_and(|s| s == "clap") {
+        return clap::identify(path);
+    }
     if !path.is_absolute()
         || path.as_os_str().len() > 4096
         || path
@@ -40,7 +48,7 @@ pub(crate) fn identify(path: &Path) -> Result<BinaryIdentity, String> {
         return Err("Choose an absolute VST3 bundle path without parent traversal".into());
     }
     if path.extension().and_then(|s| s.to_str()) != Some("vst3") {
-        return Err("Native Linux VST3 bundles are supported; AU, VST2 and Windows bundles require an explicit compatible installation or rendered audio".into());
+        return Err(format_diagnostic(path).into());
     }
     let meta = std::fs::symlink_metadata(path).map_err(|e| format!("Plugin unavailable: {e}"))?;
     if meta.is_symlink() || !meta.is_dir() {
@@ -153,6 +161,16 @@ pub(crate) fn identify(path: &Path) -> Result<BinaryIdentity, String> {
     })
 }
 
+/// Explain an unsupported plugin format. Args: candidate path. Returns the native replacement and rendered-audio migration path without loading foreign code.
+fn format_diagnostic(path: &Path) -> &'static str {
+    match path.extension().and_then(|s|s.to_str()) {
+        Some("component" | "aupreset") => "Audio Units require a qualified macOS host; this Linux build cannot load AU code or AU presets. Install the matching native VST3, CLAP or LV2 edition, or import an aligned rendered stem while retaining the original device state",
+        Some("dll") => "Windows plugin binaries cannot run in this native Linux host. No Windows bridge is bundled. Install the matching Linux VST3, CLAP or LV2 edition, or import an aligned rendered stem",
+        Some("so" | "vst" | "vst2" | "fxp" | "fxb") => "Legacy VST2/shared-library hosting and preset conversion are unavailable; no VST2 SDK or compatibility bridge is bundled. Install the matching native VST3, CLAP or LV2 edition, or import an aligned rendered stem while retaining the original device state",
+        _ => "Choose a native Linux VST3 bundle, CLAP module or LV2 bundle for this CPU, or import an aligned rendered stem",
+    }
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub(crate) struct Class {
@@ -161,17 +179,22 @@ pub(crate) struct Class {
     pub parameters: Vec<vst3_host::Parameter>,
     pub latency: u32,
     pub tail: u32,
+    #[serde(default)]
+    pub native: Option<clap::Metadata>,
+    #[serde(default)]
+    pub lv2: Option<lv2::Metadata>,
 }
 impl Class {
     /// Select the native sound controls.
     /// Takes this class; returns up to 128 visible writable parameters in their declared order, excluding hidden MIDI and readonly metadata.
     pub fn writable_parameters(&self) -> impl Iterator<Item = &vst3_host::Parameter> {
-        self.parameters.iter().filter(|p| !p.is_read_only && p.flags & (1 << 4) == 0)
+        self.parameters
+            .iter()
+            .filter(|p| !p.is_read_only && p.flags & (1 << 4) == 0)
             .take(MAX_CONTROL_PARAMETERS)
     }
     pub fn validate(&self) -> Result<(), String> {
-        if self.info.uid.len() != 32
-            || !self.info.uid.bytes().all(|b| b.is_ascii_hexdigit())
+        if !class_id_valid(&self.info.uid)
             || self.parameters.len() > 8192
             || self.info.name.len() > 4096
             || self.info.vendor.len() > 4096
@@ -180,6 +203,18 @@ impl Class {
             return Err("Plugin identity/parameters exceed host limits".into());
         }
         layout_valid(&self.layout)?;
+        if let Some(native) = &self.native {
+            if !self.info.uid.starts_with("clap:") {
+                return Err("CLAP metadata belongs to another plugin format".into());
+            }
+            native.validate(&self.parameters, &self.layout)?;
+        }
+        if let Some(native) = &self.lv2 {
+            if !self.info.uid.starts_with("lv2:") {
+                return Err("LV2 metadata belongs to another plugin format".into());
+            }
+            native.validate(&self.layout)?;
+        }
         let mut ids = std::collections::HashSet::new();
         if self.parameters.iter().any(|p| {
             !ids.insert(p.id)
@@ -216,18 +251,41 @@ pub(crate) struct Saved {
     pub state: Vec<u8>,
 }
 impl Saved {
+    /// Select the state codec. Takes a class identifier; returns its format's opaque state codec.
+    pub fn codec(id: &str) -> &'static str {
+        if id.starts_with("lv2:") {
+            "lv2-state-1"
+        } else if id.starts_with("clap:") {
+            "clap-state-1"
+        } else {
+            "vst3-host-0.9-state"
+        }
+    }
     pub fn validate(&self) -> Result<(), String> {
         if self.schema != 1
-            || self.state_codec != "vst3-host-0.9-state"
+            || self.state_codec != Self::codec(&self.class_id)
             || self.state.len() > MAX_STATE
-            || self.class_id.len() != 32
-            || !self.class_id.bytes().all(|c| c.is_ascii_hexdigit())
+            || !class_id_valid(&self.class_id)
+            || self.class_id.starts_with("clap:")
+                != self.binary.bundle.extension().is_some_and(|e| e == "clap")
+            || self.class_id.starts_with("lv2:")
+                != self.binary.bundle.extension().is_some_and(|e| e == "lv2")
             || self.plugin_version.len() > 1024
         {
             return Err("Plugin state identity, version or codec is unsupported".into());
         }
         Ok(())
     }
+}
+
+/// Validate a processor identifier. Takes a saved identifier; returns whether it names a VST3 class or CLAP descriptor.
+fn class_id_valid(id: &str) -> bool {
+    id.strip_prefix("lv2:")
+        .is_some_and(|v| !v.is_empty() && v.len() <= 1024 && !v.chars().any(char::is_control))
+        || id
+            .strip_prefix("clap:")
+            .is_some_and(|v| !v.is_empty() && v.len() <= 1024 && !v.chars().any(char::is_control))
+        || id.len() == 32 && id.bytes().all(|c| c.is_ascii_hexdigit())
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -242,6 +300,8 @@ pub(crate) struct Frame {
     pub signature: [i32; 2],
     pub parameters: Vec<(u32, f64, i32)>,
     pub midi: Vec<(i32, [u8; 3])>,
+    #[serde(default)]
+    pub native: Vec<(i32, clap::expression::NativeEvent)>,
 }
 impl Frame {
     pub fn validate(&self) -> Result<(), String> {
@@ -262,7 +322,11 @@ impl Frame {
             || !(1..=64).contains(&self.signature[0])
             || ![1, 2, 4, 8, 16, 32, 64].contains(&self.signature[1])
             || self.parameters.len() > 512
-            || self.midi.len() > 512
+            || self.midi.len().saturating_add(self.native.len()) > 512
+            || self
+                .native
+                .iter()
+                .any(|(time, event)| *time < 0 || *time >= self.frames as i32 || !event.valid())
         {
             return Err("Plugin processing frame exceeds audio/event/context limits".into());
         }
@@ -314,12 +378,12 @@ pub(crate) enum Response {
         tail: u32,
         restart: u32,
         editor_open: bool,
-        parameters: Vec<(u32,f64)>,
+        parameters: Vec<(u32, f64)>,
         midi: Vec<vst3_host::MidiEvent>,
     },
     State {
         saved: Saved,
-        parameters: Vec<(u32,f64)>,
+        parameters: Vec<(u32, f64)>,
     },
     Ok,
     Error {

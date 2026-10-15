@@ -83,6 +83,18 @@ impl Gui {
         })]);
         self.frame(vec![]);
     }
+    fn capture(&mut self)->crate::engine::project::Captured{
+        let handle=self.app.engine.project.clone();let capture=std::thread::spawn(move||handle.capture(&AtomicBool::new(false)).unwrap());let end=Instant::now()+std::time::Duration::from_secs(15);while !capture.is_finished(){self.frame(vec![]);assert!(Instant::now()<end);std::thread::sleep(std::time::Duration::from_millis(1));}capture.join().unwrap()
+    }
+    fn type_named(&mut self,label:&str,value:&str){
+        let labels=self.nodes.iter().filter(|(_,n)|n.label()==Some(label)||(n.role()==egui::accesskit::Role::Label&&n.value()==Some(label))).map(|(id,_)|*id).collect::<Vec<_>>();
+        let target=self.nodes.iter().find(|(_,n)|n.role()==egui::accesskit::Role::TextInput&&(n.label()==Some(label)||labels.iter().any(|id|n.labelled_by().contains(id)))).map(|(id,_)|*id).unwrap_or_else(||panic!("Missing named text field {label}"));
+        self.frame(vec![egui::Event::AccessKitActionRequest(ActionRequest{target,action:Action::Focus,data:None})]);
+        let modifiers=egui::Modifiers{ctrl:true,command:true,..Default::default()};
+        self.frame(vec![egui::Event::Key{key:Key::A,physical_key:None,pressed:true,repeat:false,modifiers}]);
+        self.frame(vec![egui::Event::Key{key:Key::A,physical_key:None,pressed:false,repeat:false,modifiers},egui::Event::Text(value.into())]);
+        self.frame(vec![]);
+    }
     fn wait(&mut self) {
         let end = Instant::now() + std::time::Duration::from_secs(15);
         loop {
@@ -218,4 +230,61 @@ fn native_performance_record_stop_decode_and_reviewed_recovery_work_in_performan
     g.click("Render master audio");
     g.wait();
     assert!(!files.0.join("protected-export").exists());
+}
+
+#[test]
+fn native_final_file_policy_blocks_before_publication_then_warns_with_metadata() {
+    let files=Files::new();let mut g=Gui::new(&files);
+    for track in &mut g.callback.renderer_mut_for_test().tracks {for clip in &mut track.clips {*clip=crate::engine::Clip::empty();}}
+    g.frame(vec![]);g.click("Review export source");g.wait();
+    g.app.audio_delivery.request.end=0.5;g.app.audio_delivery.request.tail=0.;
+    g.app.audio_delivery.config.metadata.title="Keyboard reachable delivery".into();
+    g.app.audio_delivery.config.targets.integrated_lufs=Some(-23.);
+    g.app.audio_delivery.config.targets.policy=data::measurement::Policy::Block;
+    let blocked=files.0.join("blocked");g.app.audio_delivery.path=blocked.to_string_lossy().into_owned();g.frame(vec![]);g.click("Render master audio");g.wait();
+    assert!(g.app.audio_delivery.message.contains("blocked publication"),"{}",g.app.audio_delivery.message);assert!(!blocked.exists());
+    g.app.audio_delivery.config.targets.policy=data::measurement::Policy::Warn;
+    let warned=files.0.join("warned");g.app.audio_delivery.path=warned.to_string_lossy().into_owned();g.frame(vec![]);g.click("Render master audio");g.wait();
+    assert!(g.app.audio_delivery.message.contains("Delivery QC:"),"{}",g.app.audio_delivery.message);
+    let value:serde_json::Value=serde_json::from_slice(&std::fs::read(warned.join("export.json")).unwrap()).unwrap();
+    assert_eq!(value["metadata"]["title"],"Keyboard reachable delivery");assert!(value["qc"]["integrated_lufs"].is_null());assert_eq!(value["qc"]["frames"],24000);assert_eq!(value["file_sha256"].as_str().unwrap().len(),64);
+}
+
+#[test]
+fn native_aligned_batch_review_recipe_reopen_render_and_stale_guard_use_real_worker() {
+    let files=Files::new();let mut g=Gui::new(&files);g.click("Review export source");g.wait();
+    g.app.audio_delivery.request.end=0.5;g.app.audio_delivery.request.tail=0.;
+    g.app.audio_delivery.batch.as_mut().unwrap().items.truncate(2);
+    g.app.audio_delivery.batch.as_mut().unwrap().items[0].name="preserved-custom".into();
+    g.app.audio_delivery.request.options.normalize=true;
+    g.click("Aligned stems & versions");
+    let recipe=files.0.join("reviewed.json");g.app.audio_delivery.recipe_path=recipe.to_string_lossy().into_owned();g.frame(vec![]);g.click("Save batch recipe to new file");g.wait();assert!(recipe.is_file());assert!(!data::batch::Recipe::load(&recipe,&AtomicBool::new(false)).unwrap().export.options.normalize);
+    g.app.audio_delivery.batch.as_mut().unwrap().items.clear();g.click("Reopen batch recipe");g.wait();assert_eq!(g.app.audio_delivery.batch.as_ref().unwrap().items.len(),2);
+    let folder=files.0.join("batch");g.app.audio_delivery.path=folder.to_string_lossy().into_owned();let before=g.app.snap.project_revision;g.frame(vec![]);g.click("Render aligned batch");g.wait();assert!(g.app.audio_delivery.message.starts_with("Saved aligned batch"),"{}",g.app.audio_delivery.message);assert!(folder.join("batch.json").is_file());assert_eq!(g.app.snap.project_revision,before);
+    g.callback.renderer_mut_for_test().apply(Command::SetBpm(131.));let stale=files.0.join("stale-batch");g.app.audio_delivery.path=stale.to_string_lossy().into_owned();g.frame(vec![]);g.click("Render aligned batch");g.wait();assert!(g.app.audio_delivery.message.contains("changed since batch review"),"{}",g.app.audio_delivery.message);assert!(!stale.exists());
+    g.click("Review export source");g.wait();let refreshed=g.app.audio_delivery.batch.as_ref().unwrap();assert_eq!(refreshed.items.len(),2);assert_eq!(refreshed.items[0].name,"preserved-custom");
+}
+
+#[test]
+fn native_document_cli_plan_reopen_and_batch_use_same_encoded_delivery_path(){
+    for delete_first in [false,true] {
+    let files=Files::new();let mut g=Gui::new(&files);let mut captured=g.capture();
+    if delete_first {let layout=captured.state.session.as_ref().unwrap();let(request,_)=crate::engine::session::Request::metadata(layout,captured.checkpoint.epoch,crate::engine::session::Action::Delete{axis:crate::engine::session::Axis::Scene,id:layout.scenes[0].id}).unwrap();g.callback.renderer_mut_for_test().apply(Command::session_edit(request));captured=g.capture();assert!(!captured.state.session.as_ref().unwrap().scenes[0].active);}
+    let layout=captured.state.session.as_ref().unwrap();let source_slot=layout.scene_order[0];let source_id=layout.scenes[usize::from(source_slot)].id;
+let document=project::Document{engine:captured.state,view:project::UiState::default(),mapping_schema:project::FACTORY_MAPPING_SCHEMA};document.validate().unwrap();let bundle=crate::project_file::Bundle{state:document,media:captured.media};let native=files.0.join("source.omat");crate::project_file::save(&native,&bundle,crate::project_file::Overwrite::Never,&Default::default(),&AtomicBool::new(false)).unwrap();
+    let recipe=files.0.join("cli.json");assert!(data::cli::run(&["delivery-plan".into(),native.to_string_lossy().into_owned(),recipe.to_string_lossy().into_owned()]).unwrap());let mut r=data::batch::Recipe::load(&recipe,&AtomicBool::new(false)).unwrap();assert_eq!(r.export.scene,source_slot);assert_eq!(r.source_scene.unwrap().id,source_id);r.export.end=0.5;r.export.tail=0.;r.items.truncate(2);std::fs::remove_file(&recipe).unwrap();r.save(&recipe).unwrap();
+    let destination=files.0.join("cli-output");assert!(data::cli::run(&["delivery-batch".into(),native.to_string_lossy().into_owned(),recipe.to_string_lossy().into_owned(),destination.to_string_lossy().into_owned()]).unwrap());let report:serde_json::Value=serde_json::from_slice(&std::fs::read(destination.join("batch.json")).unwrap()).unwrap();assert_eq!(report["cases"].as_array().unwrap().len(),2);assert_eq!(report["frames_per_pass"],24000);assert_eq!(report["review"]["recipe"]["project_sha256"],r.project_sha256.as_ref().unwrap().as_str());
+    let untouched=files.0.join("changed-plan");r.project_sha256=Some("0".repeat(64));let changed=files.0.join("changed.json");r.save(&changed).unwrap();assert!(data::cli::run(&["delivery-batch".into(),native.to_string_lossy().into_owned(),changed.to_string_lossy().into_owned(),untouched.to_string_lossy().into_owned()]).unwrap_err().contains("Project bytes differ"));assert!(!untouched.exists());
+    }
+}
+
+#[test]
+fn native_delivery_named_fields_accept_keyboard_text_and_keep_live_music_unchanged(){
+    let files=Files::new();let mut g=Gui::new(&files);g.click("Review export source");g.wait();let revision=g.app.engine.project.revision();
+    g.click("Delivery metadata & final-file QC");g.type_named("Title","Keyboard mix");g.type_named("ISRC","USAAA2600001");
+    assert_eq!(g.app.audio_delivery.config.metadata.title,"Keyboard mix");assert_eq!(g.app.audio_delivery.config.metadata.isrc,"USAAA2600001");
+    g.click("Delivery metadata & final-file QC");g.click("Aligned stems & versions");g.type_named("New pass name","keyboard-version");
+    assert_eq!(g.app.audio_delivery.version_name,"keyboard-version");
+    let path=files.0.join("keyboard-recipe.json");g.type_named("Batch recipe JSON path",path.to_str().unwrap());g.click("Save batch recipe to new file");g.wait();
+    let reopened=data::batch::Recipe::load(&path,&AtomicBool::new(false)).unwrap();assert_eq!(reopened.config.metadata.title,"Keyboard mix");assert_eq!(reopened.config.metadata.isrc,"USAAA2600001");assert_eq!(g.app.engine.project.revision(),revision);assert!(!g.callback.renderer_for_test().playing);
 }
