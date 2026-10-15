@@ -157,7 +157,7 @@ fn aligned_encoded_stems_null_sum_explicit_version_and_normal_graph_oracle_after
     let path = files.0.join("recipe.json");
     recipe.save(&path).unwrap();
     assert!(recipe.save(&path).is_err());
-    let loaded = Recipe::load(&path).unwrap();
+    let loaded = Recipe::load(&path, &AtomicBool::new(false)).unwrap();
     assert_eq!(
         serde_json::to_value(&recipe).unwrap(),
         serde_json::to_value(&loaded).unwrap()
@@ -379,4 +379,35 @@ fn batch_cancel_during_second_pass_keeps_only_failure_receipt_and_no_final_audio
         "batch-second-pass-cancel",
         &serde_json::json!({"status":"passed","no_final_folder":true,"receipt":json}),
     );
+}
+
+#[test]
+fn recipe_fifo_refuses_without_writer_and_regular_recipe_preserves_bytes_with_cancel() {
+    use std::os::unix::{ffi::OsStrExt, fs::FileTypeExt};
+    let files = Files::new();
+    let fifo = files.0.join("recipe.fifo");
+    let name = std::ffi::CString::new(fifo.as_os_str().as_bytes()).unwrap();
+    assert_eq!(unsafe { libc::mkfifo(name.as_ptr(), 0o600) }, 0);
+    assert!(Recipe::load(&fifo, &AtomicBool::new(false))
+        .unwrap_err()
+        .contains("regular file"));
+    assert!(std::fs::symlink_metadata(&fifo)
+        .unwrap()
+        .file_type()
+        .is_fifo());
+    let (engine, mut rt) = fixture();
+    let captured = capture(&engine, &mut rt);
+    let recipe = recipe(&captured);
+    let path = files.0.join("regular.json");
+    recipe.save(&path).unwrap();
+    let before = std::fs::read(&path).unwrap();
+    let loaded = Recipe::load(&path, &AtomicBool::new(false)).unwrap();
+    assert_eq!(
+        serde_json::to_value(&loaded).unwrap(),
+        serde_json::to_value(&recipe).unwrap()
+    );
+    assert!(Recipe::load(&path, &AtomicBool::new(true))
+        .unwrap_err()
+        .contains("cancelled"));
+    assert_eq!(before, std::fs::read(&path).unwrap());
 }

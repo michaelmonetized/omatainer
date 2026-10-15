@@ -123,7 +123,7 @@ fn tool(name: &str, cancel: &AtomicBool) -> Result<Tool, String> {
     let path = process::executable(name)?;
     let output = process::capture(Command::new(&path).arg("-version"), cancel)?;
     Ok(Tool {
-        sha256: process::sha256(&path)?,
+        sha256: process::sha256_cancelled(&path, cancel)?,
         path,
         version: String::from_utf8_lossy(&output).lines().take(1).collect(),
     })
@@ -259,20 +259,22 @@ pub(crate) fn measure(
     for c in 0..u32::from(channels) {
         peak = peak.max(meter.peak(c, true)?);
     }
-    Ok(Report{standard:"ITU-R BS.1770-4 / EBU R128; LRA EBU Tech3342; libebur128 implementation-defined polyphase true peak (4x below96kHz,2x below192kHz,1x at192kHz),64-frame zero extension for peak tail only".into(),integrated_lufs:integrated,short_term_max_lufs:short,momentary_max_lufs:momentary,lra_lu:lra,sample_peak_dbfs:db(sample),true_peak_dbtp:db(peak),full_scale_samples:full_scale,frames,rate,channels,wave_mask:mask,loudness_supported:supported,measured_final_encoded_audio:true,decoded_pcm_sha256:format!("{:x}",pcm.finalize()),meter:meter_tool(&meter.api.version)?,decoder,probe})
+    Ok(Report{standard:"ITU-R BS.1770-4 / EBU R128; LRA EBU Tech3342; libebur128 implementation-defined polyphase true peak (4x below96kHz,2x below192kHz,1x at192kHz),64-frame zero extension for peak tail only".into(),integrated_lufs:integrated,short_term_max_lufs:short,momentary_max_lufs:momentary,lra_lu:lra,sample_peak_dbfs:db(sample),true_peak_dbtp:db(peak),full_scale_samples:full_scale,frames,rate,channels,wave_mask:mask,loudness_supported:supported,measured_final_encoded_audio:true,decoded_pcm_sha256:format!("{:x}",pcm.finalize()),meter:meter_tool(&meter.api.version,cancel)?,decoder,probe})
 }
 
-fn meter_tool(version: &str) -> Result<Tool, String> {
-    static IDENTITY: std::sync::OnceLock<Result<Tool, String>> = std::sync::OnceLock::new();
-    IDENTITY
-        .get_or_init(|| {
-            Ok(Tool {
-                path: std::env::current_exe().map_err(|e| e.to_string())?,
-                sha256: process::sha256(Path::new("/proc/self/exe"))?,
-                version: version.to_owned(),
-            })
-        })
-        .clone()
+fn meter_tool(version: &str, cancel: &AtomicBool) -> Result<Tool, String> {
+    static IDENTITY: std::sync::OnceLock<Tool> = std::sync::OnceLock::new();
+    super::active(cancel)?;
+    if let Some(identity) = IDENTITY.get() {
+        return Ok(identity.clone());
+    }
+    let identity = Tool {
+        path: std::env::current_exe().map_err(|e| e.to_string())?,
+        sha256: process::sha256_cancelled(Path::new("/proc/self/exe"), cancel)?,
+        version: version.to_owned(),
+    };
+    let _ = IDENTITY.set(identity.clone());
+    Ok(identity)
 }
 /// Review exact delivery runtime availability without opening devices.
 /// Args: cancellation. Returns bundled meter source/ABI and actual decoder/probe identities, or a useful missing-tool error.
@@ -284,6 +286,6 @@ pub(crate) fn preflight(cancel: &AtomicBool) -> Result<serde_json::Value, String
     }
     drop(meter);
     Ok(
-        serde_json::json!({"meter":meter_tool(&api.version)?,"ffmpeg":tool("ffmpeg",cancel)?,"ffprobe":tool("ffprobe",cancel)?,"native_meter_bundled":true,"system_libebur128_required":false,"source_sha256":env!("EBUR128_SOURCE_SHA256")}),
+        serde_json::json!({"meter":meter_tool(&api.version,cancel)?,"ffmpeg":tool("ffmpeg",cancel)?,"ffprobe":tool("ffprobe",cancel)?,"native_meter_bundled":true,"system_libebur128_required":false,"source_sha256":env!("EBUR128_SOURCE_SHA256")}),
     )
 }

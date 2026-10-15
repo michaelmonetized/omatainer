@@ -115,19 +115,75 @@ pub(super) fn capture(command: &mut Command, cancel: &AtomicBool) -> Result<Vec<
     })?;
     Ok(bytes)
 }
-/// Bind exact local tool or input bytes.
-/// Args: regular file path. Returns SHA256 using a fixed read buffer.
+/// Bind exact file bytes with bounded cancellable reads.
+/// Args: a regular input path and cancellation. Returns SHA256 only after checking cancellation before opening and between every fixed-size read.
+pub(crate) fn sha256_cancelled(path: &Path, cancel: &AtomicBool) -> Result<String, String> {
+    let mut file = regular(path, cancel)?;
+    digest(&mut file, cancel)
+}
+#[cfg(test)]
 pub(crate) fn sha256(path: &Path) -> Result<String, String> {
+    sha256_cancelled(path, &AtomicBool::new(false))
+}
+fn regular(path: &Path, cancel: &AtomicBool) -> Result<std::fs::File, String> {
+    use std::os::unix::fs::OpenOptionsExt;
+    super::active(cancel)?;
+    let file = std::fs::OpenOptions::new()
+        .read(true)
+        .custom_flags(libc::O_NONBLOCK)
+        .open(path)
+        .map_err(|e| e.to_string())?;
+    if !file.metadata().map_err(|e| e.to_string())?.is_file() {
+        return Err("Delivery input must be a regular file".into());
+    }
+    super::active(cancel)?;
+    Ok(file)
+}
+fn digest(reader: &mut impl Read, cancel: &AtomicBool) -> Result<String, String> {
     use sha2::{Digest, Sha256};
-    let mut file = std::fs::File::open(path).map_err(|e| e.to_string())?;
     let mut hash = Sha256::new();
     let mut bytes = [0; 65536];
     loop {
-        let n = file.read(&mut bytes).map_err(|e| e.to_string())?;
+        super::active(cancel)?;
+        let n = reader.read(&mut bytes).map_err(|e| e.to_string())?;
         if n == 0 {
             break;
         }
         hash.update(&bytes[..n]);
     }
+    super::active(cancel)?;
     Ok(format!("{:x}", hash.finalize()))
 }
+/// Read a bounded regular metadata file without waiting on pipes or devices.
+/// Args: path, maximum bytes and cancellation. Returns complete bytes; nonregular descriptors, overflow and cancellation are refused without modifying input.
+pub(crate) fn read_regular(
+    path: &Path,
+    maximum: usize,
+    cancel: &AtomicBool,
+) -> Result<Vec<u8>, String> {
+    let mut file = regular(path, cancel)?;
+    read_bounded(&mut file, maximum, cancel)
+}
+fn read_bounded(
+    reader: &mut impl Read,
+    maximum: usize,
+    cancel: &AtomicBool,
+) -> Result<Vec<u8>, String> {
+    let mut result = Vec::new();
+    let mut bytes = [0; 8192];
+    loop {
+        super::active(cancel)?;
+        let n = reader.read(&mut bytes).map_err(|e| e.to_string())?;
+        if n == 0 {
+            break;
+        }
+        if result.len().checked_add(n).is_none_or(|n| n > maximum) {
+            return Err("Delivery metadata exceeds its byte limit".into());
+        }
+        result.extend_from_slice(&bytes[..n]);
+    }
+    super::active(cancel)?;
+    Ok(result)
+}
+#[cfg(test)]
+mod tests;

@@ -106,7 +106,7 @@ impl Job {
         let thread=std::thread::Builder::new().name("omatainer-audio-delivery".into()).spawn(move||{
             let result=(||{
                 let _running=if let Some(ticket)=&ticket{Some(ticket.enter(||stop.load(Ordering::Acquire))?)}else{crate::background::recording_priority()?;None};
-                match &operation { Operation::SaveRecipe(recipe,path)=>{recipe.save(path)?;return Ok(Reply::RecipeSaved(path.clone()));},Operation::LoadRecipe(path)=>return data::batch::Recipe::load(path).map(Reply::RecipeLoaded), Operation::ReviewRecovery(path)=>return data::recovery::review(path,&stop).map(Reply::Recovery), Operation::Recover(plan)=>return data::recovery::recover(plan,&stop).map(Reply::Recovered), _=>{} }
+                match &operation { Operation::SaveRecipe(recipe,path)=>{recipe.save(path)?;return Ok(Reply::RecipeSaved(path.clone()));},Operation::LoadRecipe(path)=>return data::batch::Recipe::load(path,&stop).map(Reply::RecipeLoaded), Operation::ReviewRecovery(path)=>return data::recovery::review(path,&stop).map(Reply::Recovery), Operation::Recover(plan)=>return data::recovery::recover(plan,&stop).map(Reply::Recovered), _=>{} }
                 let epoch=recorder.epoch();let captured=handle.capture(&stop).map_err(|e|e.to_string())?;
                 match operation{
                     Operation::ReviewRecovery(_)|Operation::Recover(_)|Operation::SaveRecipe(..)|Operation::LoadRecipe(_)=>unreachable!(),

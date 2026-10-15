@@ -104,7 +104,7 @@ pub(crate) fn finish(
     let warning = (config.targets.policy == Policy::Warn && !violations.is_empty())
         .then(|| format!("Delivery QC: {}", violations.join("; ")));
     Ok(Finished {
-        sha256: process::sha256(path)?,
+        sha256: process::sha256_cancelled(path, cancel)?,
         report: measured,
         violations,
         warning,

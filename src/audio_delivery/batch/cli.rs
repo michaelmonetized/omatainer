@@ -112,7 +112,7 @@ pub(crate) fn run(args: &[String]) -> Result<bool, String> {
             let cancel = permit.cancel();
             let _interrupt = Interrupt::new(cancel.clone());
             let (capture, hash) = capture(Path::new(&args[1]), &cancel)?;
-            let recipe = Recipe::load(Path::new(&args[2]))?;
+            let recipe = Recipe::load(Path::new(&args[2]), &cancel)?;
             if recipe.project_sha256.as_deref() != Some(&hash) {
                 return Err(
                     "Project bytes differ from the reviewed CLI recipe; create/review a new plan"

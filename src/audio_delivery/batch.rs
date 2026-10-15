@@ -217,18 +217,11 @@ impl Recipe {
     }
     /// Reopen a bounded native batch recipe.
     /// Args: existing JSON path. Returns authored IDs and choices; caller must review a fresh capture before rendering.
-    pub fn load(path: &Path) -> Result<Self, String> {
-        use std::io::Read;
-        let mut bytes = Vec::new();
-        std::fs::File::open(path)
-            .map_err(|e| e.to_string())?
-            .take(1024 * 1024 + 1)
-            .read_to_end(&mut bytes)
-            .map_err(|e| e.to_string())?;
-        if bytes.len() > 1024 * 1024 {
-            return Err("Batch recipe exceeds1MiB".into());
-        }
-        serde_json::from_slice(&bytes).map_err(|e| e.to_string())
+    pub fn load(path: &Path, cancel: &std::sync::atomic::AtomicBool) -> Result<Self, String> {
+        let bytes = super::process::read_regular(path, 1024 * 1024, cancel)?;
+        let recipe = serde_json::from_slice(&bytes).map_err(|e| e.to_string())?;
+        super::active(cancel)?;
+        Ok(recipe)
     }
 }
 fn filename(s: &str) -> String {
