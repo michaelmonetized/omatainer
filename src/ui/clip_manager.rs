@@ -222,8 +222,8 @@ impl Editor {
     }
 }
 fn choice(ui: &mut Ui, label: &str, value: &mut Option<Slot>, preview: &Preview) {
-    ui.label(label);
-    let response = egui::ComboBox::from_id_salt(label)
+    let visible_label = ui.label(label);
+    let response = egui::ComboBox::from_id_salt(keyboard_authoring::property(ui, label))
         .selected_text(
             value
                 .and_then(|s| preview.slots.iter().find(|(slot, _)| *slot == s))
@@ -238,20 +238,34 @@ fn choice(ui: &mut Ui, label: &str, value: &mut Option<Slot>, preview: &Preview)
                 .show_rows(ui, height, preview.slots.len(), |ui, range| {
                     for index in range {
                         let (slot, name) = &preview.slots[index];
-                        if ui.selectable_value(value, Some(*slot), name).clicked() {
+                        if keyboard_authoring::native(
+                            ui,
+                            keyboard_authoring::property(ui, (label, slot.track, slot.scene)),
+                            |ui| ui.selectable_value(value, Some(*slot), name),
+                        )
+                        .clicked()
+                        {
                             ui.close();
                         }
                     }
                 });
         })
-        .response;
+        .response
+        .labelled_by(visible_label.id);
+    accessibility::focus(ui, &response);
     ui.ctx()
         .accesskit_node_builder(response.id, |n| n.set_label(label));
 }
 fn text(ui: &mut Ui, label: &str, value: &mut String) {
     ui.horizontal(|ui| {
-        ui.label(label);
-        let r = ui.text_edit_singleline(value);
+        let label_response = ui.label(label);
+        let r = ui
+            .add(egui::TextEdit::singleline(value).id(keyboard_authoring::property(ui, label)))
+            .labelled_by(label_response.id);
+        accessibility::focus(ui, &r);
+        if label == "Clip name" && value.len() > 4096 {
+            keyboard_authoring::error(ui, &r, "Clip names support up to 4096 bytes");
+        }
         ui.ctx()
             .accesskit_node_builder(r.id, |n| n.set_label(label));
     });
@@ -279,10 +293,15 @@ impl App {
         let mut editor = std::mem::take(&mut self.clip_manager);
         let mut open = true;
         let mut audio = None;
+        let mut close = false;
+        let owner = egui::Id::new((
+            "session-clips",
+            self.snap.session.as_ref().map(|layout| layout.namespace),
+        ));
         egui::Window::new("Session clips").open(&mut open).default_width(860.0).vscroll(true).max_height(self.theme.window_height(ctx)).show(ctx,|ui|{
             keyboard::block_for_dialog(ctx);ui.label(&editor.message);
             if editor.busy(){ui.spinner();if ui.button("Cancel clip operation").clicked(){editor.cancel();}}
-            ui.push_id("session-clip-manager-controls",|ui|ui.add_enabled_ui(!editor.busy(),|ui|{
+            keyboard_authoring::form(ui, owner, |ui|ui.add_enabled_ui(!editor.busy() && !self.project.committing(),|ui|{
                 if ui.button("Refresh clips").clicked(){editor.refresh(&self.engine);}
                 let Some(preview)=editor.preview.clone()else{return;};let old=editor.source;
                 choice(ui,"Source slot",&mut editor.source,&preview);
@@ -291,6 +310,10 @@ impl App {
                 let Some(source)=editor.source else{return;};let Some(clip)=preview.clip(source)else{return;};
                 let empty=clip.kind==crate::engine::ClipKind::Empty;
                 let destination=editor.destination.filter(|s|*s!=source&&preview.clip(*s).is_some_and(|c|c.kind==crate::engine::ClipKind::Empty));
+                let current = self.snap.session.as_ref().is_some_and(|layout| source.resolve(layout).is_ok());
+                if !current { ui.colored_label(self.theme.red,"The captured clip target changed. Refresh clips before editing."); }
+                ui.add_enabled_ui(current, |ui| {
+                keyboard_authoring::target(ui, ("clip-properties", source.track, source.scene), |ui| {
                 text(ui,"Clip name",&mut editor.name);
                 ui.horizontal(|ui|{
                     let r=ui.checkbox(&mut editor.properties.disabled,"Disable clip");accessibility::button(ui,&r,"Disable clip",Some(editor.properties.disabled));
@@ -298,22 +321,25 @@ impl App {
                     if let Some(color)=&mut editor.properties.color{ui.color_edit_button_srgb(color);}
                 });
                 if let Some(color)=&mut editor.properties.color{ui.horizontal(|ui|{for (channel,label) in ["Clip color red","Clip color green","Clip color blue"].into_iter().enumerate(){let mut value=f32::from(color[channel]);let r=ui.add(egui::Slider::new(&mut value,0.0..=255.0).text(label));if let Some(next)=accessibility::numeric(ui,&r,label,value,0.0,255.0,1.0,""){value=next;}color[channel]=value.round()as u8;}});}
-                let r=ui.add(egui::Slider::new(&mut editor.bars,0.25..=256.0).text("New MIDI clip bars"));
+                let mut bars=f64::from(editor.bars);
+                if keyboard_authoring::number(ui,"New MIDI clip bars",&mut bars,0.25,256.0,0.25,6,"").1 { editor.bars=bars as f32; }
                 super::clip_launch::policy_ui(ui,&mut editor.properties.launch);
-                if let Some(v)=accessibility::numeric(ui,&r,"New MIDI clip bars",editor.bars,0.25,256.0,0.25," bars"){editor.bars=v;}
-                let key=|key,modifiers|ctx.input_mut(|i|i.consume_key(modifiers,key));
+                let valid = !keyboard_authoring::invalid(ui);
+                let key=|key,modifiers| valid && current && ctx.input_mut(|i|i.consume_key(modifiers,key));
                 let apply=key(egui::Key::Enter,egui::Modifiers::CTRL);
                 let duplicate=key(egui::Key::D,egui::Modifiers::CTRL);
                 let moving=key(egui::Key::M,egui::Modifiers::CTRL);
                 let delete=key(egui::Key::Backspace,egui::Modifiers::CTRL|egui::Modifiers::SHIFT);
                 let create=key(egui::Key::N,egui::Modifiers::CTRL);
                 ui.horizontal_wrapped(|ui|{
-                    if (ui.add_enabled(!empty,egui::Button::new("Apply clip properties")).clicked()||apply)&&!empty{editor.apply(&self.engine,Action::Metadata{target:source,name:editor.name.clone(),properties:editor.properties});}
-                    if (ui.add_enabled(empty,egui::Button::new("Create MIDI clip")).clicked()||create)&&empty{editor.apply(&self.engine,Action::CreateMidi{target:source,name:editor.name.clone(),bars:editor.bars,properties:editor.properties});}
+                    if (keyboard_authoring::action(ui,"Apply clip properties",valid&&!empty).clicked()||apply)&&!empty{editor.apply(&self.engine,Action::Metadata{target:source,name:editor.name.clone(),properties:editor.properties});}
+                    if (keyboard_authoring::action(ui,"Create MIDI clip",valid&&empty).clicked()||create)&&empty{editor.apply(&self.engine,Action::CreateMidi{target:source,name:editor.name.clone(),bars:editor.bars,properties:editor.properties});}
                     if ui.button("Edit or import audio").clicked(){audio=preview.indices(source);}
-                    if (ui.add_enabled(!empty&&destination.is_some(),egui::Button::new("Duplicate clip")).clicked()||duplicate)&&!empty{if let Some(destination)=destination{editor.apply(&self.engine,Action::Copy{source,destination});}}
-                    if (ui.add_enabled(!empty&&destination.is_some(),egui::Button::new("Move clip")).clicked()||moving)&&!empty{if let Some(destination)=destination{editor.apply(&self.engine,Action::Move{source,destination});editor.source=Some(destination);}}
-                    if (ui.add_enabled(!empty,egui::Button::new("Delete clip")).clicked()||delete)&&!empty{editor.apply(&self.engine,Action::Delete{target:source});}
+                    if (keyboard_authoring::action(ui,"Duplicate clip",valid&&!empty&&destination.is_some()).clicked()||duplicate)&&!empty{if let Some(destination)=destination{editor.apply(&self.engine,Action::Copy{source,destination});}}
+                    if (keyboard_authoring::action(ui,"Move clip",valid&&!empty&&destination.is_some()).clicked()||moving)&&!empty{if let Some(destination)=destination{editor.apply(&self.engine,Action::Move{source,destination});editor.source=Some(destination);}}
+                    if (keyboard_authoring::action(ui,"Delete clip",valid&&!empty).clicked()||delete)&&!empty{editor.apply(&self.engine,Action::Delete{target:source});}
+                });
+                });
                 });
                 ui.label("Ctrl+Enter: properties · Ctrl+N: MIDI clip · Ctrl+D: duplicate · Ctrl+M: move · Ctrl+Shift+Backspace: delete");
                 ui.label("MIDI content plays the chosen track’s instrument and MIDI routes. Audio retains its source, gain, trim, reverse and loop settings on any destination track. Existing destinations are preserved.");
@@ -326,6 +352,8 @@ impl App {
                     }
                 });
                 ui.separator();text(ui,"Clip preset path",&mut editor.path);
+                let preset_valid = current && !keyboard_authoring::invalid(ui);
+                let key=|key,modifiers|preset_valid && ctx.input_mut(|input|input.consume_key(modifiers,key));
                 let save=key(egui::Key::S,egui::Modifiers::CTRL|egui::Modifiers::SHIFT);
                 let read=key(egui::Key::O,egui::Modifiers::CTRL);
                 ui.horizontal(|ui|{
@@ -336,8 +364,14 @@ impl App {
                 if let Some(preset)=&preview.preset{ui.label(format!("Reviewed preset: {} · {:?} · {} bars · {} notes · {} embedded audio source",preset.state.clip.name,preset.state.clip.kind,preset.state.clip.bars,preset.state.clip.notes.len(),preset.media.len()));}
                 ui.label(".omatclip presets embed complete clip settings and up to 128 MiB of source audio. Save preserves existing files. Insert into an empty destination, then audition there. Track instruments, effects and routes come from the destination project. Ctrl+Shift+S: save · Ctrl+O: inspect.");
             }));
+            if keyboard_authoring::action(ui,"Close Session clips",true).clicked() { close=true; }
         });
-        if !open {
+        if !open
+            || close
+            || (!keyboard::text_is_focused(ctx)
+                && ctx.input_mut(|input| input.consume_key(egui::Modifiers::NONE, Key::Escape)))
+        {
+            open = false;
             editor.cancel();
         }
         editor.open = open;

@@ -9,6 +9,10 @@ readme = "README.md"
 keywords = ["daw", "dj", "midi", "omarchy", "audio"]
 categories = ["multimedia::audio"]
 
+[features]
+default = ["oma-ui-egui032"]
+oma-ui-egui032 = []
+
 [dependencies]
 ab_glyph = "0.2"
 anyhow = "1"

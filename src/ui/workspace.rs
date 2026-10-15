@@ -70,6 +70,8 @@ struct WindowInput {
 
 #[derive(Default)]
 pub(super) struct State {
+    pub(super) panel_keyboard: panel_keyboard::Controls,
+    requested_focus: Option<String>,
     bound: Option<(String, Layout)>,
     closed: BTreeSet<Panel>,
     pub(super) sizes: BTreeMap<Panel, Vec2>,
@@ -324,6 +326,7 @@ impl App {
         if studio_center(&book.active) == panel {
             return;
         }
+        self.workspace.requested_focus = Some(panel.into());
         if let Some(layout) = book.tasks.get_mut(&book.active) {
             layout.restore(panel);
             if !layout
@@ -393,6 +396,13 @@ impl App {
             .get_mut(&book.active)
             .unwrap()
             .normalize(&identities);
+        if let Some(panel) = self.workspace.requested_focus.take() {
+            book.tasks.get_mut(&book.active).unwrap().request_focus(
+                ctx,
+                "omatainer-studio",
+                &panel,
+            );
+        }
         self.bind_studio_workspace(ctx, &book);
         let theme = self.theme.clone();
         egui::CentralPanel::default()
@@ -428,7 +438,7 @@ impl App {
                                             group.active = index;
                                         }
                                     }
-                                    layout.focus = Some(id.into());
+                                    layout.request_focus(ctx, "omatainer-studio", id);
                                     ui.close();
                                 }
                             }
@@ -444,6 +454,10 @@ impl App {
                                     *layout = preset.clone();
                                     layout.normalize(&identities);
                                 }
+                            }
+                            if fields::action(ui, "Arrange panels…", true).clicked() {
+                                self.workspace.panel_keyboard.begin();
+                                ui.close();
                             }
                         });
                         ui.weak("Right-click a panel tab to move, group, float or close it.");
@@ -467,6 +481,7 @@ impl App {
                     });
                 });
             });
+        self.panel_keyboard_ui(ctx, &mut book, &registry);
         self.bind_studio_workspace(ctx, &book);
         let profile = self
             .settings

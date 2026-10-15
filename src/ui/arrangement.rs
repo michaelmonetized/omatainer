@@ -6,10 +6,10 @@ use crate::engine::{
 };
 use egui::Align2;
 use std::sync::atomic::{AtomicBool, Ordering};
+mod fades;
 #[cfg(test)]
 mod tests;
 mod worker;
-mod fades;
 use worker::{Event, Job, Preview, Worker};
 
 #[derive(Default)]
@@ -164,7 +164,15 @@ impl Editor {
                 },
                 |p| p.duration_beats,
             );
-        let fades=(source.clip.kind == crate::engine::ClipKind::Audio).then(||crate::engine::audio_clip::Fades { automatic:true,..source.clip.audio_region.map_or_else(Default::default,|r|r.fades) });
+        let fades = (source.clip.kind == crate::engine::ClipKind::Audio).then(|| {
+            crate::engine::audio_clip::Fades {
+                automatic: true,
+                ..source
+                    .clip
+                    .audio_region
+                    .map_or_else(Default::default, |r| r.fades)
+            }
+        });
         let source = source.id;
         let id = self.model.identity()?;
         self.model.instances.push(Instance {
@@ -193,31 +201,9 @@ impl Editor {
     }
 }
 fn number(ui: &mut Ui, label: &str, value: &mut f64, min: f64, max: f64, step: f64) {
-    ui.horizontal(|ui| {
-        ui.label(label);
-        let response = ui.add(egui::DragValue::new(value).range(min..=max).speed(step));
-        ui.ctx().accesskit_node_builder(response.id, |n| {
-            n.set_label(label);
-            n.set_numeric_value(*value);
-            n.set_min_numeric_value(min);
-            n.set_max_numeric_value(max);
-            n.add_action(egui::accesskit::Action::SetValue);
-        });
-        if response.enabled() {
-            ui.input(|input| {
-                for action in
-                    input.accesskit_action_requests(response.id, egui::accesskit::Action::SetValue)
-                {
-                    if let Some(egui::accesskit::ActionData::NumericValue(v)) = action.data {
-                        if v.is_finite() {
-                            *value = v.clamp(min, max);
-                        }
-                    }
-                }
-            });
-        }
-    });
+    keyboard_authoring::number(ui, label, value, min, max, step, 16, "");
 }
+
 impl App {
     pub(super) fn open_arrangement(&mut self) {
         self.reveal_studio_panel("arrangement");
@@ -236,14 +222,24 @@ impl App {
     /// Show the arrangement editor outside a saved studio task.
     /// Args: native context. Returns nothing; the panel renderer remains shared.
     pub(super) fn arrangement_ui(&mut self, ctx: &egui::Context) {
-        if !self.arrangement.open || self.studio_workspace_active() { return; }
+        if !self.arrangement.open || self.studio_workspace_active() {
+            return;
+        }
         let mut open = true;
-        egui::Window::new("Arrangement timeline").open(&mut open).default_width(1100.0)
-            .vscroll(true).max_height(self.theme.window_height(ctx)).show(ctx, |ui| {
+        let mut close = false;
+        egui::Window::new("Arrangement timeline")
+            .open(&mut open)
+            .default_width(1100.0)
+            .vscroll(true)
+            .max_height(self.theme.window_height(ctx))
+            .show(ctx, |ui| {
                 keyboard::block_for_dialog(ctx);
                 self.arrangement_panel(ui);
+                if keyboard_authoring::action(ui, "Close arrangement editor", true).clicked() {
+                    close = true;
+                }
             });
-        if !open {
+        if !open || close {
             self.arrangement.cancel();
             self.arrangement.open = false;
             self.song_navigation.cancel();
@@ -254,15 +250,32 @@ impl App {
     /// Args: available UI. Returns nothing and preserves the existing worker and draft owner.
     pub(super) fn arrangement_panel(&mut self, ui: &mut Ui) {
         let mut editor = std::mem::take(&mut self.arrangement);
-                self.song_navigation_ui(ui,editor.start,editor.width);
-                ui.label(&editor.message);
-                if editor.busy() {
-                    ui.spinner();
-                    if ui.button("Cancel song operation").clicked() {
-                        editor.cancel();
-                    }
+        let owner = egui::Id::new((
+            "song-authoring",
+            editor.preview.as_ref().and_then(|preview| {
+                preview
+                    .captured
+                    .state
+                    .session
+                    .as_ref()
+                    .map(|layout| layout.namespace)
+            }),
+        ));
+        let was_invalid = ui.data(|data| {
+            data.get_temp::<bool>(owner.with("invalid"))
+                .unwrap_or(false)
+        });
+        let mut apply = false;
+        keyboard_authoring::form(ui, owner, |ui| {
+            self.song_navigation_ui(ui, editor.start, editor.width);
+            ui.label(&editor.message);
+            if editor.busy() {
+                ui.spinner();
+                if ui.button("Cancel song operation").clicked() {
+                    editor.cancel();
                 }
-                ui.add_enabled_ui(!editor.busy(), |ui| {
+            }
+            ui.add_enabled_ui(!editor.busy(), |ui| {
                     ui.horizontal(|ui| {
                         if ui.button("Refresh song").clicked() {
                             editor.start(&self.engine, Job::Inspect);
@@ -279,6 +292,9 @@ impl App {
                     let Some(layout) = &preview.captured.state.session else {
                         return;
                     };
+                    let target_live = self.snap.session.as_ref().is_some_and(|current| current.namespace == layout.namespace);
+                    if !target_live { ui.colored_label(self.theme.red,"The captured song belongs to another project. Refresh song before editing."); }
+                    ui.add_enabled_ui(target_live && !self.project.committing(), |ui| {
                     ui.horizontal(|ui| {
                         ui.checkbox(&mut editor.model.enabled, "Use Arrangement playback");
                         if ui
@@ -296,20 +312,14 @@ impl App {
                         }
                         if ui
                             .add_enabled(
-                                !self.snap.playing
+                                !was_invalid && !self.snap.playing
                                     && !self.snap.recording
                                     && !self.snap.decks.iter().any(|d| d.playing),
                                 egui::Button::new("Apply song"),
                             )
                             .clicked()
                         {
-                            let model = editor.model.clone();
-                            let preview = preview.clone();
-                            editor.start(&self.engine, |work| Job::Apply {
-                                preview,
-                                model,
-                                work,
-                            });
+                            apply = true;
                         }
                     });
                     ui.horizontal(|ui| {
@@ -445,7 +455,7 @@ impl App {
                             .accesskit_node_builder(track_selector.response.id, |n| {
                                 n.set_label("Destination track")
                             });
-                        if ui.button("Place source at range start").clicked() {
+                        if keyboard_authoring::action(ui,"Place source at range start",!keyboard_authoring::invalid(ui)).clicked() {
                             if let (Some(source), Some(track)) =
                                 (editor.source_choice, editor.target)
                             {
@@ -517,6 +527,7 @@ impl App {
                         .and_then(|id| editor.model.instances.iter().position(|i| i.id == id))
                     {
                         let mut instance = editor.model.instances[index];
+                        keyboard_authoring::target(ui,("instance",instance.id),|ui| {
                         ui.label(format!(
                             "Selected instance {} · shared source {}",
                             instance.id, instance.source
@@ -547,14 +558,12 @@ impl App {
                                 0.25,
                             );
                             ui.checkbox(&mut instance.repeating, "Repeat source");
-                            ui.add(
-                                egui::Slider::new(&mut instance.gain, 0.0..=1.5)
-                                    .text("Instance gain"),
-                            );
+                            let mut gain = f64::from(instance.gain);
+                            if keyboard_authoring::number(ui,"Instance gain",&mut gain,0.0,1.5,0.01,6,"").1 { instance.gain=gain as f32; }
                         });
                         if ui
                             .add_enabled(
-                                editor.target.is_some(),
+                                editor.target.is_some() && !keyboard_authoring::invalid(ui),
                                 egui::Button::new("Move instance to destination track"),
                             )
                             .clicked()
@@ -568,7 +577,7 @@ impl App {
                         }
                         fades::controls(ui,&mut editor,&preview,instance.id);
                         ui.horizontal(|ui| {
-                            if ui.button("Copy instance").clicked() {
+                            if keyboard_authoring::action(ui,"Copy instance",!keyboard_authoring::invalid(ui)).clicked() {
                                 if editor.model.instances.len()
                                     >= crate::engine::arrangement::MAX_INSTANCES
                                 {
@@ -583,7 +592,7 @@ impl App {
                                     editor.selected = Some(id);
                                 }
                             }
-                            if ui.button("Delete instance").clicked() {
+                            if keyboard_authoring::action(ui,"Delete instance",!keyboard_authoring::invalid(ui)).clicked() {
                                 editor.model.remove_instance(instance.id);
                                 editor.selected = None;
                             }
@@ -593,8 +602,15 @@ impl App {
                                 });
                             }
                         });
+                        });
                     }
+                    if apply && !keyboard_authoring::invalid(ui) {
+                        let model=editor.model.clone(); let preview=preview.clone();
+                        editor.start(&self.engine,|work|Job::Apply{preview,model,work});
+                    }
+                    });
                 });
+        });
         self.arrangement = editor;
     }
 }
@@ -751,11 +767,22 @@ fn timeline_row(
                     ) / f64::from(audio.sr),
                 )
             });
-            if let Some(fades)=instance.fades {
-                super::audio_fades::paint(&painter,block.shrink(2.0),fades,instance.duration,f64::from(preview.captured.state.bpm)/60.0,false);
+            if let Some(fades) = instance.fades {
+                super::audio_fades::paint(
+                    &painter,
+                    block.shrink(2.0),
+                    fades,
+                    instance.duration,
+                    f64::from(preview.captured.state.bpm) / 60.0,
+                    false,
+                );
             } else if let Some(region) = region {
                 super::audio_fades::paint_gain(&painter, block.shrink(2.0), false, |fraction| {
-                    region.fade_gain(instance.offset + fraction * instance.duration, instance.repeating, f64::from(preview.captured.state.bpm) / 60.0)
+                    region.fade_gain(
+                        instance.offset + fraction * instance.duration,
+                        instance.repeating,
+                        f64::from(preview.captured.state.bpm) / 60.0,
+                    )
                 });
             }
         } else {
@@ -818,9 +845,20 @@ fn timeline_row(
         editor.selected = Some(id);
     }
     if let Some((id, next)) = drag_update {
-        if next.fade_link != 0 || next.crossfade.is_some() || editor.model.instances.iter().any(|i| i.crossfade == Some(next.id)) {
-            if let Err(error)=editor.model.edit_fades(id,next,&preview.captured.media) { editor.message=error; }
-        } else if let Some(i)=editor.model.instances.iter_mut().find(|i|i.id==id) { *i=next; }
+        if next.fade_link != 0
+            || next.crossfade.is_some()
+            || editor
+                .model
+                .instances
+                .iter()
+                .any(|i| i.crossfade == Some(next.id))
+        {
+            if let Err(error) = editor.model.edit_fades(id, next, &preview.captured.media) {
+                editor.message = error;
+            }
+        } else if let Some(i) = editor.model.instances.iter_mut().find(|i| i.id == id) {
+            *i = next;
+        }
     }
     let px = x(playhead);
     if rect.x_range().contains(px) {

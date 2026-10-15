@@ -175,14 +175,23 @@ impl Editor {
     /// Keep a timing draft when a project replacement is requested.
     /// Returns whether replacement is blocked and opens explicit keep/discard review.
     pub(super) fn guard_replacement(&mut self) -> bool {
-        if !self.blocks_close() { return false; }
-        self.open = true; self.confirm_discard = true; true
+        if !self.blocks_close() {
+            return false;
+        }
+        self.open = true;
+        self.confirm_discard = true;
+        true
     }
     /// Clear the old session's settled editor after a guarded replacement.
     /// Reopening captures the new namespace and timing; no dirty draft is discarded.
     pub(super) fn reset_project(&mut self) {
-        self.cancel(); self.draft = None; self.open = false; self.confirm_discard = false;
-        self.discard_when_settled = false; self.message.clear(); self.error = None;
+        self.cancel();
+        self.draft = None;
+        self.open = false;
+        self.confirm_discard = false;
+        self.discard_when_settled = false;
+        self.message.clear();
+        self.error = None;
     }
     pub(super) fn cancel(&self) {
         if let Some(cancel) = &self.active {
@@ -286,37 +295,23 @@ impl Editor {
 }
 
 fn number(ui: &mut Ui, label: &str, value: &mut f64, min: f64, max: f64) -> bool {
-    ui.push_id(label, |ui| {
-        ui.label(label);
-        let response = ui.add(egui::DragValue::new(value).speed(0.05).range(min..=max));
-        response
-            .widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::DragValue, true, label));
-        let mut changed = response.changed();
-        if let Some(next) = accessibility::numeric(
-            ui,
-            &response,
-            label,
-            *value as f32,
-            min as f32,
-            max as f32,
-            0.05,
-            "",
-        ) {
-            *value = f64::from(next);
-            changed = true;
-        }
-        changed
-    })
-    .inner
+    keyboard_authoring::number(ui, label, value, min, max, 0.05, 16, "").1
 }
+
 fn text(ui: &mut Ui, label: &str, value: &mut String) -> bool {
-    ui.label(label);
-    let response = ui.add(
-        egui::TextEdit::multiline(value)
-            .desired_rows(4)
-            .desired_width(f32::INFINITY)
-            .char_limit(256 * 1024),
-    );
+    let label_response = ui.label(label);
+    let response = ui
+        .add(
+            egui::TextEdit::multiline(value)
+                .id(keyboard_authoring::property(ui, label))
+                .desired_rows(4)
+                .desired_width(f32::INFINITY)
+                .char_limit(256 * 1024),
+        )
+        .labelled_by(label_response.id);
+    accessibility::focus(ui, &response);
+    let id = keyboard_authoring::property(ui, label);
+    ui.data_mut(|data| data.insert_temp(id.with("native-response"), response.id));
     help::annotate(ui, &response, HelpControl::TimingClick);
     response.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::TextEdit, true, label));
     help::annotate(ui, &response, HelpControl::TimingPoints);
@@ -337,9 +332,16 @@ impl App {
         let mut editor = std::mem::take(&mut self.timing);
         let mut open = true;
         let mut close = false;
+        let owner = egui::Id::new((
+            "timing-authoring",
+            editor.draft.as_ref().map(|draft| draft.namespace),
+        ));
         egui::Window::new(tr!("Tempo and meter")).id(egui::Id::new("Tempo and meter")).open(&mut open).default_width(580.0).vscroll(true).max_height(self.theme.window_height(ctx)).show(ctx, |ui| {
+            keyboard_authoring::form(ui,owner,|ui| {
             ui.label(tr!("Positions are quarter-note beats. Each list starts at 0. A ramp rises or falls to the next point; the last point must use step."));
-            ui.add_enabled_ui(!editor.busy() && !self.project.committing(), |ui| {
+            let target_live=editor.draft.as_ref().is_none_or(|draft|self.snap.session.as_ref().is_some_and(|layout|layout.namespace==draft.namespace));
+            if !target_live { ui.colored_label(self.theme.red,"The captured timing belongs to another project. Close this editor and inspect the current timing."); }
+            ui.add_enabled_ui(target_live && !editor.busy() && !self.project.committing(), |ui| {
                 if let Some(draft) = &mut editor.draft {
                     draft.dirty |= text(ui, "Tempo points: beat BPM step/ramp", &mut draft.tempos);
                     draft.dirty |= text(ui, "Meter markers: beat numerator/denominator", &mut draft.meters);
@@ -355,7 +357,13 @@ impl App {
                         if number(ui, "Beat gain", &mut gain, 0.0, 2.0) { draft.settings.beat_gain = gain as f32; draft.dirty = true; }
                     });
                 }
-                if ui.button(tr!("Apply timing")).help(ui, HelpControl::TimingApply).clicked() { editor.apply(&self.engine); }
+                if !keyboard_authoring::invalid(ui) {
+                    if let Some(error)=editor.draft.as_ref().and_then(|draft|draft.map().err()) {
+                        let label=if error.to_lowercase().contains("meter") || error.to_lowercase().contains("signature") { "Meter markers: beat numerator/denominator" } else { "Tempo points: beat BPM step/ramp" };
+                        keyboard_authoring::property_error(ui,label,&error);
+                    }
+                }
+                if keyboard_authoring::action(ui,"Apply timing",!keyboard_authoring::invalid(ui)).help(ui, HelpControl::TimingApply).clicked() { editor.apply(&self.engine); }
             });
             ui.label(tr!("Count-in holds clips and recording at the current position. It uses the starting meter and tempo; DJ decks keep playing. Native project files retain exact ramps. MIDI export samples ramps at each MIDI tick."));
             if editor.busy() {
@@ -364,7 +372,8 @@ impl App {
             }
             if !editor.message.is_empty() { ui.label(&editor.message); }
             if let Some(error) = &editor.error { ui.colored_label(self.theme.red, error); }
-            if ui.button(tr!("Close timing editor")).help(ui, HelpControl::TimingClose).clicked() { close = true; }
+            if keyboard_authoring::action(ui,"Close timing editor",true).help(ui, HelpControl::TimingClose).clicked() { close = true; }
+            });
         });
         if !open
             || close
