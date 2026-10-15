@@ -13208,7 +13208,7 @@
     "src/audio_delivery/publication.rs": "66096a6629d8c7264db846612c410b7df5ddd62caabd5d620e5155af7726b22d",
     "src/audio_delivery/recovery.rs": "dd3129e6670bd74186095c6ab8e855ed267ac8e3b366fafbe456345e5d332ff5",
     "src/audio_delivery/recovery/header.rs": "83d22c905fea9483ca5acfb2186e59dc030c026b83101f917c1ee3b00e969896",
-    "src/audio_delivery/render.rs": "f37801b6fd33456d818670019507e6f54a123d48873133c19106654a14ca2a11",
+    "src/audio_delivery/render.rs": "b8989e55873bea68c4563b67a154af55291e1e489794736b97bea5086dc20e32",
     "src/audio_delivery/tests.rs": "2576ef26a5ff4d0c5c756e5239005ce2fc1cb759ca287baf083d283bbf574c5b",
     "src/audio_delivery/tests/fixed_send_tests.rs": "374962dbf485e280a3cbaa1f535159d4255fc7a237ff4b6d07ce7ec173dd79c1",
     "src/audio_delivery/wav.rs": "025ce47f7d84fc2ed63fa29c3843c252c8634c99e346c1c19c4dbe4ad316e049",
