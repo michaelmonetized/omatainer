@@ -278,18 +278,39 @@ impl Controls {
     }
     /// Capture editable MIDI content.
     /// Takes draft notes; returns an owned producer payload with the current controller data.
-    pub(super) fn content(&self, notes:&[MidiNote]) -> crate::engine::midi_tools::Content {
-        crate::engine::midi_tools::Content {notes:notes.to_vec(),ppqn:self.ppqn,end_tick:self.end_tick,messages:self.messages.clone(),meta:self.meta.clone(),labels:self.labels.clone()}
+    pub(super) fn content(&self, notes: &[MidiNote]) -> crate::engine::midi_tools::Content {
+        crate::engine::midi_tools::Content {
+            notes: notes.to_vec(),
+            ppqn: self.ppqn,
+            end_tick: self.end_tick,
+            messages: self.messages.clone(),
+            meta: self.meta.clone(),
+            labels: self.labels.clone(),
+        }
     }
     /// Guard controller content.
     /// Takes a captured payload; returns whether current source data still matches.
-    pub(super) fn matches(&self, content:&crate::engine::midi_tools::Content) -> bool {
-        self.ppqn==content.ppqn && self.end_tick==content.end_tick && self.messages==content.messages && self.meta==content.meta && self.labels==content.labels
+    pub(super) fn matches(&self, content: &crate::engine::midi_tools::Content) -> bool {
+        self.ppqn == content.ppqn
+            && self.end_tick == content.end_tick
+            && self.messages == content.messages
+            && self.meta == content.meta
+            && self.labels == content.labels
     }
     /// Receive prepared controller content.
     /// Takes an owned payload and original dirty decision; moves its lanes into the draft and rebuilds the visible point list.
-    pub(super) fn install(&mut self, content:&mut crate::engine::midi_tools::Content, dirty:bool) {
-        self.ppqn=content.ppqn;self.end_tick=content.end_tick;self.messages=std::mem::take(&mut content.messages);self.meta=std::mem::take(&mut content.meta);self.labels=std::mem::take(&mut content.labels);self.dirty=dirty;self.refresh();
+    pub(super) fn install(
+        &mut self,
+        content: &mut crate::engine::midi_tools::Content,
+        dirty: bool,
+    ) {
+        self.ppqn = content.ppqn;
+        self.end_tick = content.end_tick;
+        self.messages = std::mem::take(&mut content.messages);
+        self.meta = std::mem::take(&mut content.meta);
+        self.labels = std::mem::take(&mut content.labels);
+        self.dirty = dirty;
+        self.refresh();
     }
     pub fn prepared(
         &self,
@@ -329,7 +350,7 @@ pub(super) fn show(ui: &mut Ui, draft: &mut Draft, theme: &Theme) -> Result<bool
         let controls = &mut draft.controls;
         let before = (controls.lane, controls.channel, controls.cc);
         ui.horizontal_wrapped(|ui| {
-            egui::ComboBox::from_id_salt("controller-kind").selected_text(["CC lane", "Pitch bend lane", "Pressure lane", "Bank/program lane"][controls.lane]).show_ui(ui, |ui| {
+            egui::ComboBox::from_label("MIDI controller lane").selected_text(["CC lane", "Pitch bend lane", "Pressure lane", "Bank/program lane"][controls.lane]).show_ui(ui, |ui| {
                 for (i, label) in ["CC lane", "Pitch bend lane", "Pressure lane", "Bank/program lane"].iter().enumerate() { ui.selectable_value(&mut controls.lane, i, *label); }
             });
             let mut channel = f64::from(controls.channel + 1); if number(ui, "Controller channel", &mut channel, 1.0, 16.0) { controls.channel = channel.round() as u8 - 1; }
@@ -340,6 +361,7 @@ pub(super) fn show(ui: &mut Ui, draft: &mut Draft, theme: &Theme) -> Result<bool
             if before.0 != controls.lane { controls.value = if controls.lane == 1 { 8192 } else { 0 }; }
             controls.refresh();
         }
+        keyboard_authoring::target(ui, ("controller-values", controls.lane, controls.channel, controls.cc, controls.selected.map(|message| message.order)), |ui| {
         ui.horizontal_wrapped(|ui| {
             number(ui, "Controller beat", &mut controls.beat, 0.0, 262144.0);
             let mut value = f64::from(controls.value); if number(ui, "Controller value", &mut value, 0.0, f64::from(controls.maximum())) { controls.value = value.round() as u16; }
@@ -350,13 +372,16 @@ pub(super) fn show(ui: &mut Ui, draft: &mut Draft, theme: &Theme) -> Result<bool
             }
         });
         ui.horizontal_wrapped(|ui| {
-            if button(ui, "Insert controller point").clicked() { outcome = controls.insert(&draft.notes).map(|_| true); }
-            if button(ui, "Set selected controller point").clicked() { outcome = controls.replace(&draft.notes).map(|_| true); }
-            if button(ui, "Delete controller point").clicked() { outcome = controls.delete().map(|_| true); }
-            ui.label("Device label");
-            let text = ui.add(egui::TextEdit::singleline(&mut controls.name).char_limit(256));
+            if ui.add_enabled_ui(!keyboard_authoring::invalid(ui), |ui| button(ui, "Insert controller point")).inner.clicked() { outcome = controls.insert(&draft.notes).map(|_| true); }
+            if ui.add_enabled_ui(controls.selected.is_some() && !keyboard_authoring::invalid(ui), |ui| button(ui, "Set selected controller point")).inner.clicked() { outcome = controls.replace(&draft.notes).map(|_| true); }
+            if ui.add_enabled_ui(controls.selected.is_some() && !keyboard_authoring::invalid(ui), |ui| button(ui, "Delete controller point")).inner.clicked() { outcome = controls.delete().map(|_| true); }
+            let label = ui.label("Device label");
+            let text = ui.add(egui::TextEdit::singleline(&mut controls.name).id(keyboard_authoring::property(ui,"device-label")).char_limit(256)).labelled_by(label.id);
+            accessibility::focus(ui, &text);
+            if controls.name.len() > 256 || controls.name.chars().any(char::is_control) { keyboard_authoring::error(ui, &text, "Device labels support 256 bytes without control characters"); }
             text.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::TextEdit, true, "Controller device label"));
-            if button(ui, "Save device label").clicked() { outcome = controls.label().map(|_| true); }
+            if ui.add_enabled_ui(!keyboard_authoring::invalid(ui), |ui| button(ui, "Save device label")).inner.clicked() { outcome = controls.label().map(|_| true); }
+        });
         });
         ui.label(format!("{} points · source PPQN {} · pitch bend center 8192. Bank/program insertion sends CC 0, CC 32, then Program Change. Imported messages and metadata keep their wire values.", controls.points.len(), controls.ppqn));
         let (response, painter) = ui.allocate_painter(Vec2::new(ui.available_width().max(1.0), 100.0), egui::Sense::click());
@@ -397,7 +422,7 @@ pub(super) fn show(ui: &mut Ui, draft: &mut Draft, theme: &Theme) -> Result<bool
             for row in range {
                 let index = controls.points[row]; let m = controls.messages[index];
                 let label = format!("Controller point {}: {:.9} beats · value {} · tick {} · order {}", row + 1, m.tick as f64 / f64::from(controls.ppqn), controls.value_of(m), m.tick, m.order);
-                let response = ui.selectable_label(controls.selected == Some(m), &label);
+                let response = keyboard_authoring::native(ui, keyboard_authoring::property(ui, ("controller-point", m.order)), |ui| ui.selectable_label(controls.selected == Some(m), &label));
                 accessibility::button(ui, &response, &label, Some(controls.selected == Some(m)));
                 if response.clicked() { select = Some(index); }
             }
@@ -407,6 +432,7 @@ pub(super) fn show(ui: &mut Ui, draft: &mut Draft, theme: &Theme) -> Result<bool
         draft.dirty |= controls.dirty;
     });
     help::annotate(ui, &shown.header_response, HelpControl::MidiControllers);
+    accessibility::focus(ui, &shown.header_response);
     outcome
 }
 
@@ -426,7 +452,8 @@ mod tests {
             region: None,
             notes: vec![],
             lanes: None,
-            context: None, song_context: None,
+            context: None,
+            song_context: None,
         })
     }
     #[test]

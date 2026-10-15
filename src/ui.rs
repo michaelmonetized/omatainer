@@ -117,6 +117,8 @@ mod deck_direction;
 mod deck_sync;
 mod pitch_controls;
 mod command_palette;
+mod keyboard_authoring;
+mod panel_keyboard;
 mod touch;
 mod workspace;
 mod mixer;
@@ -1123,6 +1125,7 @@ impl App {
             modifiers.is_some_and(|modifiers| input.consume_key(modifiers, Key::F1))
         });
         if help { self.dispatch_shortcut(shortcuts::Action::Help); }
+        if self.keyboard_palette_key(ctx) { return; }
         if !self.shortcut_focus.globals_allowed(ctx) {
             return;
         }
@@ -1130,10 +1133,6 @@ impl App {
             for ev in &i.events {
                 if let egui::Event::Key { key, pressed, repeat, modifiers: mods, .. } = ev {
                     if !pressed { self.release_cue_key(viewport, *key); continue; }
-                    if Some(*key) == command_palette::chord(self.settings.profile()) && mods.ctrl && mods.shift && !mods.alt && !mods.mac_cmd && !repeat {
-                        self.command_palette.open(viewport);
-                        return;
-                    }
                     if *key == Key::Comma && mods.ctrl && !mods.alt && !mods.shift && !repeat { self.settings.open = true; }
                     if let Some(action) = shortcuts::lookup_with(self.settings.profile(), *key, *mods, *repeat) {
                         if let shortcuts::Action::Cue(deck) = action { self.press_cue_key(viewport, *key, deck); }

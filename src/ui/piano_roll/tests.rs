@@ -142,7 +142,7 @@ impl Gui {
     }
     pub(crate) fn number(&mut self, label: &str, value: f64) {
         self.action(
-            &format!("MIDI piano roll: {label}"),
+            &format!("MIDI piano roll: {}", if number_unit(label).is_empty() { label.to_owned() } else { format!("{label} ({})", number_unit(label).trim()) }),
             Action::SetValue,
             Some(ActionData::NumericValue(value)),
         );

@@ -13,12 +13,12 @@ use std::sync::{
 mod canvas;
 mod comparison;
 mod control;
+mod retrospective;
 mod rhythm;
+mod scale;
 mod step;
 mod tools;
-mod scale;
 mod variation;
-mod retrospective;
 
 pub(super) struct Editor {
     open: bool,
@@ -211,7 +211,8 @@ impl Draft {
             return Err("A stable note identity could not be created".into());
         }
         let value = self.cursor;
-        self.notes.push(MidiNote { variation: None,
+        self.notes.push(MidiNote {
+            variation: None,
             channel: 0,
             release_vel: 64,
             source_timing: None,
@@ -348,7 +349,10 @@ impl Editor {
             || self.loading.is_some()
             || self.preparing.is_some()
             || self.pending.is_some()
-            || self.draft.as_ref().is_some_and(|draft| draft.tools.busy() || draft.variation.busy())
+            || self
+                .draft
+                .as_ref()
+                .is_some_and(|draft| draft.tools.busy() || draft.variation.busy())
     }
     fn stop(&mut self, engine: &Engine) {
         if let Some(id) = self.audition {
@@ -451,7 +455,9 @@ impl Editor {
             _ => {}
         }
         if let Some(draft) = &mut self.draft {
-            if let Err(error) = variation::poll(draft, engine) { self.error = Some(error); }
+            if let Err(error) = variation::poll(draft, engine) {
+                self.error = Some(error);
+            }
             let mut tools = std::mem::take(&mut draft.tools);
             if let Err(error) = tools.poll(draft) {
                 self.error = Some(error);
@@ -569,7 +575,10 @@ impl Editor {
             }
             return;
         }
-        if draft.controls.dirty || draft.context != draft.baseline.context || draft.notes.iter().any(|note|note.variation.is_some()) {
+        if draft.controls.dirty
+            || draft.context != draft.baseline.context
+            || draft.notes.iter().any(|note| note.variation.is_some())
+        {
             let baseline = draft.baseline.clone();
             let name = draft.name.clone();
             let notes = draft.notes.clone();
@@ -591,8 +600,9 @@ impl Editor {
                             }
                             let captured =
                                 project.capture(&worker_cancel).map_err(|e| e.to_string())?;
-                            let (request, ack, next) =
-                                Request::with_context(baseline, name, region, notes, lanes, context)?;
+                            let (request, ack, next) = Request::with_context(
+                                baseline, name, region, notes, lanes, context,
+                            )?;
                             Ok((request.guard_metadata(captured, &worker_cancel)?, ack, next))
                         });
                     let _ = sender.send(result);
@@ -676,14 +686,18 @@ impl App {
         self.piano_roll.submit_prepared(&self.engine);
     }
     pub(super) fn piano_roll_ui(&mut self, ctx: &egui::Context) {
-        if !self.studio_workspace_active() { self.piano_roll_view(ctx, None); }
+        if !self.studio_workspace_active() {
+            self.piano_roll_view(ctx, None);
+        }
     }
 
     /// Draw the existing MIDI editor inside a workspace panel.
     /// Args: panel UI. Returns nothing; captured drafts and typed Apply keep their owners.
     pub(super) fn piano_roll_panel(&mut self, ui: &mut Ui) {
         if !self.piano_roll.open {
-            if ui.button("Inspect selected MIDI clip").clicked() { self.open_piano_roll(); }
+            if ui.button("Inspect selected MIDI clip").clicked() {
+                self.open_piano_roll();
+            }
             return;
         }
         let ctx = ui.ctx().clone();
@@ -692,7 +706,9 @@ impl App {
 
     /// Retire GUI-owned musical notes when their panel moves or loses its tab.
     /// Args: none. Returns nothing and leaves independent MIDI owners untouched.
-    pub(super) fn release_workspace_midi(&mut self) { self.piano_roll.stop(&self.engine); }
+    pub(super) fn release_workspace_midi(&mut self) {
+        self.piano_roll.stop(&self.engine);
+    }
 
     fn piano_roll_view(&mut self, ctx: &egui::Context, panel: Option<&mut Ui>) {
         let docked = panel.is_some();
@@ -704,11 +720,18 @@ impl App {
             self.piano_roll = editor;
             return;
         }
-        if !docked { keyboard::block_for_dialog(ctx); }
-        let escape = !docked && ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, Key::Escape));
+        if !docked {
+            keyboard::block_for_dialog(ctx);
+        }
+        let escape = !docked
+            && !keyboard::text_is_focused(ctx)
+            && ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, Key::Escape));
         let musical_events = ctx.input(|i| i.events.clone());
-        let available = panel.as_ref().map(|ui| ui.available_rect_before_wrap())
-            .unwrap_or_else(|| ctx.screen_rect()).shrink(8.0);
+        let available = panel
+            .as_ref()
+            .map(|ui| ui.available_rect_before_wrap())
+            .unwrap_or_else(|| ctx.screen_rect())
+            .shrink(8.0);
         let mut open = true;
         let mut close = escape;
         let mut apply = false;
@@ -723,21 +746,76 @@ impl App {
         let mut octave = editor.keyboard.octave;
         let mut velocity = editor.keyboard.velocity;
         let busy = editor.busy();
+        let form_id = egui::Id::new((
+            "midi-authoring",
+            editor
+                .draft
+                .as_ref()
+                .map(|draft| (draft.baseline.track_identity, draft.baseline.scene_identity)),
+        ));
+        let target_live = editor.draft.as_ref().is_none_or(|draft| {
+            self.snap.session.as_ref().is_some_and(|layout| {
+                draft.baseline.track_identity.is_some_and(|reference| {
+                    layout.resolves(
+                        crate::engine::session::Axis::Track,
+                        draft.baseline.track as usize,
+                        reference,
+                    )
+                }) && draft.baseline.scene_identity.is_some_and(|reference| {
+                    layout.resolves(
+                        crate::engine::session::Axis::Scene,
+                        draft.baseline.scene as usize,
+                        reference,
+                    )
+                })
+            })
+        });
         let mut draw = |ui: &mut Ui| {
+            keyboard_authoring::form(ui, form_id, |ui| {
                 accessibility::scope(ui, "MIDI piano roll", |ui| {
                     ui.label(&editor.message);
-                    if let Some(error) = &editor.error { ui.colored_label(self.theme.red, error); }
-                    if busy { ui.spinner(); ctx.request_repaint_after(std::time::Duration::from_millis(20)); }
+                    if let Some(error) = &editor.error {
+                        ui.colored_label(self.theme.red, error);
+                    }
+                    if !target_live {
+                        ui.colored_label(self.theme.red, "The captured MIDI target changed. Close or discard this draft, then inspect the current clip.");
+                    }
+                    if busy {
+                        ui.spinner();
+                        ctx.request_repaint_after(std::time::Duration::from_millis(20));
+                    }
                     if let Some(draft) = &mut editor.draft {
-                        ui.label({ let __omatainer_args = (&(draft.baseline.track + 1),&(draft.baseline.scene + 1),&(draft.notes.len()),&(if draft.dirty { "unapplied changes" } else { "unmodified draft" }),); crate::localization::format("Captured track {} · scene {} · {} notes · {}", &[format!("{}", __omatainer_args.0), format!("{}", __omatainer_args.1), format!("{}", __omatainer_args.2), format!("{}", __omatainer_args.3)]) });
+                        ui.label({
+                            let __omatainer_args = (
+                                &(draft.baseline.track + 1),
+                                &(draft.baseline.scene + 1),
+                                &(draft.notes.len()),
+                                &(if draft.dirty {
+                                    "unapplied changes"
+                                } else {
+                                    "unmodified draft"
+                                }),
+                            );
+                            crate::localization::format(
+                                "Captured track {} · scene {} · {} notes · {}",
+                                &[
+                                    format!("{}", __omatainer_args.0),
+                                    format!("{}", __omatainer_args.1),
+                                    format!("{}", __omatainer_args.2),
+                                    format!("{}", __omatainer_args.3),
+                                ],
+                            )
+                        });
                         if let Some(lanes) = &draft.baseline.lanes {
                             ui.label({ let __omatainer_args = (&(lanes.ppqn),&(lanes.end_tick),&(lanes.messages.len()),&(lanes.meta.len()),); crate::localization::format("Imported source PPQN {} · end tick {} · {} channel messages · {} standard metadata events", &[format!("{}", __omatainer_args.0), format!("{}", __omatainer_args.1), format!("{}", __omatainer_args.2), format!("{}", __omatainer_args.3)]) });
                         }
                         let scroll = egui::ScrollArea::vertical().id_salt("piano-roll-body")
                             .max_height((available.height() - 160.0).max(100.0)).show(ui, |ui| {
-                            ui.add_enabled_ui(!busy && !self.project.committing() && editor.comparison.editing(draft), |ui| {
+                            ui.add_enabled_ui(!busy && target_live && !self.project.committing() && editor.comparison.editing(draft), |ui| {
                                 ui.horizontal_wrapped(|ui| {
-                                    ui.label(tr!("Clip name")); let name = ui.add(egui::TextEdit::singleline(&mut draft.name).char_limit(4096));
+                                    let label = ui.label(tr!("Clip name")); let name = ui.add(egui::TextEdit::singleline(&mut draft.name).id(keyboard_authoring::property(ui, "clip-name")).char_limit(4096)).labelled_by(label.id);
+                                    accessibility::focus(ui, &name);
+                                    if draft.name.len() > 4096 { keyboard_authoring::error(ui, &name, "Clip names support up to 4096 bytes"); }
                                     name.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::TextEdit, true, "MIDI clip name"));
                                     draft.dirty |= name.changed();
                                 });
@@ -751,15 +829,15 @@ impl App {
                                     help::annotate(ui, &looping, HelpControl::MidiRegion);
                                     draft.dirty |= looping.changed();
                                 });
-                                if !draft.region.allows(&draft.notes) { ui.colored_label(self.theme.red, tr!("Set start ≤ loop start < loop end ≤ end. Each range must span at least 1/1024 beat; dense loops need a longer period.")); }
+                                if !draft.region.allows(&draft.notes) && !keyboard_authoring::invalid(ui) { keyboard_authoring::property_error(ui, "Loop end", "Set start ≤ loop start < loop end ≤ end. Each range must span at least 1/1024 beat; dense loops need a longer period."); }
                                 ui.horizontal_wrapped(|ui| {
-                                    let grid = egui::ComboBox::from_id_salt("midi-grid").selected_text(GRIDS[draft.grid].0)
+                                    let grid = egui::ComboBox::from_label("MIDI grid").selected_text(GRIDS[draft.grid].0)
                                         .show_ui(ui, |ui| { for (i, (name, _)) in GRIDS.iter().enumerate() { ui.selectable_value(&mut draft.grid, i, *name); } });
                                     help::annotate(ui, &grid.response, HelpControl::MidiGrid);
                                     let draw = ui.checkbox(&mut draft.draw, tr!("Draw notes"));
                                     accessibility::button(ui, &draw, "Draw notes", Some(draft.draw));
                                     help::annotate(ui, &draw, HelpControl::MidiNotes);
-                                    let fold = egui::ComboBox::from_id_salt("midi-fold").selected_text(["All pitches", "Used pitches", "Major scale", "Minor scale", "Saved scale"][draft.fold])
+                                    let fold = egui::ComboBox::from_label("Pitch view").selected_text(["All pitches", "Used pitches", "Major scale", "Minor scale", "Saved scale"][draft.fold])
                                         .show_ui(ui, |ui| { for (i, name) in ["All pitches", "Used pitches", "Major scale", "Minor scale", "Saved scale"].iter().enumerate() { ui.selectable_value(&mut draft.fold, i, *name); } });
                                     help::annotate(ui, &fold.response, HelpControl::MidiView);
                                     let mut root = draft.root as f64; if number(ui, "Scale root", &mut root, 0.0, 11.0) { draft.root = root.round() as u8; }
@@ -772,7 +850,7 @@ impl App {
                                     let record = ui.checkbox(&mut draft.step_record, "Record steps on key release");
                                     accessibility::button(ui, &record, "Record steps on key release", Some(draft.step_record));
                                     help::annotate(ui, &record, HelpControl::MidiStep);
-                                    let duration = egui::ComboBox::from_id_salt("midi-step-duration").selected_text(format!("Step: {}", GRIDS[draft.step_grid].0))
+                                    let duration = egui::ComboBox::from_label("Step duration").selected_text(format!("Step: {}", GRIDS[draft.step_grid].0))
                                         .show_ui(ui, |ui| { for (i, (name, _)) in GRIDS.iter().enumerate().skip(1) { ui.selectable_value(&mut draft.step_grid, i, *name); } });
                                     help::annotate(ui, &duration.response, HelpControl::MidiStep);
                                     ui.label(format!("Step cursor: {:.6} beats", draft.cursor.start));
@@ -801,6 +879,14 @@ impl App {
                                 let selected = ui.label(draft.selected_label());
                                 accessibility::status(ui, &selected, &draft.selected_label());
                                 ui.label(tr!("Focus the roll: arrows move / transpose; Shift+Left/Right resize; Ctrl+A selects all; Ctrl+D duplicates; M mutes; Delete removes. Draw on empty space; drag note bodies to move and right edges to resize. All values use quarter-note beats."));
+                                keyboard_authoring::target(ui, ("selected-notes", draft.selected.iter().copied().collect::<Vec<_>>()), |ui| {
+                                let first = draft.notes.iter().find(|note| draft.selected.contains(&note.id));
+                                for (label, mixed) in [
+                                    ("Note pitch", first.is_some_and(|first| draft.notes.iter().filter(|note| draft.selected.contains(&note.id)).any(|note| note.pitch != first.pitch))),
+                                    ("Note start", first.is_some_and(|first| draft.notes.iter().filter(|note| draft.selected.contains(&note.id)).any(|note| note.start != first.start))),
+                                    ("Note length", first.is_some_and(|first| draft.notes.iter().filter(|note| draft.selected.contains(&note.id)).any(|note| note.len != first.len))),
+                                    ("Note velocity", first.is_some_and(|first| draft.notes.iter().filter(|note| draft.selected.contains(&note.id)).any(|note| note.vel != first.vel))),
+                                ] { keyboard_authoring::mixed(ui, label, mixed); }
                                 ui.horizontal_wrapped(|ui| {
                                     let mut pitch = draft.cursor.pitch as f64; if number(ui, "Note pitch", &mut pitch, 0.0, 127.0) { draft.cursor.pitch = pitch.round() as u8; }
                                     let mut start = draft.cursor.start as f64; if number(ui, "Note start", &mut start, 0.0, 262_144.0) { draft.cursor.start = start as f32; }
@@ -810,9 +896,10 @@ impl App {
                                     accessibility::button(ui, &muted, "Note muted", Some(draft.cursor.muted));
                                     help::annotate(ui, &muted, HelpControl::MidiValues);
                                 });
+                                });
                                 ui.horizontal_wrapped(|ui| {
-                                    if button(ui, "Add note").clicked() { if let Err(e) = draft.add() { editor.error = Some(e); } }
-                                    if button(ui, "Set selected note values").clicked() { draft.set_values(); }
+                                    if ui.add_enabled_ui(!keyboard_authoring::invalid(ui), |ui| button(ui, "Add note")).inner.clicked() { if let Err(e) = draft.add() { editor.error = Some(e); } }
+                                    if ui.add_enabled_ui(!keyboard_authoring::invalid(ui) && !draft.selected.is_empty(), |ui| button(ui, "Set selected note values")).inner.clicked() { draft.set_values(); }
                                     if button(ui, "Select all notes").clicked() { draft.selected = draft.notes.iter().map(|n| n.id).collect(); }
                                     if button(ui, "Clear selection").clicked() { draft.selected.clear(); }
                                     if button(ui, "Duplicate notes").clicked() { if let Err(e) = draft.duplicate() { editor.error = Some(e); } }
@@ -834,7 +921,7 @@ impl App {
                                         for index in range { let note = &draft.notes[index]; let id = note.id;
                                             let label = format!("Note {}: {} · {:.6} beats · length {:.6} · velocity {} · {}", index + 1,
                                                 pitch_name(note.pitch), note.start, note.len, note.vel, if note.muted { "muted" } else { "audible" });
-                                            let response = ui.push_id(id, |ui| ui.selectable_label(draft.selected.contains(&id), &label)).inner;
+                                            let response = keyboard_authoring::native(ui, form_id.with(("note", id)), |ui| ui.selectable_label(draft.selected.contains(&id), &label));
                                             accessibility::button(ui, &response, &label, Some(draft.selected.contains(&id)));
                                             if response.clicked() { draft.select(id, ui.input(|i| i.modifiers.shift)); }
                                         }
@@ -854,34 +941,66 @@ impl App {
                         accessibility::scrollbars(ui, "MIDI editor controls", &scroll);
                     }
                     ui.horizontal_wrapped(|ui| {
-                        let response = ui.add_enabled(!busy && editor.draft.is_some() && !self.project.committing(), egui::Button::new(tr!("Apply MIDI edit")));
+                        let response = ui.add_enabled(
+                            !busy
+                                && target_live
+                                && !keyboard_authoring::invalid(ui)
+                                && editor.draft.as_ref().is_some_and(|draft| {
+                                    draft.region.allows(&draft.notes) && draft.name.len() <= 4096
+                                })
+                                && !self.project.committing(),
+                            egui::Button::new(tr!("Apply MIDI edit")),
+                        );
                         help::annotate(ui, &response, HelpControl::MidiApply);
-                        accessibility::button(ui, &response, "Apply MIDI edit", None); apply = response.clicked();
-                        let response = ui.add_enabled(!busy && editor.draft.is_some(), egui::Button::new(tr!("Audition note")));
+                        accessibility::button(ui, &response, "Apply MIDI edit", None);
+                        apply = response.clicked();
+                        let response = ui.add_enabled(
+                            !busy && editor.draft.is_some(),
+                            egui::Button::new(tr!("Audition note")),
+                        );
                         help::annotate(ui, &response, HelpControl::MidiAudition);
-                        accessibility::button(ui, &response, "Audition note", None); audition = response.clicked();
+                        accessibility::button(ui, &response, "Audition note", None);
+                        audition = response.clicked();
                         stop = button(ui, "Stop note audition").clicked();
-                        let response = ui.add_enabled(!busy && !editor.comparison.dirty() && !editor.draft.as_ref().is_some_and(|d| d.dirty), egui::Button::new(tr!("Refresh current clip")));
+                        let response = ui.add_enabled(
+                            !busy
+                                && !editor.comparison.dirty()
+                                && !editor.draft.as_ref().is_some_and(|d| d.dirty),
+                            egui::Button::new(tr!("Refresh current clip")),
+                        );
                         help::annotate(ui, &response, HelpControl::PianoRoll);
-                        accessibility::button(ui, &response, "Refresh current clip", None); refresh = response.clicked();
+                        accessibility::button(ui, &response, "Refresh current clip", None);
+                        refresh = response.clicked();
                         close |= button(ui, "Cancel / close MIDI editor").clicked();
                     });
                     if editor.confirm_discard {
                         ui.label(tr!("This editor has unapplied or pending work. Discard the draft and cancel Apply before closing? An edit already owned by the renderer must finish and remains in History."));
-                        if button(ui, "Discard MIDI draft").clicked() { editor.discard(&self.engine); }
-                        if button(ui, "Keep editing MIDI").clicked() { editor.confirm_discard = false; }
+                        if button(ui, "Discard MIDI draft").clicked() {
+                            editor.discard(&self.engine);
+                        }
+                        if button(ui, "Keep editing MIDI").clicked() {
+                            editor.confirm_discard = false;
+                        }
                     }
                 });
+            });
         };
         let shown = if let Some(ui) = panel {
             Some(ui.scope(&mut draw).response)
         } else {
-            egui::Window::new(tr!("MIDI piano roll")).id(egui::Id::new("midi-piano-roll"))
-            .open(&mut open).collapsible(false).resizable(true)
-            .default_pos(available.left_top() + Vec2::new(16.0, 32.0))
-            .default_width(980.0_f32.min(available.width())).min_width(260.0_f32.min(available.width()))
-            .max_width(available.width()).max_height(available.height()).constrain_to(available)
-            .show(ctx, &mut draw).map(|shown| shown.response)
+            egui::Window::new(tr!("MIDI piano roll"))
+                .id(egui::Id::new("midi-piano-roll"))
+                .open(&mut open)
+                .collapsible(false)
+                .resizable(true)
+                .default_pos(available.left_top() + Vec2::new(16.0, 32.0))
+                .default_width(980.0_f32.min(available.width()))
+                .min_width(260.0_f32.min(available.width()))
+                .max_width(available.width())
+                .max_height(available.height())
+                .constrain_to(available)
+                .show(ctx, &mut draw)
+                .map(|shown| shown.response)
         };
         if let Some(shown) = shown {
             let outside = ctx.input(|i| {
@@ -961,7 +1080,11 @@ impl App {
     }
 }
 fn button(ui: &mut Ui, label: &str) -> egui::Response {
-    let response = ui.button(label);
+    let response = keyboard_authoring::native(
+        ui,
+        keyboard_authoring::property(ui, ("action", label)),
+        |ui| ui.button(label),
+    );
     accessibility::button(ui, &response, label, None);
     help::annotate(
         ui,
@@ -984,71 +1107,69 @@ fn button(ui: &mut Ui, label: &str) -> egui::Response {
     response
 }
 fn number(ui: &mut Ui, label: &str, value: &mut f64, min: f64, max: f64) -> bool {
-    ui.push_id(label, |ui| {
-        ui.label(label);
-        let integer = matches!(
-            label,
-            "Note pitch"
-                | "Note velocity"
-                | "Top pitch"
-                | "Scale root"
-                | "Keyboard octave"
-                | "Keyboard velocity"
-                | "Rhythm steps"
-                | "Rhythm pulses"
-                | "Rhythm rotation"
-                | "Accent every"
-                | "Rhythm pitch"
-                | "Rhythm velocity"
-                | "Rhythm accent"
-        );
-        let step = if integer { 1.0 } else { 0.01 };
-        let response = ui.add(
-            egui::DragValue::new(value)
-                .speed(step)
-                .range(min..=max)
-                .max_decimals(if integer { 0 } else { 6 }),
-        );
-        help::annotate(
-            ui,
-            &response,
-            if label.starts_with("Transform")
-                || label.starts_with("Velocity")
-                || label.starts_with("Warp")
-                || label.starts_with("Property")
-                || label.starts_with("MPE")
-                || label.starts_with("Stretch")
-            {
-                HelpControl::MidiTransform
-            } else if label.starts_with("Clip") || label.starts_with("Loop") {
-                HelpControl::MidiRegion
-            } else if label.starts_with("Note") {
-                HelpControl::MidiValues
-            } else if label.starts_with("Keyboard") {
-                HelpControl::MidiStep
-            } else if label.starts_with("Rhythm") || label == "Accent every" {
-                HelpControl::MidiRhythm
-            } else {
-                HelpControl::MidiView
-            },
-        );
-        let mut changed = response.changed();
-        if let Some(next) = accessibility::numeric(
-            ui,
-            &response,
-            label,
-            *value as f32,
-            min as f32,
-            max as f32,
-            step as f32,
-            "",
-        ) {
-            *value = next as f64;
-            changed = true;
-        }
-        changed
-    })
-    .inner
+    let integer = matches!(
+        label,
+        "Note pitch"
+            | "Note velocity"
+            | "Top pitch"
+            | "Scale root"
+            | "Keyboard octave"
+            | "Keyboard velocity"
+            | "Rhythm steps"
+            | "Rhythm pulses"
+            | "Rhythm rotation"
+            | "Accent every"
+            | "Rhythm pitch"
+            | "Rhythm velocity"
+            | "Rhythm accent"
+    );
+    let unit = number_unit(label);
+    let (response, changed) = keyboard_authoring::number(
+        ui,
+        label,
+        value,
+        min,
+        max,
+        if integer { 1.0 } else { 0.01 },
+        if integer { 0 } else { 6 },
+        unit,
+    );
+    help::annotate(
+        ui,
+        &response,
+        if label.starts_with("Transform")
+            || label.starts_with("Velocity")
+            || label.starts_with("Warp")
+            || label.starts_with("Property")
+            || label.starts_with("MPE")
+            || label.starts_with("Stretch")
+        {
+            HelpControl::MidiTransform
+        } else if label.starts_with("Clip") || label.starts_with("Loop") {
+            HelpControl::MidiRegion
+        } else if label.starts_with("Note") {
+            HelpControl::MidiValues
+        } else if label.starts_with("Keyboard") {
+            HelpControl::MidiStep
+        } else if label.starts_with("Rhythm") || label == "Accent every" {
+            HelpControl::MidiRhythm
+        } else {
+            HelpControl::MidiView
+        },
+    );
+    changed
+}
+
+/// Name the existing precise beat and zoom units.
+/// Args: native property label. Returns its displayed unit without changing stored values.
+fn number_unit(label: &str) -> &'static str {
+    match label {
+        "Clip start" | "Clip end" | "Loop start" | "Loop end" | "Note start" | "Note length"
+        | "Time scroll" | "Controller beat" => " beats",
+        "Time zoom" => " px/beat",
+        "Pitch zoom" => " px/semitone",
+        _ => "",
+    }
 }
 
 #[cfg(test)]
