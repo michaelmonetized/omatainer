@@ -90,7 +90,7 @@ impl Prepared {
         let post_fx=output;
         if let Some(bus)=self.plugins[slot].return_slot {
             let channel=&mut self.mixer.channels[self.model.sends.len()+bus];
-            for (index,sample) in output.iter_mut().enumerate().take(saved.output_width()) {*sample*=channel.effective.gain(index);channel.peaks[index]=channel.peaks[index].max(sample.abs());}
+            for (index,sample) in output.iter_mut().enumerate().take(saved.output_width()) {*sample*=channel.effective.gain(if saved.output_width()==1 {2} else {index});channel.peaks[index]=channel.peaks[index].max(sample.abs());}
         }
         self.publish(node, [input,post_fx,output]);
         if let Some(track) = self.plugins[slot].scene_slot.filter(|track|rt.session.tracks.get(*track).is_some_and(|t|t.active&&Some(t.id)==self.model.plugins[slot].scene_track)) {

@@ -174,7 +174,7 @@ impl Prepared {
                             let bus = &self.model.buses[self.nodes[index].slot.unwrap()];
                             let slot=self.model.sends.len()+self.nodes[index].slot.unwrap();
                             let values=self.mixer.channels[slot].effective;
-                            let output=std::array::from_fn(|channel|input[channel]*values.gain(channel));
+                            let output=std::array::from_fn(|channel|input[channel]*values.gain(if bus.channels==1 {2} else {channel}));
                             if !self.model.plugins.iter().any(|p|p.return_bus==Some(bus.id)){for (peak,sample)in self.mixer.channels[slot].peaks.iter_mut().zip(output){*peak=peak.max(sample.abs());}}
                             let _=bus;
                             [input, input, output]
