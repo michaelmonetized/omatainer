@@ -326,6 +326,7 @@ fn native_expression_offsets_identity_state_latency_and_process_crash_recovery()
         key: 60,
     };
     let mut f = block(class);
+    f.sample_position = 4096;
     f.native = vec![
         (
             7,
@@ -388,7 +389,7 @@ fn native_expression_offsets_identity_state_latency_and_process_crash_recovery()
         panic!("Expected state")
     };
     let mut seek = block(class);
-    seek.sample_position = -256;
+    seek.sample_position = 0;
     exchange(&mut p, Request::Process { frame: seek });
     p.kill_for_test();
     assert!(p
