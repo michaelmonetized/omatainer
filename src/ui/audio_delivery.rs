@@ -203,13 +203,14 @@ impl App {
                 }
                 Ok(Reply::Exported(o)) => {
                     self.audio_delivery.message = format!(
-                        "Saved {} frames · {} Hz · {} channels · peak {:.3} · gain {:.6} to {}",
+                        "Saved {} frames · {} Hz · {} channels · peak {:.3} · gain {:.6} to {}{}",
                         o.frames,
                         o.rate,
                         o.channels,
                         o.peak,
                         o.gain,
-                        o.folder.display()
+                        o.folder.display(),
+                        o.warning.map_or(String::new(), |w| format!(" · {w}"))
                     )
                 }
                 Ok(Reply::Recorded(o)) => {

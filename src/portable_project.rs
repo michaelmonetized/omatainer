@@ -613,8 +613,12 @@ fn publish_directory_with(
     active(cancel)?;
     if let Some(identity) = empty {
         let metadata = fs::symlink_metadata(destination).map_err(|e| e.to_string())?;
-        if !metadata.is_dir() || (metadata.dev(), metadata.ino()) != identity
-            || fs::read_dir(destination).map_err(|e| e.to_string())?.next().is_some()
+        if !metadata.is_dir()
+            || (metadata.dev(), metadata.ino()) != identity
+            || fs::read_dir(destination)
+                .map_err(|e| e.to_string())?
+                .next()
+                .is_some()
         {
             return Err("Version destination is no longer the reviewed empty directory".into());
         }
@@ -626,7 +630,11 @@ fn publish_directory_with(
             old.as_ptr(),
             libc::AT_FDCWD,
             new.as_ptr(),
-            if empty.is_some() { libc::RENAME_EXCHANGE } else { libc::RENAME_NOREPLACE },
+            if empty.is_some() {
+                libc::RENAME_EXCHANGE
+            } else {
+                libc::RENAME_NOREPLACE
+            },
         )
     } != 0
     {
@@ -634,23 +642,44 @@ fn publish_directory_with(
     }
     if let Some(identity) = empty {
         stage.retained = true;
-        let reviewed = fs::symlink_metadata(&stage.path).is_ok_and(|displaced|
-            displaced.is_dir() && (displaced.dev(), displaced.ino()) == identity
-                && fs::read_dir(&stage.path).is_ok_and(|mut entries| entries.next().is_none()));
+        let reviewed = fs::symlink_metadata(&stage.path).is_ok_and(|displaced| {
+            displaced.is_dir()
+                && (displaced.dev(), displaced.ino()) == identity
+                && fs::read_dir(&stage.path).is_ok_and(|mut entries| entries.next().is_none())
+        });
         if !reviewed {
-            if !fs::symlink_metadata(destination).is_ok_and(|installed|
-                installed.is_dir() && (installed.dev(), installed.ino()) == stage.identity) {
+            if !fs::symlink_metadata(destination).is_ok_and(|installed| {
+                installed.is_dir() && (installed.dev(), installed.ino()) == stage.identity
+            }) {
                 return Err(format!("Version destination changed during exchange; displaced contents retained at {}", stage.path.display()));
             }
-            if unsafe { libc::renameat2(libc::AT_FDCWD, old.as_ptr(), libc::AT_FDCWD, new.as_ptr(), libc::RENAME_EXCHANGE) } != 0 {
-                return Err(format!("Version exchange could not be restored: {}; displaced contents retained at {}", std::io::Error::last_os_error(), stage.path.display()));
+            if unsafe {
+                libc::renameat2(
+                    libc::AT_FDCWD,
+                    old.as_ptr(),
+                    libc::AT_FDCWD,
+                    new.as_ptr(),
+                    libc::RENAME_EXCHANGE,
+                )
+            } != 0
+            {
+                return Err(format!(
+                    "Version exchange could not be restored: {}; displaced contents retained at {}",
+                    std::io::Error::last_os_error(),
+                    stage.path.display()
+                ));
             }
             stage.retained = false;
-            return Err("Version destination changed before exchange; original contents restored".into());
+            return Err(
+                "Version destination changed before exchange; original contents restored".into(),
+            );
         }
         stage.retained = true;
         if let Err(error) = fs::remove_dir(&stage.path) {
-            return Ok(SaveOutcome::CommittedButDirectorySyncFailed(format!("Version folder published; empty displaced directory retained at {}: {error}",stage.path.display())));
+            return Ok(SaveOutcome::CommittedButDirectorySyncFailed(format!(
+                "Version folder published; empty displaced directory retained at {}: {error}",
+                stage.path.display()
+            )));
         }
     }
     stage.retained = true;
@@ -658,15 +687,25 @@ fn publish_directory_with(
         match destination
             .parent()
             .ok_or_else(|| "Import destination needs a parent folder".to_string())
-            .and_then(|parent| {
-                File::open(parent)
-                    .and_then(|file| file.sync_all())
-                    .map_err(|e| e.to_string())
-            }) {
+            .and_then(|parent| sync_publication_parent(parent))
+        {
             Ok(()) => SaveOutcome::Durable,
             Err(e) => SaveOutcome::CommittedButDirectorySyncFailed(e),
         },
     )
+}
+
+#[cfg(test)]
+thread_local! { pub(crate) static FAIL_PUBLICATION_SYNC: std::cell::Cell<bool> = const { std::cell::Cell::new(false) }; }
+
+fn sync_publication_parent(parent: &Path) -> Result<(), String> {
+    #[cfg(test)]
+    if FAIL_PUBLICATION_SYNC.with(|flag| flag.replace(false)) {
+        return Err("Injected parent directory sync failure after rename".into());
+    }
+    File::open(parent)
+        .and_then(|file| file.sync_all())
+        .map_err(|e| e.to_string())
 }
 
 #[cfg(test)]

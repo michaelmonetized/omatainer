@@ -10,8 +10,9 @@ use std::{
     path::{Path, PathBuf},
     sync::atomic::{AtomicBool, Ordering},
 };
-mod render;
+pub(crate) mod publication;
 pub(crate) mod recovery;
+mod render;
 #[cfg(test)]
 mod tests;
 pub(crate) mod wav;
@@ -187,6 +188,7 @@ pub(crate) struct Outcome {
     pub channels: u16,
     pub peak: f32,
     pub gain: f64,
+    pub warning: Option<String>,
 }
 fn active(cancel: &AtomicBool) -> Result<(), String> {
     if cancel.load(Ordering::Acquire) {
@@ -407,7 +409,14 @@ pub(crate) fn run(
         .and_then(|_| receipt.sync_all())
         .map_err(|e| e.to_string())?;
     let _commit = permit.commit().map_err(|e| e.to_string())?;
-    crate::portable_project::publish(stage, destination, &cancel)?;
+    let warning = publication::retain(
+        destination,
+        publication::warning(crate::portable_project::publish(
+            stage,
+            destination,
+            &cancel,
+        )?),
+    );
     Ok(Outcome {
         folder: destination.to_owned(),
         frames: bounds.3,
@@ -415,5 +424,6 @@ pub(crate) fn run(
         channels: request.options.channels,
         peak,
         gain,
+        warning,
     })
 }
