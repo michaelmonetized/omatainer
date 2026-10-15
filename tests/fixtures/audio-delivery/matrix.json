@@ -86,7 +86,7 @@
       "id": "aligned-native-null",
       "test": "audio_delivery::batch::tests::aligned_encoded_stems_null_sum_explicit_version_and_normal_graph_oracle_after_reopen",
       "source": "src/audio_delivery/batch/tests.rs",
-      "source_sha256": "ceac99396c557f1f5bcb60642a6f9e7357a958c681884c80470368ac02a6bb9d",
+      "source_sha256": "b96c54b4a402a681c8cf448b7ba12ae365b9f8c3c07bfe5aa9628040e85f724e",
       "requirement": "required",
       "acceptance": "encoded stems sum vs explicitly selected combined pass, normal nonlinear master oracle, recipe reopen/live state"
     },
@@ -94,7 +94,7 @@
       "id": "batch-atomic-refusals",
       "test": "audio_delivery::batch::tests::batch_stale_missing_ids_collision_cancel_and_failed_qc_never_publish_partial_folder",
       "source": "src/audio_delivery/batch/tests.rs",
-      "source_sha256": "ceac99396c557f1f5bcb60642a6f9e7357a958c681884c80470368ac02a6bb9d",
+      "source_sha256": "b96c54b4a402a681c8cf448b7ba12ae365b9f8c3c07bfe5aa9628040e85f724e",
       "requirement": "required",
       "acceptance": "namespace/deleted identity, stale revision, case collision, existing folder, QC failure statuses"
     },
@@ -102,7 +102,7 @@
       "id": "batch-mid-cancel",
       "test": "audio_delivery::batch::tests::batch_cancel_during_second_pass_keeps_only_failure_receipt_and_no_final_audio",
       "source": "src/audio_delivery/batch/tests.rs",
-      "source_sha256": "ceac99396c557f1f5bcb60642a6f9e7357a958c681884c80470368ac02a6bb9d",
+      "source_sha256": "b96c54b4a402a681c8cf448b7ba12ae365b9f8c3c07bfe5aa9628040e85f724e",
       "requirement": "required",
       "acceptance": "cancel after first pass, passed/failed/skipped receipt, no final folder"
     },
@@ -128,7 +128,7 @@
       "source": "src/audio_delivery/batch/tests.rs",
       "requirement": "required",
       "acceptance": "actual FIFO with no writer promptly refused via opened-descriptor regular-file check, valid regular recipe preserved, cancellation observed",
-      "source_sha256": "ceac99396c557f1f5bcb60642a6f9e7357a958c681884c80470368ac02a6bb9d"
+      "source_sha256": "b96c54b4a402a681c8cf448b7ba12ae365b9f8c3c07bfe5aa9628040e85f724e"
     },
     {
       "id": "incremental-digest-cancel",
@@ -144,7 +144,7 @@
       "source": "src/audio_delivery/batch/tests.rs",
       "requirement": "required",
       "acceptance": "canonical session reference survives display reorder, deleted/reused source scene refuses even for track-only passes, older optional-field JSON loads but cannot silently bind a scene",
-      "source_sha256": "ceac99396c557f1f5bcb60642a6f9e7357a958c681884c80470368ac02a6bb9d"
+      "source_sha256": "b96c54b4a402a681c8cf448b7ba12ae365b9f8c3c07bfe5aa9628040e85f724e"
     },
     {
       "id": "native-delivery-keyboard-fields",
