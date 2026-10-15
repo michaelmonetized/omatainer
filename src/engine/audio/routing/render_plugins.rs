@@ -60,10 +60,10 @@ impl Prepared {
             if rt.playing {
                 for lane in &saved.automation {
                     let corner = plugin.automation_beat.is_none_or(|previous| context.beat < previous || lane.points.partition_point(|p| p[0] <= previous) != lane.points.partition_point(|p| p[0] <= context.beat));
-                    if (endpoint.block_offset() == 0 || endpoint.block_offset() == crate::plugin_host::BLOCK - 1 || corner) && !endpoint.parameter(lane.id,lane.at(context.beat.max(0.))) { endpoint.refuse(); }
+                    if (endpoint.block_offset() == 0 || endpoint.block_offset() == crate::plugin_host::BLOCK - 1 || corner) && !(if lane.modulation {endpoint.modulation(lane.id,lane.at(context.beat.max(0.)))} else {endpoint.parameter(lane.id,lane.at(context.beat.max(0.)))}) { endpoint.refuse(); }
                 }
                 plugin.automation_beat = Some(context.beat);
-            } else { plugin.automation_beat = None; }
+            } else { if endpoint.block_offset()==0 {for lane in saved.automation.iter().filter(|l|l.modulation) {if !endpoint.modulation(lane.id,0.) {endpoint.refuse();}}} plugin.automation_beat = None; }
             if let Some(track) = plugin.midi_slot.filter(|slot|endpoint.control.class.info.has_midi_input && rt.session.tracks.get(*slot).is_some_and(|t|t.active&&Some(t.id)==saved.midi_track)) {
                 if rt.plugin_midi.refused(track) { endpoint.refuse(); }
                 for bytes in rt.plugin_midi.events(track) {

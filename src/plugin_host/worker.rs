@@ -164,6 +164,7 @@ fn handle(request: Request, instance: &mut Option<Instance>, clap: &mut Option<s
         }
         Request::Process { frame } => {
             frame.validate()?;
+            if !frame.native.is_empty() { return Err("CLAP native expression events cannot be sent to a VST3 processor; use its MIDI input".into()); }
             let instance = instance.as_mut().ok_or("No plugin is loaded")?;
             let mut p = instance.plugin.lock().map_err(|e| e.to_string())?;
             let layout = p.audio_bus_layout().map_err(|e| e.to_string())?;

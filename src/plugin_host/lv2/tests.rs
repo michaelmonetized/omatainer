@@ -20,6 +20,7 @@ fn block(class: &Class) -> Frame {
         signature: [4, 4],
         parameters: vec![],
         midi: vec![],
+        native: vec![],
     }
 }
 #[test]

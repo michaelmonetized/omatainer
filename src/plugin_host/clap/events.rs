@@ -5,6 +5,8 @@ pub(super) enum Event {
     Param(clap_event_param_value),
     Note(clap_event_note),
     Midi(clap_event_midi),
+    Expression(clap_event_note_expression),
+    Modulation(clap_event_param_mod),
 }
 impl Event {
     pub(super) fn header(&self) -> &clap_event_header {
@@ -12,6 +14,8 @@ impl Event {
             Self::Param(e) => &e.header,
             Self::Note(e) => &e.header,
             Self::Midi(e) => &e.header,
+            Self::Expression(e) => &e.header,
+            Self::Modulation(e) => &e.header,
         }
     }
 }
@@ -79,10 +83,107 @@ pub(super) fn input(frame: &Frame, class: &Class) -> Result<Vec<Event>, String> 
                 key: data[1] as i16,
                 velocity: data[2] as f64 / 127.,
             }));
+        } else if port.dialects & CLAP_NOTE_DIALECT_CLAP != 0 {
+            let (kind,key,value)=match data[0]&0xf0 {
+                0xa0 => (CLAP_NOTE_EXPRESSION_PRESSURE,data[1] as i16,data[2] as f64/127.),
+                0xd0 => (CLAP_NOTE_EXPRESSION_PRESSURE,-1,data[1] as f64/127.),
+                0xe0 => (CLAP_NOTE_EXPRESSION_TUNING,-1,((data[1] as u16|((data[2] as u16)<<7)) as f64-8192.)/8192.*2.),
+                0xb0 => match data[1] {7=>(CLAP_NOTE_EXPRESSION_VOLUME,-1,data[2] as f64/127.),10=>(CLAP_NOTE_EXPRESSION_PAN,-1,data[2] as f64/127.),11=>(CLAP_NOTE_EXPRESSION_EXPRESSION,-1,data[2] as f64/127.),74=>(CLAP_NOTE_EXPRESSION_BRIGHTNESS,-1,data[2] as f64/127.),_=>return Err("This CLAP-only note port cannot receive the MIDI controller; select a MIDI-capable dialect for sustain, RPN or other raw controllers".into())},
+                _ => return Err("CLAP-only note port cannot receive this MIDI message".into()),
+            };
+            result.push(Event::Expression(clap_event_note_expression {
+                header: header::<clap_event_note_expression>(
+                    time as u32,
+                    CLAP_EVENT_NOTE_EXPRESSION,
+                ),
+                expression_id: kind,
+                note_id: -1,
+                port_index: 0,
+                channel: (data[0] & 15) as i16,
+                key,
+                value,
+            }));
         } else {
-            return Err(
-                "CLAP note port cannot receive this MIDI message; use a compatible dialect".into(),
-            );
+            return Err("CLAP note port has no supported MIDI or native note dialect".into());
+        }
+    }
+    for &(time, event) in &frame.native {
+        use expression::NativeEvent::*;
+        let target = match event {
+            Note { target, .. } | Expression { target, .. } | Modulation { target, .. } => target,
+        };
+        if !event.valid() {
+            return Err("Invalid CLAP native expression event".into());
+        }
+        match event {
+            Note { on, velocity, .. } => {
+                require_note_port(metadata, target.port)?;
+                result.push(Event::Note(clap_event_note {
+                    header: header::<clap_event_note>(
+                        time as u32,
+                        if on {
+                            CLAP_EVENT_NOTE_ON
+                        } else {
+                            CLAP_EVENT_NOTE_OFF
+                        },
+                    ),
+                    note_id: target.note_id,
+                    port_index: target.port,
+                    channel: target.channel,
+                    key: target.key,
+                    velocity,
+                }));
+            }
+            Expression { kind, value, .. } => {
+                if target.port >= 0 {
+                    require_note_port(metadata, target.port)?;
+                } else if !metadata
+                    .note_inputs
+                    .iter()
+                    .any(|p| p.dialects & CLAP_NOTE_DIALECT_CLAP != 0)
+                {
+                    return Err("CLAP native note-expression dialect is unavailable".into());
+                }
+                result.push(Event::Expression(clap_event_note_expression {
+                    header: header::<clap_event_note_expression>(
+                        time as u32,
+                        CLAP_EVENT_NOTE_EXPRESSION,
+                    ),
+                    expression_id: kind,
+                    note_id: target.note_id,
+                    port_index: target.port,
+                    channel: target.channel,
+                    key: target.key,
+                    value,
+                }));
+            }
+            Modulation {
+                parameter, amount, ..
+            } => {
+                let p = metadata
+                    .parameters
+                    .iter()
+                    .find(|p| p.id == parameter)
+                    .ok_or("Unknown CLAP modulation parameter")?;
+                if p.flags & CLAP_PARAM_IS_MODULATABLE == 0
+                    || target.note_id >= 0 && p.flags & CLAP_PARAM_IS_MODULATABLE_PER_NOTE_ID == 0
+                    || target.port >= 0 && p.flags & CLAP_PARAM_IS_MODULATABLE_PER_PORT == 0
+                    || target.channel >= 0 && p.flags & CLAP_PARAM_IS_MODULATABLE_PER_CHANNEL == 0
+                    || target.key >= 0 && p.flags & CLAP_PARAM_IS_MODULATABLE_PER_KEY == 0
+                {
+                    return Err("CLAP parameter does not support this modulation address".into());
+                }
+                result.push(Event::Modulation(clap_event_param_mod {
+                    header: header::<clap_event_param_mod>(time as u32, CLAP_EVENT_PARAM_MOD),
+                    param_id: parameter,
+                    cookie: ptr::null_mut(),
+                    note_id: target.note_id,
+                    port_index: target.port,
+                    channel: target.channel,
+                    key: target.key,
+                    amount,
+                }));
+            }
         }
     }
     result.sort_by_key(|e| e.header().time);
@@ -253,4 +354,16 @@ pub(super) fn transport(f: &Frame, rate: u32) -> clap_event_transport {
         tsig_num: f.signature[0] as u16,
         tsig_denom: f.signature[1] as u16,
     }
+}
+
+fn require_note_port(metadata: &Metadata, port: i16) -> Result<(), String> {
+    if port < 0
+        || !metadata
+            .note_inputs
+            .get(port as usize)
+            .is_some_and(|p| p.dialects & CLAP_NOTE_DIALECT_CLAP != 0)
+    {
+        return Err("CLAP native note dialect is unavailable on this port".into());
+    }
+    Ok(())
 }

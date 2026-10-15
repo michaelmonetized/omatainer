@@ -19,6 +19,7 @@ use std::{
 mod callbacks;
 mod editor;
 pub(super) mod events;
+pub(crate) mod expression;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -878,3 +879,97 @@ unsafe extern "C" fn write_state(s: *const clap_ostream, b: *const c_void, n: u6
 
 #[cfg(test)]
 mod tests;
+
+impl Metadata {
+    /// Validate native metadata received from a worker or catalog. Args: shared parameters and layout. Returns an error when ports, ranges or extension claims exceed host bounds.
+    pub(super) fn validate(
+        &self,
+        parameters: &[vst3_host::Parameter],
+        layout: &vst3_host::AudioBusLayout,
+    ) -> Result<(), String> {
+        if self.audio_inputs.len() != layout.inputs.len()
+            || self.audio_outputs.len() != layout.outputs.len()
+            || self.note_inputs.len() > 8
+            || self.note_outputs.len() > 8
+            || self.parameters.len() != parameters.len()
+            || self.extensions.len() > 64
+            || self.unsupported_host_extensions.len() > 64
+            || self
+                .extensions
+                .iter()
+                .chain(&self.unsupported_host_extensions)
+                .any(|s| s.len() > 256)
+        {
+            return Err("CLAP metadata exceeds host bounds".into());
+        }
+        for ports in [
+            &self.audio_inputs,
+            &self.audio_outputs,
+            &self.note_inputs,
+            &self.note_outputs,
+        ] {
+            let mut ids = std::collections::HashSet::new();
+            if ports.iter().any(|p| {
+                p.id == u32::MAX
+                    || !ids.insert(p.id)
+                    || p.name.len() > 4096
+                    || p.channels > MAX_CHANNELS as u32
+            }) {
+                return Err("CLAP port metadata is invalid or duplicated".into());
+            }
+        }
+        for (ports, buses) in [
+            (&self.audio_inputs, &layout.inputs),
+            (&self.audio_outputs, &layout.outputs),
+        ] {
+            if ports
+                .iter()
+                .zip(buses)
+                .any(|(p, b)| p.channels as usize != b.channel_count)
+            {
+                return Err("CLAP metadata and audio buses disagree".into());
+            }
+        }
+        if self.parameters.iter().zip(parameters).any(|(p, shared)| {
+            p.id != shared.id
+                || p.module.len() > 4096
+                || !p.min.is_finite()
+                || !p.max.is_finite()
+                || p.min > p.max
+                || !p.default.is_finite()
+                || !(p.min..=p.max).contains(&p.default)
+        }) {
+            return Err("CLAP parameter ranges are invalid".into());
+        }
+        Ok(())
+    }
+    /// Measure retained native metadata. Args: this metadata. Returns its owned heap size for graph admission.
+    pub(super) fn bytes(&self) -> usize {
+        [
+            &self.audio_inputs,
+            &self.audio_outputs,
+            &self.note_inputs,
+            &self.note_outputs,
+        ]
+        .iter()
+        .map(|ports| {
+            ports.capacity() * std::mem::size_of::<Port>()
+                + ports.iter().map(|p| p.name.capacity()).sum::<usize>()
+        })
+        .sum::<usize>()
+            + self.parameters.capacity() * std::mem::size_of::<Parameter>()
+            + self
+                .parameters
+                .iter()
+                .map(|p| p.module.capacity())
+                .sum::<usize>()
+            + self.extensions.capacity() * std::mem::size_of::<String>()
+            + self.extensions.iter().map(String::capacity).sum::<usize>()
+            + self.unsupported_host_extensions.capacity() * std::mem::size_of::<String>()
+            + self
+                .unsupported_host_extensions
+                .iter()
+                .map(String::capacity)
+                .sum::<usize>()
+    }
+}

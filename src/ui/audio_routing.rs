@@ -709,6 +709,15 @@ impl App {
                                     ui.horizontal(|ui| {
                                         for (label,open) in [("Open plugin editor",true),("Close plugin editor",false)] { if ui.add_enabled(!self.engine.cmd.performance().protected() && !self.engine.safe_mode() && (!open || control.class.info.has_gui),egui::Button::new(label)).clicked() { let _=self.engine.cmd.send(Command::PluginEditor {namespace:draft.namespace,id:plugin.id,open}); } }
                                     });
+                                    if let Some(native)=&control.class.native { ui.collapsing("CLAP modulation",|ui| {
+                                        ui.label("Modulation adds to the parameter value during playback. Amounts run from −1 to 1 of its native range. Edit the points, then review and apply this routing draft.");
+                                        for parameter in native.parameters.iter().filter(|p|p.flags & clap_sys::ext::params::CLAP_PARAM_IS_MODULATABLE !=0).take(crate::plugin_host::MAX_CONTROL_PARAMETERS) {
+                                            let label=control.class.parameters.iter().find(|p|p.id==parameter.id).map_or_else(||parameter.id.to_string(),|p|p.name.clone());
+                                            let mut enabled=plugin.automation.iter().any(|lane|lane.id==parameter.id&&lane.modulation);
+                                            if ui.checkbox(&mut enabled,label).changed() {plugin.automation.retain(|lane|lane.id!=parameter.id);if enabled {plugin.automation.push(crate::engine::audio::routing::plugins::Automation {id:parameter.id,points:vec![[0.,0.],[4.,0.]],modulation:true});}}
+                                            if let Some(lane)=plugin.automation.iter_mut().find(|lane|lane.id==parameter.id&&lane.modulation) {ui.push_id(("modulation",parameter.id),|ui| {for (index,point) in lane.points.iter_mut().enumerate() {ui.push_id(index,|ui| {ui.horizontal(|ui| {ui.label("Beat");ui.add(egui::DragValue::new(&mut point[0]).range(0.0..=1.0e9));ui.label("Amount");ui.add(egui::DragValue::new(&mut point[1]).range(-1.0..=1.0).speed(0.01));});});}if ui.add_enabled(lane.points.len()<128,egui::Button::new("Add modulation point")).clicked() {if let Some(last)=lane.points.last().copied() {lane.points.push([last[0]+4.,last[1]]);}} });}
+                                        }
+                                    }); }
                                     ui.collapsing("Normalized parameters",|ui| { ui.label("Values use the plugin's 0–1 range. Up to 128 visible writable controls are shown; the native editor supplies all its controls and engineering units. Refresh routes to capture editor changes before another graph edit.");
                                         for parameter in control.class.writable_parameters() {
                                             let mut value=control.value(parameter.id).unwrap_or_else(||plugin.parameters.iter().find(|p|p.id==parameter.id).map_or(parameter.value,|p|p.value));

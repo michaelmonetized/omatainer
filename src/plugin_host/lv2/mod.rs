@@ -704,6 +704,9 @@ impl Instance {
     }
     pub fn process(&mut self, frame: Frame) -> Result<Response, String> {
         frame.validate()?;
+        if !frame.native.is_empty() {
+            return Err("CLAP native expression events cannot be sent to LV2; use supported MIDI/Atom events".into());
+        }
         if frame.inputs.len() != self.class.layout.inputs.len()
             || frame
                 .inputs
@@ -1017,4 +1020,69 @@ fn parse_atoms(
         return Err("LV2 Atom output is misaligned".into());
     }
     Ok(())
+}
+
+impl Metadata {
+    /// Validate native LV2 metadata. Args: shared class buses. Returns an error for unsupported cached port shapes or unbounded metadata.
+    pub(super) fn validate(&self, layout: &vst3_host::AudioBusLayout) -> Result<(), String> {
+        if self.ports.len() > 512
+            || self.required.len() > 256
+            || self.optional.len() > 256
+            || self.unsupported.len() > 256
+            || self
+                .required
+                .iter()
+                .chain(&self.optional)
+                .chain(&self.unsupported)
+                .any(|s| s.len() > 4096)
+        {
+            return Err("LV2 metadata exceeds its bounds".into());
+        }
+        for (index, port) in self.ports.iter().enumerate() {
+            if port.index as usize != index
+                || port.name.len() > 4096
+                || port.symbol.len() > 4096
+                || !port.min.is_finite()
+                || !port.max.is_finite()
+                || port.min > port.max
+                || !port.default.is_finite()
+            {
+                return Err("LV2 cached port metadata is malformed".into());
+            }
+            match port.kind.as_str() {
+                "audio" => {
+                    let buses = if port.input {
+                        &layout.inputs
+                    } else {
+                        &layout.outputs
+                    };
+                    if buses
+                        .get(port.bus)
+                        .is_none_or(|b| port.channel >= b.channel_count)
+                    {
+                        return Err("LV2 cached audio port escapes its bus".into());
+                    }
+                }
+                "control" | "atom" | "optional" => {}
+                _ => return Err("Unknown LV2 cached port class".into()),
+            }
+        }
+        Ok(())
+    }
+    /// Measure retained LV2 metadata. Args: this metadata. Returns owned bytes for graph admission.
+    pub(super) fn bytes(&self) -> usize {
+        self.ports.capacity() * std::mem::size_of::<Port>()
+            + self
+                .ports
+                .iter()
+                .map(|p| p.name.capacity() + p.symbol.capacity() + p.kind.capacity())
+                .sum::<usize>()
+            + [&self.required, &self.optional, &self.unsupported]
+                .iter()
+                .map(|v| {
+                    v.capacity() * std::mem::size_of::<String>()
+                        + v.iter().map(String::capacity).sum::<usize>()
+                })
+                .sum::<usize>()
+    }
 }

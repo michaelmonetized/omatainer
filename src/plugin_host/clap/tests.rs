@@ -72,6 +72,7 @@ fn input_events_preserve_offsets_channels_and_plain_parameter_ranges() {
         signature: [4, 4],
         parameters: vec![(9, 0.75, 64)],
         midi: vec![(10, [0x93, 60, 100]), (128, [0x83, 60, 0])],
+        native: vec![],
     };
     frame.validate().unwrap();
     let e = events::input(&frame, &class).unwrap();
@@ -109,6 +110,7 @@ fn block(class: &Class) -> Frame {
         signature: [4, 4],
         parameters: vec![],
         midi: vec![],
+        native: vec![],
     }
 }
 
@@ -262,5 +264,163 @@ fn mixed_plugin_folder_keeps_every_sibling_and_nested_bundle() {
     let paths =
         crate::plugin_host::scanner::candidates(&[root.clone()], &AtomicBool::new(false)).unwrap();
     assert_eq!(paths.len(), 4);
+    std::fs::remove_dir_all(root).unwrap();
+}
+
+#[test]
+#[ignore = "Compiles and runs the native C ABI conformance plugin using explicitly selected CLAP headers; no device or window"]
+fn native_expression_offsets_identity_state_latency_and_process_crash_recovery() {
+    use expression::{NativeEvent as E, Target};
+    let headers = PathBuf::from(
+        std::env::var_os("OMATAINER_CLAP_HEADERS").expect("OMATAINER_CLAP_HEADERS required"),
+    );
+    let root = std::env::temp_dir().join(format!(
+        "native-expression-{}",
+        crate::sampler_bank::BankId::new().unwrap()
+    ));
+    std::fs::create_dir_all(&root).unwrap();
+    let path = root.join("Conformance.clap");
+    let status = std::process::Command::new("cc")
+        .args(["-std=c11", "-shared", "-fPIC", "-O1"])
+        .arg("-I")
+        .arg(headers)
+        .arg(Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/clap-expression.c"))
+        .arg("-o")
+        .arg(&path)
+        .status()
+        .unwrap();
+    assert!(status.success());
+    let executable = std::env::current_exe().unwrap();
+    let mut p = process::Process::start(&executable).unwrap();
+    let binary = identify(&path).unwrap();
+    let Response::Classes { classes } = exchange(
+        &mut p,
+        Request::Probe {
+            binary: binary.clone(),
+        },
+    ) else {
+        panic!("Expected real native class")
+    };
+    let class = &classes[0];
+    assert_eq!(class.latency, 19);
+    assert!(class
+        .native
+        .as_ref()
+        .unwrap()
+        .unsupported_host_extensions
+        .iter()
+        .any(|s| s == "clap.thread-pool"));
+    let saved = Saved {
+        schema: 1,
+        binary,
+        class_id: class.info.uid.clone(),
+        plugin_version: "1".into(),
+        state_codec: "clap-state-1".into(),
+        state: vec![],
+    };
+    exchange(&mut p, Request::Load { saved, rate: 48000 });
+    let target = Target {
+        note_id: 42,
+        port: 0,
+        channel: 3,
+        key: 60,
+    };
+    let mut f = block(class);
+    f.sample_position = 4096;
+    f.native = vec![
+        (
+            7,
+            E::Note {
+                target,
+                on: true,
+                velocity: 1.,
+            },
+        ),
+        (
+            31,
+            E::Expression {
+                target,
+                kind: 6,
+                value: 0.5,
+            },
+        ),
+        (
+            47,
+            E::Expression {
+                target: Target {
+                    note_id: 99,
+                    ..target
+                },
+                kind: 6,
+                value: 0.1,
+            },
+        ),
+        (
+            63,
+            E::Modulation {
+                target: Target::all(),
+                parameter: 7,
+                amount: 0.125,
+            },
+        ),
+        (
+            127,
+            E::Note {
+                target,
+                on: false,
+                velocity: 0.,
+            },
+        ),
+    ];
+    let Response::Audio {
+        outputs, latency, ..
+    } = exchange(&mut p, Request::Process { frame: f })
+    else {
+        panic!("Expected native output")
+    };
+    assert_eq!(latency, 19);
+    let out = &outputs[0][0];
+    assert!(out[..7].iter().all(|v| *v == 0.));
+    assert!(out[7..31].iter().all(|v| *v == 0.25));
+    assert!(out[31..63].iter().all(|v| *v == 0.75));
+    assert!(out[63..127].iter().all(|v| *v == 0.875));
+    assert!(out[127..].iter().all(|v| *v == 0.));
+    let Response::State { saved, .. } = exchange(&mut p, Request::State) else {
+        panic!("Expected state")
+    };
+    let mut seek = block(class);
+    seek.sample_position = 0;
+    exchange(&mut p, Request::Process { frame: seek });
+    p.kill_for_test();
+    assert!(p
+        .exchange(
+            &Request::State,
+            &AtomicBool::new(false),
+            Duration::from_secs(2)
+        )
+        .is_err());
+    drop(p);
+    let saved: Saved = serde_json::from_slice(&serde_json::to_vec(&saved).unwrap()).unwrap();
+    let mut recovered = process::Process::start(&executable).unwrap();
+    exchange(&mut recovered, Request::Load { saved, rate: 48000 });
+    let mut live_midi = block(class);
+    live_midi.midi = vec![
+        (7, [0x93, 60, 100]),
+        (31, [0xd3, 64, 0]),
+        (127, [0x83, 60, 0]),
+    ];
+    let Response::Audio { outputs, .. } =
+        exchange(&mut recovered, Request::Process { frame: live_midi })
+    else {
+        panic!("Expected native CLAP-only MIDI expression output")
+    };
+    assert!(outputs[0][0][..7].iter().all(|v| *v == 0.));
+    assert!(outputs[0][0][7..31].iter().all(|v| *v == 0.25));
+    assert!(outputs[0][0][31..127]
+        .iter()
+        .all(|v| (*v - (0.25 + 64. / 127.)).abs() < 1e-6));
+    assert!(outputs[0][0][127..].iter().all(|v| *v == 0.));
+    exchange(&mut recovered, Request::Quit);
+    drop(recovered);
     std::fs::remove_dir_all(root).unwrap();
 }
