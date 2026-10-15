@@ -290,6 +290,9 @@ impl App {
                     .or_insert(preset);
             }
             profile.workspaces.studio.active = task;
+            if let Some(draft) = self.settings.draft.profiles.get_mut(&self.settings.applied.active) {
+                draft.workspaces.studio = profile.workspaces.studio.clone();
+            }
         }
         if save {
             self.settings
@@ -457,7 +460,12 @@ impl App {
             .profiles
             .get_mut(&self.settings.applied.active)
             .unwrap();
-        profile.workspaces.studio = book;
+        profile.workspaces.studio = book.clone();
+        if !self.settings.open && !self.settings.busy() {
+            if let Some(draft) = self.settings.draft.profiles.get_mut(&self.settings.applied.active) {
+                draft.workspaces.studio = book;
+            }
+        }
     }
 
     /// Draw one registered panel with bounded scrolling.
