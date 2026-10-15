@@ -74,7 +74,15 @@ fn retain(case: &str, input: &Path, report: &Report, reference: &str) {
         let root = PathBuf::from(root);
         assert!(root.is_absolute() && root.starts_with("/home"));
         std::fs::create_dir_all(&root).unwrap();
-        let receipt = serde_json::json!({"schema":1,"case":case,"source_revision":std::env::var("OMATAINER_DELIVERY_REVISION").ok(),"status":"passed","input_sha256":process::sha256(input).unwrap(),"input_bytes":std::fs::metadata(input).unwrap().len(),"report":report,"independent_reference":{"implementation":"FFmpeg ebur128 filter; independent from bundled libebur128","tool":report.decoder,"raw":reference},"boundaries":["headless native software only","no device/listening/desktop","not full long-session endurance"]});
+        let mut receipt = serde_json::json!({"schema":1,"case":case,"source_revision":std::env::var("OMATAINER_DELIVERY_REVISION").ok(),"status":"passed","input_sha256":process::sha256(input).unwrap(),"input_bytes":std::fs::metadata(input).unwrap().len(),"report":report,"independent_reference":{"implementation":"FFmpeg ebur128 filter; independent from bundled libebur128","tool":report.decoder,"raw":reference},"boundaries":["headless native software only","no device/listening/desktop","not full long-session endurance"]});
+        if case.ends_with("characterization") {
+            receipt["status"] = serde_json::json!("characterized");
+            receipt["strict_agreement_qualified"] = serde_json::json!(false);
+            receipt["reference_true_peak_dbtp"] = serde_json::json!(summary(reference, "Peak:"));
+            receipt["true_peak_difference_db"] =
+                serde_json::json!(report.true_peak_dbtp.unwrap() - summary(reference, "Peak:"));
+            receipt["boundaries"].as_array_mut().unwrap().push(serde_json::json!("Abrupt-edge finite-interpolator difference retained; not a strict conformance or certified-peak claim"));
+        }
         std::fs::write(
             root.join(format!("{case}.json")),
             serde_json::to_vec_pretty(&receipt).unwrap(),
@@ -138,11 +146,22 @@ fn bs1770_calibrated_tone_and_dynamic_lra_match_independent_ffmpeg() {
 fn true_peak_intersample_silence_nonfinite_and_layout_targets_are_explicit() {
     let files = Files::new();
     let path = files.0.join("intersample.wav");
-    tone(&path, 1, 3, |i, _| if i % 4 < 2 { -0.8 } else { 0.8 });
+    tone(&path, 1, 3, |i, _| {
+        let envelope = (i as f32 / 4800.).min((143999 - i) as f32 / 4800.).min(1.);
+        (if i % 4 < 2 { -0.8 } else { 0.8 }) * envelope
+    });
     let report = measure(&path, 48000, 1, Some(4), &AtomicBool::new(false)).unwrap();
     assert!(report.true_peak_dbtp.unwrap() > report.sample_peak_dbfs.unwrap() + 2.);
     let oracle = reference(&path);
-    assert!((report.true_peak_dbtp.unwrap() - summary(&oracle, "Peak:")).abs() < 0.5);
+    let analytic = 20. * (0.8_f64 * 2_f64.sqrt()).log10();
+    assert!(
+        (report.true_peak_dbtp.unwrap() - analytic).abs() < 0.1,
+        "{report:?} analytic{analytic}\n{oracle}"
+    );
+    assert!(
+        (report.true_peak_dbtp.unwrap() - summary(&oracle, "Peak:")).abs() < 0.15,
+        "{report:?}\n{oracle}"
+    );
     let targets = Targets {
         policy: Policy::Block,
         integrated_lufs: Some(-23.),
@@ -154,6 +173,18 @@ fn true_peak_intersample_silence_nonfinite_and_layout_targets_are_explicit() {
         &path,
         &report,
         &oracle,
+    );
+    let abrupt = files.0.join("abrupt-edge.wav");
+    tone(&abrupt, 1, 3, |i, _| if i % 4 < 2 { -0.8 } else { 0.8 });
+    let edge = measure(&abrupt, 48000, 1, Some(4), &AtomicBool::new(false)).unwrap();
+    let edge_reference = reference(&abrupt);
+    assert!(edge.true_peak_dbtp.unwrap() > edge.sample_peak_dbfs.unwrap() + 2.);
+    assert!(summary(&edge_reference, "Peak:") > edge.sample_peak_dbfs.unwrap() + 2.);
+    retain(
+        "bs1770-abrupt-edge-interpolator-characterization",
+        &abrupt,
+        &edge,
+        &edge_reference,
     );
     let silent = files.0.join("silent.wav");
     tone(&silent, 1, 4, |_, _| 0.);
