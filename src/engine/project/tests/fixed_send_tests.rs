@@ -59,3 +59,16 @@ fn fixed_send_legacy_defaults_invalid_packets_and_saved_values_are_atomic() {
         assert!(Prepared::from_state(state,saved.media.clone(),48000).is_err());
     }
 }
+
+#[test]
+fn fixed_send_queued_controls_never_rebind_after_track_identity_reuse(){
+    let(engine,mut rt)=Engine::headless_for_test(48000,144);
+    let id=rt.session.tracks[2].id;
+    engine.send(Command::TrackSend{track:2,send:0,value:0.8}).unwrap();
+    engine.send(Command::TrackCrossfader{track:2,assignment:1}).unwrap();
+    let(request,_)=Request::metadata(&rt.session,captured(&rt).checkpoint.epoch,Action::Delete{axis:Axis::Track,id}).unwrap();rt.apply(Command::session_edit(request));
+    let(request,_)=Request::structural(captured(&rt),48000,Structure::Track{name:"New stable target".into(),audio:true,position:2}).unwrap();rt.apply(Command::session_edit(request));
+    rt.process(&mut []);
+    assert_ne!(rt.session.tracks[2].id,id);assert_eq!(rt.tracks[2].surface,TrackMix::default());
+}
+

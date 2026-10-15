@@ -622,6 +622,8 @@ fn destructive(command: &Command) -> bool {
         | Command::CueMix(_)
         | Command::MicAuxControl(_)
         | Command::Monitor(_)
+        | Command::TrackSend { .. }
+        | Command::TrackCrossfader { .. }
         | Command::TrackGain { .. }
         | Command::ClipGain { .. }
         | Command::TrackPan { .. }
