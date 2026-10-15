@@ -154,7 +154,7 @@ impl Options {
         Ok(())
     }
 }
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub(crate) enum Source {
     #[default]
     Session,
