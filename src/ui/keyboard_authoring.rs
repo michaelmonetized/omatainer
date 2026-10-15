@@ -93,6 +93,7 @@ pub(super) fn error(ui: &mut Ui, response: &egui::Response, text: &str) {
     });
     ui.ctx().accesskit_node_builder(message.id, |node| {
         node.set_role(egui::accesskit::Role::Alert);
+        node.set_label(text);
         node.set_live(egui::accesskit::Live::Polite);
     });
     ui.ctx().accesskit_node_builder(response.id, |node| {

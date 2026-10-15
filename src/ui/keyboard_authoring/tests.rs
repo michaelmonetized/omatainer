@@ -1,6 +1,8 @@
 use super::*;
 use crate::engine::RtEngine;
-use egui::accesskit::{Action, ActionData, ActionRequest, Invalid, Live, Node, NodeId, Toggled};
+use egui::accesskit::{
+    Action, ActionData, ActionRequest, Invalid, Live, Node, NodeId, Role, Toggled,
+};
 use std::sync::atomic::AtomicBool;
 use std::time::Duration;
 
@@ -52,6 +54,7 @@ impl Native {
             .iter()
             .find(|(_, node)| {
                 node.label() == Some(label)
+                    && node.role() != Role::Window
                     && (node.supports_action(Action::Focus) || node.is_disabled())
             })
             .map(|(id, node)| (*id, node))
@@ -77,6 +80,19 @@ impl Native {
             "native Memory focus for {label}"
         );
         assert_eq!(self.focus, Some(id), "native AccessKit focus for {label}");
+    }
+    #[track_caller]
+    fn focused_panel(&self, label: &str) {
+        assert_eq!(self.node(label).1.role(), Role::Button);
+        self.focused(label);
+        let id = self.ctx.memory(|memory| memory.focused()).unwrap();
+        let response = self.ctx.read_response(id).unwrap();
+        assert!(
+            self.shapes.iter().any(|shape| matches!(&shape.shape,
+            egui::epaint::Shape::Rect(rect) if rect.stroke.width == 2.0
+                && rect.rect == response.rect.expand(2.0))),
+            "visible native panel focus ring for {label}"
+        );
     }
     fn label_containing(&self, needle: &str) -> String {
         self.nodes
@@ -204,6 +220,10 @@ impl Gui {
     }
     fn enabled(&self, label: &str) -> bool {
         self.has(label) && !self.native.node(label).1.is_disabled()
+    }
+    fn cursor_values(&self) -> (u8, f32, f32, u8) {
+        let cursor = self.app.piano_roll.draft.as_ref().unwrap().cursor;
+        (cursor.pitch, cursor.start, cursor.length, cursor.velocity)
     }
     fn route(&mut self, label: &str) {
         self.idle();
@@ -366,7 +386,32 @@ fn keyboard_access_empty_project_tracks_clips_notes_controllers_song_timing_save
         gui.number("MIDI piano roll: Note start (beats)", start);
         gui.number("MIDI piano roll: Note length (beats)", length);
         gui.number("MIDI piano roll: Note velocity", velocity);
+        let expected = (
+            pitch.parse::<u8>().unwrap(),
+            start.parse::<f32>().unwrap(),
+            length.parse::<f32>().unwrap(),
+            velocity.parse::<u8>().unwrap(),
+        );
+        assert_eq!(
+            gui.cursor_values(),
+            expected,
+            "native note inputs before Add"
+        );
         gui.press("MIDI piano roll: Add note");
+        let added = gui
+            .app
+            .piano_roll
+            .draft
+            .as_ref()
+            .unwrap()
+            .notes
+            .last()
+            .unwrap();
+        assert_eq!(
+            (added.pitch, added.start, added.len, added.vel),
+            expected,
+            "Add retains exact native cursor values: {added:?}"
+        );
     }
     gui.press("MIDI piano roll: Select all notes");
     assert_eq!(
@@ -387,8 +432,24 @@ fn keyboard_access_empty_project_tracks_clips_notes_controllers_song_timing_save
     let note_id = gui.native.node(&note).0;
     gui.press(&note);
     assert_eq!(gui.native.node(&note).1.toggled(), Some(Toggled::True));
+    assert_eq!(
+        gui.cursor_values(),
+        (67, 1.250001_f32, 0.500001_f32, 91),
+        "native note selection restores its cursor values"
+    );
     gui.number("MIDI piano roll: Note start (beats)", "9.125001");
+    assert_eq!(
+        gui.cursor_values(),
+        (67, 9.125001_f32, 0.500001_f32, 91),
+        "precise native start edit preserves other cursor values"
+    );
     gui.press("MIDI piano roll: Set selected note values");
+    let changed = &gui.app.piano_roll.draft.as_ref().unwrap().notes[0];
+    assert_eq!(
+        (changed.pitch, changed.start, changed.len, changed.vel),
+        (67, 9.125001_f32, 0.500001_f32, 91),
+        "Set retains selected values: {changed:?}"
+    );
     let moved = gui.native.label_containing("Note 1:");
     assert_eq!(
         gui.native.node(&moved).0,
@@ -413,16 +474,30 @@ fn keyboard_access_empty_project_tracks_clips_notes_controllers_song_timing_save
         point_id,
         "wire order keeps native identity after sorting"
     );
+    let unchanged = &gui.app.piano_roll.draft.as_ref().unwrap().notes[0];
+    assert_eq!(
+        (
+            unchanged.pitch,
+            unchanged.start,
+            unchanged.len,
+            unchanged.vel
+        ),
+        (67, 9.125001_f32, 0.500001_f32, 91),
+        "controller edits preserve notes: {unchanged:?}"
+    );
     gui.press("MIDI piano roll: Apply MIDI edit");
     gui.until(|gui| {
         gui.rt.tracks[track].clips[scene].notes.len() == 2
             && gui.enabled("MIDI piano roll: Apply MIDI edit")
     });
     let notes = gui.rt.tracks[track].clips[scene].notes.clone();
-    assert!(notes.iter().any(|note| note.pitch == 67
-        && note.start == 9.125001_f32
-        && note.len == 0.500001_f32
-        && note.vel == 91));
+    assert!(
+        notes.iter().any(|note| note.pitch == 67
+            && note.start == 9.125001_f32
+            && note.len == 0.500001_f32
+            && note.vel == 91),
+        "renderer retains exact authored notes: {notes:?}"
+    );
     assert_eq!(
         gui.rt.tracks[track].clips[scene]
             .lanes
@@ -726,7 +801,7 @@ fn keyboard_access_native_panel_size_invalid_refusal_repeated_focus_and_rendered
     gui.press("Float panel");
     gui.idle();
     gui.idle();
-    gui.native.focused("MIDI");
+    gui.native.focused_panel("MIDI");
     gui.number("Floating panel width (px)", "720");
     gui.number("Floating panel height (px)", "480");
     gui.press("Apply floating panel size");
@@ -752,7 +827,7 @@ fn keyboard_access_native_panel_size_invalid_refusal_repeated_focus_and_rendered
         gui.press("Focus panel");
         gui.idle();
         gui.idle();
-        gui.native.focused("MIDI");
+        gui.native.focused_panel("MIDI");
     }
     gui.press("Cancel size draft");
     gui.tab_to("Workspace: Decks");
