@@ -103,6 +103,10 @@ pub struct Connection {
 pub struct Model {
     pub version: u32,
     pub next_id: u64,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub speaker_layouts: Vec<super::speakers::Binding>,
+    #[serde(default,skip_serializing_if="Option::is_none")]
+    pub monitor_bass:Option<super::speakers::BassManagement>,
     pub ports: Vec<Port>,
     pub buses: Vec<Bus>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
@@ -136,6 +140,8 @@ impl Default for Model {
         Self {
             version: 1,
             next_id: 2,
+            speaker_layouts: Vec::new(),
+            monitor_bass:None,
             ports: vec![Port {
                 id: 1,
                 alias: "Main output".into(),
@@ -183,6 +189,8 @@ impl Model {
     pub(crate) fn latency_edit_of(&self, prior: &Self) -> bool {
         self.latency.as_ref().zip(prior.latency.as_ref()).is_some_and(|(next, old)| next.reserve_micros == old.reserve_micros)
             && self.version == prior.version && self.next_id == prior.next_id
+            && self.speaker_layouts == prior.speaker_layouts
+            && self.monitor_bass == prior.monitor_bass
             && self.ports == prior.ports && self.buses == prior.buses
             && self.plugins == prior.plugins
             && self.connections == prior.connections && self.sends == prior.sends
@@ -204,6 +212,7 @@ impl Model {
     /// Takes this model; returns its owned aliases, maps and selection bytes for admission checks.
     pub(crate) fn bytes(&self) -> usize {
         std::mem::size_of::<Self>()
+            + self.speaker_layouts.capacity()*std::mem::size_of::<super::speakers::Binding>()
             + self.ports.capacity() * std::mem::size_of::<Port>()
             + self
                 .ports
@@ -268,18 +277,18 @@ impl Model {
             Group::Track(id) => (id.0 > 0
                 && id.0 < layout.next_id
                 && !layout.scenes.iter().any(|item| item.id == id))
-            .then_some(2),
+            .then(||self.speaker_layout(group).unwrap().channels()),
             Group::Scene(id) => (id.0 > 0
                 && id.0 < layout.next_id
                 && !layout.tracks.iter().any(|item| item.id == id))
-            .then_some(2),
+            .then(||self.speaker_layout(group).unwrap().channels()),
             Group::Deck(id) => (id < 2).then_some(2),
             Group::Bus(id) => self
                 .buses
                 .iter()
                 .find(|bus| bus.id == id)
                 .map(|bus| usize::from(bus.channels)),
-            Group::Main => Some(2),
+            Group::Main => Some(self.speaker_layout(group).unwrap().channels()),
             Group::FixedReturn(send)=>(send<2).then_some(2),
             Group::Plugin(id) => self.plugins.iter().find(|p| p.id == id).map(super::plugins::Instance::output_width),
         }
@@ -289,6 +298,7 @@ impl Model {
     /// Takes the retained session; returns each processing group once, or rejects invalid maps and feedback.
     pub fn order(&self, layout: &Layout) -> Result<Vec<Group>, String> {
         layout.validate()?;
+        self.validate_speakers(layout)?;
         if let Some(latency)=&self.latency {latency.validate(self,layout)?;}
         if self.input.as_ref().is_some_and(|input| {
             !named(&input.backend)
@@ -372,6 +382,7 @@ impl Model {
         for send in &self.sends {
             if send.id==0 || send.id>=self.next_id || !ids.insert(send.id) || !named(&send.name) || !names.insert(send.name.as_str()) || !super::mixer::Parameter::Level.valid(send.level) || !super::mixer::Parameter::Pan.valid(send.pan) {return Err("Named sends need unique retained identities, names and finite mixer values".into());}
             super::mixer::validate_lanes(&send.automation,false)?;
+            if send.spatial&&(self.source_width(send.route.source,layout)!=Some(1)||matches!(send.route.destination,Group::Plugin(_))||self.speaker_layout(send.route.destination).is_none_or(|l|l.channels()<3)){return Err("Positional sends require a mono source and an explicitly declared wide destination; native input buses use an explicit return or channel map".into());}
         }
         let mut plugin_bytes = 0usize;
         let mut instruments = BTreeSet::new();

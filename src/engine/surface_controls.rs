@@ -219,9 +219,9 @@ impl State {
     }
     /// Route one track through its crossfader assignment and sends.
     /// Takes one retained track and stereo output; returns the assigned dry output with its own ramp history.
-    pub fn track(&mut self, track: &mut super::TrackRt, input: [f32; 2]) -> [f32; 2] {
+    pub fn track<const N:usize>(&mut self, track: &mut super::TrackRt, input: [f32; N]) -> [f32; N] {
         let gains = track.surface_gain.tick();
-        let output = std::array::from_fn(|channel| input[channel] * gains[channel]);
+        let output = std::array::from_fn(|channel| input[channel] * gains[channel.min(1)]);
         for (bus, amount) in self.send_input.iter_mut().zip(track.surface.sends) {
             for channel in 0..2 {
                 bus[channel] += output[channel] * amount;

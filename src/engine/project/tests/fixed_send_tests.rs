@@ -70,7 +70,7 @@ fn named_send_duplicate_undo_removal_and_capture_keep_stable_routes(){
     let id=rt.session.tracks[2].id;
     let mut model=Model::default();model.next_id=4;
     model.buses.push(Bus{id:2,alias:"Shared return".into(),channels:2,gain:1.,mute:false,mixer:Default::default()});
-    model.sends.push(Send{id:3,name:"Shared send".into(),route:Connection{source:Source{group:Group::Track(id),tap:Tap::PostFx},destination:Group::Bus(2),map:vec![ChannelMap{source:0,destination:0,gain:1.},ChannelMap{source:1,destination:1,gain:1.}]},level:0.5,pan:0.,mute:false,automation:vec![]});
+    model.sends.push(Send{id:3,name:"Shared send".into(),route:Connection{source:Source{group:Group::Track(id),tap:Tap::PostFx},destination:Group::Bus(2),map:vec![ChannelMap{source:0,destination:0,gain:1.},ChannelMap{source:1,destination:1,gain:1.}]},level:0.5,pan:0.,spatial:false,mute:false,automation:vec![]});
     rt.routing=Some(Box::new(prepared::Prepared::at_rate(Arc::new(model),&rt.session,48000).unwrap()));
     rt.apply(Command::RoutingMix{namespace:rt.session.namespace,target:Target::Send(3),parameter:Parameter::Level,value:0.73});
     let saved=captured(&rt);assert_eq!(saved.state.routing.as_ref().unwrap().sends[0].level,0.73);
