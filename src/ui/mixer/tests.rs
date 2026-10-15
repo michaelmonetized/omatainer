@@ -86,7 +86,7 @@ impl Gui {
 }
 
 #[test]
-fn shared_inspector_edits_real_track_commands_mixed_reset_and_one_step_undo() {
+fn shared_inspector_edits_real_track_commands_mixed_reset_and_per_target_undo() {
     let mut gui = Gui::new();
     gui.rt.apply(Command::TrackGain {
         track: 0,
@@ -100,7 +100,7 @@ fn shared_inspector_edits_real_track_commands_mixed_reset_and_one_step_undo() {
     gui.select(&[0, 1]);
     let output = gui.frame(Vec::new());
     assert!(output.shapes.iter().any(
-        |shape| matches!(&shape.shape, egui::Shape::Text(text) if text.galley.text() == "Mixed")
+        |shape| matches!(&shape.shape, egui::Shape::Text(text) if text.galley.text().starts_with("Mixed"))
     ));
     gui.action(
         "Track gain",
@@ -109,7 +109,10 @@ fn shared_inspector_edits_real_track_commands_mixed_reset_and_one_step_undo() {
     );
     assert_eq!((gui.rt.tracks[0].gain, gui.rt.tracks[1].gain), (0.55, 0.55));
     gui.rt.apply(Command::Undo);
+    assert_eq!((gui.rt.tracks[0].gain, gui.rt.tracks[1].gain), (0.55, 0.7));
+    gui.rt.apply(Command::Undo);
     assert_eq!((gui.rt.tracks[0].gain, gui.rt.tracks[1].gain), (0.3, 0.7));
+    gui.rt.apply(Command::Redo);
     gui.rt.apply(Command::Redo);
     assert_eq!((gui.rt.tracks[0].gain, gui.rt.tracks[1].gain), (0.55, 0.55));
     gui.action(
@@ -122,6 +125,8 @@ fn shared_inspector_edits_real_track_commands_mixed_reset_and_one_step_undo() {
     assert_eq!((gui.rt.tracks[0].pan, gui.rt.tracks[1].pan), (0.0, 0.0));
     gui.action("Mute selected tracks", Action::Click, None);
     assert!(gui.rt.tracks[0].mute && gui.rt.tracks[1].mute);
+    gui.rt.apply(Command::Undo);
+    assert!(gui.rt.tracks[0].mute && !gui.rt.tracks[1].mute);
     gui.rt.apply(Command::Undo);
     assert!(!gui.rt.tracks[0].mute && !gui.rt.tracks[1].mute);
 }
@@ -157,7 +162,7 @@ fn shared_inspector_empty_single_mixed_locked_labels_fit_all_scales() {
                         .iter()
                         .find(|(_, node)| node.label() == Some("Track gain"))
                         .unwrap();
-                    assert_eq!(node.1.supports_action(Action::SetValue), !locked);
+                    assert_eq!(node.1.is_disabled(), locked);
                     if locked {
                         let before = gui.rt.tracks[slots[0]].gain;
                         gui.action(
@@ -203,6 +208,7 @@ fn focused_track_field_keyboard_edit_and_error_keep_typed_undo() {
         repeat: false,
         modifiers: Default::default(),
     }]);
+    gui.action("Track pan", Action::Focus, None);
     assert_ne!(gui.rt.tracks[0].gain, before);
     gui.rt.apply(Command::Undo);
     assert_eq!(gui.rt.tracks[0].gain, before);
@@ -280,4 +286,80 @@ fn inspector_track_values_survive_native_project_save_and_reopen() {
         (0.25, 0.25)
     );
     std::fs::remove_file(file).unwrap();
+}
+
+#[test]
+fn shared_control_idle_large_values_and_disabled_accesskit_leave_values_unchanged() {
+    use crate::property_fields::{number, FieldState};
+    for scale in [1.0, 1.5, 2.0] {
+        for original in [-1.0e12_f64, 1.0e12, 1.0e8, 1080.0] {
+            let ctx = egui::Context::default();
+            ctx.enable_accesskit();
+            ctx.set_pixels_per_point(scale);
+            let mut value = original;
+            for (parent_enabled, locked) in [(true, false), (false, false), (true, true)] {
+                let mut result = None;
+                let frame = |events, value: &mut f64, result: &mut Option<(bool, bool)>| {
+                    ctx.run(
+                        egui::RawInput {
+                            screen_rect: Some(Rect::from_min_size(
+                                Pos2::ZERO,
+                                Vec2::new(360.0, 600.0),
+                            )),
+                            events,
+                            ..Default::default()
+                        },
+                        |ctx| {
+                            egui::CentralPanel::default().show(ctx, |ui| {
+                                ui.add_enabled_ui(parent_enabled, |ui| {
+                                    let response = number(
+                                        ui,
+                                        "large-property",
+                                        "Wide property",
+                                        value,
+                                        -100.0..=100.0,
+                                        " pt",
+                                        Some(0.0),
+                                        FieldState {
+                                            locked,
+                                            ..Default::default()
+                                        },
+                                    );
+                                    *result = Some((response.changed, response.committed));
+                                });
+                            });
+                        },
+                    )
+                };
+                let output = frame(Vec::new(), &mut value, &mut result);
+                assert_eq!(value, original);
+                assert_eq!(result, Some((false, false)));
+                if !parent_enabled || locked {
+                    let target = output
+                        .platform_output
+                        .accesskit_update
+                        .unwrap()
+                        .nodes
+                        .into_iter()
+                        .find(|(_, node)| {
+                            node.label() == Some("Wide property")
+                                && node.supports_action(Action::SetValue)
+                        })
+                        .unwrap()
+                        .0;
+                    frame(
+                        vec![egui::Event::AccessKitActionRequest(ActionRequest {
+                            target,
+                            action: Action::SetValue,
+                            data: Some(ActionData::NumericValue(7.0)),
+                        })],
+                        &mut value,
+                        &mut result,
+                    );
+                    assert_eq!(value, original);
+                    assert_eq!(result, Some((false, false)));
+                }
+            }
+        }
+    }
 }

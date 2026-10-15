@@ -9,6 +9,9 @@ pub(super) struct State {
     selection: Option<Vec<(usize, Reference)>>,
     locked: bool,
     message: String,
+    editing: Option<Vec<(usize, Reference)>>,
+    gain_draft: Option<f32>,
+    pan_draft: Option<f32>,
 }
 
 impl App {
@@ -112,6 +115,11 @@ impl App {
         if !self.mixer.message.is_empty() {
             ui.colored_label(ui.visuals().warn_fg_color, &self.mixer.message);
         }
+        if self.mixer.editing.as_ref() != Some(&selected) || self.mixer.locked {
+            self.mixer.editing = Some(selected.clone());
+            self.mixer.gain_draft = None;
+            self.mixer.pan_draft = None;
+        }
         if selected.is_empty() {
             ui.label("Select a track to inspect its properties. Shift-click adds tracks.");
             return;
@@ -119,16 +127,19 @@ impl App {
         let tracks: Vec<_> = selected
             .iter()
             .filter_map(|(slot, _)| self.snap.tracks.get(*slot))
+            .map(|track| (track.gain, track.pan, track.mute, track.solo))
             .collect();
         let Some(first) = tracks.first() else {
             return;
         };
-        let mut gain = first.gain * 100.0;
-        let mut pan = first.pan * 100.0;
-        let gain_mixed = tracks.iter().any(|track| track.gain != first.gain);
-        let pan_mixed = tracks.iter().any(|track| track.pan != first.pan);
-        let muted = tracks.iter().all(|track| track.mute);
-        let soloed = tracks.iter().all(|track| track.solo);
+        let mut gain = self.mixer.gain_draft.unwrap_or(first.0 * 100.0);
+        let mut pan = self.mixer.pan_draft.unwrap_or(first.1 * 100.0);
+        let gain_mixed =
+            self.mixer.gain_draft.is_none() && tracks.iter().any(|track| track.0 != first.0);
+        let pan_mixed =
+            self.mixer.pan_draft.is_none() && tracks.iter().any(|track| track.1 != first.1);
+        let muted = tracks.iter().all(|track| track.2);
+        let soloed = tracks.iter().all(|track| track.3);
         let locked = self.mixer.locked
             || self.engine.safe_mode()
             || self.project.committing()
@@ -177,9 +188,23 @@ impl App {
                     .accesskit_node_builder(pan_field.response.id, |node| {
                         node.set_label("Track pan")
                     });
+                if gain_field.changed {
+                    self.mixer.gain_draft = Some(gain);
+                }
+                if pan_field.changed {
+                    self.mixer.pan_draft = Some(pan);
+                }
+                let commit_gain = gain_field.committed && self.mixer.gain_draft.is_some();
+                let commit_pan = pan_field.committed && self.mixer.pan_draft.is_some();
+                if gain_field.cancelled || commit_gain {
+                    self.mixer.gain_draft = None;
+                }
+                if pan_field.cancelled || commit_pan {
+                    self.mixer.pan_draft = None;
+                }
                 let gesture = self.undo_history.edit_gesture(&self.engine.undo);
                 for (slot, _) in &selected {
-                    if gain_field.changed {
+                    if commit_gain {
                         self.send(Command::Gesture {
                             id: gesture,
                             command: Box::new(Command::TrackGain {
@@ -188,7 +213,7 @@ impl App {
                             }),
                         });
                     }
-                    if pan_field.changed {
+                    if commit_pan {
                         self.send(Command::Gesture {
                             id: gesture,
                             command: Box::new(Command::TrackPan {
