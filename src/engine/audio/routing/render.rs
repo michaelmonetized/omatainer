@@ -13,7 +13,7 @@ impl Prepared {
         channels: usize,
     ) -> [f32; MAX_PHYSICAL_CHANNELS] {
         self.begin_plugins(rt);
-        self.mixer.evaluate(&self.model,rt.precise_midi_beat(),rt.playing);
+        self.mixer.evaluate_at(&self.model,rt.playing,|delay|super::render_plugins::context(rt,delay).beat);
         self.fixed_levels.fill([0.;2]);for (slot,track)in rt.tracks.iter().enumerate(){if rt.session.tracks[slot].active{self.fixed_levels[slot]=track.surface.sends;}}
         self.begin();
         rt.mic_aux.begin();

@@ -238,6 +238,8 @@ pub struct Channel {
     pub values: Values,
     pub effective: Values,
     pub peaks: [f32; MAX_PORT_CHANNELS],
+    #[serde(skip)]
+    pub automation_delay: u32,
 }
 #[derive(Debug)]
 pub struct Runtime {
@@ -250,7 +252,12 @@ pub struct Runtime {
 impl Runtime {
     /// Prepare live controls and return ancestry outside the callback.
     /// Takes the saved graph and topological nodes; returns bounded scalar and meter storage.
-    pub fn new(model: &Model, order: &[Group], layout: &crate::engine::session::Layout) -> Self {
+    pub fn new(
+        model: &Model,
+        order: &[Group],
+        layout: &crate::engine::session::Layout,
+        plan: Option<&super::latency::Plan>,
+    ) -> Self {
         let channels = model
             .sends
             .iter()
@@ -277,6 +284,47 @@ impl Runtime {
                 values,
                 effective: values,
                 peaks: [0.; MAX_PORT_CHANNELS],
+                automation_delay: plan.map_or(0, |plan| match target {
+                    Target::Send(id) => {
+                        plan.inputs[order
+                            .iter()
+                            .position(|g| {
+                                *g == model
+                                    .sends
+                                    .iter()
+                                    .find(|s| s.id == id)
+                                    .unwrap()
+                                    .route
+                                    .destination
+                            })
+                            .unwrap()]
+                    }
+                    Target::Return(id) => model
+                        .plugins
+                        .iter()
+                        .find(|p| {
+                            p.return_bus == Some(id)
+                                && !model.links().any(|r| {
+                                    r.source.group == Group::Plugin(p.id)
+                                        && model.plugins.iter().any(|next| {
+                                            r.destination == Group::Plugin(next.id)
+                                                && next.return_bus == Some(id)
+                                        })
+                                })
+                        })
+                        .map_or_else(
+                            || {
+                                plan.inputs
+                                    [order.iter().position(|g| *g == Group::Bus(id)).unwrap()]
+                            },
+                            |p| {
+                                plan.taps[order
+                                    .iter()
+                                    .position(|g| *g == Group::Plugin(p.id))
+                                    .unwrap()][Tap::PostFx.index()]
+                            },
+                        ),
+                }),
             })
             .collect();
         let indices = order
@@ -405,6 +453,11 @@ impl Runtime {
     /// Evaluate sample-accurate saved automation.
     /// Takes graph and current song clock; updates effective controls while leaving recalled manual values intact.
     pub fn evaluate(&mut self, model: &Model, beat: f64, playing: bool) {
+        self.evaluate_at(model, playing, |_| beat);
+    }
+    /// Evaluate controls at the source time of each compensated sum.
+    /// Takes the graph, playback state and delay-to-beat converter; updates each lane at its own aligned sample without allocating.
+    pub fn evaluate_at(&mut self, model: &Model, playing: bool, beat: impl Fn(u32) -> f64) {
         self.solo = 0;
         self.safe = 0;
         for (index, channel) in self.channels.iter_mut().enumerate() {
@@ -416,7 +469,9 @@ impl Runtime {
             };
             if playing {
                 for lane in lanes {
-                    channel.effective.set(lane.parameter, lane.at(beat));
+                    channel
+                        .effective
+                        .set(lane.parameter, lane.at(beat(channel.automation_delay)));
                 }
             }
             for peak in &mut channel.peaks[..usize::from(channel.width)] {

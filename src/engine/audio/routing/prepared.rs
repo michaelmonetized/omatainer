@@ -165,7 +165,7 @@ impl Prepared {
             let port = model.port(id, Direction::Output).unwrap();
             (id, [usize::from(port.channels[0]), usize::from(port.channels[1])])
         });
-        let mixer=super::mixer::Runtime::new(&model,&order_from_nodes(&nodes),layout);
+        let mixer=super::mixer::Runtime::new(&model,&order_from_nodes(&nodes),layout,latency.as_ref().map(|l|&l.plan));
         Ok(Self {
             mixer,
             fixed_levels:[[0.;2];crate::engine::session::MAX_TRACKS],
