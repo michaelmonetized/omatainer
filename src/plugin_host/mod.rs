@@ -7,6 +7,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
+pub(crate) mod clap;
 pub(crate) mod process;
 pub(crate) mod realtime;
 pub(crate) mod scanner;
@@ -31,6 +32,9 @@ pub(crate) struct BinaryIdentity {
 /// Identify a native VST3 bundle without loading code.
 /// Takes an absolute bundle path; returns its native ELF path and bounded content digest, or an architecture/format/access diagnostic.
 pub(crate) fn identify(path: &Path) -> Result<BinaryIdentity, String> {
+    if path.extension().is_some_and(|s| s == "clap") {
+        return clap::identify(path);
+    }
     if !path.is_absolute()
         || path.as_os_str().len() > 4096
         || path
@@ -161,17 +165,20 @@ pub(crate) struct Class {
     pub parameters: Vec<vst3_host::Parameter>,
     pub latency: u32,
     pub tail: u32,
+    #[serde(default)]
+    pub native: Option<clap::Metadata>,
 }
 impl Class {
     /// Select the native sound controls.
     /// Takes this class; returns up to 128 visible writable parameters in their declared order, excluding hidden MIDI and readonly metadata.
     pub fn writable_parameters(&self) -> impl Iterator<Item = &vst3_host::Parameter> {
-        self.parameters.iter().filter(|p| !p.is_read_only && p.flags & (1 << 4) == 0)
+        self.parameters
+            .iter()
+            .filter(|p| !p.is_read_only && p.flags & (1 << 4) == 0)
             .take(MAX_CONTROL_PARAMETERS)
     }
     pub fn validate(&self) -> Result<(), String> {
-        if self.info.uid.len() != 32
-            || !self.info.uid.bytes().all(|b| b.is_ascii_hexdigit())
+        if !class_id_valid(&self.info.uid)
             || self.parameters.len() > 8192
             || self.info.name.len() > 4096
             || self.info.vendor.len() > 4096
@@ -216,18 +223,34 @@ pub(crate) struct Saved {
     pub state: Vec<u8>,
 }
 impl Saved {
+    /// Select the state codec. Takes a class identifier; returns its format's opaque state codec.
+    pub fn codec(id: &str) -> &'static str {
+        if id.starts_with("clap:") {
+            "clap-state-1"
+        } else {
+            "vst3-host-0.9-state"
+        }
+    }
     pub fn validate(&self) -> Result<(), String> {
         if self.schema != 1
-            || self.state_codec != "vst3-host-0.9-state"
+            || self.state_codec != Self::codec(&self.class_id)
             || self.state.len() > MAX_STATE
-            || self.class_id.len() != 32
-            || !self.class_id.bytes().all(|c| c.is_ascii_hexdigit())
+            || !class_id_valid(&self.class_id)
+            || self.class_id.starts_with("clap:")
+                != self.binary.bundle.extension().is_some_and(|e| e == "clap")
             || self.plugin_version.len() > 1024
         {
             return Err("Plugin state identity, version or codec is unsupported".into());
         }
         Ok(())
     }
+}
+
+/// Validate a processor identifier. Takes a saved identifier; returns whether it names a VST3 class or CLAP descriptor.
+fn class_id_valid(id: &str) -> bool {
+    id.strip_prefix("clap:")
+        .is_some_and(|v| !v.is_empty() && v.len() <= 1024 && !v.chars().any(char::is_control))
+        || id.len() == 32 && id.bytes().all(|c| c.is_ascii_hexdigit())
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -314,12 +337,12 @@ pub(crate) enum Response {
         tail: u32,
         restart: u32,
         editor_open: bool,
-        parameters: Vec<(u32,f64)>,
+        parameters: Vec<(u32, f64)>,
         midi: Vec<vst3_host::MidiEvent>,
     },
     State {
         saved: Saved,
-        parameters: Vec<(u32,f64)>,
+        parameters: Vec<(u32, f64)>,
     },
     Ok,
     Error {
