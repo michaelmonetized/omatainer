@@ -61,6 +61,19 @@ fn stereo_lfe_declared_contract_preserves_order_and_rejects_ambiguous_widths() {
 /// Prepare the original three-channel graph fixture without a device.
 /// Takes the native rate; returns its headless engine and renderer with unequal channel impulses at frames8/21/34 and physical order3/0/5.
 pub(crate) fn fixture(rate: u32) -> (Engine, crate::engine::RtEngine) {
+    let (engine, rt) = fixture_layout(rate, Layout::StereoLfe);
+    (engine, *rt)
+}
+
+/// Prepare original ordered impulses for one explicitly chosen canonical layout.
+/// Takes rate and layout; returns a headless graph with4096 frames, channel j amplitude(j+1)/32 at8+13j and independently ordered physical addresses.
+pub(crate) fn fixture_layout(rate: u32, layout: Layout) -> (Engine, Box<crate::engine::RtEngine>) {
+    let width = layout.channels();
+    let bed = if layout == Layout::Mono {
+        Layout::Stereo
+    } else {
+        layout
+    };
     let (engine, mut rt) = Engine::headless_for_test(rate, 256);
     rt.apply(Command::Stop);
     rt.quantize = false;
@@ -75,14 +88,14 @@ pub(crate) fn fixture(rate: u32) -> (Engine, crate::engine::RtEngine) {
     for rack in &mut rt.scene_fx {
         rack.slots.clear();
     }
-    let mut data = vec![0.; 4096 * 3];
-    for channel in 0..3 {
-        data[(8 + 13 * channel) * 3 + channel] = (channel + 1) as f32 / 32.;
+    let mut data = vec![0.; 4096 * width];
+    for channel in 0..width {
+        data[(8 + 13 * channel) * width + channel] = (channel + 1) as f32 / 32.;
     }
     let sample = Arc::new(Sample {
         name: "Original ordered speaker impulses".into(),
         sr: rate,
-        ch: 3,
+        ch: width as u16,
         data,
         peaks: Default::default(),
         spectrum: None,
@@ -105,20 +118,34 @@ pub(crate) fn fixture(rate: u32) -> (Engine, crate::engine::RtEngine) {
     track.clips[0].audio_region = Some(region);
     track.clips[0].bars = region.duration_beats as f32 / 4.;
     let mut model = super::super::model::Model::default();
-    model.ports[0].channels = vec![3, 0, 5];
-    model.connections[0].map = (0..3)
+    model.ports[0].channels = [3, 0, 5, 1, 8, 7, 12, 10][..width].to_vec();
+    model.connections[0].map = (0..width as u8)
         .map(|i| ChannelMap {
             source: i,
             destination: i,
             gain: 1.,
         })
         .collect();
-    model.set_speaker_layout(Group::Track(rt.session.tracks[0].id), Layout::StereoLfe);
-    for scene in &rt.session.scenes {
-        model.set_speaker_layout(Group::Scene(scene.id), Layout::StereoLfe);
+    if layout == Layout::Mono {
+        model.connections[0].map = vec![
+            ChannelMap {
+                source: 0,
+                destination: 0,
+                gain: 0.5,
+            },
+            ChannelMap {
+                source: 1,
+                destination: 0,
+                gain: 0.5,
+            },
+        ];
     }
-    model.set_speaker_layout(Group::Main, Layout::StereoLfe);
-    model.set_speaker_layout(Group::Output(1), Layout::StereoLfe);
+    model.set_speaker_layout(Group::Track(rt.session.tracks[0].id), bed);
+    for scene in &rt.session.scenes {
+        model.set_speaker_layout(Group::Scene(scene.id), bed);
+    }
+    model.set_speaker_layout(Group::Main, bed);
+    model.set_speaker_layout(Group::Output(1), layout);
     let saved =
         serde_json::from_slice::<super::super::model::Model>(&serde_json::to_vec(&model).unwrap())
             .unwrap();
@@ -126,7 +153,7 @@ pub(crate) fn fixture(rate: u32) -> (Engine, crate::engine::RtEngine) {
         Prepared::at_rate(Arc::new(saved), &rt.session, rate).unwrap(),
     ));
 
-    (engine, rt)
+    (engine, Box::new(rt))
 }
 
 #[test]
@@ -192,13 +219,21 @@ fn stereo_lfe_fresh_process_renderer() {
         checkpoint: Default::default(),
         playback_receipts: std::array::from_fn(|_| None),
     };
+    let channel_count = captured
+        .state
+        .routing
+        .as_ref()
+        .unwrap()
+        .speaker_layout(Group::Output(1))
+        .unwrap()
+        .channels() as u16;
     let request = crate::audio_delivery::Export {
         end: 4096. / f64::from(rate),
         tail: 0.,
         output_alias: Some(1),
         options: crate::audio_delivery::Options {
             rate,
-            channels: 3,
+            channels: channel_count,
             ..Default::default()
         },
         ..Default::default()

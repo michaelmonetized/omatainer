@@ -112,7 +112,7 @@ pub(super) fn draft(ui: &mut Ui, draft: &mut Draft) {
     let model = draft.model.clone();
     let mut remove = None;
     for send in &mut draft.model.sends {
-        ui.push_id(("named-send", send.id), |ui| {
+        ui.push_id(("named-send", draft.namespace, send.id), |ui| {
             ui.separator();
             ui.horizontal(|ui| {
                 let label = ui.label(format!("Send {} name", send.id));
@@ -159,12 +159,13 @@ pub(super) fn draft(ui: &mut Ui, draft: &mut Draft) {
             if ui.add_enabled(positional||send.spatial,egui::Checkbox::new(&mut send.spatial,"Position mono source across full-range speakers")).changed()&&send.spatial{
                 send.route.map=position_layout.unwrap().speakers().iter().enumerate().filter(|(_,speaker)|**speaker!=crate::engine::audio::routing::speakers::Speaker::LowFrequency).map(|(channel,_)|ChannelMap{source:0,destination:channel as u8,gain:1.}).collect();
             }
-            if send.spatial{ui.label("Equal-power position: Pan automation and MIDI −1…1 spans −30°…30°. LFE is never part of this panner. Dedicated LFE feeds use explicit maps with positional mode off.");}
+            let extent=position_layout.map_or(30.,|layout|layout.pan_extent());
+            if send.spatial{ui.label(format!("Equal-power position: Pan automation and MIDI −1…1 spans −{extent}°…{extent}°. LFE is never part of this panner. Dedicated LFE feeds use explicit maps with positional mode off."));}
             if let Some(level) = number(ui, "Saved send level", send.level, 0., 1.5, 0.01) {
                 send.level = level;
             }
-            if let Some(pan) = number(ui, if send.spatial{"Saved send angle (degrees)"}else{"Saved send pan"}, if send.spatial{send.pan*30.}else{send.pan}, if send.spatial{-30.}else{-1.}, if send.spatial{30.}else{1.}, if send.spatial{1.}else{0.01}) {
-                send.pan = if send.spatial{pan/30.}else{pan};
+            if let Some(pan) = number(ui, if send.spatial{"Saved send angle (degrees)"}else{"Saved send pan"}, if send.spatial{send.pan*extent}else{send.pan}, if send.spatial{-extent}else{-1.}, if send.spatial{extent}else{1.}, if send.spatial{1.}else{0.01}) {
+                send.pan = if send.spatial{pan/extent}else{pan};
             }
             ui.checkbox(&mut send.mute, "Saved send mute");
             let source = model
@@ -229,7 +230,7 @@ pub(super) fn draft(ui: &mut Ui, draft: &mut Draft) {
         draft.model.sends.retain(|s| s.id != id);
     }
     for bus in &mut draft.model.buses {
-        ui.push_id(("return-extra", bus.id), |ui| {
+        ui.push_id(("return-extra", draft.namespace, bus.id), |ui| {
             ui.label(format!("Return {} · {}", bus.id, bus.alias));
             if let Some(pan) = number(ui, "Saved return pan", bus.mixer.pan, -1., 1., 0.01) {
                 bus.mixer.pan = pan;
@@ -349,7 +350,7 @@ pub(super) fn live(
             .enumerate()
             .filter(|(slot, _)| layout.tracks.get(*slot).is_some_and(|t| t.active))
         {
-            ui.push_id(("track-fixed-mix", layout.tracks[slot].id.0), |ui| {
+            ui.push_id(("track-fixed-mix", layout.namespace, layout.tracks[slot].id.0), |ui| {
                 ui.label(&track.name);
                 let submit =
                     |ui: &mut Ui, command| match crate::engine::session::Scoped::qualify_layout(
@@ -428,9 +429,10 @@ pub(super) fn live(
     });
     for channel in &snapshot.routing_mixer {
         ui.push_id(
-            ("live-routing-mix", format!("{:?}", channel.target)),
+            ("live-routing-mix", layout.namespace, format!("{:?}", channel.target)),
             |ui| {
                 let name = channel.name.text();
+                let extent=channel.speakers.map_or(30.,|layout|layout.pan_extent());
                 ui.label(name);
                 let submit = |ui: &mut Ui, parameter, value| {
                     if let Err(error) = commands.send(history.wrap(Command::RoutingMix {
@@ -456,12 +458,12 @@ pub(super) fn live(
                     if let Some(value) = number(
                         ui,
                         &format!("{name} {}",if channel.spatial{"angle (degrees)"}else if channel.width>2{"front balance"}else{"pan"}),
-                        if channel.spatial{channel.values.pan*30.}else{channel.values.pan},
-                        if channel.spatial{-30.}else{-1.},
-                        if channel.spatial{30.}else{1.},
+                        if channel.spatial{channel.values.pan*extent}else{channel.values.pan},
+                        if channel.spatial{-extent}else{-1.},
+                        if channel.spatial{extent}else{1.},
                         if channel.spatial{1.}else{0.01},
                     ) {
-                        submit(ui, Parameter::Pan, if channel.spatial{value/30.}else{value});
+                        submit(ui, Parameter::Pan, if channel.spatial{value/extent}else{value});
                     }
                     let mut mute = channel.values.mute;
                     if ui.checkbox(&mut mute, format!("{name} mute")).changed() {

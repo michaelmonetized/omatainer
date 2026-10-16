@@ -336,14 +336,7 @@ impl Prepared {
         let source_layout=self.nodes[source].speakers;
         let destination_layout=self.nodes[destination].speakers;
         if let (Some(from),Some(to))=(source_layout,destination_layout){
-            if to.channels()<=2 {
-                let pair=from.downmix(&frame);
-                self.nodes[destination].input[0]+=if to.channels()==1{0.5*(pair[0]+pair[1])}else{pair[0]};
-                if to.channels()==2{self.nodes[destination].input[1]+=pair[1];}
-            }else if from==super::speakers::Layout::Mono {
-                self.nodes[destination].input[0]+=frame[0]*std::f32::consts::FRAC_1_SQRT_2;
-                self.nodes[destination].input[1]+=frame[0]*std::f32::consts::FRAC_1_SQRT_2;
-            }else{for (channel,speaker)in from.speakers().iter().enumerate(){if let Some(target)=to.speakers().iter().position(|s|s==speaker){self.nodes[destination].input[target]+=frame[channel];}}}
+            from.mix_into(to,&frame,&mut self.nodes[destination].input);
         }else{for channel in 0..width.min(self.nodes[destination].width){self.nodes[destination].input[channel]+=frame[channel];}}
         self.nodes[destination].valid&=complete;
     }

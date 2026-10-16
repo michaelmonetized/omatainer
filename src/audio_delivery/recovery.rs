@@ -221,7 +221,18 @@ pub(crate) fn review(folder: &Path, cancel: &AtomicBool) -> Result<Plan, String>
         let mut f = open(&folder.join(&name), false)?;
         let fingerprint = identity(&mut f, cancel)?;
         let (frames, repair, header) = inspect(&mut f, channels, rate, encoding, cancel)?;
-        if metadata["wave_mask"].as_u64().is_some_and(|mask| header.wave_mask.map(u64::from) != Some(mask)) { return Err("Recording speaker metadata differs from its WAV header; no repair was made".into()); }
+        let mask = metadata.get("wave_mask");
+        if mask
+            .and_then(serde_json::Value::as_u64)
+            .is_some_and(|mask| header.wave_mask.map(u64::from) != Some(mask))
+            || (channels > 2
+                && mask.is_some_and(serde_json::Value::is_null)
+                && header.wave_mask.is_some())
+        {
+            return Err(
+                "Recording speaker metadata differs from its WAV header; no repair was made".into(),
+            );
+        }
         plan.frames += frames;
         plan.repairs += usize::from(repair);
         plan.segments.push(Segment {

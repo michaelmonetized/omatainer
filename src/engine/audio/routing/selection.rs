@@ -195,7 +195,9 @@ impl Selection {
         };
         let destination_width = model.input_width(destination, layout).unwrap();
         for (source, source_width) in groups {
-            let map = if source_width == 1 && destination_width == 2 {
+            let source_layout=model.speaker_layout(source.group).filter(|l|l.channels()==source_width);
+            let destination_layout=model.speaker_layout(destination).filter(|l|l.channels()==destination_width);
+            let map = if let (Some(from),Some(to))=(source_layout,destination_layout){from.maps_to(to)} else if source_width == 1 && destination_width == 2 {
                 vec![
                     ChannelMap {
                         source: 0,
