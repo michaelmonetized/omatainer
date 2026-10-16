@@ -13211,7 +13211,7 @@
     "src/audio_delivery/tests/fixed_send_tests.rs": "09f1c00ce9410739cb73ed533bda1237425519526c2c3c54b67554deca9f46c3",
     "src/audio_delivery/wav.rs": "025ce47f7d84fc2ed63fa29c3843c252c8634c99e346c1c19c4dbe4ad316e049",
     "src/audio_delivery/wav/container_tests.rs": "3dd79b70e036d1af881185f534054fc813c502117adb76bc4ec9c68886ce5ee6",
-    "src/audio_delivery/wav/headers.rs": "f5b0da5458f0ccf951492088c51e6e52e78d1055a69f3826aa6ec4652e1c253d",
+    "src/audio_delivery/wav/headers.rs": "7f5fc3b8eb42ea193ec06c9a5e2dc41ae83526210ea9f3127a016b96e24fea7d",
     "src/audio_delivery/wav/metadata.rs": "31bb6b5ec101882d8ef9d35087eb493da089f6246c3947df74f9eac0fc7d14a9",
     "src/automation.rs": "6f2a683243e3dc54c0628776ed6d7d71855c9f3df44019a73d442c834d1c6b63",
     "src/automation/osc.rs": "aa54ffd5461b9b661285f0aa76aa88dfc17cd597cab1f2a33b049c2b49d7fab4",
