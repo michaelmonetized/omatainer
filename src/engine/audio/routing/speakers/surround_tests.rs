@@ -121,8 +121,9 @@ fn surround_51_actual_clip_bed_controls_and_causal_histories_follow_independent_
                 });
                 rt.apply(Command::TrackPan {
                     track: 0,
-                    value: 0.5,
+                    value: 0.75,
                 });
+                assert_eq!(rt.tracks[0].pan, 0.5);
                 rt.apply(Command::LaunchScene { scene: 0 });
                 let mut output = vec![0.; (4096 + delay) * 9];
                 assert_eq!(
@@ -558,6 +559,7 @@ fn surround_51_program_and_pfl_headphone_folds_keep_center_surround_and_original
             let (_engine, mut rt) = fixture_layout(rate, Layout::Surround51Side);
             let delay = align(&mut rt, rate);
             let mut model = (*rt.routing.as_ref().unwrap().model).clone();
+            model.version = 2;
             model.next_id = 3;
             model.ports.push(Port {
                 id: 2,

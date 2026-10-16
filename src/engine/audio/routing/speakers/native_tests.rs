@@ -80,6 +80,7 @@ fn native_speaker_primary_beds_sidechain_auxiliary_latency_and_tail_match_indepe
             rt.apply(Command::Stop);
             let physical = [3, 0, 5, 1, 8, 7];
             let mut model = Model::default();
+            model.version = 3;
             model.next_id = 7;
             model.ports[0].channels = physical[..width].to_vec();
             model.ports.extend([
