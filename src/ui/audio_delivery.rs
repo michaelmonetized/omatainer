@@ -490,7 +490,7 @@ impl App {
                                 if let Some(recipe) = &mut panel.batch { recipe.source_scene = plan.scene_refs.iter().find(|(slot, _)| *slot == panel.request.scene).map(|(_, reference)| *reference); }
                             }
                             if panel.request.source == Source::Scene {
-                                let response = egui::ComboBox::from_label("Export scene").id_salt("audio-export-scene").selected_text(plan.scenes.iter().find(|(slot, _)| *slot == panel.request.scene).map_or("Choose a scene", |(_, name)| name.as_str())).show_ui(ui, |ui| {
+                                let response = egui::ComboBox::new("audio-export-scene", "Export scene").selected_text(plan.scenes.iter().find(|(slot, _)| *slot == panel.request.scene).map_or("Choose a scene", |(_, name)| name.as_str())).show_ui(ui, |ui| {
                                     for (slot, name) in &plan.scenes {
                                         let saved = plan.scene_refs.iter().find(|(s, _)| s == slot).map(|(_, reference)| reference.id);
                                         let response = keyboard_authoring::native(ui, keyboard_authoring::property(ui, ("scene", saved)), |ui| ui.selectable_value(&mut panel.request.scene, *slot, name));
@@ -503,7 +503,7 @@ impl App {
                             let response = keyboard_authoring::native(ui, keyboard_authoring::property(ui, "include-decks"), |ui| ui.checkbox(&mut panel.request.decks, tr!("Include loaded decks from their saved cursors")));
                             accessibility::focus(ui, &response);
                             if plan.routed {
-                                let response = egui::ComboBox::from_label("Export program output").id_salt("audio-export-alias").selected_text(plan.outputs.iter().find(|(id, _)| Some(*id) == panel.request.output_alias).map_or("Choose program output", |(_, name)| name.as_str())).show_ui(ui, |ui| {
+                                let response = egui::ComboBox::new("audio-export-alias", "Export program output").selected_text(plan.outputs.iter().find(|(id, _)| Some(*id) == panel.request.output_alias).map_or("Choose program output", |(_, name)| name.as_str())).show_ui(ui, |ui| {
                                     for (id, name) in &plan.outputs {
                                         let response = keyboard_authoring::native(ui, keyboard_authoring::property(ui, ("output", id)), |ui| ui.selectable_value(&mut panel.request.output_alias, Some(*id), name));
                                         accessibility::focus(ui, &response);
@@ -520,7 +520,7 @@ impl App {
                                 number(ui, "repeats", &format!("{} (times)", tr!("Repeat range")), &mut panel.request.repeats, Some(1..=64), None);
                                 number(ui, "tail", &tr!("Final tail (seconds)"), &mut panel.request.tail, Some(0.0..=120.0), Some(0.1));
                             });
-                            let response = egui::ComboBox::from_label("Export format").id_salt("audio-export-format").selected_text(panel.request.options.format.title()).show_ui(ui, |ui| {
+                            let response = egui::ComboBox::new("audio-export-format", "Export format").selected_text(panel.request.options.format.title()).show_ui(ui, |ui| {
                                 for format in Format::ALL {
                                     let response = keyboard_authoring::native(ui, keyboard_authoring::property(ui, ("format", format as u8)), |ui| ui.selectable_value(&mut panel.request.options.format, format, format.title()));
                                     accessibility::focus(ui, &response);
@@ -562,14 +562,14 @@ impl App {
                     if let Some(plan) = panel.plan.clone() {
                         keyboard_authoring::form(ui, keyboard_authoring::property(ui, "record-settings"), |ui| {
                             if panel.record_seconds == 0 { panel.record_seconds = 3600; }
-                            let response = egui::ComboBox::from_label("Recording source").id_salt("performance-record-source").selected_text(plan.records.iter().find(|source| Some(source.id) == panel.record_source).map_or("Choose a recording source", |source| source.name.as_str())).show_ui(ui, |ui| {
+                            let response = egui::ComboBox::new("performance-record-source", "Recording source").selected_text(plan.records.iter().find(|source| Some(source.id) == panel.record_source).map_or("Choose a recording source", |source| source.name.as_str())).show_ui(ui, |ui| {
                                 for source in &plan.records {
                                     let response = keyboard_authoring::native(ui, keyboard_authoring::property(ui, ("record-source", source.id)), |ui| ui.selectable_value(&mut panel.record_source, Some(source.id), &source.name));
                                     accessibility::focus(ui, &response);
                                 }
                             }).response;
                             accessibility::focus(ui, &response);
-                            let response = egui::ComboBox::from_label("Recording format").id_salt("performance-record-format").selected_text(panel.record_format.title()).show_ui(ui, |ui| {
+                            let response = egui::ComboBox::new("performance-record-format", "Recording format").selected_text(panel.record_format.title()).show_ui(ui, |ui| {
                                 for format in Format::RECORDING {
                                     let response = keyboard_authoring::native(ui, keyboard_authoring::property(ui, ("record-format", format as u8)), |ui| ui.selectable_value(&mut panel.record_format, format, format.title()));
                                     accessibility::focus(ui, &response);
