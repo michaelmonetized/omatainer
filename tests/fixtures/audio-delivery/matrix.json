@@ -22,7 +22,7 @@
       "id": "pcm24-padding-recovery",
       "test": "audio_delivery::recovery::tests::recovery_odd_pcm24_legacy_padded_and_partial_prefixes_keep_exact_frames",
       "source": "src/audio_delivery/recovery.rs",
-      "source_sha256": "dd3129e6670bd74186095c6ab8e855ed267ac8e3b366fafbe456345e5d332ff5",
+      "source_sha256": "6ddbb0aaae026ef72d22c005d0d01dd8bc61c7fbbe1fe72f1f81ecf7ec29d9d6",
       "requirement": "required",
       "acceptance": "exact whole frames legacy/padded/interrupted"
     },
@@ -168,7 +168,7 @@
       "source": "src/engine/audio/routing/record/delivery/tests/contract_tests.rs",
       "requirement": "required",
       "acceptance": "actual Recorder converted capture, declared/unknown 3ch float/PCM24 extensible headers, independent FFmpeg ordered PCM, odd/partial recovery, metadata retained and stale/fold refusal",
-      "source_sha256": "42ac3f73deb8f9b79e2c98a2e8050113733633ea8baf340d48138ea8619920d7"
+      "source_sha256": "96b88c8ae223994e290c028406f92c78fcfc35c15666821d013d51272f708cb9"
     },
     {
       "id": "recovery-fifo-manifest",
@@ -176,7 +176,7 @@
       "source": "src/engine/audio/routing/record/delivery/tests/contract_tests.rs",
       "requirement": "required",
       "acceptance": "actual FIFO recording manifest without writer rejected via nonblocking regular descriptor validation",
-      "source_sha256": "42ac3f73deb8f9b79e2c98a2e8050113733633ea8baf340d48138ea8619920d7"
+      "source_sha256": "96b88c8ae223994e290c028406f92c78fcfc35c15666821d013d51272f708cb9"
     },
     {
       "id": "surround-51-encoded-ui-cli-retained",
@@ -192,7 +192,7 @@
       "source": "src/engine/audio/routing/record/delivery/tests/contract_tests.rs",
       "requirement": "required",
       "acceptance": "actual declared/unknown6ch Float32/PCM24 recordings, independent headers/PCM, finite/partial exact5frame recovery on private copies; retained original19frame files, stale/fold/mask mismatch refusal",
-      "source_sha256": "42ac3f73deb8f9b79e2c98a2e8050113733633ea8baf340d48138ea8619920d7"
+      "source_sha256": "96b88c8ae223994e290c028406f92c78fcfc35c15666821d013d51272f708cb9"
     }
   ],
   "proof_axes": {

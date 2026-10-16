@@ -31,11 +31,46 @@ struct Expected {
 }
 #[test]
 fn declared_and_unknown_native_recording_headers_keep_pcm_order_and_recovery() {
-    verify(Expected{layout:Layout::StereoLfe,case:"native-recording-speaker-contract",test:"engine::audio::routing::record::delivery::tests::contract_tests::declared_and_unknown_native_recording_headers_keep_pcm_order_and_recovery",physical:&[3,0,2],input:&[0.25,0.001,0.125,-0.5],pcm:&[-0.5,0.25,0.125],mask:0xB,speakers:&["front_left","front_right","low_frequency"]});
+    verify(Expected {
+        layout: Layout::StereoLfe,
+        case: "native-recording-speaker-contract",
+        test: "engine::audio::routing::record::delivery::tests::contract_tests::declared_and_unknown_native_recording_headers_keep_pcm_order_and_recovery",
+        physical: &[3, 0, 2],
+        input: &[0.25, 0.001, 0.125, -0.5],
+        pcm: &[-0.5, 0.25, 0.125],
+        mask: 0xB,
+        speakers: &["front_left", "front_right", "low_frequency"],
+    });
 }
 #[test]
 fn surround_51_recording_headers_recovery_keep_six_ordered_speakers_and_retained_files() {
-    verify(Expected{layout:Layout::Surround51Side,case:"native-recording-surround-51-contract",test:"engine::audio::routing::record::delivery::tests::contract_tests::surround_51_recording_headers_recovery_keep_six_ordered_speakers_and_retained_files",physical:&[3,0,5,1,8,7],input:&[1./32.,2./32.,3./32.,4./32.,5./32.,6./32.,7./32.,8./32.,9./32.],pcm:&[4./32.,1./32.,6./32.,2./32.,9./32.,8./32.],mask:0x60F,speakers:&["front_left","front_right","front_center","low_frequency","side_left","side_right"]});
+    verify(Expected {
+        layout: Layout::Surround51Side,
+        case: "native-recording-surround-51-contract",
+        test: "engine::audio::routing::record::delivery::tests::contract_tests::surround_51_recording_headers_recovery_keep_six_ordered_speakers_and_retained_files",
+        physical: &[3, 0, 5, 1, 8, 7],
+        input: &[
+            1. / 32.,
+            2. / 32.,
+            3. / 32.,
+            4. / 32.,
+            5. / 32.,
+            6. / 32.,
+            7. / 32.,
+            8. / 32.,
+            9. / 32.,
+        ],
+        pcm: &[4. / 32., 1. / 32., 6. / 32., 2. / 32., 9. / 32., 8. / 32.],
+        mask: 0x60F,
+        speakers: &[
+            "front_left",
+            "front_right",
+            "front_center",
+            "low_frequency",
+            "side_left",
+            "side_right",
+        ],
+    });
 }
 fn verify(expected: Expected) {
     let files = Files::new();
@@ -164,6 +199,7 @@ fn verify(expected: Expected) {
             } else {
                 Vec::new()
             };
+            let mut recovered_producer_files = Vec::new();
             {
                 let original_folder = folder.clone();
                 let folder = files
@@ -206,21 +242,45 @@ fn verify(expected: Expected) {
                 let decoded = crate::engine::decode::decode_audio(&wav).unwrap();
                 assert_eq!(decoded.sample.frames(), 5);
                 assert_eq!(decoded.sample.ch, channels as u16);
-                if declared {
-                    let mut changed = repaired;
-                    changed[fmt + 20..fmt + 24]
-                        .copy_from_slice(&(if channels == 3 { 7_u32 } else { 0x3F }).to_le_bytes());
-                    std::fs::write(&wav, &changed).unwrap();
-                    assert!(crate::audio_delivery::recovery::review(
-                        &folder,
-                        &AtomicBool::new(false)
+                if retained.is_some() {
+                    let recovered = root.join(format!("recovered-declared-{declared}-{format:?}"));
+                    std::fs::create_dir(&recovered).unwrap();
+                    for name in ["take-0001.wav", "recording.json"] {
+                        let saved = recovered.join(name);
+                        std::fs::copy(folder.join(name), &saved).unwrap();
+                        recovered_producer_files.push(crate::audio_delivery::fixture::file(&saved));
+                    }
+                }
+                let mut changed = repaired;
+                let changed_mask = if declared {
+                    if channels == 3 { 7_u32 } else { 0x3F }
+                } else {
+                    expected.mask
+                };
+                changed[fmt + 20..fmt + 24].copy_from_slice(&changed_mask.to_le_bytes());
+                std::fs::write(&wav, &changed).unwrap();
+                assert!(
+                    crate::audio_delivery::recovery::review(&folder, &AtomicBool::new(false))
+                        .unwrap_err()
+                        .contains("speaker")
+                );
+                assert_eq!(changed, std::fs::read(&wav).unwrap());
+                if !declared {
+                    let mut legacy = kept;
+                    legacy.as_object_mut().unwrap().remove("wave_mask");
+                    std::fs::write(
+                        folder.join("recording.json"),
+                        serde_json::to_vec(&legacy).unwrap(),
                     )
-                    .unwrap_err()
-                    .contains("speaker"));
+                    .unwrap();
+                    let legacy_plan =
+                        crate::audio_delivery::recovery::review(&folder, &AtomicBool::new(false))
+                            .unwrap();
+                    assert_eq!((legacy_plan.frames, legacy_plan.repairs), (5, 0));
                     assert_eq!(changed, std::fs::read(&wav).unwrap());
                 }
             }
-            cases.push(serde_json::json!({"declared":declared,"format":format.title(),"frames":19,"wave_mask":mask,"file_sha256_before_recovery":format!("{:x}",Sha256::digest(&bytes)),"independent_pcm_sha256":format!("{:x}",Sha256::digest(&reference.stdout)),"producer_files":producer_files,"current_bytes_retained":retained.is_some(),"partial_recovery_frames":5,"nonfinite_float_trimmed":format==Format::Float32,"metadata":metadata}));
+            cases.push(serde_json::json!({"declared":declared,"format":format.title(),"frames":19,"wave_mask":mask,"file_sha256_before_recovery":format!("{:x}",Sha256::digest(&bytes)),"independent_pcm_sha256":format!("{:x}",Sha256::digest(&reference.stdout)),"producer_files":producer_files,"recovered_producer_files":recovered_producer_files,"current_bytes_retained":retained.is_some(),"partial_recovery_frames":5,"explicit_unknown_mask_mismatch_refused":!declared,"legacy_absent_mask_accepted":!declared,"nonfinite_float_trimmed":format==Format::Float32,"metadata":metadata}));
         }
     }
     let recorder = Recorder::default();
@@ -233,16 +293,20 @@ fn verify(expected: Expected) {
     );
     let folded = model.channel_contract(Group::Output(1), 2).unwrap();
     let destination = files.0.join("fold-refused");
-    assert!(recorder
-        .write_delivery_with_contract(&q, &destination, &AtomicBool::new(false), Some(&folded))
-        .unwrap_err()
-        .contains("native"));
+    assert!(
+        recorder
+            .write_delivery_with_contract(&q, &destination, &AtomicBool::new(false), Some(&folded))
+            .unwrap_err()
+            .contains("native")
+    );
     assert!(!destination.exists());
     let mut stale = contract;
     stale.channels.swap(0, 1);
-    assert!(recorder
-        .write_delivery_with_contract(&q, &destination, &AtomicBool::new(false), Some(&stale))
-        .is_err());
+    assert!(
+        recorder
+            .write_delivery_with_contract(&q, &destination, &AtomicBool::new(false), Some(&stale))
+            .is_err()
+    );
     assert!(!destination.exists());
     crate::audio_delivery::fixture::retain(
         expected.case,
