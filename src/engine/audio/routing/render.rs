@@ -203,11 +203,11 @@ impl Prepared {
             };
             if let Some(taps)=wide_taps{self.publish(index,taps);}else if self.nodes[index].width==2{self.publish_stereo(index,taps);}else{self.publish(index,std::array::from_fn(|tap|std::array::from_fn(|channel|if channel<2{taps[tap][channel]}else{0.})));}
             if let Some((destination,frame,valid))=send {self.source_send(index,destination,frame,valid);}
-            if let Some(frame)=cue_source {for(channel,value)in cue.iter_mut().enumerate(){*value+=if matches!(group,Group::Deck(_)){frame[channel]}else{self.latency.as_ref().map_or(frame[channel],|latency|latency.cue(index,Tap::PostFx.index(),channel))};}}
+            if let Some(frame)=cue_source {let aligned=if matches!(group,Group::Deck(_)){frame}else{self.latency.as_ref().map_or(frame,|latency|{let aligned:super::prepared::Frame=std::array::from_fn(|channel|if channel<self.nodes[index].width{latency.cue(index,Tap::PostFx.index(),channel)}else{0.});self.nodes[index].speakers.unwrap_or_default().downmix(&aligned)})};for(channel,value)in cue.iter_mut().enumerate(){*value+=aligned[channel];}}
         }
         let mut output = self.outputs(channels);
         let program_source = rt.mic_aux.program_alias().and_then(|id| self.nodes.iter().position(|node| node.group == Group::Output(id)));
-        let main = [self.nodes[self.main].taps[2][0], self.nodes[self.main].taps[2][1]];
+        let main=self.nodes[self.main].speakers.unwrap_or_default().downmix(&self.nodes[self.main].taps[2]);
         let main = self.latency.as_mut().map_or(main, |latency| latency.monitor_program(self.main, main));
         let program = program_source.map_or(main, |index| { let node = &self.nodes[index]; node.speakers.map_or([node.input[0],node.input[if node.width==1 {0}else{1}]],|layout|layout.downmix(&node.input)) });
         let program = if let Some((index, (mut frame, mut valid))) = program_source.and_then(|index| self.monitor_mix(index).map(|mix| (index, mix))) {
