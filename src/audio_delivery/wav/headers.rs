@@ -115,7 +115,7 @@ pub(crate) fn report_bytes(
 impl Settings {
     /// Build a streamed container header for exact complete frames.
     /// Args: actual channels/rate/encoding/frame count. Returns header bytes with unpadded data size and bounded embedded metadata.
-    pub(super) fn header(
+    pub(crate) fn header(
         &self,
         channels: u16,
         rate: u32,
