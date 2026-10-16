@@ -27,6 +27,7 @@ struct Expected {
     input: &'static [f32],
     pcm: &'static [f32],
     mask: u32,
+    wrong_mask: u32,
     speakers: &'static [&'static str],
 }
 #[test]
@@ -39,6 +40,7 @@ fn declared_and_unknown_native_recording_headers_keep_pcm_order_and_recovery() {
         input: &[0.25, 0.001, 0.125, -0.5],
         pcm: &[-0.5, 0.25, 0.125],
         mask: 0xB,
+        wrong_mask: 7,
         speakers: &["front_left", "front_right", "low_frequency"],
     });
 }
@@ -62,6 +64,7 @@ fn surround_51_recording_headers_recovery_keep_six_ordered_speakers_and_retained
         ],
         pcm: &[4. / 32., 1. / 32., 6. / 32., 2. / 32., 9. / 32., 8. / 32.],
         mask: 0x60F,
+        wrong_mask: 0x3F,
         speakers: &[
             "front_left",
             "front_right",
@@ -72,11 +75,29 @@ fn surround_51_recording_headers_recovery_keep_six_ordered_speakers_and_retained
         ],
     });
 }
+
+#[test]
+fn surround_71_recording_headers_recovery_keep_eight_ordered_speakers_and_retained_files() {
+    verify(Expected {
+        layout: Layout::Surround71,
+        case: "native-recording-surround-71-contract",
+        test: "engine::audio::routing::record::delivery::tests::contract_tests::surround_71_recording_headers_recovery_keep_eight_ordered_speakers_and_retained_files",
+        physical: &[3, 0, 5, 1, 8, 7, 12, 10],
+        input: &[1./32.,2./32.,3./32.,4./32.,5./32.,6./32.,7./32.,8./32.,9./32.,10./32.,11./32.,12./32.,13./32.],
+        pcm: &[4./32.,1./32.,6./32.,2./32.,9./32.,8./32.,13./32.,11./32.],
+        mask: 0x63F,
+        wrong_mask: 0xFF,
+        speakers: &["front_left","front_right","front_center","low_frequency","back_left","back_right","side_left","side_right"],
+    });
+}
+
 fn verify(expected: Expected) {
     let files = Files::new();
     let retained = crate::audio_delivery::fixture::producer(expected.case);
     let root = retained.as_ref().unwrap_or(&files.0);
     let channels = expected.pcm.len();
+    assert_ne!(expected.wrong_mask, expected.mask);
+    assert_eq!(expected.wrong_mask.count_ones(), channels as u32);
     let tools = crate::audio_delivery::measurement::preflight(&AtomicBool::new(false)).unwrap();
     let mut model = Model::default();
     model.ports[0].channels = expected.physical.to_vec();
@@ -253,7 +274,7 @@ fn verify(expected: Expected) {
                 }
                 let mut changed = repaired;
                 let changed_mask = if declared {
-                    if channels == 3 { 7_u32 } else { 0x3F }
+                    expected.wrong_mask
                 } else {
                     expected.mask
                 };
@@ -293,20 +314,16 @@ fn verify(expected: Expected) {
     );
     let folded = model.channel_contract(Group::Output(1), 2).unwrap();
     let destination = files.0.join("fold-refused");
-    assert!(
-        recorder
-            .write_delivery_with_contract(&q, &destination, &AtomicBool::new(false), Some(&folded))
-            .unwrap_err()
-            .contains("native")
-    );
+    assert!(recorder
+        .write_delivery_with_contract(&q, &destination, &AtomicBool::new(false), Some(&folded))
+        .unwrap_err()
+        .contains("native"));
     assert!(!destination.exists());
     let mut stale = contract;
     stale.channels.swap(0, 1);
-    assert!(
-        recorder
-            .write_delivery_with_contract(&q, &destination, &AtomicBool::new(false), Some(&stale))
-            .is_err()
-    );
+    assert!(recorder
+        .write_delivery_with_contract(&q, &destination, &AtomicBool::new(false), Some(&stale))
+        .is_err());
     assert!(!destination.exists());
     crate::audio_delivery::fixture::retain(
         expected.case,

@@ -62,6 +62,18 @@ fn surround_51_native_encoded_graph_ui_cli_reopen_retains_actual_speaker_files()
     },Layout::Surround51Side,engine,rt);
 }
 
+#[test]
+fn surround_71_native_encoded_graph_ui_cli_reopen_retains_actual_speaker_files() {
+    let (engine, rt) = fixture_layout(48000, Layout::Surround71);
+    verify(Expected {
+        case:"native-declared-surround-71-delivery-ui-cli",
+        test:"ui::audio_delivery::tests::speakers::surround_71_native_encoded_graph_ui_cli_reopen_retains_actual_speaker_files",
+        mask:0x63F,physical:&[3,0,5,1,8,7,12,10],speakers:&["front_left","front_right","front_center","low_frequency","back_left","back_right","side_left","side_right"],
+        input_sha256:"e27dffc4970bdc7ec57a3e66e44e5a313b94e982e2bbba1ad86312230df85a8c",
+        independent_layout:"7.1",
+    },Layout::Surround71,engine,rt);
+}
+
 fn verify(expected: Expected, layout: Layout, engine: Engine, rt: Box<RtEngine>) {
     let files = Files::new();
     let retained = data::fixture::producer(expected.case);

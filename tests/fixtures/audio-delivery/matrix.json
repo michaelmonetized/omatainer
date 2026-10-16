@@ -160,7 +160,7 @@
       "source": "src/ui/audio_delivery/tests/speakers.rs",
       "requirement": "required",
       "acceptance": "actual 2.1 graph/ordered physical alias, native width UI/mono switch, RF64 render, independent analytic PCM and native project/CLI recipe/batch reopen",
-      "source_sha256": "0a5972154b25b1fd19b40855760ba7acb096ada754cf08fae9b8246d9a771dee"
+      "source_sha256": "1cf1b64a944e7aa252c24823734ace1eca4eef27df752d4b2561cd40659adfbe"
     },
     {
       "id": "native-recording-speaker-contract",
@@ -168,7 +168,7 @@
       "source": "src/engine/audio/routing/record/delivery/tests/contract_tests.rs",
       "requirement": "required",
       "acceptance": "actual Recorder converted capture, declared/unknown 3ch float/PCM24 extensible headers, independent FFmpeg ordered PCM, odd/partial recovery, metadata retained and stale/fold refusal",
-      "source_sha256": "96b88c8ae223994e290c028406f92c78fcfc35c15666821d013d51272f708cb9"
+      "source_sha256": "b112ebcaf9f824ffdbd8a301471018f9074c9116e43a8702f63db582b09d8311"
     },
     {
       "id": "recovery-fifo-manifest",
@@ -176,7 +176,7 @@
       "source": "src/engine/audio/routing/record/delivery/tests/contract_tests.rs",
       "requirement": "required",
       "acceptance": "actual FIFO recording manifest without writer rejected via nonblocking regular descriptor validation",
-      "source_sha256": "96b88c8ae223994e290c028406f92c78fcfc35c15666821d013d51272f708cb9"
+      "source_sha256": "b112ebcaf9f824ffdbd8a301471018f9074c9116e43a8702f63db582b09d8311"
     },
     {
       "id": "surround-51-encoded-ui-cli-retained",
@@ -184,15 +184,31 @@
       "source": "src/ui/audio_delivery/tests/speakers.rs",
       "requirement": "required",
       "acceptance": "actual6ch canonical graph RF64 header0x60F, independent FFprobe5.1(side)/FFmpeg PCM, real native-save/reopen CLI selected contribution, retained input/native/encoded paths+size+SHA+source/test identity",
-      "source_sha256": "0a5972154b25b1fd19b40855760ba7acb096ada754cf08fae9b8246d9a771dee"
+      "source_sha256": "1cf1b64a944e7aa252c24823734ace1eca4eef27df752d4b2561cd40659adfbe"
     },
     {
       "id": "surround-51-recording-recovery-retained",
       "test": "engine::audio::routing::record::delivery::tests::contract_tests::surround_51_recording_headers_recovery_keep_six_ordered_speakers_and_retained_files",
       "source": "src/engine/audio/routing/record/delivery/tests/contract_tests.rs",
       "requirement": "required",
-      "acceptance": "actual declared/unknown6ch Float32/PCM24 recordings, independent headers/PCM, finite/partial exact5frame recovery on private copies; retained original19frame files, stale/fold/mask mismatch refusal",
-      "source_sha256": "96b88c8ae223994e290c028406f92c78fcfc35c15666821d013d51272f708cb9"
+      "acceptance": "Actual declared/unknown6ch Float32/PCM24 recordings, independent headers/PCM, finite/partial exact5frame recovery; retained original19frame and recovered5frame files, stale/fold/same-popcount mask mismatch refusal",
+      "source_sha256": "b112ebcaf9f824ffdbd8a301471018f9074c9116e43a8702f63db582b09d8311"
+    },
+    {
+      "id": "surround-71-encoded-ui-cli-retained",
+      "test": "ui::audio_delivery::tests::speakers::surround_71_native_encoded_graph_ui_cli_reopen_retains_actual_speaker_files",
+      "source": "src/ui/audio_delivery/tests/speakers.rs",
+      "requirement": "required",
+      "acceptance": "Actual8ch canonical graph RF64 mask0x63F/orderFLFRFCLFEBLBRSLSR and physical[3,0,5,1,8,7,12,10], independent FFprobe7.1/FFmpeg PCM, native-save/reopen CLI selected contribution; retained input/native/encoded paths,size,SHA,source/test identity",
+      "source_sha256": "1cf1b64a944e7aa252c24823734ace1eca4eef27df752d4b2561cd40659adfbe"
+    },
+    {
+      "id": "surround-71-recording-recovery-retained",
+      "test": "engine::audio::routing::record::delivery::tests::contract_tests::surround_71_recording_headers_recovery_keep_eight_ordered_speakers_and_retained_files",
+      "source": "src/engine/audio/routing/record/delivery/tests/contract_tests.rs",
+      "requirement": "required",
+      "acceptance": "Actual declared/unknown8ch Float32/PCM24 recordings and independent headers/PCM; finite/partial exact5frame recovery, retained original19frame/recovered5frame files; wrong-known0xFF same-popcount mask refused without modifying bytes, explicitunknown mismatch and legacyabsent field retained",
+      "source_sha256": "b112ebcaf9f824ffdbd8a301471018f9074c9116e43a8702f63db582b09d8311"
     }
   ],
   "proof_axes": {
