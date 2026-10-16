@@ -52,6 +52,16 @@ fn keyboard_access_plugin_roots_catalog_native_keys_stable_owner_and_protection(
     );
     gui.text("Plugin folders", root.to_str().unwrap());
     assert!(gui.node("Plugin folders").1.invalid().is_none());
+    gui.focused("Plugin folders");
+    let focused = gui.ctx.memory(|memory| memory.focused()).unwrap();
+    gui.idle();
+    let rect = gui.ctx.read_response(focused).unwrap().rect;
+    gui.idle();
+    assert_eq!(
+        gui.ctx.read_response(focused).unwrap().rect,
+        rect,
+        "native multiline layout settles after replacing 65 plugin folders"
+    );
     gui.painted_focus("Plugin folders");
     assert_eq!(gui.app.plugins.roots, root.to_str().unwrap());
     gui.key(Key::Tab, egui::Modifiers::NONE);

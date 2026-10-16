@@ -520,12 +520,19 @@ impl App {
                                 number(ui, "repeats", &format!("{} (times)", tr!("Repeat range")), &mut panel.request.repeats, Some(1..=64), None);
                                 number(ui, "tail", &tr!("Final tail (seconds)"), &mut panel.request.tail, Some(0.0..=120.0), Some(0.1));
                             });
+                            let mut restore_format_focus = false;
                             let response = egui::ComboBox::new("audio-export-format", "Export format").selected_text(panel.request.options.format.title()).show_ui(ui, |ui| {
                                 for format in Format::ALL {
                                     let response = keyboard_authoring::native(ui, keyboard_authoring::property(ui, ("format", format as u8)), |ui| ui.selectable_value(&mut panel.request.options.format, format, format.title()));
                                     accessibility::focus(ui, &response);
+                                    if response.clicked() {
+                                        restore_format_focus = !ui.input(|input| input.pointer.any_click());
+                                        ui.close();
+                                    }
                                 }
                             }).response;
+                            let response = ui.ctx().read_response(response.id).unwrap_or(response);
+                            if restore_format_focus { response.request_focus(); }
                             accessibility::focus(ui, &response);
                             ui.horizontal(|ui| {
                                 number(ui, "sample-rate", &tr!("Sample rate (Hz)"), &mut panel.request.options.rate, Some(8000..=192000), Some(100.0));

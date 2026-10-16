@@ -128,7 +128,7 @@ impl Gui {
             .ctx
             .read_response(self.ctx.memory(|memory| memory.focused()).unwrap())
             .unwrap();
-        assert!(self.shapes.iter().any(|shape| matches!(&shape.shape, egui::epaint::Shape::Rect(rect) if rect.stroke.width == 2.0 && rect.rect == response.rect.expand(2.0))), "actual visible focus for {name}");
+        assert!(self.shapes.iter().any(|shape| matches!(&shape.shape, egui::epaint::Shape::Rect(rect) if rect.stroke.width == 2.0 && rect.rect == response.rect.expand(2.0))), "actual visible focus for {name}; native response {response:?}; actual 2px paint {:?}", self.shapes.iter().filter_map(|shape| match &shape.shape { egui::epaint::Shape::Rect(rect) if rect.stroke.width == 2.0 => Some((shape.clip_rect, rect)), _ => None }).collect::<Vec<_>>());
     }
     #[track_caller]
     pub fn tab_to(&mut self, name: &str) {
@@ -187,6 +187,21 @@ impl Gui {
     pub fn toggle(&mut self, name: &str) {
         self.tab_to(name);
         self.key(Key::Space, egui::Modifiers::NONE);
+    }
+    #[track_caller]
+    fn export_format(&mut self, format: Format) {
+        self.tab_to("Export format");
+        self.focused("Export format");
+        let opener = self.ctx.memory(|memory| memory.focused()).unwrap();
+        assert!(!egui::ComboBox::is_open(&self.ctx, opener));
+        self.key(Key::Space, egui::Modifiers::NONE);
+        assert!(egui::ComboBox::is_open(&self.ctx, opener));
+        self.tab_to(format.title());
+        self.painted_focus(format.title());
+        self.key(Key::Enter, egui::Modifiers::NONE);
+        assert_eq!(self.app.audio_delivery.request.options.format, format);
+        assert!(!egui::ComboBox::is_open(&self.ctx, opener));
+        self.painted_focus("Export format");
     }
     pub fn text(&mut self, name: &str, value: &str) {
         self.tab_to(name);
@@ -280,13 +295,11 @@ fn keyboard_access_delivery_rows_native_keys_validation_conditional_ids_and_fres
         range_id,
         "scene chooser never steals the native range identity"
     );
-    gui.toggle("Export format");
-    gui.press(Format::Pcm16.title());
+    gui.export_format(Format::Pcm16);
     assert_eq!(gui.app.audio_delivery.request.options.format, Format::Pcm16);
     gui.toggle("Triangular dither for integer quantization");
     assert!(gui.app.audio_delivery.request.options.dither);
-    gui.toggle("Export format");
-    gui.press(Format::Float32.title());
+    gui.export_format(Format::Float32);
     assert!(!gui.app.audio_delivery.request.options.dither);
     assert!(gui
         .node("Triangular dither for integer quantization")
@@ -493,8 +506,7 @@ fn keyboard_access_delivery_broadcast_metadata_native_errors_follow_format_and_r
     gui.delivery();
     gui.press("Review export source");
     gui.until(|gui| gui.app.audio_delivery.job.is_none() && gui.app.audio_delivery.plan.is_some());
-    gui.toggle("Export format");
-    gui.press(Format::Bwf24.title());
+    gui.export_format(Format::Bwf24);
     gui.press("Delivery metadata & final-file QC");
     gui.until(|gui| {
         gui.nodes.iter().any(|(_, node)| {
@@ -578,8 +590,7 @@ fn keyboard_access_delivery_broadcast_metadata_native_errors_follow_format_and_r
         Format::Aiff16,
         Format::Aiff24,
     ] {
-        gui.toggle("Export format");
-        gui.press(format.title());
+        gui.export_format(format);
         assert_eq!(gui.app.audio_delivery.request.options.format, format);
         assert!(gui
             .node("Delivery metadata & final-file QC")
@@ -589,8 +600,7 @@ fn keyboard_access_delivery_broadcast_metadata_native_errors_follow_format_and_r
         assert!(!gui.node("Render master audio").1.is_disabled());
     }
     for format in [Format::Bwf24, Format::Rf64Float32, Format::Rf64Pcm24] {
-        gui.toggle("Export format");
-        gui.press(format.title());
+        gui.export_format(format);
         gui.associated_error("Delivery metadata & final-file QC");
         assert!(gui.node("Render master audio").1.is_disabled());
     }
@@ -608,8 +618,7 @@ fn keyboard_access_delivery_broadcast_metadata_native_errors_follow_format_and_r
     gui.until(|gui| {
         gui.node("Delivery metadata & final-file QC").1.invalid() == Some(Invalid::True)
     });
-    gui.toggle("Export format");
-    gui.press(Format::Float32.title());
+    gui.export_format(Format::Float32);
     gui.associated_error("Delivery metadata & final-file QC");
     assert!(gui.node("Render master audio").1.is_disabled());
     gui.press("Delivery metadata & final-file QC");
