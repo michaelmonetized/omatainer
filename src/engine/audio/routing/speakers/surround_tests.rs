@@ -8,7 +8,7 @@ use std::sync::{atomic::AtomicBool, Arc};
 
 /// Add a deliberately declared silent feeder delay to exercise the complete causal bed.
 /// Takes the fixture renderer and rate; prepares a10ms report on an empty track, returning the independent expected sample delay without any device.
-fn align(rt: &mut crate::engine::RtEngine, rate: u32) -> usize {
+pub(super) fn align(rt: &mut crate::engine::RtEngine, rate: u32) -> usize {
     let mut model = (*rt.routing.as_ref().unwrap().model).clone();
     model.latency = Some(latency::Configuration {
         reserve_micros: 20000,

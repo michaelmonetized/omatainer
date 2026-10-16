@@ -4,6 +4,8 @@ pub(crate) mod monitor;
 #[cfg(test)]
 mod native_tests;
 #[cfg(test)]
+mod surround71_tests;
+#[cfg(test)]
 mod surround_tests;
 #[cfg(test)]
 pub(crate) mod tests;
@@ -24,6 +26,7 @@ pub enum Layout {
     Stereo,
     StereoLfe,
     Surround51Side,
+    Surround71,
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -34,6 +37,8 @@ pub enum Speaker {
     LowFrequency,
     SideLeft,
     SideRight,
+    BackLeft,
+    BackRight,
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -54,6 +59,7 @@ impl Layout {
         Self::Stereo,
         Self::StereoLfe,
         Self::Surround51Side,
+        Self::Surround71,
     ];
     /// Name the canonical speaker order for a saved choice.
     /// Takes this layout; returns a human-readable label shared by routing and delivery controls.
@@ -63,6 +69,7 @@ impl Layout {
             Self::Stereo => "Stereo (FL FR)",
             Self::StereoLfe => "2.1 (FL FR LFE)",
             Self::Surround51Side => "5.1 side (FL FR FC LFE SL SR)",
+            Self::Surround71 => "7.1 (FL FR FC LFE BL BR SL SR)",
         }
     }
     /// Name a canonical bed without repeating its channel list.
@@ -73,6 +80,7 @@ impl Layout {
             Self::Stereo => "Stereo",
             Self::StereoLfe => "2.1",
             Self::Surround51Side => "5.1 side",
+            Self::Surround71 => "7.1",
         }
     }
     /// Read the declared interleaved speaker order.
@@ -94,6 +102,16 @@ impl Layout {
                 Speaker::SideLeft,
                 Speaker::SideRight,
             ],
+            Self::Surround71 => &[
+                Speaker::FrontLeft,
+                Speaker::FrontRight,
+                Speaker::FrontCenter,
+                Speaker::LowFrequency,
+                Speaker::BackLeft,
+                Speaker::BackRight,
+                Speaker::SideLeft,
+                Speaker::SideRight,
+            ],
         }
     }
     /// Read the exact WAVE speaker mask.
@@ -104,6 +122,7 @@ impl Layout {
             Self::Stereo => 3,
             Self::StereoLfe => 0xB,
             Self::Surround51Side => 0x60F,
+            Self::Surround71 => 0x63F,
         }
     }
     /// Read the declared bed width.
@@ -124,12 +143,19 @@ impl Layout {
                     frame[1] + q * (frame[2] + frame[5]),
                 ]
             }
+            Self::Surround71 => {
+                let q = std::f32::consts::FRAC_1_SQRT_2;
+                [
+                    frame[0] + q * (frame[2] + frame[4] + frame[6]),
+                    frame[1] + q * (frame[2] + frame[5] + frame[7]),
+                ]
+            }
         }
     }
     /// Read the explicit mono panner angle span.
     /// Takes this layout; returns degrees represented by normalized Pan1, keeping the front-pair policy for2.1.
     pub fn pan_extent(self) -> f32 {
-        if self == Self::Surround51Side {
+        if matches!(self, Self::Surround51Side | Self::Surround71) {
             180.
         } else {
             30.
@@ -144,8 +170,20 @@ impl Layout {
     /// Takes normalized mono position; returns at most eight bounded gains with no LFE contribution.
     pub fn pan_frame(self, pan: f32) -> [f32; 8] {
         let mut gains = [0.; 8];
-        if self == Self::Surround51Side {
-            let anchors = &[(-110_f32, 4_usize), (-30., 0), (0., 2), (30., 1), (110., 5)];
+        if matches!(self, Self::Surround51Side | Self::Surround71) {
+            let anchors: &[(f32, usize)] = if self == Self::Surround71 {
+                &[
+                    (-150., 4),
+                    (-90., 6),
+                    (-30., 0),
+                    (0., 2),
+                    (30., 1),
+                    (90., 7),
+                    (150., 5),
+                ]
+            } else {
+                &[(-110., 4), (-30., 0), (0., 2), (30., 1), (110., 5)]
+            };
             let mut angle = pan.clamp(-1., 1.) * 180.;
             if angle < anchors[0].0 {
                 angle += 360.;
@@ -153,9 +191,13 @@ impl Layout {
             let (left, right) = anchors
                 .windows(2)
                 .find(|pair| angle >= pair[0].0 && angle <= pair[1].0)
-                .map_or((anchors[4], (anchors[0].0 + 360., anchors[0].1)), |pair| {
-                    (pair[0], pair[1])
-                });
+                .map_or(
+                    (
+                        anchors[anchors.len() - 1],
+                        (anchors[0].0 + 360., anchors[0].1),
+                    ),
+                    |pair| (pair[0], pair[1]),
+                );
             let position = ((angle - left.0) / (right.0 - left.0)).clamp(0., 1.);
             if position <= 1e-6 {
                 gains[left.1] = 1.;
@@ -207,6 +249,13 @@ impl Layout {
                 output[0] += frame[0] * std::f32::consts::FRAC_1_SQRT_2;
                 output[1] += frame[0] * std::f32::consts::FRAC_1_SQRT_2;
             }
+        } else if self == Self::Surround71 && destination == Self::Surround51Side {
+            for channel in 0..4 {
+                output[channel] += frame[channel];
+            }
+            let q = std::f32::consts::FRAC_1_SQRT_2;
+            output[4] += q * (frame[4] + frame[6]);
+            output[5] += q * (frame[5] + frame[7]);
         } else if destination == Self::StereoLfe && self.channels() > 3 {
             let pair = self.downmix(frame);
             output[0] += pair[0];
