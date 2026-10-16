@@ -40,7 +40,11 @@ fn native_speaker_primary_beds_sidechain_auxiliary_latency_and_tail_match_indepe
         ));
     assert!(root.starts_with("/home"));
     std::fs::create_dir_all(&root).unwrap();
-    for layout in [Layout::StereoLfe, Layout::Surround51Side] {
+    for layout in [
+        Layout::StereoLfe,
+        Layout::Surround51Side,
+        Layout::Surround71,
+    ] {
         let width = layout.channels();
         let path = root.join(format!("Bed{width}.clap"));
         assert!(std::process::Command::new("cc")
@@ -78,7 +82,7 @@ fn native_speaker_primary_beds_sidechain_auxiliary_latency_and_tail_match_indepe
         for rate in [44100, 48000, 96000] {
             let (_engine, mut rt) = Engine::headless_for_test(rate, 256);
             rt.apply(Command::Stop);
-            let physical = [3, 0, 5, 1, 8, 7];
+            let physical = [3, 0, 5, 1, 8, 7, 12, 10];
             let mut model = Model::default();
             model.version = 3;
             model.next_id = 7;
