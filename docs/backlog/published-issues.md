@@ -1,0 +1,362 @@
+**Published professional backlog**
+
+[GitHub tracking issue](https://github.com/michaelmonetized/omatainer/issues/1)
+
+356 child issues, independently verified through the GitHub API.
+
+- [#2 [fix]/ Reject invalid scene indexes at CLI, IPC and engine boundaries](https://github.com/michaelmonetized/omatainer/issues/2) — P0 / integration
+- [#3 [fix]/ Stop allocating and sorting arpeggiator chords every sample](https://github.com/michaelmonetized/omatainer/issues/3) — P1 / audio
+- [#4 [fix]/ Release clip-owned voices when tracks or scenes stop or replace clips](https://github.com/michaelmonetized/omatainer/issues/4) — P1 / audio
+- [#5 [fix]/ Bound control-command work per audio block](https://github.com/michaelmonetized/omatainer/issues/5) — P1 / audio
+- [#6 [fix]/ Reset track-specific loop state when replacing deck audio](https://github.com/michaelmonetized/omatainer/issues/6) — P1 / audio
+- [#7 [fix]/ Separate left and right deck EQ and filter histories](https://github.com/michaelmonetized/omatainer/issues/7) — P1 / audio
+- [#8 [fix]/ Prevent GUI and IPC engine locks from zeroing audio buffers](https://github.com/michaelmonetized/omatainer/issues/8) — P1 / audio
+- [#9 [fix]/ Give every stacked FX slot its own processing state](https://github.com/michaelmonetized/omatainer/issues/9) — P1 / audio
+- [#10 [fix]/ Remove FX slot allocations from the sample loop](https://github.com/michaelmonetized/omatainer/issues/10) — P1 / audio
+- [#11 [fix]/ Handle full control queues without silently dropping GUI commands](https://github.com/michaelmonetized/omatainer/issues/11) — P1 / audio
+- [#12 [fix]/ Reset pitch-lock grain history after seeks, cues and media replacement](https://github.com/michaelmonetized/omatainer/issues/12) — P1 / audio
+- [#13 [fix]/ Correct stereo timing and channel state in master delay and reverb](https://github.com/michaelmonetized/omatainer/issues/13) — P1 / audio
+- [#14 [fix]/ Remove per-sample MIDI clip cloning and repeated full-note scans](https://github.com/michaelmonetized/omatainer/issues/14) — P1 / audio
+- [#15 [fix]/ Advance note and drum lifecycles while tracks are muted or excluded by solo](https://github.com/michaelmonetized/omatainer/issues/15) — P1 / audio
+- [#16 [fix]/ Route note-offs back to the track and voice that received note-on](https://github.com/michaelmonetized/omatainer/issues/16) — P1 / audio
+- [#17 [fix]/ Render silence from stopped decks instead of a frozen sample](https://github.com/michaelmonetized/omatainer/issues/17) — P1 / audio
+- [#18 [fix]/ Keep quantized clips pending until their scheduled start beat](https://github.com/michaelmonetized/omatainer/issues/18) — P1 / audio
+- [#19 [fix]/ Record note positions relative to the selected clip and its actual length](https://github.com/michaelmonetized/omatainer/issues/19) — P1 / audio
+- [#20 [fix]/ Record actual held note durations instead of fixed quarter-beat notes](https://github.com/michaelmonetized/omatainer/issues/20) — P1 / audio
+- [#21 [fix]/ Reconfigure every rate-dependent processor for the output sample rate](https://github.com/michaelmonetized/omatainer/issues/21) — P1 / audio
+- [#22 [fix]/ Route instrument pads through one deliberate mixer destination](https://github.com/michaelmonetized/omatainer/issues/22) — P1 / audio
+- [#23 [fix]/ Preserve session stereo when processing scene FX](https://github.com/michaelmonetized/omatainer/issues/23) — P1 / audio
+- [#24 [fix]/ Keep FX state and settings separate for each scene](https://github.com/michaelmonetized/omatainer/issues/24) — P1 / audio
+- [#25 [fix]/ Publish audio snapshots without blocking on UI or IPC readers](https://github.com/michaelmonetized/omatainer/issues/25) — P1 / audio
+- [#26 [fix]/ Replace the installed executable atomically](https://github.com/michaelmonetized/omatainer/issues/26) — P1 / integration
+- [#27 [fix]/ Make multi-file installation transactional and recoverable](https://github.com/michaelmonetized/omatainer/issues/27) — P1 / integration
+- [#28 [fix]/ Return errors for malformed JSON and unknown IPC operations](https://github.com/michaelmonetized/omatainer/issues/28) — P1 / integration
+- [#29 [fix]/ Surface IPC startup failure instead of running without the control surface](https://github.com/michaelmonetized/omatainer/issues/29) — P1 / integration
+- [#30 [fix]/ Bound IPC request size and idle connection lifetime](https://github.com/michaelmonetized/omatainer/issues/30) — P1 / integration
+- [#31 [fix]/ Do not unlink a live instance socket after a slow response](https://github.com/michaelmonetized/omatainer/issues/31) — P1 / integration
+- [#32 [fix]/ Keep the fallback control socket private to the current user](https://github.com/michaelmonetized/omatainer/issues/32) — P1 / integration
+- [#33 [fix]/ Report shell control results and avoid replacing in-flight commands](https://github.com/michaelmonetized/omatainer/issues/33) — P1 / integration
+- [#34 [fix]/ Load built-in crate entries through the built-in media path](https://github.com/michaelmonetized/omatainer/issues/34) — P1 / library
+- [#35 [fix]/ Report corrupt and incomplete audio decoding instead of silently accepting it](https://github.com/michaelmonetized/omatainer/issues/35) — P1 / library
+- [#36 [fix]/ Move filesystem scanning off the UI and startup rendering path](https://github.com/michaelmonetized/omatainer/issues/36) — P1 / library
+- [#37 [fix]/ Reject stale deck load completions and cancel obsolete decode jobs](https://github.com/michaelmonetized/omatainer/issues/37) — P1 / library
+- [#38 [fix]/ Remove duplicate APC40 fader bindings that alter every track](https://github.com/michaelmonetized/omatainer/issues/38) — P1 / midi
+- [#39 [fix]/ Keep MIDI input callbacks from blocking on the engine queue](https://github.com/michaelmonetized/omatainer/issues/39) — P1 / midi
+- [#40 [fix]/ Connect controller load commands to the actual library loader](https://github.com/michaelmonetized/omatainer/issues/40) — P1 / midi
+- [#41 [fix]/ Parse one-byte MIDI real-time messages before channel-message length checks](https://github.com/michaelmonetized/omatainer/issues/41) — P1 / midi
+- [#42 [fix]/ Decode relative jog movement with correct signed deltas](https://github.com/michaelmonetized/omatainer/issues/42) — P1 / midi
+- [#43 [fix]/ Make pad composition arming explicit and keep its target stable](https://github.com/michaelmonetized/omatainer/issues/43) — P1 / ui
+- [#44 [fix]/ Virtualize crate rows and cache unchanged filter/format work](https://github.com/michaelmonetized/omatainer/issues/44) — P1 / ui
+- [#45 [fix]/ Show loading, failure and completion status to the user](https://github.com/michaelmonetized/omatainer/issues/45) — P1 / ui
+- [#46 [fix]/ Suppress global transport shortcuts while editing text](https://github.com/michaelmonetized/omatainer/issues/46) — P1 / ui
+- [#47 [fix]/ Reject malformed UTF-8 color values without panicking](https://github.com/michaelmonetized/omatainer/issues/47) — P1 / ui
+- [#48 [fix]/ Measure the entire audio callback workload in CPU telemetry](https://github.com/michaelmonetized/omatainer/issues/48) — P2 / audio
+- [#49 [fix]/ Apply the stored clip gain during clip playback](https://github.com/michaelmonetized/omatainer/issues/49) — P2 / audio
+- [#50 [fix]/ Make the DJ low-pass sweep progress smoothly away from bypass](https://github.com/michaelmonetized/omatainer/issues/50) — P2 / audio
+- [#51 [fix]/ Stop cloning drum sample Arcs on every output frame](https://github.com/michaelmonetized/omatainer/issues/51) — P2 / audio
+- [#52 [fix]/ Apply MIDI velocity to drum voices](https://github.com/michaelmonetized/omatainer/issues/52) — P2 / audio
+- [#53 [fix]/ Make neutral and empty FX chains sample-transparent](https://github.com/michaelmonetized/omatainer/issues/53) — P2 / audio
+- [#54 [fix]/ Apply delay, reverb and chorus wet mix exactly once](https://github.com/michaelmonetized/omatainer/issues/54) — P2 / audio
+- [#55 [fix]/ Route legacy hardware FX selection into the actual renderer](https://github.com/michaelmonetized/omatainer/issues/55) — P2 / audio
+- [#56 [fix]/ Render a timed metronome click instead of one sample per beat](https://github.com/michaelmonetized/omatainer/issues/56) — P2 / audio
+- [#57 [fix]/ Cache unchanged crossfader and pan gain calculations](https://github.com/michaelmonetized/omatainer/issues/57) — P2 / audio
+- [#58 [fix]/ Map sampler instrument choices to the sounds named by the UI](https://github.com/michaelmonetized/omatainer/issues/58) — P2 / audio
+- [#59 [fix]/ Share immutable waveform peaks instead of cloning them on every snapshot](https://github.com/michaelmonetized/omatainer/issues/59) — P2 / audio
+- [#60 [fix]/ Honor wet mix and chain order for Spread and Balance](https://github.com/michaelmonetized/omatainer/issues/60) — P2 / audio
+- [#61 [fix]/ Apply the SVF cutoff limit in the correct frequency domain](https://github.com/michaelmonetized/omatainer/issues/61) — P2 / audio
+- [#62 [fix]/ Connect or explicitly reject the third hardware FX wet control](https://github.com/michaelmonetized/omatainer/issues/62) — P2 / audio
+- [#63 [fix]/ Cache synth pitch increments between note and tuning changes](https://github.com/michaelmonetized/omatainer/issues/63) — P2 / audio
+- [#64 [fix]/ Reuse a status connection instead of reconnecting and spawning a thread every poll](https://github.com/michaelmonetized/omatainer/issues/64) — P2 / integration
+- [#65 [fix]/ Publish MIDI device status into the shared snapshot used by CLI and shell](https://github.com/michaelmonetized/omatainer/issues/65) — P2 / integration
+- [#66 [fix]/ Forward the requested scene number through the shell service](https://github.com/michaelmonetized/omatainer/issues/66) — P2 / integration
+- [#67 [fix]/ Reconcile decoded BPM with crate metadata and identify filename guesses](https://github.com/michaelmonetized/omatainer/issues/67) — P2 / library
+- [#68 [fix]/ Populate file duration in the existing crate length column](https://github.com/michaelmonetized/omatainer/issues/68) — P2 / library
+- [#69 [fix]/ Preserve accidentals when parsing filename key hints](https://github.com/michaelmonetized/omatainer/issues/69) — P2 / library
+- [#70 [fix]/ Update play history only after successful playback](https://github.com/michaelmonetized/omatainer/issues/70) — P2 / library
+- [#71 [fix]/ Preserve existing crate history across rescans](https://github.com/michaelmonetized/omatainer/issues/71) — P2 / library
+- [#72 [fix]/ Connect controller browse events to the visible crate selection](https://github.com/michaelmonetized/omatainer/issues/72) — P2 / midi
+- [#73 [fix]/ Report MIDI devices as connected only after connection succeeds](https://github.com/michaelmonetized/omatainer/issues/73) — P2 / midi
+- [#74 [fix]/ Restore documented shortcuts for implemented scene, sync, crossfader and load actions](https://github.com/michaelmonetized/omatainer/issues/74) — P2 / ui
+- [#75 [fix]/ Render effect-specific controls instead of inert generic sliders](https://github.com/michaelmonetized/omatainer/issues/75) — P2 / ui
+- [#76 [fix]/ Align displayed sample pad numbers with dispatched pad indexes](https://github.com/michaelmonetized/omatainer/issues/76) — P2 / ui
+- [#77 [fix]/ Make deck selection control the crate double-click destination](https://github.com/michaelmonetized/omatainer/issues/77) — P2 / ui
+- [#78 [fix]/ Reload font and shell theme settings when those sources change](https://github.com/michaelmonetized/omatainer/issues/78) — P2 / ui
+- [#79 [fix]/ Use the current Omarchy font when installing application fonts](https://github.com/michaelmonetized/omatainer/issues/79) — P2 / ui
+- [#80 [fix]/ Display last-play times as meaningful dates or elapsed time](https://github.com/michaelmonetized/omatainer/issues/80) — P3 / ui
+- [#81 [feat]/ Expose audio deadlines, xruns, latency and device-level performance diagnostics](https://github.com/michaelmonetized/omatainer/issues/81) — P0 / audio
+- [#82 [feat]/ Save and reopen complete native production and DJ projects](https://github.com/michaelmonetized/omatainer/issues/82) — P0 / project
+- [#83 [feat]/ Provide nondestructive undo history across all creative edits](https://github.com/michaelmonetized/omatainer/issues/83) — P0 / project
+- [#84 [feat]/ Add configurable elapsed, remaining and end-of-track deck warnings](https://github.com/michaelmonetized/omatainer/issues/84) — P1 / dj
+- [#85 [feat]/ Create a persistent DJ library with stable track identity](https://github.com/michaelmonetized/omatainer/issues/85) — P1 / library
+- [#86 [feat]/ Track factory content, model and integration licensing in shipped assets](https://github.com/michaelmonetized/omatainer/issues/86) — P1 / project
+- [#87 [feat]/ Expose complete keyboard and assistive-technology operation](https://github.com/michaelmonetized/omatainer/issues/87) — P1 / ui
+- [#88 [feat]/ Persist user preferences and named studio/performance profiles](https://github.com/michaelmonetized/omatainer/issues/88) — P1 / ui
+- [#89 [feat]/ Provide contextual help, interactive lessons and complete workflow documentation](https://github.com/michaelmonetized/omatainer/issues/89) — P1 / ui
+- [#90 [fix]/ Fail installation when Hyprland reload or configuration validation fails](https://github.com/michaelmonetized/omatainer/issues/90) — P1 / integration
+- [#91 [fix]/ Send valid status JSON from ctl follow](https://github.com/michaelmonetized/omatainer/issues/91) — P2 / integration
+- [#92 [fix]/ Validate IPC argument types instead of defaulting or wrapping targets](https://github.com/michaelmonetized/omatainer/issues/92) — P2 / integration
+- [#93 [fix]/ Make reload-theme actually reload theme resources](https://github.com/michaelmonetized/omatainer/issues/93) — P2 / integration
+- [#94 [feat]/ Configure professional audio devices, sample rates and buffers](https://github.com/michaelmonetized/omatainer/issues/94) — P0 / audio
+- [#95 [feat]/ Gate releases on production-scale audio and UI workloads](https://github.com/michaelmonetized/omatainer/issues/95) — P0 / audio
+- [#96 [feat]/ Provide a performance mode that protects the active show](https://github.com/michaelmonetized/omatainer/issues/96) — P0 / dj
+- [#97 [feat]/ Recover unsaved work after crashes and interrupted writes](https://github.com/michaelmonetized/omatainer/issues/97) — P0 / project
+- [#98 [feat]/ Name, color and persist per-track hot cues](https://github.com/michaelmonetized/omatainer/issues/98) — P1 / dj
+- [#99 [feat]/ Create and edit persistent per-track beatgrids](https://github.com/michaelmonetized/omatainer/issues/99) — P1 / dj
+- [#100 [feat]/ Qualify DJ time stretching for transparent key lock across tempo ranges](https://github.com/michaelmonetized/omatainer/issues/100) — P1 / dj
+- [#101 [feat]/ Load user samples into persistent DJ sampler banks](https://github.com/michaelmonetized/omatainer/issues/101) — P1 / dj
+- [#102 [feat]/ Export actionable support bundles and recovery-safe crash diagnostics](https://github.com/michaelmonetized/omatainer/issues/102) — P1 / integration
+- [#103 [feat]/ Preserve and qualify offline operation as optional online features arrive](https://github.com/michaelmonetized/omatainer/issues/103) — P1 / integration
+- [#104 [feat]/ Add persistent background track analysis with selective reanalysis](https://github.com/michaelmonetized/omatainer/issues/104) — P1 / library
+- [#105 [feat]/ Add named ordered crates and nested playlist organization](https://github.com/michaelmonetized/omatainer/issues/105) — P1 / library
+- [#106 [feat]/ Record actual DJ performance history with session boundaries](https://github.com/michaelmonetized/omatainer/issues/106) — P1 / library
+- [#107 [feat]/ Import arbitrary folders, files and removable music libraries](https://github.com/michaelmonetized/omatainer/issues/107) — P1 / library
+- [#108 [feat]/ Relocate missing music while preserving DJ preparation](https://github.com/michaelmonetized/omatainer/issues/108) — P1 / library
+- [#109 [feat]/ Read and edit real audio metadata instead of filename guesses](https://github.com/michaelmonetized/omatainer/issues/109) — P1 / library
+- [#110 [feat]/ Deliver a full MIDI piano-roll editor with keyboard-accessible editing](https://github.com/michaelmonetized/omatainer/issues/110) — P1 / midi
+- [#111 [feat]/ Import and export Standard MIDI Files without losing musical timing](https://github.com/michaelmonetized/omatainer/issues/111) — P1 / midi
+- [#112 [feat]/ Route MIDI by device, port, channel and message type](https://github.com/michaelmonetized/omatainer/issues/112) — P1 / midi
+- [#113 [feat]/ Support user-managed tracks and scenes beyond the fixed 8 by 8 grid](https://github.com/michaelmonetized/omatainer/issues/113) — P1 / production
+- [#114 [feat]/ Implement tempo automation and changing time signatures](https://github.com/michaelmonetized/omatainer/issues/114) — P1 / production
+- [#115 [feat]/ Relink missing project media and restore unavailable devices](https://github.com/michaelmonetized/omatainer/issues/115) — P1 / project
+- [#116 [feat]/ Collect project media and package portable self-contained sessions](https://github.com/michaelmonetized/omatainer/issues/116) — P1 / project
+- [#117 [feat]/ Save reusable project, track and live-set templates](https://github.com/michaelmonetized/omatainer/issues/117) — P1 / project
+- [#118 [feat]/ Provide scalable, high-contrast and color-independent layouts](https://github.com/michaelmonetized/omatainer/issues/118) — P1 / ui
+- [#119 [feat]/ Expose a versioned automation and remote-control API](https://github.com/michaelmonetized/omatainer/issues/119) — P2 / integration
+- [#120 [feat]/ Add licensed music-provider integration with explicit capability contracts](https://github.com/michaelmonetized/omatainer/issues/120) — P2 / library
+- [#121 [feat]/ Add track ratings, colors and performance annotations](https://github.com/michaelmonetized/omatainer/issues/121) — P2 / library
+- [#122 [feat]/ Score to video with frame-accurate playback and timecode](https://github.com/michaelmonetized/omatainer/issues/122) — P2 / production
+- [#123 [feat]/ Import tracks, clips and device chains from another project](https://github.com/michaelmonetized/omatainer/issues/123) — P2 / project
+- [#124 [feat]/ Manage named project versions and compare creative revisions](https://github.com/michaelmonetized/omatainer/issues/124) — P2 / project
+- [#125 [feat]/ Localize the interface and preserve international file and metadata handling](https://github.com/michaelmonetized/omatainer/issues/125) — P2 / ui
+- [#126 [feat]/ Customize shortcuts and find commands through a command palette](https://github.com/michaelmonetized/omatainer/issues/126) — P2 / ui
+- [#127 [feat]/ Support touch, pen and simultaneous performance gestures](https://github.com/michaelmonetized/omatainer/issues/127) — P2 / ui
+- [#128 [feat]/ Save configurable workspaces and multiple-window layouts](https://github.com/michaelmonetized/omatainer/issues/128) — P2 / ui
+- [#129 [feat]/ Recover safely from audio-device loss and backend restarts](https://github.com/michaelmonetized/omatainer/issues/129) — P0 / audio
+- [#130 [feat]/ Route independent multichannel inputs and outputs through an audio graph](https://github.com/michaelmonetized/omatainer/issues/130) — P0 / audio
+- [#131 [feat]/ Protect audible DJ decks from accidental load and eject](https://github.com/michaelmonetized/omatainer/issues/131) — P0 / dj
+- [#132 [feat]/ Prioritize and cancel expensive background audio jobs](https://github.com/michaelmonetized/omatainer/issues/132) — P1 / audio
+- [#133 [feat]/ Integrate low-latency PipeWire, JACK and ALSA workflows](https://github.com/michaelmonetized/omatainer/issues/133) — P1 / audio
+- [#134 [feat]/ Support manually mapped tempo changes within a track](https://github.com/michaelmonetized/omatainer/issues/134) — P1 / dj
+- [#135 [feat]/ Show aligned beatgrid, phase and phrase position on deck waveforms](https://github.com/michaelmonetized/omatainer/issues/135) — P1 / dj
+- [#136 [feat]/ Switch live sets without interrupting the outgoing mix](https://github.com/michaelmonetized/omatainer/issues/136) — P1 / dj
+- [#137 [feat]/ Maintain a versioned professional capability and compatibility matrix](https://github.com/michaelmonetized/omatainer/issues/137) — P1 / integration
+- [#138 [feat]/ Deliver verified releases with safe updates and rollback](https://github.com/michaelmonetized/omatainer/issues/138) — P1 / integration
+- [#139 [feat]/ Add field-aware search and filtering across the music library](https://github.com/michaelmonetized/omatainer/issues/139) — P1 / library
+- [#140 [feat]/ Protect prepared beatgrids and metadata from bulk reanalysis](https://github.com/michaelmonetized/omatainer/issues/140) — P1 / library
+- [#141 [feat]/ Analyze and recall safe per-track gain adjustment](https://github.com/michaelmonetized/omatainer/issues/141) — P1 / library
+- [#142 [feat]/ Analyze musical key and display harmonic compatibility](https://github.com/michaelmonetized/omatainer/issues/142) — P1 / library
+- [#143 [feat]/ Back up and move the complete DJ library with preparation data](https://github.com/michaelmonetized/omatainer/issues/143) — P1 / library
+- [#144 [feat]/ Make library columns, sorting and view density configurable](https://github.com/michaelmonetized/omatainer/issues/144) — P1 / library
+- [#145 [feat]/ Expose missing, corrupt, unsupported and read-only track status](https://github.com/michaelmonetized/omatainer/issues/145) — P1 / library
+- [#146 [feat]/ Add a reorderable prepare queue for upcoming tracks](https://github.com/michaelmonetized/omatainer/issues/146) — P1 / library
+- [#147 [feat]/ Transmit stable MIDI clock and transport to external instruments](https://github.com/michaelmonetized/omatainer/issues/147) — P1 / midi
+- [#148 [feat]/ Deliver a usable MIDI learn editor for performance controls](https://github.com/michaelmonetized/omatainer/issues/148) — P1 / midi
+- [#149 [feat]/ Edit MIDI CC, pitch-bend, program and channel-pressure data in clips](https://github.com/michaelmonetized/omatainer/issues/149) — P1 / midi
+- [#150 [feat]/ Record, edit and render per-note pitch, pressure and timbre expression](https://github.com/michaelmonetized/omatainer/issues/150) — P1 / midi
+- [#151 [feat]/ Add cursor-based MIDI step recording and computer-keyboard note input](https://github.com/michaelmonetized/omatainer/issues/151) — P1 / midi
+- [#152 [feat]/ Add editable Session clip management and reusable clip presets](https://github.com/michaelmonetized/omatainer/issues/152) — P1 / production
+- [#153 [feat]/ Add trigger, hold and toggle sample playback modes](https://github.com/michaelmonetized/omatainer/issues/153) — P2 / dj
+- [#154 [feat]/ Add crate favorites, search and membership discovery](https://github.com/michaelmonetized/omatainer/issues/154) — P2 / library
+- [#155 [feat]/ Manage music files and duplicates safely from the library](https://github.com/michaelmonetized/omatainer/issues/155) — P2 / library
+- [#156 [feat]/ Import standard playlists and existing local music-library exports](https://github.com/michaelmonetized/omatainer/issues/156) — P2 / library
+- [#157 [feat]/ Export and optionally publish performed setlists](https://github.com/michaelmonetized/omatainer/issues/157) — P2 / library
+- [#158 [feat]/ Integrate an authorized Beatport streaming workflow](https://github.com/michaelmonetized/omatainer/issues/158) — P2 / library
+- [#159 [feat]/ Integrate authorized SoundCloud catalog and playlists](https://github.com/michaelmonetized/omatainer/issues/159) — P2 / library
+- [#160 [feat]/ Integrate an authorized TIDAL DJ account and catalog](https://github.com/michaelmonetized/omatainer/issues/160) — P2 / library
+- [#161 [feat]/ Implement Link-compatible tempo, phase and start/stop synchronization](https://github.com/michaelmonetized/omatainer/issues/161) — P2 / midi
+- [#162 [feat]/ Recover recent MIDI performances with retrospective capture](https://github.com/michaelmonetized/omatainer/issues/162) — P2 / midi
+- [#163 [feat]/ Recombine note properties and shape velocity using editable transformation tools](https://github.com/michaelmonetized/omatainer/issues/163) — P2 / midi
+- [#164 [feat]/ Add quantize, stretch, reverse and tempo-curve MIDI transformations](https://github.com/michaelmonetized/omatainer/issues/164) — P2 / midi
+- [#165 [feat]/ Edit multiple MIDI clips together with explicit focus and ghost notes](https://github.com/michaelmonetized/omatainer/issues/165) — P2 / midi
+- [#166 [feat]/ Add per-note chance, velocity ranges and expressive note properties](https://github.com/michaelmonetized/omatainer/issues/166) — P2 / midi
+- [#167 [feat]/ Generate editable rhythmic and Euclidean MIDI patterns](https://github.com/michaelmonetized/omatainer/issues/167) — P2 / midi
+- [#168 [feat]/ Make keys and scales shared musical context for editing and devices](https://github.com/michaelmonetized/omatainer/issues/168) — P2 / midi
+- [#169 [feat]/ Exchange editable sessions using an open DAW interchange format](https://github.com/michaelmonetized/omatainer/issues/169) — P2 / project
+- [#170 [feat]/ Inspect project storage and safely clean unused media](https://github.com/michaelmonetized/omatainer/issues/170) — P2 / project
+- [#171 [feat]/ Integrate Apple Music only through an authorized DJ playback path](https://github.com/michaelmonetized/omatainer/issues/171) — P3 / library
+- [#172 [feat]/ Integrate Spotify only if an authorized DJ service agreement is available](https://github.com/michaelmonetized/omatainer/issues/172) — P3 / library
+- [#173 [feat]/ Support negotiated MIDI 2.0 and high-resolution expression](https://github.com/michaelmonetized/omatainer/issues/173) — P3 / midi
+- [#174 [feat]/ Offer notation and MusicXML exchange for composer collaboration](https://github.com/michaelmonetized/omatainer/issues/174) — P3 / production
+- [#175 [feat]/ Offer optional cross-device project transfer with explicit conflict handling](https://github.com/michaelmonetized/omatainer/issues/175) — P3 / project
+- [#176 [feat]/ Provide isolated cue/master headphone mixing and split cue](https://github.com/michaelmonetized/omatainer/issues/176) — P0 / audio
+- [#177 [feat]/ Monitor live inputs with explicit In, Auto and Off modes](https://github.com/michaelmonetized/omatainer/issues/177) — P0 / audio
+- [#178 [feat]/ Compensate device and routing latency across the complete graph](https://github.com/michaelmonetized/omatainer/issues/178) — P0 / audio
+- [#179 [feat]/ Export offline and real-time master audio with professional format controls](https://github.com/michaelmonetized/omatainer/issues/179) — P0 / project
+- [#180 [feat]/ Add live microphone and auxiliary DJ input channels](https://github.com/michaelmonetized/omatainer/issues/180) — P1 / audio
+- [#181 [feat]/ Record live DJ performances to reliable audio files](https://github.com/michaelmonetized/omatainer/issues/181) — P1 / audio
+- [#182 [feat]/ Make audio a first-class Session and Arrangement clip type](https://github.com/michaelmonetized/omatainer/issues/182) — P1 / audio
+- [#183 [feat]/ Host native VST3 instruments and audio effects](https://github.com/michaelmonetized/omatainer/issues/183) — P1 / audio
+- [#184 [feat]/ Stream long recordings and deck media with bounded caches](https://github.com/michaelmonetized/omatainer/issues/184) — P1 / audio
+- [#185 [feat]/ Add beat-jump transport and controller pad controls](https://github.com/michaelmonetized/omatainer/issues/185) — P1 / dj
+- [#186 [feat]/ Implement hold-to-audition and stutter behavior for temporary cues](https://github.com/michaelmonetized/omatainer/issues/186) — P1 / dj
+- [#187 [feat]/ Add assignable deck DJ-FX units with tempo controls](https://github.com/michaelmonetized/omatainer/issues/187) — P1 / dj
+- [#188 [feat]/ Apply beatgrid quantization to deck cues and loop operations](https://github.com/michaelmonetized/omatainer/issues/188) — P1 / dj
+- [#189 [feat]/ Support four independently controlled DJ decks](https://github.com/michaelmonetized/omatainer/issues/189) — P1 / dj
+- [#190 [feat]/ Add precise loop boundary editing and beat-based loop movement](https://github.com/michaelmonetized/omatainer/issues/190) — P1 / dj
+- [#191 [feat]/ Add a dedicated track preparation and audition workflow](https://github.com/michaelmonetized/omatainer/issues/191) — P1 / dj
+- [#192 [feat]/ Add deck performance-pad modes with per-deck selection](https://github.com/michaelmonetized/omatainer/issues/192) — P1 / dj
+- [#193 [feat]/ Separate tempo matching from beat and bar synchronization](https://github.com/michaelmonetized/omatainer/issues/193) — P1 / dj
+- [#194 [feat]/ Qualify sustained browsing and preparation on professional-size libraries](https://github.com/michaelmonetized/omatainer/issues/194) — P1 / library
+- [#195 [feat]/ Persist, import and export MIDI mapping presets](https://github.com/michaelmonetized/omatainer/issues/195) — P1 / midi
+- [#196 [feat]/ Implement per-clip launch modes, launch quantization and legato switching](https://github.com/michaelmonetized/omatainer/issues/196) — P1 / production
+- [#197 [feat]/ Schedule independent tracks across cores with bounded real-time execution](https://github.com/michaelmonetized/omatainer/issues/197) — P2 / audio
+- [#198 [feat]/ Host CLAP instruments and effects with expression support](https://github.com/michaelmonetized/omatainer/issues/198) — P2 / audio
+- [#199 [feat]/ Host LV2 instruments, effects and native Linux plugin UIs](https://github.com/michaelmonetized/omatainer/issues/199) — P2 / audio
+- [#200 [feat]/ Add deliberate continuous playback from an ordered crate](https://github.com/michaelmonetized/omatainer/issues/200) — P2 / dj
+- [#201 [feat]/ Add optional digital-vinyl control using a supported control-signal format](https://github.com/michaelmonetized/omatainer/issues/201) — P2 / dj
+- [#202 [feat]/ Add independent deck key shift and harmonic key sync](https://github.com/michaelmonetized/omatainer/issues/202) — P2 / dj
+- [#203 [feat]/ Add slip playback with configurable release timing](https://github.com/michaelmonetized/omatainer/issues/203) — P2 / dj
+- [#204 [feat]/ Detect changing-tempo beatgrids automatically as a preview-comparison feature](https://github.com/michaelmonetized/omatainer/issues/204) — P2 / library
+- [#205 [feat]/ Add automatically maintained smart crates](https://github.com/michaelmonetized/omatainer/issues/205) — P2 / library
+- [#206 [feat]/ Manage provider-authorized offline lockers and readiness](https://github.com/michaelmonetized/omatainer/issues/206) — P2 / library
+- [#207 [feat]/ Build chord progression and voicing generation tools](https://github.com/michaelmonetized/omatainer/issues/207) — P2 / midi
+- [#208 [feat]/ Create shape-guided and seeded melodic MIDI generators](https://github.com/michaelmonetized/omatainer/issues/208) — P2 / midi
+- [#209 [feat]/ Generate arpeggios, strums, ornaments and articulated note repetitions](https://github.com/michaelmonetized/omatainer/issues/209) — P2 / midi
+- [#210 [feat]/ Support microtonal tuning systems and per-track tuning bypass](https://github.com/michaelmonetized/omatainer/issues/210) — P2 / midi
+- [#211 [feat]/ Support professional cross-platform collaboration and document native limits](https://github.com/michaelmonetized/omatainer/issues/211) — P3 / integration
+- [#212 [feat]/ Add a separately controlled booth monitor bus](https://github.com/michaelmonetized/omatainer/issues/212) — P1 / audio
+- [#213 [feat]/ Add deck-isolated output mode for external mixers](https://github.com/michaelmonetized/omatainer/issues/213) — P1 / audio
+- [#214 [feat]/ Implement transient detection and editable audio warp markers](https://github.com/michaelmonetized/omatainer/issues/214) — P1 / audio
+- [#215 [feat]/ Manage plugin presets, A/B states and reusable device chains](https://github.com/michaelmonetized/omatainer/issues/215) — P1 / audio
+- [#216 [feat]/ Scan, catalog and quarantine plugins outside the application process](https://github.com/michaelmonetized/omatainer/issues/216) — P1 / audio
+- [#217 [feat]/ Add configurable crossfader assignments, curves and scratch cut-in](https://github.com/michaelmonetized/omatainer/issues/217) — P1 / dj
+- [#218 [feat]/ Add selectable DJ waveform and library layouts](https://github.com/michaelmonetized/omatainer/issues/218) — P1 / dj
+- [#219 [feat]/ Add safe pitch-fader pickup and temporary pitch bend](https://github.com/michaelmonetized/omatainer/issues/219) — P1 / dj
+- [#220 [feat]/ Add named persistent loop banks for each track](https://github.com/michaelmonetized/omatainer/issues/220) — P1 / dj
+- [#221 [feat]/ Enforce streaming capabilities and protect playback during service failures](https://github.com/michaelmonetized/omatainer/issues/221) — P1 / library
+- [#222 [feat]/ Follow external MIDI clock with transport and loss handling](https://github.com/michaelmonetized/omatainer/issues/222) — P1 / midi
+- [#223 [feat]/ Support configurable MIDI encoder encodings and high-resolution controls](https://github.com/michaelmonetized/omatainer/issues/223) — P1 / midi
+- [#224 [feat]/ Drive controller LEDs and meters from actual application state](https://github.com/michaelmonetized/omatainer/issues/224) — P1 / midi
+- [#225 [feat]/ Add runtime controller discovery, enablement and reconnection](https://github.com/michaelmonetized/omatainer/issues/225) — P1 / midi
+- [#226 [feat]/ Build an editable linear audio and MIDI Arrangement timeline](https://github.com/michaelmonetized/omatainer/issues/226) — P1 / production
+- [#227 [feat]/ Give scenes names, tempo, meter and launch-state semantics](https://github.com/michaelmonetized/omatainer/issues/227) — P1 / production
+- [#228 [feat]/ Record and overdub audio or MIDI directly into Session slots](https://github.com/michaelmonetized/omatainer/issues/228) — P1 / production
+- [#229 [feat]/ Export aligned stems, track groups and delivery versions in batches](https://github.com/michaelmonetized/omatainer/issues/229) — P1 / project
+- [#230 [feat]/ Expose a clean performance audio feed for OBS and broadcast tools](https://github.com/michaelmonetized/omatainer/issues/230) — P2 / audio
+- [#231 [feat]/ Validate loudness, true peaks and metadata before delivery](https://github.com/michaelmonetized/omatainer/issues/231) — P2 / audio
+- [#232 [feat]/ Add selectable one-knob channel effects](https://github.com/michaelmonetized/omatainer/issues/232) — P2 / dj
+- [#233 [feat]/ Add DVS signal calibration and diagnostics](https://github.com/michaelmonetized/omatainer/issues/233) — P2 / dj
+- [#234 [feat]/ Save and share DJ effect presets and unit layouts](https://github.com/michaelmonetized/omatainer/issues/234) — P2 / dj
+- [#235 [feat]/ Add instant doubles and deck transfer](https://github.com/michaelmonetized/omatainer/issues/235) — P2 / dj
+- [#236 [feat]/ Add momentary loop-roll pad performance](https://github.com/michaelmonetized/omatainer/issues/236) — P2 / dj
+- [#237 [feat]/ Add reverse playback and momentary censor controls](https://github.com/michaelmonetized/omatainer/issues/237) — P2 / dj
+- [#238 [feat]/ Add beat-synced sampler playback and output assignments](https://github.com/michaelmonetized/omatainer/issues/238) — P2 / dj
+- [#239 [feat]/ Add scratch banks with instant return to the previous deck track](https://github.com/michaelmonetized/omatainer/issues/239) — P2 / dj
+- [#240 [feat]/ Add moving and fixed-loop slicer pad modes](https://github.com/michaelmonetized/omatainer/issues/240) — P2 / dj
+- [#241 [feat]/ Link set recordings to performed-track and cue markers](https://github.com/michaelmonetized/omatainer/issues/241) — P2 / library
+- [#242 [feat]/ Convert recorded melodies, harmony and drums to editable MIDI](https://github.com/michaelmonetized/omatainer/issues/242) — P2 / production
+- [#243 [feat]/ Add probabilistic clip and scene follow actions](https://github.com/michaelmonetized/omatainer/issues/243) — P2 / production
+- [#244 [feat]/ Support lawful legacy and platform-specific plug-in interoperability](https://github.com/michaelmonetized/omatainer/issues/244) — P3 / audio
+- [#245 [feat]/ Support multichannel and immersive production as an advanced workflow](https://github.com/michaelmonetized/omatainer/issues/245) — P3 / audio
+- [#246 [feat]/ Expose performance timing and mixer state for lighting systems](https://github.com/michaelmonetized/omatainer/issues/246) — P3 / dj
+- [#247 [feat]/ Add chromatic cue-point performance pads](https://github.com/michaelmonetized/omatainer/issues/247) — P3 / dj
+- [#248 [feat]/ Support post-production session exchange and broadcast media metadata](https://github.com/michaelmonetized/omatainer/issues/248) — P3 / project
+- [#249 [feat]/ Provide audio clip fades and editable arrangement crossfades](https://github.com/michaelmonetized/omatainer/issues/249) — P1 / audio
+- [#250 [feat]/ Offer distinct high-quality warp modes for drums, tones, textures and mixes](https://github.com/michaelmonetized/omatainer/issues/250) — P1 / audio
+- [#251 [feat]/ Isolate plugin failures and restore processing without losing sessions](https://github.com/michaelmonetized/omatainer/issues/251) — P1 / audio
+- [#252 [feat]/ Publish hardware profiles backed by end-to-end compatibility evidence](https://github.com/michaelmonetized/omatainer/issues/252) — P1 / midi
+- [#253 [feat]/ Add editable multitrack automation lanes and breakpoint curves](https://github.com/michaelmonetized/omatainer/issues/253) — P1 / production
+- [#254 [feat]/ Make device chains editable, inspectable and reusable with A/B states](https://github.com/michaelmonetized/omatainer/issues/254) — P1 / production
+- [#255 [feat]/ Add named arrangement locators, musical scrubbing and loop-region navigation](https://github.com/michaelmonetized/omatainer/issues/255) — P1 / production
+- [#256 [feat]/ Add count-in, punch recording and multi-pass recording workflows](https://github.com/michaelmonetized/omatainer/issues/256) — P1 / production
+- [#257 [feat]/ Send and receive Link Audio streams with track-level routing and latency controls](https://github.com/michaelmonetized/omatainer/issues/257) — P2 / audio
+- [#258 [feat]/ Extract editable production stems from complete clips or selected time ranges](https://github.com/michaelmonetized/omatainer/issues/258) — P2 / audio
+- [#259 [feat]/ Add momentary and latched performance-pad FX](https://github.com/michaelmonetized/omatainer/issues/259) — P2 / dj
+- [#260 [feat]/ Add controller layers, modifiers and takeover policies](https://github.com/michaelmonetized/omatainer/issues/260) — P2 / midi
+- [#261 [feat]/ Implement a groove pool with audio/MIDI extraction and commitment](https://github.com/michaelmonetized/omatainer/issues/261) — P2 / production
+- [#262 [feat]/ Create reviewable collaboration packages with mix notes and references](https://github.com/michaelmonetized/omatainer/issues/262) — P2 / project
+- [#263 [feat]/ Trigger a saved loop from its associated cue marker](https://github.com/michaelmonetized/omatainer/issues/263) — P3 / dj
+- [#264 [feat]/ Record and replay nondestructive cue and censor routines](https://github.com/michaelmonetized/omatainer/issues/264) — P3 / dj
+- [#265 [feat]/ Add optional synchronized DJ video playback and external output](https://github.com/michaelmonetized/omatainer/issues/265) — P3 / dj
+- [#266 [feat]/ Mix approved streaming providers concurrently as a preview-comparison feature](https://github.com/michaelmonetized/omatainer/issues/266) — P3 / library
+- [#267 [feat]/ Populate prearranged clip placeholders from a live recording](https://github.com/michaelmonetized/omatainer/issues/267) — P3 / production
+- [#268 [feat]/ Support safe DJ handover on qualified dual-computer hardware](https://github.com/michaelmonetized/omatainer/issues/268) — P1 / dj
+- [#269 [feat]/ Implement arrangement split, consolidate and structural time editing](https://github.com/michaelmonetized/omatainer/issues/269) — P1 / production
+- [#270 [feat]/ Record performance automation with explicit override and re-enable behavior](https://github.com/michaelmonetized/omatainer/issues/270) — P1 / production
+- [#271 [feat]/ Implement take lanes and non-destructive audio/MIDI comping](https://github.com/michaelmonetized/omatainer/issues/271) — P1 / production
+- [#272 [feat]/ Build nested instrument and effect racks with key, velocity and chain zones](https://github.com/michaelmonetized/omatainer/issues/272) — P1 / production
+- [#273 [feat]/ Deliver a musician-facing mixer with pan laws, stereo controls and solo semantics](https://github.com/michaelmonetized/omatainer/issues/273) — P1 / production
+- [#274 [feat]/ Provide a fully editable stereo algorithmic reverb](https://github.com/michaelmonetized/omatainer/issues/274) — P2 / audio
+- [#275 [feat]/ Implement a playable record/overdub audio looper device](https://github.com/michaelmonetized/omatainer/issues/275) — P2 / audio
+- [#276 [feat]/ Provide tempo-synced auto-pan, tremolo and rhythmic chopping](https://github.com/michaelmonetized/omatainer/issues/276) — P2 / audio
+- [#277 [feat]/ Add tempo-synced beat repeat and controlled stutter processing](https://github.com/michaelmonetized/omatainer/issues/277) — P2 / audio
+- [#278 [feat]/ Add an analog/digital character echo with modulation and noise shaping](https://github.com/michaelmonetized/omatainer/issues/278) — P2 / audio
+- [#279 [feat]/ Expand chorus into chorus, ensemble and vibrato processing](https://github.com/michaelmonetized/omatainer/issues/279) — P2 / audio
+- [#280 [feat]/ Implement convolution and hybrid reverb with licensed impulse responses](https://github.com/michaelmonetized/omatainer/issues/280) — P2 / audio
+- [#281 [feat]/ Add an integrated drum-bus processor with transient shaping and tuned low-end enhancement](https://github.com/michaelmonetized/omatainer/issues/281) — P2 / audio
+- [#282 [feat]/ Implement parallel filtered delay lines with independent pan and feedback](https://github.com/michaelmonetized/omatainer/issues/282) — P2 / audio
+- [#283 [feat]/ Add granular pitch-shifted delay for sound design](https://github.com/michaelmonetized/omatainer/issues/283) — P2 / audio
+- [#284 [feat]/ Provide a metered mastering limiter with lookahead and stereo modes](https://github.com/michaelmonetized/omatainer/issues/284) — P2 / audio
+- [#285 [feat]/ Provide bit reduction, erosion and vinyl-style texture processing](https://github.com/michaelmonetized/omatainer/issues/285) — P2 / audio
+- [#286 [feat]/ Implement multiband compression, expansion and envelope shaping](https://github.com/michaelmonetized/omatainer/issues/286) — P2 / audio
+- [#287 [feat]/ Build a routable multistage saturation device with modulation](https://github.com/michaelmonetized/omatainer/issues/287) — P2 / audio
+- [#288 [feat]/ Add a graphical parametric equalizer with stereo and mid/side editing](https://github.com/michaelmonetized/omatainer/issues/288) — P2 / audio
+- [#289 [feat]/ Add phaser and flanger effects with controllable feedback and modulation](https://github.com/michaelmonetized/omatainer/issues/289) — P2 / audio
+- [#290 [feat]/ Add real-time monophonic pitch correction and MIDI-driven harmony](https://github.com/michaelmonetized/omatainer/issues/290) — P2 / audio
+- [#291 [feat]/ Add pitch shifting, frequency shifting and ring modulation](https://github.com/michaelmonetized/omatainer/issues/291) — P2 / audio
+- [#292 [feat]/ Provide tuned resonator banks and physically modeled resonant-body effects](https://github.com/michaelmonetized/omatainer/issues/292) — P2 / audio
+- [#293 [feat]/ Provide waveshaping, tube and pedal-style saturation tools](https://github.com/michaelmonetized/omatainer/issues/293) — P2 / audio
+- [#294 [feat]/ Add spectral resonation, spectral delay/freeze and spectral blur devices](https://github.com/michaelmonetized/omatainer/issues/294) — P2 / audio
+- [#295 [feat]/ Build a configurable stereo delay with tempo divisions and advanced LFO shapes](https://github.com/michaelmonetized/omatainer/issues/295) — P2 / audio
+- [#296 [feat]/ Follow the tempo of live incoming audio with controlled fallback](https://github.com/michaelmonetized/omatainer/issues/296) — P2 / audio
+- [#297 [feat]/ Provide gain/stereo/alignment utilities plus spectrum and tuning analysis](https://github.com/michaelmonetized/omatainer/issues/297) — P2 / audio
+- [#298 [feat]/ Enable live deck stem separation without interrupting playback](https://github.com/michaelmonetized/omatainer/issues/298) — P2 / dj
+- [#299 [feat]/ Prepare and manage cached stems before a performance](https://github.com/michaelmonetized/omatainer/issues/299) — P2 / library
+- [#300 [feat]/ Support explicitly qualified HID DJ media players](https://github.com/michaelmonetized/omatainer/issues/300) — P2 / midi
+- [#301 [feat]/ Implement verified motorized platter control and calibration](https://github.com/michaelmonetized/omatainer/issues/301) — P2 / midi
+- [#302 [feat]/ Provide CC controls, MIDI monitoring and expression-shaping devices](https://github.com/michaelmonetized/omatainer/issues/302) — P2 / midi
+- [#303 [feat]/ Build a programmable virtual-analog synth with mono, poly and expressive modes](https://github.com/michaelmonetized/omatainer/issues/303) — P2 / production
+- [#304 [feat]/ Grab and release arrangement loops during live performance](https://github.com/michaelmonetized/omatainer/issues/304) — P2 / production
+- [#305 [feat]/ Provide linked and independent clip modulation envelopes](https://github.com/michaelmonetized/omatainer/issues/305) — P2 / production
+- [#306 [feat]/ Create a per-hit drum sampler with transient shaping and creative playback](https://github.com/michaelmonetized/omatainer/issues/306) — P2 / production
+- [#307 [feat]/ Provide a modeled electric-piano instrument](https://github.com/michaelmonetized/omatainer/issues/307) — P2 / production
+- [#308 [feat]/ Host user-authored audio, MIDI and instrument devices through an open extension runtime](https://github.com/michaelmonetized/omatainer/issues/308) — P2 / production
+- [#309 [feat]/ Add an FM and additive synthesis instrument](https://github.com/michaelmonetized/omatainer/issues/309) — P2 / production
+- [#310 [feat]/ Freeze and unfreeze tracks without sacrificing editability](https://github.com/michaelmonetized/omatainer/issues/310) — P2 / production
+- [#311 [feat]/ Provide a sample-based granular synthesis instrument](https://github.com/michaelmonetized/omatainer/issues/311) — P2 / production
+- [#312 [feat]/ Create an expressive dual-layer macro-oscillator instrument](https://github.com/michaelmonetized/omatainer/issues/312) — P2 / production
+- [#313 [feat]/ Add physical-model mallet and resonant-percussion instruments](https://github.com/michaelmonetized/omatainer/issues/313) — P2 / production
+- [#314 [feat]/ Build an editable chromatic single-sample instrument](https://github.com/michaelmonetized/omatainer/issues/314) — P2 / production
+- [#315 [feat]/ Add a physical-model string synthesis instrument](https://github.com/michaelmonetized/omatainer/issues/315) — P2 / production
+- [#316 [feat]/ Add a morphing wavetable instrument with user-table import](https://github.com/michaelmonetized/omatainer/issues/316) — P2 / production
+- [#317 [feat]/ Browse, tag and audition instruments, presets, clips and production samples](https://github.com/michaelmonetized/omatainer/issues/317) — P2 / ui
+- [#318 [feat]/ Support linked multitrack editing for phase-coherent recordings](https://github.com/michaelmonetized/omatainer/issues/318) — P1 / audio
+- [#319 [feat]/ Provide a user-editable drum rack with per-pad chains and choke groups](https://github.com/michaelmonetized/omatainer/issues/319) — P1 / production
+- [#320 [feat]/ Implement nested group tracks, subgroup mixing and track organization](https://github.com/michaelmonetized/omatainer/issues/320) — P1 / production
+- [#321 [feat]/ Add auxiliary sends, returns and musician-facing sidechain routing](https://github.com/michaelmonetized/omatainer/issues/321) — P1 / production
+- [#322 [feat]/ Record Session performances into Arrangement and restore arrangement control](https://github.com/michaelmonetized/omatainer/issues/322) — P1 / production
+- [#323 [feat]/ Add guitar/bass amplifier and cabinet simulation](https://github.com/michaelmonetized/omatainer/issues/323) — P2 / audio
+- [#324 [feat]/ Apply performance FX and rolls to selected stems](https://github.com/michaelmonetized/omatainer/issues/324) — P2 / dj
+- [#325 [feat]/ Add per-stem mute, solo and level controls on decks](https://github.com/michaelmonetized/omatainer/issues/325) — P2 / dj
+- [#326 [feat]/ Publish library and deck information to supported controller screens](https://github.com/michaelmonetized/omatainer/issues/326) — P2 / midi
+- [#327 [feat]/ Provide composable pitch, scale, chord, random, velocity and note-length MIDI effects](https://github.com/michaelmonetized/omatainer/issues/327) — P2 / midi
+- [#328 [feat]/ Add a multisample instrument with key/velocity zones and modulation](https://github.com/michaelmonetized/omatainer/issues/328) — P2 / production
+- [#329 [feat]/ Map rack macros and recall named macro variations](https://github.com/michaelmonetized/omatainer/issues/329) — P2 / production
+- [#330 [feat]/ Add sequenced, pitch-reversing and dual-buffer creative delay devices](https://github.com/michaelmonetized/omatainer/issues/330) — P3 / audio
+- [#331 [feat]/ Provide visual/code device authoring, a musical object API and custom MIDI tools](https://github.com/michaelmonetized/omatainer/issues/331) — P3 / production
+- [#332 [feat]/ Bounce clips, selected ranges and groups into editable audio tracks](https://github.com/michaelmonetized/omatainer/issues/332) — P1 / audio
+- [#333 [feat]/ Extend dynamics processing into configurable compressor and bus-compressor devices](https://github.com/michaelmonetized/omatainer/issues/333) — P2 / audio
+- [#334 [feat]/ Add a fully controllable gate and expander with sidechain audition](https://github.com/michaelmonetized/omatainer/issues/334) — P2 / audio
+- [#335 [feat]/ Add a modulation-capable filter device with envelope follower and sidechain](https://github.com/michaelmonetized/omatainer/issues/335) — P2 / audio
+- [#336 [feat]/ Add a playable vocoder with external carrier routing](https://github.com/michaelmonetized/omatainer/issues/336) — P2 / audio
+- [#337 [feat]/ Split stems across linked deck mixer channels](https://github.com/michaelmonetized/omatainer/issues/337) — P2 / dj
+- [#338 [feat]/ Provide evolving step, probability and polyrhythmic sequencer devices](https://github.com/michaelmonetized/omatainer/issues/338) — P2 / midi
+- [#339 [feat]/ Add performance arpeggiator and MIDI note-echo devices](https://github.com/michaelmonetized/omatainer/issues/339) — P2 / midi
+- [#340 [feat]/ Provide full production control for Push 1 and Push 2](https://github.com/michaelmonetized/omatainer/issues/340) — P2 / midi
+- [#341 [feat]/ Ship an original tagged production library of kits, presets, loops and clips](https://github.com/michaelmonetized/omatainer/issues/341) — P2 / production
+- [#342 [feat]/ Provide editable kick, snare, clap, hat, cymbal, tom and metallic drum synthesis](https://github.com/michaelmonetized/omatainer/issues/342) — P2 / production
+- [#343 [feat]/ Add assignable LFO, envelope, shaper and performance-expression modulators](https://github.com/michaelmonetized/omatainer/issues/343) — P2 / production
+- [#344 [feat]/ Slice samples to playable pads and reconstruct their rhythm as MIDI](https://github.com/michaelmonetized/omatainer/issues/344) — P2 / production
+- [#345 [feat]/ Create customizable performance macro pages spanning the whole set](https://github.com/michaelmonetized/omatainer/issues/345) — P2 / ui
+- [#346 [feat]/ Add stem-specific slip performance gestures](https://github.com/michaelmonetized/omatainer/issues/346) — P3 / dj
+- [#347 [feat]/ Find and swap acoustically similar production samples](https://github.com/michaelmonetized/omatainer/issues/347) — P3 / production
+- [#348 [feat]/ Insert external hardware effects with round-trip latency calibration](https://github.com/michaelmonetized/omatainer/issues/348) — P1 / audio
+- [#349 [feat]/ Integrate external MIDI instruments as latency-compensated track devices](https://github.com/michaelmonetized/omatainer/issues/349) — P1 / production
+- [#350 [feat]/ Support expressive Push 3 controller workflows without implying standalone licensing](https://github.com/michaelmonetized/omatainer/issues/350) — P2 / midi
+- [#351 [feat]/ Recall selective performance snapshots across tracks and devices](https://github.com/michaelmonetized/omatainer/issues/351) — P2 / production
+- [#352 [feat]/ Integrate pitch, gates, clocks and modulation with modular hardware](https://github.com/michaelmonetized/omatainer/issues/352) — P3 / audio
+- [#353 [feat]/ Add optional licensed acoustic drums, pianos, electric keys, guitar and bass libraries](https://github.com/michaelmonetized/omatainer/issues/353) — P3 / production
+- [#354 [feat]/ Add original vocal, foley, cinematic, electronic and generative production packs](https://github.com/michaelmonetized/omatainer/issues/354) — P3 / production
+- [#355 [feat]/ Add optional orchestral, chamber and global-percussion instrument collections](https://github.com/michaelmonetized/omatainer/issues/355) — P3 / production
+- [#356 [feat]/ Provide playable physics-inspired modulation and generative sound devices](https://github.com/michaelmonetized/omatainer/issues/356) — P3 / production
+- [#357 [feat]/ Integrate optional licensed sample-provider search and audition for production](https://github.com/michaelmonetized/omatainer/issues/357) — P3 / production

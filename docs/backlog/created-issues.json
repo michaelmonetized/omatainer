@@ -1,0 +1,2144 @@
+{
+  "prod-sample-provider": {
+    "id": "prod-sample-provider",
+    "number": 357,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/357",
+    "title": "[feat]/ Integrate optional licensed sample-provider search and audition for production"
+  },
+  "prod-nature-generators": {
+    "id": "prod-nature-generators",
+    "number": 356,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/356",
+    "title": "[feat]/ Provide playable physics-inspired modulation and generative sound devices"
+  },
+  "prod-content-orchestral-world": {
+    "id": "prod-content-orchestral-world",
+    "number": 355,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/355",
+    "title": "[feat]/ Add optional orchestral, chamber and global-percussion instrument collections"
+  },
+  "prod-content-creative": {
+    "id": "prod-content-creative",
+    "number": 354,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/354",
+    "title": "[feat]/ Add original vocal, foley, cinematic, electronic and generative production packs"
+  },
+  "prod-content-acoustic": {
+    "id": "prod-content-acoustic",
+    "number": 353,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/353",
+    "title": "[feat]/ Add optional licensed acoustic drums, pianos, electric keys, guitar and bass libraries"
+  },
+  "prod-cv-tools": {
+    "id": "prod-cv-tools",
+    "number": 352,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/352",
+    "title": "[feat]/ Integrate pitch, gates, clocks and modulation with modular hardware"
+  },
+  "prod-performance-variations": {
+    "id": "prod-performance-variations",
+    "number": 351,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/351",
+    "title": "[feat]/ Recall selective performance snapshots across tracks and devices"
+  },
+  "prod-push-expressive": {
+    "id": "prod-push-expressive",
+    "number": 350,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/350",
+    "title": "[feat]/ Support expressive Push 3 controller workflows without implying standalone licensing"
+  },
+  "prod-external-instrument": {
+    "id": "prod-external-instrument",
+    "number": 349,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/349",
+    "title": "[feat]/ Integrate external MIDI instruments as latency-compensated track devices"
+  },
+  "prod-external-effect": {
+    "id": "prod-external-effect",
+    "number": 348,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/348",
+    "title": "[feat]/ Insert external hardware effects with round-trip latency calibration"
+  },
+  "prod-sample-similarity": {
+    "id": "prod-sample-similarity",
+    "number": 347,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/347",
+    "title": "[feat]/ Find and swap acoustically similar production samples"
+  },
+  "dj-stem-slip": {
+    "id": "dj-stem-slip",
+    "number": 346,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/346",
+    "title": "[feat]/ Add stem-specific slip performance gestures"
+  },
+  "prod-performance-controls": {
+    "id": "prod-performance-controls",
+    "number": 345,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/345",
+    "title": "[feat]/ Create customizable performance macro pages spanning the whole set"
+  },
+  "prod-slice-rack": {
+    "id": "prod-slice-rack",
+    "number": 344,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/344",
+    "title": "[feat]/ Slice samples to playable pads and reconstruct their rhythm as MIDI"
+  },
+  "prod-modulators": {
+    "id": "prod-modulators",
+    "number": 343,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/343",
+    "title": "[feat]/ Add assignable LFO, envelope, shaper and performance-expression modulators"
+  },
+  "prod-drum-synths": {
+    "id": "prod-drum-synths",
+    "number": 342,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/342",
+    "title": "[feat]/ Provide editable kick, snare, clap, hat, cymbal, tom and metallic drum synthesis"
+  },
+  "prod-content-core": {
+    "id": "prod-content-core",
+    "number": 341,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/341",
+    "title": "[feat]/ Ship an original tagged production library of kits, presets, loops and clips"
+  },
+  "prod-push-classic": {
+    "id": "prod-push-classic",
+    "number": 340,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/340",
+    "title": "[feat]/ Provide full production control for Push 1 and Push 2"
+  },
+  "prod-midi-arpeggio-echo": {
+    "id": "prod-midi-arpeggio-echo",
+    "number": 339,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/339",
+    "title": "[feat]/ Add performance arpeggiator and MIDI note-echo devices"
+  },
+  "prod-generative-sequencers": {
+    "id": "prod-generative-sequencers",
+    "number": 338,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/338",
+    "title": "[feat]/ Provide evolving step, probability and polyrhythmic sequencer devices"
+  },
+  "dj-stem-split-decks": {
+    "id": "dj-stem-split-decks",
+    "number": 337,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/337",
+    "title": "[feat]/ Split stems across linked deck mixer channels"
+  },
+  "prod-vocoder": {
+    "id": "prod-vocoder",
+    "number": 336,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/336",
+    "title": "[feat]/ Add a playable vocoder with external carrier routing"
+  },
+  "prod-modulated-filter": {
+    "id": "prod-modulated-filter",
+    "number": 335,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/335",
+    "title": "[feat]/ Add a modulation-capable filter device with envelope follower and sidechain"
+  },
+  "prod-gate-expander": {
+    "id": "prod-gate-expander",
+    "number": 334,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/334",
+    "title": "[feat]/ Add a fully controllable gate and expander with sidechain audition"
+  },
+  "prod-compressors": {
+    "id": "prod-compressors",
+    "number": 333,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/333",
+    "title": "[feat]/ Extend dynamics processing into configurable compressor and bus-compressor devices"
+  },
+  "prod-bounce": {
+    "id": "prod-bounce",
+    "number": 332,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/332",
+    "title": "[feat]/ Bounce clips, selected ranges and groups into editable audio tracks"
+  },
+  "prod-extension-authoring": {
+    "id": "prod-extension-authoring",
+    "number": 331,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/331",
+    "title": "[feat]/ Provide visual/code device authoring, a musical object API and custom MIDI tools"
+  },
+  "prod-creative-delay-extensions": {
+    "id": "prod-creative-delay-extensions",
+    "number": 330,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/330",
+    "title": "[feat]/ Add sequenced, pitch-reversing and dual-buffer creative delay devices"
+  },
+  "prod-rack-macros": {
+    "id": "prod-rack-macros",
+    "number": 329,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/329",
+    "title": "[feat]/ Map rack macros and recall named macro variations"
+  },
+  "prod-multisampler": {
+    "id": "prod-multisampler",
+    "number": 328,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/328",
+    "title": "[feat]/ Add a multisample instrument with key/velocity zones and modulation"
+  },
+  "prod-midi-note-effects": {
+    "id": "prod-midi-note-effects",
+    "number": 327,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/327",
+    "title": "[feat]/ Provide composable pitch, scale, chord, random, velocity and note-length MIDI effects"
+  },
+  "dj-hardware-displays": {
+    "id": "dj-hardware-displays",
+    "number": 326,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/326",
+    "title": "[feat]/ Publish library and deck information to supported controller screens"
+  },
+  "dj-stem-performance-controls": {
+    "id": "dj-stem-performance-controls",
+    "number": 325,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/325",
+    "title": "[feat]/ Add per-stem mute, solo and level controls on decks"
+  },
+  "dj-stem-fx-routing": {
+    "id": "dj-stem-fx-routing",
+    "number": 324,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/324",
+    "title": "[feat]/ Apply performance FX and rolls to selected stems"
+  },
+  "prod-amp-cabinet": {
+    "id": "prod-amp-cabinet",
+    "number": 323,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/323",
+    "title": "[feat]/ Add guitar/bass amplifier and cabinet simulation"
+  },
+  "prod-session-arrangement-capture": {
+    "id": "prod-session-arrangement-capture",
+    "number": 322,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/322",
+    "title": "[feat]/ Record Session performances into Arrangement and restore arrangement control"
+  },
+  "prod-sends-returns": {
+    "id": "prod-sends-returns",
+    "number": 321,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/321",
+    "title": "[feat]/ Add auxiliary sends, returns and musician-facing sidechain routing"
+  },
+  "prod-group-tracks": {
+    "id": "prod-group-tracks",
+    "number": 320,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/320",
+    "title": "[feat]/ Implement nested group tracks, subgroup mixing and track organization"
+  },
+  "prod-drum-rack": {
+    "id": "prod-drum-rack",
+    "number": 319,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/319",
+    "title": "[feat]/ Provide a user-editable drum rack with per-pad chains and choke groups"
+  },
+  "prod-linked-edit": {
+    "id": "prod-linked-edit",
+    "number": 318,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/318",
+    "title": "[feat]/ Support linked multitrack editing for phase-coherent recordings"
+  },
+  "prod-production-browser": {
+    "id": "prod-production-browser",
+    "number": 317,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/317",
+    "title": "[feat]/ Browse, tag and audition instruments, presets, clips and production samples"
+  },
+  "prod-wavetable-synth": {
+    "id": "prod-wavetable-synth",
+    "number": 316,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/316",
+    "title": "[feat]/ Add a morphing wavetable instrument with user-table import"
+  },
+  "prod-string-model": {
+    "id": "prod-string-model",
+    "number": 315,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/315",
+    "title": "[feat]/ Add a physical-model string synthesis instrument"
+  },
+  "prod-simple-sampler": {
+    "id": "prod-simple-sampler",
+    "number": 314,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/314",
+    "title": "[feat]/ Build an editable chromatic single-sample instrument"
+  },
+  "prod-mallet-model": {
+    "id": "prod-mallet-model",
+    "number": 313,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/313",
+    "title": "[feat]/ Add physical-model mallet and resonant-percussion instruments"
+  },
+  "prod-macro-synth": {
+    "id": "prod-macro-synth",
+    "number": 312,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/312",
+    "title": "[feat]/ Create an expressive dual-layer macro-oscillator instrument"
+  },
+  "prod-granular-synth": {
+    "id": "prod-granular-synth",
+    "number": 311,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/311",
+    "title": "[feat]/ Provide a sample-based granular synthesis instrument"
+  },
+  "prod-freeze": {
+    "id": "prod-freeze",
+    "number": 310,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/310",
+    "title": "[feat]/ Freeze and unfreeze tracks without sacrificing editability"
+  },
+  "prod-fm-synth": {
+    "id": "prod-fm-synth",
+    "number": 309,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/309",
+    "title": "[feat]/ Add an FM and additive synthesis instrument"
+  },
+  "prod-extension-runtime": {
+    "id": "prod-extension-runtime",
+    "number": 308,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/308",
+    "title": "[feat]/ Host user-authored audio, MIDI and instrument devices through an open extension runtime"
+  },
+  "prod-electric-piano": {
+    "id": "prod-electric-piano",
+    "number": 307,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/307",
+    "title": "[feat]/ Provide a modeled electric-piano instrument"
+  },
+  "prod-drum-sampler": {
+    "id": "prod-drum-sampler",
+    "number": 306,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/306",
+    "title": "[feat]/ Create a per-hit drum sampler with transient shaping and creative playback"
+  },
+  "prod-clip-envelopes": {
+    "id": "prod-clip-envelopes",
+    "number": 305,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/305",
+    "title": "[feat]/ Provide linked and independent clip modulation envelopes"
+  },
+  "prod-arrangement-performance-loop": {
+    "id": "prod-arrangement-performance-loop",
+    "number": 304,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/304",
+    "title": "[feat]/ Grab and release arrangement loops during live performance"
+  },
+  "prod-analog-synth": {
+    "id": "prod-analog-synth",
+    "number": 303,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/303",
+    "title": "[feat]/ Build a programmable virtual-analog synth with mono, poly and expressive modes"
+  },
+  "prod-midi-control-tools": {
+    "id": "prod-midi-control-tools",
+    "number": 302,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/302",
+    "title": "[feat]/ Provide CC controls, MIDI monitoring and expression-shaping devices"
+  },
+  "dj-motorized-platters": {
+    "id": "dj-motorized-platters",
+    "number": 301,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/301",
+    "title": "[feat]/ Implement verified motorized platter control and calibration"
+  },
+  "dj-hid-media-players": {
+    "id": "dj-hid-media-players",
+    "number": 300,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/300",
+    "title": "[feat]/ Support explicitly qualified HID DJ media players"
+  },
+  "dj-stem-preparation-cache": {
+    "id": "dj-stem-preparation-cache",
+    "number": 299,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/299",
+    "title": "[feat]/ Prepare and manage cached stems before a performance"
+  },
+  "dj-stem-live-processing": {
+    "id": "dj-stem-live-processing",
+    "number": 298,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/298",
+    "title": "[feat]/ Enable live deck stem separation without interrupting playback"
+  },
+  "prod-utility-analysis": {
+    "id": "prod-utility-analysis",
+    "number": 297,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/297",
+    "title": "[feat]/ Provide gain/stereo/alignment utilities plus spectrum and tuning analysis"
+  },
+  "prod-tempo-follower": {
+    "id": "prod-tempo-follower",
+    "number": 296,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/296",
+    "title": "[feat]/ Follow the tempo of live incoming audio with controlled fallback"
+  },
+  "prod-stereo-delay": {
+    "id": "prod-stereo-delay",
+    "number": 295,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/295",
+    "title": "[feat]/ Build a configurable stereo delay with tempo divisions and advanced LFO shapes"
+  },
+  "prod-spectral-processing": {
+    "id": "prod-spectral-processing",
+    "number": 294,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/294",
+    "title": "[feat]/ Add spectral resonation, spectral delay/freeze and spectral blur devices"
+  },
+  "prod-saturation-drive": {
+    "id": "prod-saturation-drive",
+    "number": 293,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/293",
+    "title": "[feat]/ Provide waveshaping, tube and pedal-style saturation tools"
+  },
+  "prod-resonator-effects": {
+    "id": "prod-resonator-effects",
+    "number": 292,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/292",
+    "title": "[feat]/ Provide tuned resonator banks and physically modeled resonant-body effects"
+  },
+  "prod-pitch-frequency-shift": {
+    "id": "prod-pitch-frequency-shift",
+    "number": 291,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/291",
+    "title": "[feat]/ Add pitch shifting, frequency shifting and ring modulation"
+  },
+  "prod-pitch-correction": {
+    "id": "prod-pitch-correction",
+    "number": 290,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/290",
+    "title": "[feat]/ Add real-time monophonic pitch correction and MIDI-driven harmony"
+  },
+  "prod-phaser-flanger": {
+    "id": "prod-phaser-flanger",
+    "number": 289,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/289",
+    "title": "[feat]/ Add phaser and flanger effects with controllable feedback and modulation"
+  },
+  "prod-parametric-eq": {
+    "id": "prod-parametric-eq",
+    "number": 288,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/288",
+    "title": "[feat]/ Add a graphical parametric equalizer with stereo and mid/side editing"
+  },
+  "prod-multistage-saturation": {
+    "id": "prod-multistage-saturation",
+    "number": 287,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/287",
+    "title": "[feat]/ Build a routable multistage saturation device with modulation"
+  },
+  "prod-multiband-dynamics": {
+    "id": "prod-multiband-dynamics",
+    "number": 286,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/286",
+    "title": "[feat]/ Implement multiband compression, expansion and envelope shaping"
+  },
+  "prod-lofi-texture": {
+    "id": "prod-lofi-texture",
+    "number": 285,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/285",
+    "title": "[feat]/ Provide bit reduction, erosion and vinyl-style texture processing"
+  },
+  "prod-limiter": {
+    "id": "prod-limiter",
+    "number": 284,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/284",
+    "title": "[feat]/ Provide a metered mastering limiter with lookahead and stereo modes"
+  },
+  "prod-grain-delay": {
+    "id": "prod-grain-delay",
+    "number": 283,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/283",
+    "title": "[feat]/ Add granular pitch-shifted delay for sound design"
+  },
+  "prod-filter-delay": {
+    "id": "prod-filter-delay",
+    "number": 282,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/282",
+    "title": "[feat]/ Implement parallel filtered delay lines with independent pan and feedback"
+  },
+  "prod-drum-bus": {
+    "id": "prod-drum-bus",
+    "number": 281,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/281",
+    "title": "[feat]/ Add an integrated drum-bus processor with transient shaping and tuned low-end enhancement"
+  },
+  "prod-convolution-hybrid": {
+    "id": "prod-convolution-hybrid",
+    "number": 280,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/280",
+    "title": "[feat]/ Implement convolution and hybrid reverb with licensed impulse responses"
+  },
+  "prod-chorus-ensemble": {
+    "id": "prod-chorus-ensemble",
+    "number": 279,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/279",
+    "title": "[feat]/ Expand chorus into chorus, ensemble and vibrato processing"
+  },
+  "prod-character-echo": {
+    "id": "prod-character-echo",
+    "number": 278,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/278",
+    "title": "[feat]/ Add an analog/digital character echo with modulation and noise shaping"
+  },
+  "prod-beat-repeat": {
+    "id": "prod-beat-repeat",
+    "number": 277,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/277",
+    "title": "[feat]/ Add tempo-synced beat repeat and controlled stutter processing"
+  },
+  "prod-autopan-tremolo": {
+    "id": "prod-autopan-tremolo",
+    "number": 276,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/276",
+    "title": "[feat]/ Provide tempo-synced auto-pan, tremolo and rhythmic chopping"
+  },
+  "prod-audio-looper": {
+    "id": "prod-audio-looper",
+    "number": 275,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/275",
+    "title": "[feat]/ Implement a playable record/overdub audio looper device"
+  },
+  "prod-algorithmic-reverb": {
+    "id": "prod-algorithmic-reverb",
+    "number": 274,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/274",
+    "title": "[feat]/ Provide a fully editable stereo algorithmic reverb"
+  },
+  "prod-production-mixer": {
+    "id": "prod-production-mixer",
+    "number": 273,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/273",
+    "title": "[feat]/ Deliver a musician-facing mixer with pan laws, stereo controls and solo semantics"
+  },
+  "prod-instrument-racks": {
+    "id": "prod-instrument-racks",
+    "number": 272,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/272",
+    "title": "[feat]/ Build nested instrument and effect racks with key, velocity and chain zones"
+  },
+  "prod-comping": {
+    "id": "prod-comping",
+    "number": 271,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/271",
+    "title": "[feat]/ Implement take lanes and non-destructive audio/MIDI comping"
+  },
+  "prod-automation-recording": {
+    "id": "prod-automation-recording",
+    "number": 270,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/270",
+    "title": "[feat]/ Record performance automation with explicit override and re-enable behavior"
+  },
+  "prod-arrangement-time-edit": {
+    "id": "prod-arrangement-time-edit",
+    "number": 269,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/269",
+    "title": "[feat]/ Implement arrangement split, consolidate and structural time editing"
+  },
+  "dj-changeover": {
+    "id": "dj-changeover",
+    "number": 268,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/268",
+    "title": "[feat]/ Support safe DJ handover on qualified dual-computer hardware"
+  },
+  "prod-prearranged-recording": {
+    "id": "prod-prearranged-recording",
+    "number": 267,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/267",
+    "title": "[feat]/ Populate prearranged clip placeholders from a live recording"
+  },
+  "dj-multi-provider-streaming": {
+    "id": "dj-multi-provider-streaming",
+    "number": 266,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/266",
+    "title": "[feat]/ Mix approved streaming providers concurrently as a preview-comparison feature"
+  },
+  "dj-video-performance": {
+    "id": "dj-video-performance",
+    "number": 265,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/265",
+    "title": "[feat]/ Add optional synchronized DJ video playback and external output"
+  },
+  "dj-flip-routines": {
+    "id": "dj-flip-routines",
+    "number": 264,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/264",
+    "title": "[feat]/ Record and replay nondestructive cue and censor routines"
+  },
+  "dj-cue-loops": {
+    "id": "dj-cue-loops",
+    "number": 263,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/263",
+    "title": "[feat]/ Trigger a saved loop from its associated cue marker"
+  },
+  "sys-collaboration-handoff": {
+    "id": "sys-collaboration-handoff",
+    "number": 262,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/262",
+    "title": "[feat]/ Create reviewable collaboration packages with mix notes and references"
+  },
+  "prod-grooves": {
+    "id": "prod-grooves",
+    "number": 261,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/261",
+    "title": "[feat]/ Implement a groove pool with audio/MIDI extraction and commitment"
+  },
+  "dj-midi-layers": {
+    "id": "dj-midi-layers",
+    "number": 260,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/260",
+    "title": "[feat]/ Add controller layers, modifiers and takeover policies"
+  },
+  "dj-pad-fx": {
+    "id": "dj-pad-fx",
+    "number": 259,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/259",
+    "title": "[feat]/ Add momentary and latched performance-pad FX"
+  },
+  "prod-stem-separation": {
+    "id": "prod-stem-separation",
+    "number": 258,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/258",
+    "title": "[feat]/ Extract editable production stems from complete clips or selected time ranges"
+  },
+  "prod-link-audio": {
+    "id": "prod-link-audio",
+    "number": 257,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/257",
+    "title": "[feat]/ Send and receive Link Audio streams with track-level routing and latency controls"
+  },
+  "prod-record-punch": {
+    "id": "prod-record-punch",
+    "number": 256,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/256",
+    "title": "[feat]/ Add count-in, punch recording and multi-pass recording workflows"
+  },
+  "prod-locators": {
+    "id": "prod-locators",
+    "number": 255,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/255",
+    "title": "[feat]/ Add named arrangement locators, musical scrubbing and loop-region navigation"
+  },
+  "prod-device-chain": {
+    "id": "prod-device-chain",
+    "number": 254,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/254",
+    "title": "[feat]/ Make device chains editable, inspectable and reusable with A/B states"
+  },
+  "prod-automation-lanes": {
+    "id": "prod-automation-lanes",
+    "number": 253,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/253",
+    "title": "[feat]/ Add editable multitrack automation lanes and breakpoint curves"
+  },
+  "dj-controller-certification": {
+    "id": "dj-controller-certification",
+    "number": 252,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/252",
+    "title": "[feat]/ Publish hardware profiles backed by end-to-end compatibility evidence"
+  },
+  "sys-plugin-isolation": {
+    "id": "sys-plugin-isolation",
+    "number": 251,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/251",
+    "title": "[feat]/ Isolate plugin failures and restore processing without losing sessions"
+  },
+  "prod-warp-quality": {
+    "id": "prod-warp-quality",
+    "number": 250,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/250",
+    "title": "[feat]/ Offer distinct high-quality warp modes for drums, tones, textures and mixes"
+  },
+  "prod-clip-fades": {
+    "id": "prod-clip-fades",
+    "number": 249,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/249",
+    "title": "[feat]/ Provide audio clip fades and editable arrangement crossfades"
+  },
+  "sys-postproduction-interchange": {
+    "id": "sys-postproduction-interchange",
+    "number": 248,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/248",
+    "title": "[feat]/ Support post-production session exchange and broadcast media metadata"
+  },
+  "dj-pitch-play": {
+    "id": "dj-pitch-play",
+    "number": 247,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/247",
+    "title": "[feat]/ Add chromatic cue-point performance pads"
+  },
+  "dj-lighting-integration": {
+    "id": "dj-lighting-integration",
+    "number": 246,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/246",
+    "title": "[feat]/ Expose performance timing and mixer state for lighting systems"
+  },
+  "sys-surround-immersive": {
+    "id": "sys-surround-immersive",
+    "number": 245,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/245",
+    "title": "[feat]/ Support multichannel and immersive production as an advanced workflow"
+  },
+  "sys-plugin-legacy-compatibility": {
+    "id": "sys-plugin-legacy-compatibility",
+    "number": 244,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/244",
+    "title": "[feat]/ Support lawful legacy and platform-specific plug-in interoperability"
+  },
+  "prod-follow-actions": {
+    "id": "prod-follow-actions",
+    "number": 243,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/243",
+    "title": "[feat]/ Add probabilistic clip and scene follow actions"
+  },
+  "prod-audio-midi": {
+    "id": "prod-audio-midi",
+    "number": 242,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/242",
+    "title": "[feat]/ Convert recorded melodies, harmony and drums to editable MIDI"
+  },
+  "dj-performance-recording-markers": {
+    "id": "dj-performance-recording-markers",
+    "number": 241,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/241",
+    "title": "[feat]/ Link set recordings to performed-track and cue markers"
+  },
+  "dj-slicer": {
+    "id": "dj-slicer",
+    "number": 240,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/240",
+    "title": "[feat]/ Add moving and fixed-loop slicer pad modes"
+  },
+  "dj-scratch-banks": {
+    "id": "dj-scratch-banks",
+    "number": 239,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/239",
+    "title": "[feat]/ Add scratch banks with instant return to the previous deck track"
+  },
+  "dj-sampler-sync-routing": {
+    "id": "dj-sampler-sync-routing",
+    "number": 238,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/238",
+    "title": "[feat]/ Add beat-synced sampler playback and output assignments"
+  },
+  "dj-reverse-censor": {
+    "id": "dj-reverse-censor",
+    "number": 237,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/237",
+    "title": "[feat]/ Add reverse playback and momentary censor controls"
+  },
+  "dj-loop-roll": {
+    "id": "dj-loop-roll",
+    "number": 236,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/236",
+    "title": "[feat]/ Add momentary loop-roll pad performance"
+  },
+  "dj-instant-doubles": {
+    "id": "dj-instant-doubles",
+    "number": 235,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/235",
+    "title": "[feat]/ Add instant doubles and deck transfer"
+  },
+  "dj-fx-presets": {
+    "id": "dj-fx-presets",
+    "number": 234,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/234",
+    "title": "[feat]/ Save and share DJ effect presets and unit layouts"
+  },
+  "dj-dvs-calibration": {
+    "id": "dj-dvs-calibration",
+    "number": 233,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/233",
+    "title": "[feat]/ Add DVS signal calibration and diagnostics"
+  },
+  "dj-channel-fx": {
+    "id": "dj-channel-fx",
+    "number": 232,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/232",
+    "title": "[feat]/ Add selectable one-knob channel effects"
+  },
+  "sys-delivery-qc": {
+    "id": "sys-delivery-qc",
+    "number": 231,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/231",
+    "title": "[feat]/ Validate loudness, true peaks and metadata before delivery"
+  },
+  "dj-broadcast-audio": {
+    "id": "dj-broadcast-audio",
+    "number": 230,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/230",
+    "title": "[feat]/ Expose a clean performance audio feed for OBS and broadcast tools"
+  },
+  "sys-batch-stem-export": {
+    "id": "sys-batch-stem-export",
+    "number": 229,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/229",
+    "title": "[feat]/ Export aligned stems, track groups and delivery versions in batches"
+  },
+  "prod-session-record": {
+    "id": "prod-session-record",
+    "number": 228,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/228",
+    "title": "[feat]/ Record and overdub audio or MIDI directly into Session slots"
+  },
+  "prod-scene-metadata": {
+    "id": "prod-scene-metadata",
+    "number": 227,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/227",
+    "title": "[feat]/ Give scenes names, tempo, meter and launch-state semantics"
+  },
+  "prod-arrangement": {
+    "id": "prod-arrangement",
+    "number": 226,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/226",
+    "title": "[feat]/ Build an editable linear audio and MIDI Arrangement timeline"
+  },
+  "dj-midi-hotplug-workflow": {
+    "id": "dj-midi-hotplug-workflow",
+    "number": 225,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/225",
+    "title": "[feat]/ Add runtime controller discovery, enablement and reconnection"
+  },
+  "dj-midi-feedback": {
+    "id": "dj-midi-feedback",
+    "number": 224,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/224",
+    "title": "[feat]/ Drive controller LEDs and meters from actual application state"
+  },
+  "dj-midi-encoder-protocols": {
+    "id": "dj-midi-encoder-protocols",
+    "number": 223,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/223",
+    "title": "[feat]/ Support configurable MIDI encoder encodings and high-resolution controls"
+  },
+  "dj-midi-clock-input": {
+    "id": "dj-midi-clock-input",
+    "number": 222,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/222",
+    "title": "[feat]/ Follow external MIDI clock with transport and loss handling"
+  },
+  "dj-stream-rights-and-continuity": {
+    "id": "dj-stream-rights-and-continuity",
+    "number": 221,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/221",
+    "title": "[feat]/ Enforce streaming capabilities and protect playback during service failures"
+  },
+  "dj-saved-loops": {
+    "id": "dj-saved-loops",
+    "number": 220,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/220",
+    "title": "[feat]/ Add named persistent loop banks for each track"
+  },
+  "dj-pitch-takeover": {
+    "id": "dj-pitch-takeover",
+    "number": 219,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/219",
+    "title": "[feat]/ Add safe pitch-fader pickup and temporary pitch bend"
+  },
+  "dj-performance-layouts": {
+    "id": "dj-performance-layouts",
+    "number": 218,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/218",
+    "title": "[feat]/ Add selectable DJ waveform and library layouts"
+  },
+  "dj-crossfader-performance": {
+    "id": "dj-crossfader-performance",
+    "number": 217,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/217",
+    "title": "[feat]/ Add configurable crossfader assignments, curves and scratch cut-in"
+  },
+  "sys-plugin-scanner": {
+    "id": "sys-plugin-scanner",
+    "number": 216,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/216",
+    "title": "[feat]/ Scan, catalog and quarantine plugins outside the application process"
+  },
+  "sys-plugin-presets": {
+    "id": "sys-plugin-presets",
+    "number": 215,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/215",
+    "title": "[feat]/ Manage plugin presets, A/B states and reusable device chains"
+  },
+  "prod-warp-markers": {
+    "id": "prod-warp-markers",
+    "number": 214,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/214",
+    "title": "[feat]/ Implement transient detection and editable audio warp markers"
+  },
+  "dj-external-mixer-mode": {
+    "id": "dj-external-mixer-mode",
+    "number": 213,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/213",
+    "title": "[feat]/ Add deck-isolated output mode for external mixers"
+  },
+  "dj-booth-output": {
+    "id": "dj-booth-output",
+    "number": 212,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/212",
+    "title": "[feat]/ Add a separately controlled booth monitor bus"
+  },
+  "sys-cross-platform-handoff": {
+    "id": "sys-cross-platform-handoff",
+    "number": 211,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/211",
+    "title": "[feat]/ Support professional cross-platform collaboration and document native limits"
+  },
+  "prod-tuning": {
+    "id": "prod-tuning",
+    "number": 210,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/210",
+    "title": "[feat]/ Support microtonal tuning systems and per-track tuning bypass"
+  },
+  "prod-midi-articulation-tools": {
+    "id": "prod-midi-articulation-tools",
+    "number": 209,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/209",
+    "title": "[feat]/ Generate arpeggios, strums, ornaments and articulated note repetitions"
+  },
+  "prod-melody-generator": {
+    "id": "prod-melody-generator",
+    "number": 208,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/208",
+    "title": "[feat]/ Create shape-guided and seeded melodic MIDI generators"
+  },
+  "prod-harmony-generator": {
+    "id": "prod-harmony-generator",
+    "number": 207,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/207",
+    "title": "[feat]/ Build chord progression and voicing generation tools"
+  },
+  "dj-stream-offline-locker": {
+    "id": "dj-stream-offline-locker",
+    "number": 206,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/206",
+    "title": "[feat]/ Manage provider-authorized offline lockers and readiness"
+  },
+  "dj-smart-crates": {
+    "id": "dj-smart-crates",
+    "number": 205,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/205",
+    "title": "[feat]/ Add automatically maintained smart crates"
+  },
+  "dj-automatic-variable-grids": {
+    "id": "dj-automatic-variable-grids",
+    "number": 204,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/204",
+    "title": "[feat]/ Detect changing-tempo beatgrids automatically as a preview-comparison feature"
+  },
+  "dj-slip-mode": {
+    "id": "dj-slip-mode",
+    "number": 203,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/203",
+    "title": "[feat]/ Add slip playback with configurable release timing"
+  },
+  "dj-key-shift-sync": {
+    "id": "dj-key-shift-sync",
+    "number": 202,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/202",
+    "title": "[feat]/ Add independent deck key shift and harmonic key sync"
+  },
+  "dj-dvs-decoder": {
+    "id": "dj-dvs-decoder",
+    "number": 201,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/201",
+    "title": "[feat]/ Add optional digital-vinyl control using a supported control-signal format"
+  },
+  "dj-autoplay": {
+    "id": "dj-autoplay",
+    "number": 200,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/200",
+    "title": "[feat]/ Add deliberate continuous playback from an ordered crate"
+  },
+  "sys-plugin-lv2": {
+    "id": "sys-plugin-lv2",
+    "number": 199,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/199",
+    "title": "[feat]/ Host LV2 instruments, effects and native Linux plugin UIs"
+  },
+  "sys-plugin-clap": {
+    "id": "sys-plugin-clap",
+    "number": 198,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/198",
+    "title": "[feat]/ Host CLAP instruments and effects with expression support"
+  },
+  "sys-multicore-rendering": {
+    "id": "sys-multicore-rendering",
+    "number": 197,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/197",
+    "title": "[feat]/ Schedule independent tracks across cores with bounded real-time execution"
+  },
+  "prod-launch-modes": {
+    "id": "prod-launch-modes",
+    "number": 196,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/196",
+    "title": "[feat]/ Implement per-clip launch modes, launch quantization and legato switching"
+  },
+  "dj-midi-mapping-presets": {
+    "id": "dj-midi-mapping-presets",
+    "number": 195,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/195",
+    "title": "[feat]/ Persist, import and export MIDI mapping presets"
+  },
+  "dj-library-performance-at-scale": {
+    "id": "dj-library-performance-at-scale",
+    "number": 194,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/194",
+    "title": "[feat]/ Qualify sustained browsing and preparation on professional-size libraries"
+  },
+  "dj-tempo-phase-sync": {
+    "id": "dj-tempo-phase-sync",
+    "number": 193,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/193",
+    "title": "[feat]/ Separate tempo matching from beat and bar synchronization"
+  },
+  "dj-pad-mode-system": {
+    "id": "dj-pad-mode-system",
+    "number": 192,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/192",
+    "title": "[feat]/ Add deck performance-pad modes with per-deck selection"
+  },
+  "dj-offline-preparation": {
+    "id": "dj-offline-preparation",
+    "number": 191,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/191",
+    "title": "[feat]/ Add a dedicated track preparation and audition workflow"
+  },
+  "dj-loop-editing": {
+    "id": "dj-loop-editing",
+    "number": 190,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/190",
+    "title": "[feat]/ Add precise loop boundary editing and beat-based loop movement"
+  },
+  "dj-four-decks": {
+    "id": "dj-four-decks",
+    "number": 189,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/189",
+    "title": "[feat]/ Support four independently controlled DJ decks"
+  },
+  "dj-deck-quantization": {
+    "id": "dj-deck-quantization",
+    "number": 188,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/188",
+    "title": "[feat]/ Apply beatgrid quantization to deck cues and loop operations"
+  },
+  "dj-deck-fx-units": {
+    "id": "dj-deck-fx-units",
+    "number": 187,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/187",
+    "title": "[feat]/ Add assignable deck DJ-FX units with tempo controls"
+  },
+  "dj-cue-audition": {
+    "id": "dj-cue-audition",
+    "number": 186,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/186",
+    "title": "[feat]/ Implement hold-to-audition and stutter behavior for temporary cues"
+  },
+  "dj-beat-jump": {
+    "id": "dj-beat-jump",
+    "number": 185,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/185",
+    "title": "[feat]/ Add beat-jump transport and controller pad controls"
+  },
+  "sys-streaming-media-engine": {
+    "id": "sys-streaming-media-engine",
+    "number": 184,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/184",
+    "title": "[feat]/ Stream long recordings and deck media with bounded caches"
+  },
+  "sys-plugin-vst3": {
+    "id": "sys-plugin-vst3",
+    "number": 183,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/183",
+    "title": "[feat]/ Host native VST3 instruments and audio effects"
+  },
+  "prod-audio-clips": {
+    "id": "prod-audio-clips",
+    "number": 182,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/182",
+    "title": "[feat]/ Make audio a first-class Session and Arrangement clip type"
+  },
+  "dj-mix-recording": {
+    "id": "dj-mix-recording",
+    "number": 181,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/181",
+    "title": "[feat]/ Record live DJ performances to reliable audio files"
+  },
+  "dj-mic-aux": {
+    "id": "dj-mic-aux",
+    "number": 180,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/180",
+    "title": "[feat]/ Add live microphone and auxiliary DJ input channels"
+  },
+  "sys-audio-export": {
+    "id": "sys-audio-export",
+    "number": 179,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/179",
+    "title": "[feat]/ Export offline and real-time master audio with professional format controls"
+  },
+  "sys-plugin-delay-compensation": {
+    "id": "sys-plugin-delay-compensation",
+    "number": 178,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/178",
+    "title": "[feat]/ Compensate device and routing latency across the complete graph"
+  },
+  "sys-input-monitoring": {
+    "id": "sys-input-monitoring",
+    "number": 177,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/177",
+    "title": "[feat]/ Monitor live inputs with explicit In, Auto and Off modes"
+  },
+  "dj-headphone-monitoring": {
+    "id": "dj-headphone-monitoring",
+    "number": 176,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/176",
+    "title": "[feat]/ Provide isolated cue/master headphone mixing and split cue"
+  },
+  "sys-optional-cloud-sync": {
+    "id": "sys-optional-cloud-sync",
+    "number": 175,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/175",
+    "title": "[feat]/ Offer optional cross-device project transfer with explicit conflict handling"
+  },
+  "sys-score-notation": {
+    "id": "sys-score-notation",
+    "number": 174,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/174",
+    "title": "[feat]/ Offer notation and MusicXML exchange for composer collaboration"
+  },
+  "sys-midi2": {
+    "id": "sys-midi2",
+    "number": 173,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/173",
+    "title": "[feat]/ Support negotiated MIDI 2.0 and high-resolution expression"
+  },
+  "dj-stream-spotify": {
+    "id": "dj-stream-spotify",
+    "number": 172,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/172",
+    "title": "[feat]/ Integrate Spotify only if an authorized DJ service agreement is available"
+  },
+  "dj-stream-apple-music": {
+    "id": "dj-stream-apple-music",
+    "number": 171,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/171",
+    "title": "[feat]/ Integrate Apple Music only through an authorized DJ playback path"
+  },
+  "sys-project-cleanup": {
+    "id": "sys-project-cleanup",
+    "number": 170,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/170",
+    "title": "[feat]/ Inspect project storage and safely clean unused media"
+  },
+  "sys-dawproject": {
+    "id": "sys-dawproject",
+    "number": 169,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/169",
+    "title": "[feat]/ Exchange editable sessions using an open DAW interchange format"
+  },
+  "prod-scales": {
+    "id": "prod-scales",
+    "number": 168,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/168",
+    "title": "[feat]/ Make keys and scales shared musical context for editing and devices"
+  },
+  "prod-rhythm-generator": {
+    "id": "prod-rhythm-generator",
+    "number": 167,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/167",
+    "title": "[feat]/ Generate editable rhythmic and Euclidean MIDI patterns"
+  },
+  "prod-note-chance-velocity": {
+    "id": "prod-note-chance-velocity",
+    "number": 166,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/166",
+    "title": "[feat]/ Add per-note chance, velocity ranges and expressive note properties"
+  },
+  "prod-multi-clip-midi": {
+    "id": "prod-multi-clip-midi",
+    "number": 165,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/165",
+    "title": "[feat]/ Edit multiple MIDI clips together with explicit focus and ghost notes"
+  },
+  "prod-midi-timing-tools": {
+    "id": "prod-midi-timing-tools",
+    "number": 164,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/164",
+    "title": "[feat]/ Add quantize, stretch, reverse and tempo-curve MIDI transformations"
+  },
+  "prod-midi-recombine": {
+    "id": "prod-midi-recombine",
+    "number": 163,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/163",
+    "title": "[feat]/ Recombine note properties and shape velocity using editable transformation tools"
+  },
+  "prod-capture-midi": {
+    "id": "prod-capture-midi",
+    "number": 162,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/162",
+    "title": "[feat]/ Recover recent MIDI performances with retrospective capture"
+  },
+  "prod-ableton-link": {
+    "id": "prod-ableton-link",
+    "number": 161,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/161",
+    "title": "[feat]/ Implement Link-compatible tempo, phase and start/stop synchronization"
+  },
+  "dj-stream-tidal": {
+    "id": "dj-stream-tidal",
+    "number": 160,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/160",
+    "title": "[feat]/ Integrate an authorized TIDAL DJ account and catalog"
+  },
+  "dj-stream-soundcloud": {
+    "id": "dj-stream-soundcloud",
+    "number": 159,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/159",
+    "title": "[feat]/ Integrate authorized SoundCloud catalog and playlists"
+  },
+  "dj-stream-beatport": {
+    "id": "dj-stream-beatport",
+    "number": 158,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/158",
+    "title": "[feat]/ Integrate an authorized Beatport streaming workflow"
+  },
+  "dj-setlist-export": {
+    "id": "dj-setlist-export",
+    "number": 157,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/157",
+    "title": "[feat]/ Export and optionally publish performed setlists"
+  },
+  "dj-library-playlist-import": {
+    "id": "dj-library-playlist-import",
+    "number": 156,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/156",
+    "title": "[feat]/ Import standard playlists and existing local music-library exports"
+  },
+  "dj-library-file-management": {
+    "id": "dj-library-file-management",
+    "number": 155,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/155",
+    "title": "[feat]/ Manage music files and duplicates safely from the library"
+  },
+  "dj-crate-navigation": {
+    "id": "dj-crate-navigation",
+    "number": 154,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/154",
+    "title": "[feat]/ Add crate favorites, search and membership discovery"
+  },
+  "dj-sampler-playmodes": {
+    "id": "dj-sampler-playmodes",
+    "number": 153,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/153",
+    "title": "[feat]/ Add trigger, hold and toggle sample playback modes"
+  },
+  "prod-clip-management": {
+    "id": "prod-clip-management",
+    "number": 152,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/152",
+    "title": "[feat]/ Add editable Session clip management and reusable clip presets"
+  },
+  "prod-step-record": {
+    "id": "prod-step-record",
+    "number": 151,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/151",
+    "title": "[feat]/ Add cursor-based MIDI step recording and computer-keyboard note input"
+  },
+  "prod-mpe": {
+    "id": "prod-mpe",
+    "number": 150,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/150",
+    "title": "[feat]/ Record, edit and render per-note pitch, pressure and timbre expression"
+  },
+  "prod-midi-control-envelopes": {
+    "id": "prod-midi-control-envelopes",
+    "number": 149,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/149",
+    "title": "[feat]/ Edit MIDI CC, pitch-bend, program and channel-pressure data in clips"
+  },
+  "dj-midi-learn": {
+    "id": "dj-midi-learn",
+    "number": 148,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/148",
+    "title": "[feat]/ Deliver a usable MIDI learn editor for performance controls"
+  },
+  "dj-midi-clock-output": {
+    "id": "dj-midi-clock-output",
+    "number": 147,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/147",
+    "title": "[feat]/ Transmit stable MIDI clock and transport to external instruments"
+  },
+  "dj-prepare-queue": {
+    "id": "dj-prepare-queue",
+    "number": 146,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/146",
+    "title": "[feat]/ Add a reorderable prepare queue for upcoming tracks"
+  },
+  "dj-library-health": {
+    "id": "dj-library-health",
+    "number": 145,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/145",
+    "title": "[feat]/ Expose missing, corrupt, unsupported and read-only track status"
+  },
+  "dj-library-columns": {
+    "id": "dj-library-columns",
+    "number": 144,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/144",
+    "title": "[feat]/ Make library columns, sorting and view density configurable"
+  },
+  "dj-library-backup-portability": {
+    "id": "dj-library-backup-portability",
+    "number": 143,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/143",
+    "title": "[feat]/ Back up and move the complete DJ library with preparation data"
+  },
+  "dj-key-analysis": {
+    "id": "dj-key-analysis",
+    "number": 142,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/142",
+    "title": "[feat]/ Analyze musical key and display harmonic compatibility"
+  },
+  "dj-auto-gain": {
+    "id": "dj-auto-gain",
+    "number": 141,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/141",
+    "title": "[feat]/ Analyze and recall safe per-track gain adjustment"
+  },
+  "dj-analysis-locks": {
+    "id": "dj-analysis-locks",
+    "number": 140,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/140",
+    "title": "[feat]/ Protect prepared beatgrids and metadata from bulk reanalysis"
+  },
+  "dj-advanced-search": {
+    "id": "dj-advanced-search",
+    "number": 139,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/139",
+    "title": "[feat]/ Add field-aware search and filtering across the music library"
+  },
+  "sys-release-updates": {
+    "id": "sys-release-updates",
+    "number": 138,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/138",
+    "title": "[feat]/ Deliver verified releases with safe updates and rollback"
+  },
+  "sys-capability-regression": {
+    "id": "sys-capability-regression",
+    "number": 137,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/137",
+    "title": "[feat]/ Maintain a versioned professional capability and compatibility matrix"
+  },
+  "sys-seamless-project-switch": {
+    "id": "sys-seamless-project-switch",
+    "number": 136,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/136",
+    "title": "[feat]/ Switch live sets without interrupting the outgoing mix"
+  },
+  "dj-waveform-grid-view": {
+    "id": "dj-waveform-grid-view",
+    "number": 135,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/135",
+    "title": "[feat]/ Show aligned beatgrid, phase and phrase position on deck waveforms"
+  },
+  "dj-variable-tempo-grid": {
+    "id": "dj-variable-tempo-grid",
+    "number": 134,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/134",
+    "title": "[feat]/ Support manually mapped tempo changes within a track"
+  },
+  "sys-linux-audio-backends": {
+    "id": "sys-linux-audio-backends",
+    "number": 133,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/133",
+    "title": "[feat]/ Integrate low-latency PipeWire, JACK and ALSA workflows"
+  },
+  "sys-background-job-scheduler": {
+    "id": "sys-background-job-scheduler",
+    "number": 132,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/132",
+    "title": "[feat]/ Prioritize and cancel expensive background audio jobs"
+  },
+  "dj-load-protection": {
+    "id": "dj-load-protection",
+    "number": 131,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/131",
+    "title": "[feat]/ Protect audible DJ decks from accidental load and eject"
+  },
+  "sys-audio-io-routing": {
+    "id": "sys-audio-io-routing",
+    "number": 130,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/130",
+    "title": "[feat]/ Route independent multichannel inputs and outputs through an audio graph"
+  },
+  "sys-audio-device-recovery": {
+    "id": "sys-audio-device-recovery",
+    "number": 129,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/129",
+    "title": "[feat]/ Recover safely from audio-device loss and backend restarts"
+  },
+  "sys-workspace-layouts": {
+    "id": "sys-workspace-layouts",
+    "number": 128,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/128",
+    "title": "[feat]/ Save configurable workspaces and multiple-window layouts"
+  },
+  "sys-touch-pen-input": {
+    "id": "sys-touch-pen-input",
+    "number": 127,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/127",
+    "title": "[feat]/ Support touch, pen and simultaneous performance gestures"
+  },
+  "sys-shortcut-command-search": {
+    "id": "sys-shortcut-command-search",
+    "number": 126,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/126",
+    "title": "[feat]/ Customize shortcuts and find commands through a command palette"
+  },
+  "sys-localization": {
+    "id": "sys-localization",
+    "number": 125,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/125",
+    "title": "[feat]/ Localize the interface and preserve international file and metadata handling"
+  },
+  "sys-project-versions": {
+    "id": "sys-project-versions",
+    "number": 124,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/124",
+    "title": "[feat]/ Manage named project versions and compare creative revisions"
+  },
+  "sys-project-merge": {
+    "id": "sys-project-merge",
+    "number": 123,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/123",
+    "title": "[feat]/ Import tracks, clips and device chains from another project"
+  },
+  "sys-video-scoring": {
+    "id": "sys-video-scoring",
+    "number": 122,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/122",
+    "title": "[feat]/ Score to video with frame-accurate playback and timecode"
+  },
+  "dj-track-ratings-colors": {
+    "id": "dj-track-ratings-colors",
+    "number": 121,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/121",
+    "title": "[feat]/ Add track ratings, colors and performance annotations"
+  },
+  "dj-stream-provider-framework": {
+    "id": "dj-stream-provider-framework",
+    "number": 120,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/120",
+    "title": "[feat]/ Add licensed music-provider integration with explicit capability contracts"
+  },
+  "sys-osc-automation-api": {
+    "id": "sys-osc-automation-api",
+    "number": 119,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/119",
+    "title": "[feat]/ Expose a versioned automation and remote-control API"
+  },
+  "sys-display-accessibility": {
+    "id": "sys-display-accessibility",
+    "number": 118,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/118",
+    "title": "[feat]/ Provide scalable, high-contrast and color-independent layouts"
+  },
+  "sys-project-templates": {
+    "id": "sys-project-templates",
+    "number": 117,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/117",
+    "title": "[feat]/ Save reusable project, track and live-set templates"
+  },
+  "sys-project-portability": {
+    "id": "sys-project-portability",
+    "number": 116,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/116",
+    "title": "[feat]/ Collect project media and package portable self-contained sessions"
+  },
+  "sys-missing-assets": {
+    "id": "sys-missing-assets",
+    "number": 115,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/115",
+    "title": "[feat]/ Relink missing project media and restore unavailable devices"
+  },
+  "prod-tempo-map": {
+    "id": "prod-tempo-map",
+    "number": 114,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/114",
+    "title": "[feat]/ Implement tempo automation and changing time signatures"
+  },
+  "prod-session-scale": {
+    "id": "prod-session-scale",
+    "number": 113,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/113",
+    "title": "[feat]/ Support user-managed tracks and scenes beyond the fixed 8 by 8 grid"
+  },
+  "sys-midi-port-routing": {
+    "id": "sys-midi-port-routing",
+    "number": 112,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/112",
+    "title": "[feat]/ Route MIDI by device, port, channel and message type"
+  },
+  "sys-midi-file-interchange": {
+    "id": "sys-midi-file-interchange",
+    "number": 111,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/111",
+    "title": "[feat]/ Import and export Standard MIDI Files without losing musical timing"
+  },
+  "prod-piano-roll": {
+    "id": "prod-piano-roll",
+    "number": 110,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/110",
+    "title": "[feat]/ Deliver a full MIDI piano-roll editor with keyboard-accessible editing"
+  },
+  "dj-metadata-read-edit": {
+    "id": "dj-metadata-read-edit",
+    "number": 109,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/109",
+    "title": "[feat]/ Read and edit real audio metadata instead of filename guesses"
+  },
+  "dj-library-relocation": {
+    "id": "dj-library-relocation",
+    "number": 108,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/108",
+    "title": "[feat]/ Relocate missing music while preserving DJ preparation"
+  },
+  "dj-library-import-roots": {
+    "id": "dj-library-import-roots",
+    "number": 107,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/107",
+    "title": "[feat]/ Import arbitrary folders, files and removable music libraries"
+  },
+  "dj-history-sessions": {
+    "id": "dj-history-sessions",
+    "number": 106,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/106",
+    "title": "[feat]/ Record actual DJ performance history with session boundaries"
+  },
+  "dj-crates-playlists": {
+    "id": "dj-crates-playlists",
+    "number": 105,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/105",
+    "title": "[feat]/ Add named ordered crates and nested playlist organization"
+  },
+  "dj-analysis-queue": {
+    "id": "dj-analysis-queue",
+    "number": 104,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/104",
+    "title": "[feat]/ Add persistent background track analysis with selective reanalysis"
+  },
+  "sys-offline-operation": {
+    "id": "sys-offline-operation",
+    "number": 103,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/103",
+    "title": "[feat]/ Preserve and qualify offline operation as optional online features arrive"
+  },
+  "sys-diagnostic-reports": {
+    "id": "sys-diagnostic-reports",
+    "number": 102,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/102",
+    "title": "[feat]/ Export actionable support bundles and recovery-safe crash diagnostics"
+  },
+  "dj-sampler-load": {
+    "id": "dj-sampler-load",
+    "number": 101,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/101",
+    "title": "[feat]/ Load user samples into persistent DJ sampler banks"
+  },
+  "dj-keylock-quality": {
+    "id": "dj-keylock-quality",
+    "number": 100,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/100",
+    "title": "[feat]/ Qualify DJ time stretching for transparent key lock across tempo ranges"
+  },
+  "dj-grid-editor": {
+    "id": "dj-grid-editor",
+    "number": 99,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/99",
+    "title": "[feat]/ Create and edit persistent per-track beatgrids"
+  },
+  "dj-cue-metadata": {
+    "id": "dj-cue-metadata",
+    "number": 98,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/98",
+    "title": "[feat]/ Name, color and persist per-track hot cues"
+  },
+  "sys-autosave-recovery": {
+    "id": "sys-autosave-recovery",
+    "number": 97,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/97",
+    "title": "[feat]/ Recover unsaved work after crashes and interrupted writes"
+  },
+  "sys-show-safety": {
+    "id": "sys-show-safety",
+    "number": 96,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/96",
+    "title": "[feat]/ Provide a performance mode that protects the active show"
+  },
+  "sys-performance-regression": {
+    "id": "sys-performance-regression",
+    "number": 95,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/95",
+    "title": "[feat]/ Gate releases on production-scale audio and UI workloads"
+  },
+  "sys-audio-device-settings": {
+    "id": "sys-audio-device-settings",
+    "number": 94,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/94",
+    "title": "[feat]/ Configure professional audio devices, sample rates and buffers"
+  },
+  "fix-reload-theme-status-alias": {
+    "id": "fix-reload-theme-status-alias",
+    "number": 93,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/93",
+    "title": "[fix]/ Make reload-theme actually reload theme resources"
+  },
+  "fix-ipc-argument-coercion": {
+    "id": "fix-ipc-argument-coercion",
+    "number": 92,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/92",
+    "title": "[fix]/ Validate IPC argument types instead of defaulting or wrapping targets"
+  },
+  "fix-follow-invalid-status-payload": {
+    "id": "fix-follow-invalid-status-payload",
+    "number": 91,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/91",
+    "title": "[fix]/ Send valid status JSON from ctl follow"
+  },
+  "fix-installer-validation-false-success": {
+    "id": "fix-installer-validation-false-success",
+    "number": 90,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/90",
+    "title": "[fix]/ Fail installation when Hyprland reload or configuration validation fails"
+  },
+  "sys-tutorials-help": {
+    "id": "sys-tutorials-help",
+    "number": 89,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/89",
+    "title": "[feat]/ Provide contextual help, interactive lessons and complete workflow documentation"
+  },
+  "sys-preferences": {
+    "id": "sys-preferences",
+    "number": 88,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/88",
+    "title": "[feat]/ Persist user preferences and named studio/performance profiles"
+  },
+  "sys-accessible-ui": {
+    "id": "sys-accessible-ui",
+    "number": 87,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/87",
+    "title": "[feat]/ Expose complete keyboard and assistive-technology operation"
+  },
+  "sys-content-license-manifest": {
+    "id": "sys-content-license-manifest",
+    "number": 86,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/86",
+    "title": "[feat]/ Track factory content, model and integration licensing in shipped assets"
+  },
+  "dj-library-database": {
+    "id": "dj-library-database",
+    "number": 85,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/85",
+    "title": "[feat]/ Create a persistent DJ library with stable track identity"
+  },
+  "dj-deck-runout": {
+    "id": "dj-deck-runout",
+    "number": 84,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/84",
+    "title": "[feat]/ Add configurable elapsed, remaining and end-of-track deck warnings"
+  },
+  "sys-undo-redo": {
+    "id": "sys-undo-redo",
+    "number": 83,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/83",
+    "title": "[feat]/ Provide nondestructive undo history across all creative edits"
+  },
+  "sys-project-save-open": {
+    "id": "sys-project-save-open",
+    "number": 82,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/82",
+    "title": "[feat]/ Save and reopen complete native production and DJ projects"
+  },
+  "sys-performance-diagnostics": {
+    "id": "sys-performance-diagnostics",
+    "number": 81,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/81",
+    "title": "[feat]/ Expose audio deadlines, xruns, latency and device-level performance diagnostics"
+  },
+  "fix-last-play-format": {
+    "id": "fix-last-play-format",
+    "number": 80,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/80",
+    "title": "[fix]/ Display last-play times as meaningful dates or elapsed time"
+  },
+  "fix-theme-selected-font-unused": {
+    "id": "fix-theme-selected-font-unused",
+    "number": 79,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/79",
+    "title": "[fix]/ Use the current Omarchy font when installing application fonts"
+  },
+  "fix-theme-font-settings-reload": {
+    "id": "fix-theme-font-settings-reload",
+    "number": 78,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/78",
+    "title": "[fix]/ Reload font and shell theme settings when those sources change"
+  },
+  "fix-selected-deck-load-target": {
+    "id": "fix-selected-deck-load-target",
+    "number": 77,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/77",
+    "title": "[fix]/ Make deck selection control the crate double-click destination"
+  },
+  "fix-sample-pad-label-order": {
+    "id": "fix-sample-pad-label-order",
+    "number": 76,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/76",
+    "title": "[fix]/ Align displayed sample pad numbers with dispatched pad indexes"
+  },
+  "fix-fx-dead-parameter-controls": {
+    "id": "fix-fx-dead-parameter-controls",
+    "number": 75,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/75",
+    "title": "[fix]/ Render effect-specific controls instead of inert generic sliders"
+  },
+  "fix-documented-existing-shortcuts": {
+    "id": "fix-documented-existing-shortcuts",
+    "number": 74,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/74",
+    "title": "[fix]/ Restore documented shortcuts for implemented scene, sync, crossfader and load actions"
+  },
+  "fix-midi-connection-status": {
+    "id": "fix-midi-connection-status",
+    "number": 73,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/73",
+    "title": "[fix]/ Report MIDI devices as connected only after connection succeeds"
+  },
+  "fix-midi-browser-selection": {
+    "id": "fix-midi-browser-selection",
+    "number": 72,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/72",
+    "title": "[fix]/ Connect controller browse events to the visible crate selection"
+  },
+  "fix-rescan-erases-play-history": {
+    "id": "fix-rescan-erases-play-history",
+    "number": 71,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/71",
+    "title": "[fix]/ Preserve existing crate history across rescans"
+  },
+  "fix-last-play-before-playback": {
+    "id": "fix-last-play-before-playback",
+    "number": 70,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/70",
+    "title": "[fix]/ Update play history only after successful playback"
+  },
+  "fix-filename-sharp-key-parser": {
+    "id": "fix-filename-sharp-key-parser",
+    "number": 69,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/69",
+    "title": "[fix]/ Preserve accidentals when parsing filename key hints"
+  },
+  "fix-crate-duration-never-updated": {
+    "id": "fix-crate-duration-never-updated",
+    "number": 68,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/68",
+    "title": "[fix]/ Populate file duration in the existing crate length column"
+  },
+  "fix-crate-bpm-provenance": {
+    "id": "fix-crate-bpm-provenance",
+    "number": 67,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/67",
+    "title": "[fix]/ Reconcile decoded BPM with crate metadata and identify filename guesses"
+  },
+  "fix-shell-scene-argument": {
+    "id": "fix-shell-scene-argument",
+    "number": 66,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/66",
+    "title": "[fix]/ Forward the requested scene number through the shell service"
+  },
+  "fix-ipc-midi-status-empty": {
+    "id": "fix-ipc-midi-status-empty",
+    "number": 65,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/65",
+    "title": "[fix]/ Publish MIDI device status into the shared snapshot used by CLI and shell"
+  },
+  "fix-follow-socket-thread-churn": {
+    "id": "fix-follow-socket-thread-churn",
+    "number": 64,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/64",
+    "title": "[fix]/ Reuse a status connection instead of reconnecting and spawning a thread every poll"
+  },
+  "fix-voice-pitch-recompute": {
+    "id": "fix-voice-pitch-recompute",
+    "number": 63,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/63",
+    "title": "[fix]/ Cache synth pitch increments between note and tuning changes"
+  },
+  "fix-third-hardware-fx-wet-inert": {
+    "id": "fix-third-hardware-fx-wet-inert",
+    "number": 62,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/62",
+    "title": "[fix]/ Connect or explicitly reject the third hardware FX wet control"
+  },
+  "fix-svf-cutoff-clamp": {
+    "id": "fix-svf-cutoff-clamp",
+    "number": 61,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/61",
+    "title": "[fix]/ Apply the SVF cutoff limit in the correct frequency domain"
+  },
+  "fix-stereo-fx-ignore-mix": {
+    "id": "fix-stereo-fx-ignore-mix",
+    "number": 60,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/60",
+    "title": "[fix]/ Honor wet mix and chain order for Spread and Balance"
+  },
+  "fix-snapshot-waveform-recopy": {
+    "id": "fix-snapshot-waveform-recopy",
+    "number": 59,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/59",
+    "title": "[fix]/ Share immutable waveform peaks instead of cloning them on every snapshot"
+  },
+  "fix-sampler-instrument-labels": {
+    "id": "fix-sampler-instrument-labels",
+    "number": 58,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/58",
+    "title": "[fix]/ Map sampler instrument choices to the sounds named by the UI"
+  },
+  "fix-mixer-gain-recompute": {
+    "id": "fix-mixer-gain-recompute",
+    "number": 57,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/57",
+    "title": "[fix]/ Cache unchanged crossfader and pan gain calculations"
+  },
+  "fix-metronome-single-sample": {
+    "id": "fix-metronome-single-sample",
+    "number": 56,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/56",
+    "title": "[fix]/ Render a timed metronome click instead of one sample per beat"
+  },
+  "fix-hardware-fx-selection-inert": {
+    "id": "fix-hardware-fx-selection-inert",
+    "number": 55,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/55",
+    "title": "[fix]/ Route legacy hardware FX selection into the actual renderer"
+  },
+  "fix-fx-mix-double-application": {
+    "id": "fix-fx-mix-double-application",
+    "number": 54,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/54",
+    "title": "[fix]/ Apply delay, reverb and chorus wet mix exactly once"
+  },
+  "fix-empty-fx-channel-delay": {
+    "id": "fix-empty-fx-channel-delay",
+    "number": 53,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/53",
+    "title": "[fix]/ Make neutral and empty FX chains sample-transparent"
+  },
+  "fix-drum-velocity-discarded": {
+    "id": "fix-drum-velocity-discarded",
+    "number": 52,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/52",
+    "title": "[fix]/ Apply MIDI velocity to drum voices"
+  },
+  "fix-drum-sample-arc-churn": {
+    "id": "fix-drum-sample-arc-churn",
+    "number": 51,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/51",
+    "title": "[fix]/ Stop cloning drum sample Arcs on every output frame"
+  },
+  "fix-dj-lowpass-direction": {
+    "id": "fix-dj-lowpass-direction",
+    "number": 50,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/50",
+    "title": "[fix]/ Make the DJ low-pass sweep progress smoothly away from bypass"
+  },
+  "fix-clip-gain-unused": {
+    "id": "fix-clip-gain-unused",
+    "number": 49,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/49",
+    "title": "[fix]/ Apply the stored clip gain during clip playback"
+  },
+  "fix-callback-cpu-underreport": {
+    "id": "fix-callback-cpu-underreport",
+    "number": 48,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/48",
+    "title": "[fix]/ Measure the entire audio callback workload in CPU telemetry"
+  },
+  "fix-theme-unicode-color-panic": {
+    "id": "fix-theme-unicode-color-panic",
+    "number": 47,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/47",
+    "title": "[fix]/ Reject malformed UTF-8 color values without panicking"
+  },
+  "fix-keyboard-text-focus": {
+    "id": "fix-keyboard-text-focus",
+    "number": 46,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/46",
+    "title": "[fix]/ Suppress global transport shortcuts while editing text"
+  },
+  "fix-hidden-load-status": {
+    "id": "fix-hidden-load-status",
+    "number": 45,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/45",
+    "title": "[fix]/ Show loading, failure and completion status to the user"
+  },
+  "fix-crate-row-virtualization": {
+    "id": "fix-crate-row-virtualization",
+    "number": 44,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/44",
+    "title": "[fix]/ Virtualize crate rows and cache unchanged filter/format work"
+  },
+  "fix-compose-arm-target-drift": {
+    "id": "fix-compose-arm-target-drift",
+    "number": 43,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/43",
+    "title": "[fix]/ Make pad composition arming explicit and keep its target stable"
+  },
+  "fix-relative-jog-sign": {
+    "id": "fix-relative-jog-sign",
+    "number": 42,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/42",
+    "title": "[fix]/ Decode relative jog movement with correct signed deltas"
+  },
+  "fix-midi-realtime-length": {
+    "id": "fix-midi-realtime-length",
+    "number": 41,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/41",
+    "title": "[fix]/ Parse one-byte MIDI real-time messages before channel-message length checks"
+  },
+  "fix-midi-load-bridge": {
+    "id": "fix-midi-load-bridge",
+    "number": 40,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/40",
+    "title": "[fix]/ Connect controller load commands to the actual library loader"
+  },
+  "fix-midi-blocking-send": {
+    "id": "fix-midi-blocking-send",
+    "number": 39,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/39",
+    "title": "[fix]/ Keep MIDI input callbacks from blocking on the engine queue"
+  },
+  "fix-apc40-fader-fanout": {
+    "id": "fix-apc40-fader-fanout",
+    "number": 38,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/38",
+    "title": "[fix]/ Remove duplicate APC40 fader bindings that alter every track"
+  },
+  "fix-stale-decode-completions": {
+    "id": "fix-stale-decode-completions",
+    "number": 37,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/37",
+    "title": "[fix]/ Reject stale deck load completions and cancel obsolete decode jobs"
+  },
+  "fix-library-scan-blocks-ui": {
+    "id": "fix-library-scan-blocks-ui",
+    "number": 36,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/36",
+    "title": "[fix]/ Move filesystem scanning off the UI and startup rendering path"
+  },
+  "fix-decoder-partial-success": {
+    "id": "fix-decoder-partial-success",
+    "number": 35,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/35",
+    "title": "[fix]/ Report corrupt and incomplete audio decoding instead of silently accepting it"
+  },
+  "fix-builtin-crate-load": {
+    "id": "fix-builtin-crate-load",
+    "number": 34,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/34",
+    "title": "[fix]/ Load built-in crate entries through the built-in media path"
+  },
+  "fix-shell-control-acknowledgment": {
+    "id": "fix-shell-control-acknowledgment",
+    "number": 33,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/33",
+    "title": "[fix]/ Report shell control results and avoid replacing in-flight commands"
+  },
+  "fix-runtime-socket-user-isolation": {
+    "id": "fix-runtime-socket-user-isolation",
+    "number": 32,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/32",
+    "title": "[fix]/ Keep the fallback control socket private to the current user"
+  },
+  "fix-live-socket-unlink": {
+    "id": "fix-live-socket-unlink",
+    "number": 31,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/31",
+    "title": "[fix]/ Do not unlink a live instance socket after a slow response"
+  },
+  "fix-ipc-unbounded-client-read": {
+    "id": "fix-ipc-unbounded-client-read",
+    "number": 30,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/30",
+    "title": "[fix]/ Bound IPC request size and idle connection lifetime"
+  },
+  "fix-ipc-startup-failure-hidden": {
+    "id": "fix-ipc-startup-failure-hidden",
+    "number": 29,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/29",
+    "title": "[fix]/ Surface IPC startup failure instead of running without the control surface"
+  },
+  "fix-ipc-false-success": {
+    "id": "fix-ipc-false-success",
+    "number": 28,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/28",
+    "title": "[fix]/ Return errors for malformed JSON and unknown IPC operations"
+  },
+  "fix-installer-config-rollback": {
+    "id": "fix-installer-config-rollback",
+    "number": 27,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/27",
+    "title": "[fix]/ Make multi-file installation transactional and recoverable"
+  },
+  "fix-installer-binary-atomic-replacement": {
+    "id": "fix-installer-binary-atomic-replacement",
+    "number": 26,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/26",
+    "title": "[fix]/ Replace the installed executable atomically"
+  },
+  "fix-snapshot-lock-audio-block": {
+    "id": "fix-snapshot-lock-audio-block",
+    "number": 25,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/25",
+    "title": "[fix]/ Publish audio snapshots without blocking on UI or IPC readers"
+  },
+  "fix-scene-fx-shared-ownership": {
+    "id": "fix-scene-fx-shared-ownership",
+    "number": 24,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/24",
+    "title": "[fix]/ Keep FX state and settings separate for each scene"
+  },
+  "fix-scene-fx-mono-collapse": {
+    "id": "fix-scene-fx-mono-collapse",
+    "number": 23,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/23",
+    "title": "[fix]/ Preserve session stereo when processing scene FX"
+  },
+  "fix-sampler-duplicate-routing": {
+    "id": "fix-sampler-duplicate-routing",
+    "number": 22,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/22",
+    "title": "[fix]/ Route instrument pads through one deliberate mixer destination"
+  },
+  "fix-sample-rate-state-incomplete": {
+    "id": "fix-sample-rate-state-incomplete",
+    "number": 21,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/21",
+    "title": "[fix]/ Reconfigure every rate-dependent processor for the output sample rate"
+  },
+  "fix-record-note-duration": {
+    "id": "fix-record-note-duration",
+    "number": 20,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/20",
+    "title": "[fix]/ Record actual held note durations instead of fixed quarter-beat notes"
+  },
+  "fix-record-clip-local-time": {
+    "id": "fix-record-clip-local-time",
+    "number": 19,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/19",
+    "title": "[fix]/ Record note positions relative to the selected clip and its actual length"
+  },
+  "fix-quantized-launch-before-start": {
+    "id": "fix-quantized-launch-before-start",
+    "number": 18,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/18",
+    "title": "[fix]/ Keep quantized clips pending until their scheduled start beat"
+  },
+  "fix-paused-deck-dc": {
+    "id": "fix-paused-deck-dc",
+    "number": 17,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/17",
+    "title": "[fix]/ Render silence from stopped decks instead of a frozen sample"
+  },
+  "fix-noteoff-selected-track-owner": {
+    "id": "fix-noteoff-selected-track-owner",
+    "number": 16,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/16",
+    "title": "[fix]/ Route note-offs back to the track and voice that received note-on"
+  },
+  "fix-mute-note-lifecycle": {
+    "id": "fix-mute-note-lifecycle",
+    "number": 15,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/15",
+    "title": "[fix]/ Advance note and drum lifecycles while tracks are muted or excluded by solo"
+  },
+  "fix-midi-note-clone-per-sample": {
+    "id": "fix-midi-note-clone-per-sample",
+    "number": 14,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/14",
+    "title": "[fix]/ Remove per-sample MIDI clip cloning and repeated full-note scans"
+  },
+  "fix-master-stereo-delay-reverb": {
+    "id": "fix-master-stereo-delay-reverb",
+    "number": 13,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/13",
+    "title": "[fix]/ Correct stereo timing and channel state in master delay and reverb"
+  },
+  "fix-keylock-seek-history": {
+    "id": "fix-keylock-seek-history",
+    "number": 12,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/12",
+    "title": "[fix]/ Reset pitch-lock grain history after seeks, cues and media replacement"
+  },
+  "fix-gui-command-loss": {
+    "id": "fix-gui-command-loss",
+    "number": 11,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/11",
+    "title": "[fix]/ Handle full control queues without silently dropping GUI commands"
+  },
+  "fix-fx-slot-clone-per-sample": {
+    "id": "fix-fx-slot-clone-per-sample",
+    "number": 10,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/10",
+    "title": "[fix]/ Remove FX slot allocations from the sample loop"
+  },
+  "fix-fx-instance-state": {
+    "id": "fix-fx-instance-state",
+    "number": 9,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/9",
+    "title": "[fix]/ Give every stacked FX slot its own processing state"
+  },
+  "fix-engine-lock-buffer-silence": {
+    "id": "fix-engine-lock-buffer-silence",
+    "number": 8,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/8",
+    "title": "[fix]/ Prevent GUI and IPC engine locks from zeroing audio buffers"
+  },
+  "fix-deck-stereo-state": {
+    "id": "fix-deck-stereo-state",
+    "number": 7,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/7",
+    "title": "[fix]/ Separate left and right deck EQ and filter histories"
+  },
+  "fix-deck-load-loop-state": {
+    "id": "fix-deck-load-loop-state",
+    "number": 6,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/6",
+    "title": "[fix]/ Reset track-specific loop state when replacing deck audio"
+  },
+  "fix-command-drain-unbounded": {
+    "id": "fix-command-drain-unbounded",
+    "number": 5,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/5",
+    "title": "[fix]/ Bound control-command work per audio block"
+  },
+  "fix-clip-stop-owned-notes": {
+    "id": "fix-clip-stop-owned-notes",
+    "number": 4,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/4",
+    "title": "[fix]/ Release clip-owned voices when tracks or scenes stop or replace clips"
+  },
+  "fix-arp-chord-per-sample": {
+    "id": "fix-arp-chord-per-sample",
+    "number": 3,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/3",
+    "title": "[fix]/ Stop allocating and sorting arpeggiator chords every sample"
+  },
+  "fix-scene-index-abort": {
+    "id": "fix-scene-index-abort",
+    "number": 2,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/2",
+    "title": "[fix]/ Reject invalid scene indexes at CLI, IPC and engine boundaries"
+  },
+  "index": {
+    "id": "index",
+    "number": 1,
+    "url": "https://github.com/michaelmonetized/omatainer/issues/1",
+    "title": "[feat]/ Track professional producer and live DJ maturity"
+  }
+}

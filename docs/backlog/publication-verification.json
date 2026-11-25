@@ -1,0 +1,27 @@
+{
+  "verified_at": "2026-09-30T21:05:20.138261+00:00",
+  "repository": "michaelmonetized/omatainer",
+  "tracking_issue": "https://github.com/michaelmonetized/omatainer/issues/1",
+  "verified_children": 356,
+  "verified_total": 357,
+  "kinds": {
+    "fix": 83,
+    "feat": 273
+  },
+  "areas": {
+    "audio": 105,
+    "midi": 44,
+    "ui": 22,
+    "library": 43,
+    "integration": 22,
+    "project": 16,
+    "production": 55,
+    "dj": 49
+  },
+  "checks": [
+    "Unique remote markers exactly match reviewed inventory",
+    "All child titles, full bodies, dependency links and labels match",
+    "All child issues are open",
+    "Complete tracking index contains every child exactly once"
+  ]
+}

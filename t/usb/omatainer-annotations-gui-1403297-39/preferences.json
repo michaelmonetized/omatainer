@@ -1,0 +1,872 @@
+{
+  "version": 24,
+  "active": "Studio",
+  "profiles": {
+    "Performance": {
+      "waveforms": {
+        "linked": true,
+        "zoom": [
+          "four_bars",
+          "four_bars"
+        ]
+      },
+      "library_layout": {
+        "active": "Compact",
+        "layouts": [
+          {
+            "name": "Compact",
+            "columns": [
+              {
+                "column": "title",
+                "visible": true,
+                "width": 280.0
+              },
+              {
+                "column": "bpm",
+                "visible": true,
+                "width": 112.0
+              },
+              {
+                "column": "key",
+                "visible": true,
+                "width": 48.0
+              },
+              {
+                "column": "length",
+                "visible": true,
+                "width": 64.0
+              },
+              {
+                "column": "played",
+                "visible": true,
+                "width": 140.0
+              },
+              {
+                "column": "artist",
+                "visible": true,
+                "width": 180.0
+              },
+              {
+                "column": "rating",
+                "visible": true,
+                "width": 64.0
+              },
+              {
+                "column": "color",
+                "visible": true,
+                "width": 88.0
+              },
+              {
+                "column": "group",
+                "visible": true,
+                "width": 128.0
+              },
+              {
+                "column": "tags",
+                "visible": true,
+                "width": 160.0
+              },
+              {
+                "column": "notes",
+                "visible": true,
+                "width": 240.0
+              }
+            ],
+            "density": "compact",
+            "primary": null,
+            "secondary": null
+          },
+          {
+            "name": "Comfortable",
+            "columns": [
+              {
+                "column": "title",
+                "visible": true,
+                "width": 280.0
+              },
+              {
+                "column": "bpm",
+                "visible": true,
+                "width": 112.0
+              },
+              {
+                "column": "key",
+                "visible": true,
+                "width": 48.0
+              },
+              {
+                "column": "length",
+                "visible": true,
+                "width": 64.0
+              },
+              {
+                "column": "played",
+                "visible": true,
+                "width": 140.0
+              },
+              {
+                "column": "artist",
+                "visible": true,
+                "width": 180.0
+              },
+              {
+                "column": "rating",
+                "visible": true,
+                "width": 64.0
+              },
+              {
+                "column": "color",
+                "visible": true,
+                "width": 88.0
+              },
+              {
+                "column": "group",
+                "visible": true,
+                "width": 128.0
+              },
+              {
+                "column": "tags",
+                "visible": true,
+                "width": 160.0
+              },
+              {
+                "column": "notes",
+                "visible": true,
+                "width": 240.0
+              }
+            ],
+            "density": "comfortable",
+            "primary": null,
+            "secondary": null
+          },
+          {
+            "name": "Artwork",
+            "columns": [
+              {
+                "column": "title",
+                "visible": true,
+                "width": 280.0
+              },
+              {
+                "column": "bpm",
+                "visible": true,
+                "width": 112.0
+              },
+              {
+                "column": "key",
+                "visible": true,
+                "width": 48.0
+              },
+              {
+                "column": "length",
+                "visible": true,
+                "width": 64.0
+              },
+              {
+                "column": "played",
+                "visible": false,
+                "width": 140.0
+              },
+              {
+                "column": "artist",
+                "visible": true,
+                "width": 180.0
+              },
+              {
+                "column": "rating",
+                "visible": false,
+                "width": 64.0
+              },
+              {
+                "column": "color",
+                "visible": false,
+                "width": 88.0
+              },
+              {
+                "column": "group",
+                "visible": false,
+                "width": 128.0
+              },
+              {
+                "column": "tags",
+                "visible": false,
+                "width": 160.0
+              },
+              {
+                "column": "notes",
+                "visible": false,
+                "width": 240.0
+              }
+            ],
+            "density": "artwork",
+            "primary": null,
+            "secondary": null
+          }
+        ]
+      },
+      "workspaces": {
+        "active": "Production",
+        "saved": {
+          "DJ": {
+            "panels": [
+              {
+                "panel": "decks",
+                "visible": true,
+                "height": 0.0,
+                "detached": false,
+                "window_size": [
+                  960.0,
+                  720.0
+                ]
+              },
+              {
+                "panel": "sampler",
+                "visible": true,
+                "height": 0.0,
+                "detached": false,
+                "window_size": [
+                  960.0,
+                  720.0
+                ]
+              },
+              {
+                "panel": "library",
+                "visible": true,
+                "height": 0.0,
+                "detached": false,
+                "window_size": [
+                  960.0,
+                  720.0
+                ]
+              },
+              {
+                "panel": "session",
+                "visible": false,
+                "height": 0.0,
+                "detached": false,
+                "window_size": [
+                  960.0,
+                  720.0
+                ]
+              }
+            ]
+          },
+          "Mix": {
+            "panels": [
+              {
+                "panel": "session",
+                "visible": true,
+                "height": 0.0,
+                "detached": false,
+                "window_size": [
+                  960.0,
+                  720.0
+                ]
+              },
+              {
+                "panel": "decks",
+                "visible": false,
+                "height": 0.0,
+                "detached": false,
+                "window_size": [
+                  960.0,
+                  720.0
+                ]
+              },
+              {
+                "panel": "sampler",
+                "visible": false,
+                "height": 0.0,
+                "detached": false,
+                "window_size": [
+                  960.0,
+                  720.0
+                ]
+              },
+              {
+                "panel": "library",
+                "visible": false,
+                "height": 0.0,
+                "detached": false,
+                "window_size": [
+                  960.0,
+                  720.0
+                ]
+              }
+            ]
+          },
+          "Production": {
+            "panels": [
+              {
+                "panel": "decks",
+                "visible": true,
+                "height": 0.0,
+                "detached": false,
+                "window_size": [
+                  960.0,
+                  720.0
+                ]
+              },
+              {
+                "panel": "sampler",
+                "visible": true,
+                "height": 0.0,
+                "detached": false,
+                "window_size": [
+                  960.0,
+                  720.0
+                ]
+              },
+              {
+                "panel": "library",
+                "visible": true,
+                "height": 0.0,
+                "detached": false,
+                "window_size": [
+                  960.0,
+                  720.0
+                ]
+              },
+              {
+                "panel": "session",
+                "visible": true,
+                "height": 0.0,
+                "detached": false,
+                "window_size": [
+                  960.0,
+                  720.0
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "automation": {
+        "enabled": false,
+        "port": 9000
+      },
+      "audio": {
+        "graph": {
+          "outputs": [],
+          "inputs": []
+        },
+        "backend": null,
+        "format": null,
+        "calibration": {
+          "device": null,
+          "channels": null,
+          "format": null,
+          "buffer_frames": null,
+          "channel": 0,
+          "output_channel": 0,
+          "level_db": -40.0
+        },
+        "device": null,
+        "sample_rate": null,
+        "channels": null,
+        "buffer_frames": null
+      },
+      "midi_inputs": {
+        "mode": "all"
+      },
+      "midi_routing": {
+        "enabled": false,
+        "routes": []
+      },
+      "midi_learn": {
+        "mappings": []
+      },
+      "library_roots": [
+        "/home/michael/Projects/omatainer/t/usb/omatainer-annotations-gui-1403297-39/Music",
+        "/home/michael/Projects/omatainer/t/usb/omatainer-annotations-gui-1403297-39/music"
+      ],
+      "appearance": {
+        "locale": "english",
+        "contrast": "theme",
+        "reduced_motion": false,
+        "waveform_contrast": 1.0,
+        "level_contrast": 1.0,
+        "follow_theme": true,
+        "font_size": null,
+        "scale": 1.0
+      },
+      "shortcuts_enabled": true,
+      "shortcuts": {},
+      "startup": {
+        "session": {
+          "kind": "demo"
+        },
+        "performance_mode": true,
+        "scan_library": false,
+        "show_help": false,
+        "show_midi": false
+      },
+      "recovery": {
+        "checkpoint_seconds": 30,
+        "retention": 3,
+        "max_bytes": 2147483648
+      }
+    },
+    "Studio": {
+      "waveforms": {
+        "linked": true,
+        "zoom": [
+          "four_bars",
+          "four_bars"
+        ]
+      },
+      "library_layout": {
+        "active": "Compact",
+        "layouts": [
+          {
+            "name": "Compact",
+            "columns": [
+              {
+                "column": "title",
+                "visible": true,
+                "width": 280.0
+              },
+              {
+                "column": "bpm",
+                "visible": true,
+                "width": 112.0
+              },
+              {
+                "column": "key",
+                "visible": true,
+                "width": 48.0
+              },
+              {
+                "column": "length",
+                "visible": true,
+                "width": 64.0
+              },
+              {
+                "column": "played",
+                "visible": true,
+                "width": 140.0
+              },
+              {
+                "column": "artist",
+                "visible": true,
+                "width": 180.0
+              },
+              {
+                "column": "rating",
+                "visible": true,
+                "width": 64.0
+              },
+              {
+                "column": "color",
+                "visible": true,
+                "width": 88.0
+              },
+              {
+                "column": "group",
+                "visible": true,
+                "width": 128.0
+              },
+              {
+                "column": "tags",
+                "visible": true,
+                "width": 160.0
+              },
+              {
+                "column": "notes",
+                "visible": true,
+                "width": 240.0
+              }
+            ],
+            "density": "compact",
+            "primary": null,
+            "secondary": null
+          },
+          {
+            "name": "Comfortable",
+            "columns": [
+              {
+                "column": "title",
+                "visible": true,
+                "width": 280.0
+              },
+              {
+                "column": "bpm",
+                "visible": true,
+                "width": 112.0
+              },
+              {
+                "column": "key",
+                "visible": true,
+                "width": 48.0
+              },
+              {
+                "column": "length",
+                "visible": true,
+                "width": 64.0
+              },
+              {
+                "column": "played",
+                "visible": true,
+                "width": 140.0
+              },
+              {
+                "column": "artist",
+                "visible": true,
+                "width": 180.0
+              },
+              {
+                "column": "rating",
+                "visible": true,
+                "width": 64.0
+              },
+              {
+                "column": "color",
+                "visible": true,
+                "width": 88.0
+              },
+              {
+                "column": "group",
+                "visible": true,
+                "width": 128.0
+              },
+              {
+                "column": "tags",
+                "visible": true,
+                "width": 160.0
+              },
+              {
+                "column": "notes",
+                "visible": true,
+                "width": 240.0
+              }
+            ],
+            "density": "comfortable",
+            "primary": null,
+            "secondary": null
+          },
+          {
+            "name": "Artwork",
+            "columns": [
+              {
+                "column": "title",
+                "visible": true,
+                "width": 280.0
+              },
+              {
+                "column": "bpm",
+                "visible": true,
+                "width": 112.0
+              },
+              {
+                "column": "key",
+                "visible": true,
+                "width": 48.0
+              },
+              {
+                "column": "length",
+                "visible": true,
+                "width": 64.0
+              },
+              {
+                "column": "played",
+                "visible": false,
+                "width": 140.0
+              },
+              {
+                "column": "artist",
+                "visible": true,
+                "width": 180.0
+              },
+              {
+                "column": "rating",
+                "visible": false,
+                "width": 64.0
+              },
+              {
+                "column": "color",
+                "visible": false,
+                "width": 88.0
+              },
+              {
+                "column": "group",
+                "visible": false,
+                "width": 128.0
+              },
+              {
+                "column": "tags",
+                "visible": false,
+                "width": 160.0
+              },
+              {
+                "column": "notes",
+                "visible": false,
+                "width": 240.0
+              }
+            ],
+            "density": "artwork",
+            "primary": null,
+            "secondary": null
+          }
+        ]
+      },
+      "workspaces": {
+        "active": "Production",
+        "saved": {
+          "DJ": {
+            "panels": [
+              {
+                "panel": "decks",
+                "visible": true,
+                "height": 0.0,
+                "detached": false,
+                "window_size": [
+                  960.0,
+                  720.0
+                ]
+              },
+              {
+                "panel": "sampler",
+                "visible": true,
+                "height": 0.0,
+                "detached": false,
+                "window_size": [
+                  960.0,
+                  720.0
+                ]
+              },
+              {
+                "panel": "library",
+                "visible": true,
+                "height": 0.0,
+                "detached": false,
+                "window_size": [
+                  960.0,
+                  720.0
+                ]
+              },
+              {
+                "panel": "session",
+                "visible": false,
+                "height": 0.0,
+                "detached": false,
+                "window_size": [
+                  960.0,
+                  720.0
+                ]
+              }
+            ]
+          },
+          "Mix": {
+            "panels": [
+              {
+                "panel": "session",
+                "visible": true,
+                "height": 0.0,
+                "detached": false,
+                "window_size": [
+                  960.0,
+                  720.0
+                ]
+              },
+              {
+                "panel": "decks",
+                "visible": false,
+                "height": 0.0,
+                "detached": false,
+                "window_size": [
+                  960.0,
+                  720.0
+                ]
+              },
+              {
+                "panel": "sampler",
+                "visible": false,
+                "height": 0.0,
+                "detached": false,
+                "window_size": [
+                  960.0,
+                  720.0
+                ]
+              },
+              {
+                "panel": "library",
+                "visible": false,
+                "height": 0.0,
+                "detached": false,
+                "window_size": [
+                  960.0,
+                  720.0
+                ]
+              }
+            ]
+          },
+          "Production": {
+            "panels": [
+              {
+                "panel": "decks",
+                "visible": true,
+                "height": 0.0,
+                "detached": false,
+                "window_size": [
+                  960.0,
+                  720.0
+                ]
+              },
+              {
+                "panel": "sampler",
+                "visible": true,
+                "height": 0.0,
+                "detached": false,
+                "window_size": [
+                  960.0,
+                  720.0
+                ]
+              },
+              {
+                "panel": "library",
+                "visible": true,
+                "height": 0.0,
+                "detached": false,
+                "window_size": [
+                  960.0,
+                  720.0
+                ]
+              },
+              {
+                "panel": "session",
+                "visible": true,
+                "height": 0.0,
+                "detached": false,
+                "window_size": [
+                  960.0,
+                  720.0
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "automation": {
+        "enabled": false,
+        "port": 9000
+      },
+      "audio": {
+        "graph": {
+          "outputs": [],
+          "inputs": []
+        },
+        "backend": null,
+        "format": null,
+        "calibration": {
+          "device": null,
+          "channels": null,
+          "format": null,
+          "buffer_frames": null,
+          "channel": 0,
+          "output_channel": 0,
+          "level_db": -40.0
+        },
+        "device": null,
+        "sample_rate": null,
+        "channels": null,
+        "buffer_frames": null
+      },
+      "midi_inputs": {
+        "mode": "all"
+      },
+      "midi_routing": {
+        "enabled": false,
+        "routes": []
+      },
+      "midi_learn": {
+        "mappings": []
+      },
+      "midi_presets": [
+        {
+          "version": 6,
+          "name": "Stage",
+          "device_hint": "Same controller",
+          "revision_hint": "",
+          "layer": "factory_overlay",
+          "bindings": [
+            {
+              "kind": "Note",
+              "ch": 0,
+              "data": 60,
+              "action": "DeckCueHold",
+              "deck": 0,
+              "extra": 0,
+              "relative": null
+            }
+          ]
+        },
+        {
+          "version": 6,
+          "name": "Renamed",
+          "device_hint": "Same controller",
+          "revision_hint": "",
+          "layer": "factory_overlay",
+          "bindings": [
+            {
+              "kind": "Note",
+              "ch": 0,
+              "data": 60,
+              "action": "DeckCueHold",
+              "deck": 0,
+              "extra": 0,
+              "relative": null
+            }
+          ]
+        },
+        {
+          "version": 6,
+          "name": "Imported",
+          "device_hint": "Same controller",
+          "revision_hint": "",
+          "layer": "factory_overlay",
+          "bindings": [
+            {
+              "kind": "Note",
+              "ch": 0,
+              "data": 60,
+              "action": "DeckCueHold",
+              "deck": 0,
+              "extra": 0,
+              "relative": null
+            }
+          ]
+        }
+      ],
+      "library_roots": [
+        "/home/michael/Projects/omatainer/t/usb/omatainer-annotations-gui-1403297-39/Music",
+        "/home/michael/Projects/omatainer/t/usb/omatainer-annotations-gui-1403297-39/music"
+      ],
+      "appearance": {
+        "locale": "english",
+        "contrast": "theme",
+        "reduced_motion": false,
+        "waveform_contrast": 1.0,
+        "level_contrast": 1.0,
+        "follow_theme": true,
+        "font_size": null,
+        "scale": 1.0
+      },
+      "shortcuts_enabled": true,
+      "shortcuts": {},
+      "startup": {
+        "session": {
+          "kind": "demo"
+        },
+        "performance_mode": false,
+        "scan_library": true,
+        "show_help": false,
+        "show_midi": false
+      },
+      "recovery": {
+        "checkpoint_seconds": 30,
+        "retention": 3,
+        "max_bytes": 2147483648
+      }
+    }
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "channels": 2,
+  "frames": 128,
+  "placement": {
+    "graph_delay_frames": 0,
+    "source_seconds_at_start": 0.0,
+    "transport_seconds_at_start": 0.0
+  },
+  "rate": 48000,
+  "schema": 1,
+  "source_alias": "2"
+}

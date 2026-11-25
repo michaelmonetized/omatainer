@@ -1,0 +1,28 @@
+{
+  "audio_sha256": "adff35ae94a50650e72c005254c629b2f0e39bd012dc3ea36b2bff31ffea480a",
+  "channels": 2,
+  "conductor": {
+    "meters": [
+      {
+        "clocks": 24,
+        "denominator_power": 2,
+        "numerator": 4,
+        "thirty_seconds": 8,
+        "tick": 0
+      }
+    ],
+    "ppqn": 960,
+    "tempos": [
+      {
+        "micros": 483871,
+        "tick": 0
+      }
+    ]
+  },
+  "exact_bpm": 124.0,
+  "frames": 512,
+  "placement": null,
+  "rate": 48000,
+  "schema": 1,
+  "source_alias": "2"
+}

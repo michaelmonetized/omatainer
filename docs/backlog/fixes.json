@@ -1,0 +1,1667 @@
+[
+  {
+    "id": "fix-paused-deck-dc",
+    "kind": "fix",
+    "area": "audio",
+    "priority": "P1",
+    "title": "[fix]/ Render silence from stopped decks instead of a frozen sample",
+    "problem": "Deck transport gates position advancement but not sample reading. Both ordinary and keylocked paused decks repeat the sample at the stopped position. The initialized demo emits constant L/R 0.065097496 with all transports stopped. This proves generated DC, not hardware audibility.",
+    "evidence": [
+      "Reproduced in docs/evidence/audio-results.txt: default stopped output 0.065097496; paused constant-input deck 0.20935817.",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L902-L932",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L950-L960"
+    ],
+    "acceptance": [
+      "Stopped, untouched decks contribute zero samples, including with keylock enabled.",
+      "Play, pause, cue, unload and end-of-file use explicit output-envelope behavior without frozen-sample DC.",
+      "Intentional scratch touch and effect-tail behavior remain documented and independently tested."
+    ],
+    "validation": "Turn the default-stopped and synthetic paused-deck cases in docs/evidence/audio_dsp.rs into assertions; exercise nonzero pause positions and both keylock states without opening a device.",
+    "dependencies": []
+  },
+  {
+    "id": "fix-midi-note-clone-per-sample",
+    "kind": "fix",
+    "area": "audio",
+    "priority": "P1",
+    "title": "[fix]/ Remove per-sample MIDI clip cloning and repeated full-note scans",
+    "problem": "Every active MIDI clip clones its note Vec once per output frame and scans all notes for crossings. The default four-clip scene performs 4096 allocations and requests 368640 bytes per 1024 frames. Complexity grows with clip size even between note events.",
+    "evidence": [
+      "Measured by docs/evidence/audio_dsp.rs; raw counts in docs/evidence/audio-results.txt.",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L749-L813"
+    ],
+    "acceptance": [
+      "Steady-state MIDI clip rendering performs zero note-vector allocations.",
+      "Schedule note-on/off events by event boundaries or equivalent bounded work rather than scanning the entire clip each sample.",
+      "Quantized launches, edits during playback, loops and overlapping notes preserve sample-accurate event order."
+    ],
+    "validation": "Use a counting allocator around warmed renderer blocks and compare event traces for the default scene plus sparse/dense clips at multiple block sizes. Report timings as local elapsed times, not device underruns.",
+    "dependencies": []
+  },
+  {
+    "id": "fix-fx-slot-clone-per-sample",
+    "kind": "fix",
+    "area": "audio",
+    "priority": "P1",
+    "title": "[fix]/ Remove FX slot allocations from the sample loop",
+    "problem": "FxChain::tick clones its entire slots Vec per sample, including chains whose slots are disabled. Eight stopped tracks with one compressor each allocate 8192 times per 1024 frames.",
+    "evidence": [
+      "Reproduced in docs/evidence/audio-results.txt: 8192 allocations, 196608 requested bytes for 1024 frames.",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/fx.rs#L132-L138",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L823-L836"
+    ],
+    "acceptance": [
+      "Warmed FX processing performs no slot-vector allocations or frees in the callback.",
+      "Disabled slots avoid unnecessary DSP and retain defined bypass/tail behavior.",
+      "Adding, editing and toggling slots uses a safe control-to-audio handoff."
+    ],
+    "validation": "Run allocator assertions for empty, populated, disabled and mixed chains, then compare numerical output before and after the storage change.",
+    "dependencies": []
+  },
+  {
+    "id": "fix-arp-chord-per-sample",
+    "kind": "fix",
+    "area": "audio",
+    "priority": "P1",
+    "title": "[fix]/ Stop allocating and sorting arpeggiator chords every sample",
+    "problem": "The arpeggiator builds, sorts and deduplicates a chord Vec for every sample even though its sequence advances only at sixteenth-note boundaries. Arp itself is implemented; the defect is redundant real-time work.",
+    "evidence": [
+      "docs/evidence/audio-results.txt records 3072 allocations for one 1024-frame arpeggiated clip block, including note and FX clones.",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L765-L795"
+    ],
+    "acceptance": [
+      "Chord membership and order are recomputed only when note membership, clip edits or arp controls require it.",
+      "Arpeggiated playback has zero steady-state heap allocations.",
+      "Held chords, rests and loop boundaries retain correct note-offs and sequence order."
+    ],
+    "validation": "Instrument allocations while playing the existing chord fixture and compare emitted notes over several loops; include edits between arp steps.",
+    "dependencies": []
+  },
+  {
+    "id": "fix-engine-lock-buffer-silence",
+    "kind": "fix",
+    "area": "audio",
+    "priority": "P1",
+    "title": "[fix]/ Prevent GUI and IPC engine locks from zeroing audio buffers",
+    "problem": "GUI Engine::send and IPC apply_now acquire the render-state mutex and publish while holding it. The CPAL callback uses try_lock and leaves the entire buffer zeroed on contention. This is a source-proven dropout path; the audit did not measure a live-device dropout.",
+    "evidence": [
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/audio.rs#L50-L63",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L1957-L1963",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/main.rs#L155-L159"
+    ],
+    "acceptance": [
+      "GUI and IPC commands no longer take exclusive ownership of state needed by the callback.",
+      "Audio progresses continuously while control commands and state queries execute.",
+      "Control acknowledgments reflect command acceptance/execution without blocking audio."
+    ],
+    "validation": "Use an extracted callback harness with a sustained signal and deliberately delayed GUI/IPC work; assert no all-zero substitution and continuous sample position. Hardware latency remains a separate validation step.",
+    "dependencies": []
+  },
+  {
+    "id": "fix-snapshot-lock-audio-block",
+    "kind": "fix",
+    "area": "audio",
+    "priority": "P1",
+    "title": "[fix]/ Publish audio snapshots without blocking on UI or IPC readers",
+    "problem": "Periodic publish runs in process and takes the same blocking snapshot mutex used by UI and IPC readers. Holding that lock for 80ms makes a 512-frame renderer call take 80.105ms against a 10.667ms budget.",
+    "evidence": [
+      "Deliberate contention reproduced in docs/evidence/core-results.txt; no production-stream underrun was induced.",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L740-L745",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L1659-L1662",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L1966-L1967",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/main.rs#L193-L208"
+    ],
+    "acceptance": [
+      "Callback snapshot publication uses a bounded nonblocking handoff.",
+      "Slow readers can skip/coalesce states without delaying audio.",
+      "Snapshot replacement and retirement do not perform unbounded destruction in the callback."
+    ],
+    "validation": "Adapt docs/evidence/core_probe.rs to hold a reader for 80ms and assert renderer completion is independent of that reader; use broad machine-relative bounds, not fabricated real-device guarantees.",
+    "dependencies": []
+  },
+  {
+    "id": "fix-callback-cpu-underreport",
+    "kind": "fix",
+    "area": "audio",
+    "priority": "P2",
+    "title": "[fix]/ Measure the entire audio callback workload in CPU telemetry",
+    "problem": "The reported CPU fraction starts timing after command draining and stops before snapshot publication. It excludes both potentially expensive work and synchronization stalls, so a late callback can report low CPU.",
+    "evidence": [
+      "docs/evidence/audio-results.txt: roughly 50ms forced wait with reported CPU fraction 0.02275596.",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L660-L664",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L740-L745",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/audio.rs#L50-L64"
+    ],
+    "acceptance": [
+      "Define and label render CPU, callback elapsed time and deadline overruns separately.",
+      "Total callback telemetry includes command handoff, render, conversion and publication overhead.",
+      "Metrics report dropped/late buffers without allocating or blocking in the callback."
+    ],
+    "validation": "Inject known delays in control handling and publication in an isolated harness and verify total elapsed/overrun metrics include them; do not present wall time as process CPU time.",
+    "dependencies": []
+  },
+  {
+    "id": "fix-command-drain-unbounded",
+    "kind": "fix",
+    "area": "audio",
+    "priority": "P1",
+    "title": "[fix]/ Bound control-command work per audio block",
+    "problem": "process drains the command receiver until it is empty. A bounded queue does not bound the loop when concurrent producers keep replenishing it, and command handlers can allocate or rebuild instruments before rendering begins.",
+    "evidence": [
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L660-L663",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L1522-L1525",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L1942-L1945"
+    ],
+    "acceptance": [
+      "Each callback has an explicit bounded command-work policy.",
+      "Coalesce continuous parameter changes while preserving ordered transport and note lifecycle events.",
+      "Expose overload and backlog metrics and keep musical events from being silently lost."
+    ],
+    "validation": "Stress an isolated renderer with concurrent producers that continuously refill the channel; assert bounded processing latency and correct note-off ordering. The original audit source-traced this risk rather than saturating hardware.",
+    "dependencies": []
+  },
+  {
+    "id": "fix-gui-command-loss",
+    "kind": "fix",
+    "area": "audio",
+    "priority": "P1",
+    "title": "[fix]/ Handle full control queues without silently dropping GUI commands",
+    "problem": "When the render mutex is busy, Engine::send uses try_send and discards its error. The 256-item queue can therefore silently lose stop, note-off, pad-release or parameter commands.",
+    "evidence": [
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L1942-L1945",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L1957-L1963"
+    ],
+    "acceptance": [
+      "Every command submission has an explicit accepted, coalesced or failed result.",
+      "Note-off, stop and release events have a bounded delivery guarantee under overload.",
+      "UI displays actionable submission failures without blocking the render thread."
+    ],
+    "validation": "Fill the channel deterministically while the engine is unavailable, submit note-off and stop, then verify eventual safe voice state and observable overload handling.",
+    "dependencies": []
+  },
+  {
+    "id": "fix-midi-blocking-send",
+    "kind": "fix",
+    "area": "midi",
+    "priority": "P1",
+    "title": "[fix]/ Keep MIDI input callbacks from blocking on the engine queue",
+    "problem": "MIDI dispatch and live-note fallback call blocking Sender::send on the same bounded engine channel. A full queue can stall the MIDI callback and delay subsequent note-offs and transport messages.",
+    "evidence": [
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/midi.rs#L237-L281",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/midi.rs#L314-L451",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L1942-L1945"
+    ],
+    "acceptance": [
+      "MIDI callbacks use a bounded nonblocking event handoff.",
+      "Overload preserves release/stop safety and distinguishes coalescible CC traffic from ordered notes.",
+      "Queue saturation is observable without synchronous logging on the callback."
+    ],
+    "validation": "Use synthetic MIDI with a deliberately full receiver, verify callback returns within a bounded interval, and check subsequent releases are delivered or trigger a documented safe reset; no physical controller claim.",
+    "dependencies": []
+  },
+  {
+    "id": "fix-deck-stereo-state",
+    "kind": "fix",
+    "area": "audio",
+    "priority": "P1",
+    "title": "[fix]/ Separate left and right deck EQ and filter histories",
+    "problem": "Both deck channels tick the same ThreeBand and Svf instances in succession. Channel history leaks across L/R and coefficients effectively see an interleaved signal instead of independent audio channels.",
+    "evidence": [
+      "docs/evidence/audio-results.txt: left-only fixture became L=0.10413283 and R=-0.104132734 after deck EQ.",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L117-L120",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L933-L945"
+    ],
+    "acceptance": [
+      "Deck EQ and filter maintain independent state per channel.",
+      "A left-only input remains silent on the right for independent-channel EQ/filter processing.",
+      "Equivalent stereo and dual-mono fixtures have matching frequency response at the configured sample rate."
+    ],
+    "validation": "Extend the left-only EQ repro to impulses and sine sweeps for each effect and channel; compare to independently instantiated mono reference processors.",
+    "dependencies": []
+  },
+  {
+    "id": "fix-master-stereo-delay-reverb",
+    "kind": "fix",
+    "area": "audio",
+    "priority": "P1",
+    "title": "[fix]/ Correct stereo timing and channel state in master delay and reverb",
+    "problem": "The master calls the same mono delay and reverb instance for L then R. Delay pointers advance twice per stereo frame; an 18000-sample echo arrives after 9000 frames. Channel histories can also interact.",
+    "evidence": [
+      "Reproduced in docs/evidence/audio-results.txt: configured_delay_samples=18000, first_echo_frame=9000.",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L221-L222",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L666-L669",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L727-L730"
+    ],
+    "acceptance": [
+      "Master effects use explicit stereo processors or independent per-channel state.",
+      "Configured delay times are measured in audio frames at the output sample rate.",
+      "Stereo width/crossfeed behavior is intentional and tested rather than accidental state reuse."
+    ],
+    "validation": "Impulse-test each channel and several tempo/sample-rate combinations; the 120-BPM 18000-sample fixture must arrive at 18000 stereo frames.",
+    "dependencies": []
+  },
+  {
+    "id": "fix-fx-instance-state",
+    "kind": "fix",
+    "area": "audio",
+    "priority": "P1",
+    "title": "[fix]/ Give every stacked FX slot its own processing state",
+    "problem": "FxChain stores one state object per effect type and routes every slot of that type through it. Two serial fully wet 12000-sample delays produce their first echo at 12000 rather than 24000 samples; compressors/gates and EQs also share histories.",
+    "evidence": [
+      "docs/evidence/audio-results.txt: one and two delay slots both first echoed at sample 12000.",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/fx.rs#L91-L102",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/fx.rs#L139-L182"
+    ],
+    "acceptance": [
+      "Each stateful FX slot owns independent delay, envelope, filter and modulation state.",
+      "Two serial effects produce the same result as two independently constructed processors in series.",
+      "Slot edits, bypass and deletion preserve defined tail/reset semantics without leaking state to another slot."
+    ],
+    "validation": "Compare duplicate delay, filter, compressor/gate and EQ chains against independent-instance reference chains; include the two-delay impulse fixture.",
+    "dependencies": []
+  },
+  {
+    "id": "fix-fx-mix-double-application",
+    "kind": "fix",
+    "area": "audio",
+    "priority": "P2",
+    "title": "[fix]/ Apply delay, reverb and chorus wet mix exactly once",
+    "problem": "Delay, reverb and chorus set their internal dry/wet mix to the slot mix, then FxChain applies the same mix again. Their effective wet contribution is mix squared, unlike other effect types.",
+    "evidence": [
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/fx.rs#L151-L165",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/fx.rs#L184",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/dsp.rs#L100-L112",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/dsp.rs#L139-L145"
+    ],
+    "acceptance": [
+      "Define one consistent slot wet/dry contract and apply it once.",
+      "Mix 0 is dry and mix 1 is fully wet for time effects.",
+      "Intermediate values match the documented curve across all effect types."
+    ],
+    "validation": "Use impulses with isolated dry and wet windows and verify coefficients at mix 0, 0.25, 0.5 and 1; this finding is source-traced, not a listening comparison.",
+    "dependencies": []
+  },
+  {
+    "id": "fix-stereo-fx-ignore-mix",
+    "kind": "fix",
+    "area": "audio",
+    "priority": "P2",
+    "title": "[fix]/ Honor wet mix and chain order for Spread and Balance",
+    "problem": "Spread and Balance are pass-through in the slot loop and later use only the first enabled matching slot. Their mix values and placement in the chain are ignored; balance at mix 0 still pans hard left.",
+    "evidence": [
+      "Reproduced in docs/evidence/audio-results.txt: balance_mix_zero=(0.8, 0.0).",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/fx.rs#L150",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/fx.rs#L189-L221"
+    ],
+    "acceptance": [
+      "Zero mix leaves stereo input unchanged for Spread and Balance.",
+      "Multiple instances and chain order have defined, independently applied behavior.",
+      "Intermediate and full mixes interpolate according to documented semantics."
+    ],
+    "validation": "Assert identity at zero mix and compare ordered stereo chains; retain the mix-zero balance fixture that currently emits (0.8,0.0).",
+    "dependencies": []
+  },
+  {
+    "id": "fix-empty-fx-channel-delay",
+    "kind": "fix",
+    "area": "audio",
+    "priority": "P2",
+    "title": "[fix]/ Make neutral and empty FX chains sample-transparent",
+    "problem": "tick_stereo always applies Haas processing. Neutral width requests zero delay, but Delay clamps it to one sample, so an empty chain delays the right channel by one sample.",
+    "evidence": [
+      "docs/evidence/audio-results.txt: empty chain impulse outputs (1,0), then (0,1).",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/fx.rs#L189-L201",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/dsp.rs#L100-L103",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L829-L830"
+    ],
+    "acceptance": [
+      "An empty or entirely neutral chain passes channels through without latency or phase offsets.",
+      "Intentional spread delay activates only for a nonneutral enabled effect.",
+      "Bypass transitions use a defined click-free policy."
+    ],
+    "validation": "Impulse and pseudorandom identity tests must compare both channels sample-for-sample at neutral settings.",
+    "dependencies": []
+  },
+  {
+    "id": "fix-scene-fx-mono-collapse",
+    "kind": "fix",
+    "area": "audio",
+    "priority": "P1",
+    "title": "[fix]/ Preserve session stereo when processing scene FX",
+    "problem": "Any nonempty scene FX slot list folds the already-panned session sum to mono before processing. This happens even if every slot is disabled, so merely adding then bypassing an effect destroys track panning.",
+    "evidence": [
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L682-L695"
+    ],
+    "acceptance": [
+      "Scene processing accepts and preserves stereo input.",
+      "An all-bypassed scene chain is transparent to panning and channel separation.",
+      "Effects that intentionally collapse width expose and document that behavior."
+    ],
+    "validation": "Pan independent test tones left and right, add an effect, bypass all slots, and assert the bypassed output matches the no-chain reference.",
+    "dependencies": []
+  },
+  {
+    "id": "fix-scene-fx-shared-ownership",
+    "kind": "fix",
+    "area": "audio",
+    "priority": "P1",
+    "title": "[fix]/ Keep FX state and settings separate for each scene",
+    "problem": "Every scene-specific FX panel selects the same global scene_fx object. Adding an effect to scene 1 also shows it in scene 2, contradicting the scene-specific labels.",
+    "evidence": [
+      "docs/evidence/ui-results.txt: scene2 chain after adding only to scene1 has fx_slots=1.",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L247-L249",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L1552-L1554",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L1582-L1588",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/ui.rs#L784-L791"
+    ],
+    "acceptance": [
+      "Each scene owns its own FX chain and parameter state.",
+      "Switching scene panels never edits another scene implicitly.",
+      "Playback defines how scene chains interact when scenes are added across tracks and how old tails end."
+    ],
+    "validation": "Promote the GUI probe that adds only to scene 1 then opens scene 2 into an isolation assertion; add playback and tail-routing tests.",
+    "dependencies": []
+  },
+  {
+    "id": "fix-fx-dead-parameter-controls",
+    "kind": "fix",
+    "area": "ui",
+    "priority": "P2",
+    "title": "[fix]/ Render effect-specific controls instead of inert generic sliders",
+    "problem": "Every one of 13 FX types gets three parameter sliders. Consumer tracing shows 21 of 39 exposed parameters are unused; reverb, chorus and arp consume none of them. The arpeggiator itself works upstream and is not absent.",
+    "evidence": [
+      "Source consumer count documented in docs/evidence/README.md; audio-results.txt shows delay p0=0 and p0=1 both echo at sample 12000.",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/ui.rs#L806-L821",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/fx.rs#L139-L182",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/fx.rs#L209-L221",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L765-L795"
+    ],
+    "acceptance": [
+      "Define explicit per-effect parameter metadata with names, units, ranges and DSP consumers.",
+      "Expose only implemented parameters, and connect each exposed slider to a measurable behavior.",
+      "Give the delay time control a real consumer or remove the unsupported control until it exists.",
+      "Test every exposed parameter and show its current value accessibly."
+    ],
+    "validation": "Build a table-driven sweep of every exposed parameter and assert the intended state or output changes; retain delay p0 endpoint comparison as a regression fixture.",
+    "dependencies": []
+  },
+  {
+    "id": "fix-hardware-fx-selection-inert",
+    "kind": "fix",
+    "area": "audio",
+    "priority": "P2",
+    "title": "[fix]/ Route legacy hardware FX selection into the actual renderer",
+    "problem": "FxSelect rotates fx_kind but process never reads that array; slots remain hard-wired to master delay and reverb. A mapped controller effect selector changes dead state.",
+    "evidence": [
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L1349-L1355",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L666-L669",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L727-L730",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/midi.rs#L450-L452"
+    ],
+    "acceptance": [
+      "Each accepted legacy FX selection changes the processor used by the corresponding control.",
+      "Expose selected type in snapshots/UI so the selection is reviewable.",
+      "Unsupported types are rejected or removed from cycling rather than silently accepted."
+    ],
+    "validation": "Feed mapped FxSelect events and compare selected-type snapshots and deterministic output for each supported type; use synthetic messages only.",
+    "dependencies": []
+  },
+  {
+    "id": "fix-third-hardware-fx-wet-inert",
+    "kind": "fix",
+    "area": "audio",
+    "priority": "P2",
+    "title": "[fix]/ Connect or explicitly reject the third hardware FX wet control",
+    "problem": "FxWet accepts three slot indexes and factory mappings send slot 2, but the renderer only reads fx_wet[0] and [1]. The third wet control has no audio effect.",
+    "evidence": [
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L1346-L1348",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L666-L669",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/midi.rs#L668-L674"
+    ],
+    "acceptance": [
+      "Slot 2 wet controls a supported audible processor or returns an explicit unsupported result.",
+      "Snapshots identify the target processor and current wet value.",
+      "Factory maps contain no silently inert FX controls."
+    ],
+    "validation": "Dispatch the existing mapped slot-2 CC and assert its documented output/state effect across minimum and maximum values.",
+    "dependencies": []
+  },
+  {
+    "id": "fix-drum-velocity-discarded",
+    "kind": "fix",
+    "area": "audio",
+    "priority": "P2",
+    "title": "[fix]/ Apply MIDI velocity to drum voices",
+    "problem": "trig_drum accepts velocity but discards it, and drum voice storage retains only sample index and position. Quiet and loud MIDI hits render identically.",
+    "evidence": [
+      "docs/evidence/audio-results.txt: velocities 1 and 127 both produce absolute-sample sum 788.015258789.",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L847-L879",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L1299-L1304"
+    ],
+    "acceptance": [
+      "Store and apply per-hit velocity for live MIDI and clip drums.",
+      "Velocity-zero note-on follows the input note-off policy and cannot create a full-volume hit.",
+      "Overlapping hits preserve their independent velocities."
+    ],
+    "validation": "Render otherwise identical hits at velocities 1,64,127 and verify monotonic energy and independent overlapping-hit amplitudes.",
+    "dependencies": []
+  },
+  {
+    "id": "fix-sample-rate-state-incomplete",
+    "kind": "fix",
+    "area": "audio",
+    "priority": "P1",
+    "title": "[fix]/ Reconfigure every rate-dependent processor for the output sample rate",
+    "problem": "Engine startup constructs at 48000Hz, then set_sample_rate updates only some state. Sampler envelopes and track/scene FX keep construction-rate buffers or coefficients. Reverb uses fixed sample delays independent of sample rate.",
+    "evidence": [
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L533-L549",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L1942-L1946",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/fx.rs#L105-L128",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/dsp.rs#L121-L137"
+    ],
+    "acceptance": [
+      "Enumerate and update all rate-dependent synth, sampler, filter, delay, chorus, Haas and reverb state.",
+      "Changing output sample rate preserves durations/frequencies in seconds/Hz within documented tolerances.",
+      "Define reset/tail behavior and perform allocations outside the running callback."
+    ],
+    "validation": "Construct at 48kHz, reconfigure to 44.1/96kHz, and measure ADSR timing, delay arrivals and filter responses; the audit did not test physical device switching.",
+    "dependencies": []
+  },
+  {
+    "id": "fix-drum-sample-arc-churn",
+    "kind": "fix",
+    "area": "audio",
+    "priority": "P2",
+    "title": "[fix]/ Stop cloning drum sample Arcs on every output frame",
+    "problem": "tick_drums clones all six sample handles for every sample, even with no active voices. With two default drum tracks at 48kHz, this means 576000 Arc clones and corresponding drops per second.",
+    "evidence": [
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L865-L880"
+    ],
+    "acceptance": [
+      "Borrow immutable drum sample banks without per-frame reference-count churn.",
+      "Idle drum tracks skip unnecessary voice/sample work.",
+      "Bank replacement and voice lifetime remain safe and deterministic."
+    ],
+    "validation": "Instrument or inspect the warmed loop for Arc operations and benchmark idle/active drum rendering before and after; report local timing only.",
+    "dependencies": []
+  },
+  {
+    "id": "fix-voice-pitch-recompute",
+    "kind": "fix",
+    "area": "audio",
+    "priority": "P2",
+    "title": "[fix]/ Cache synth pitch increments between note and tuning changes",
+    "problem": "Every active Voice::tick evaluates the MIDI-note pitch exponential although note number and sample rate usually remain unchanged for many samples.",
+    "evidence": [
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/dsp.rs#L237-L249",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L1530-L1540"
+    ],
+    "acceptance": [
+      "Recompute pitch increments on note, tuning, octave or sample-rate changes only.",
+      "Held-note octave changes and retriggers update cached increments correctly.",
+      "Render pitch remains numerically equivalent within documented tolerance."
+    ],
+    "validation": "Compare frequency and waveform outputs for representative notes and held-octave changes, plus a dense-polyphony microbenchmark; avoid claiming actual XRUN reduction without streaming evidence.",
+    "dependencies": []
+  },
+  {
+    "id": "fix-mixer-gain-recompute",
+    "kind": "fix",
+    "area": "audio",
+    "priority": "P2",
+    "title": "[fix]/ Cache unchanged crossfader and pan gain calculations",
+    "problem": "The sample loop recalculates crossfader powf gains and per-track square-root pan gains even though controls only change between blocks or commands.",
+    "evidence": [
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L697-L701",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L830-L834",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/dsp.rs#L370-L376"
+    ],
+    "acceptance": [
+      "Compute steady control gains at control/block boundaries or use precomputed smooth ramps.",
+      "Control changes remain click-free with the documented crossfader curve.",
+      "Static-control output remains equivalent and no new callback allocation is introduced."
+    ],
+    "validation": "Compare gain curves and rendered samples for static settings and sweeps; benchmark the mixer locally with fixed track counts.",
+    "dependencies": []
+  },
+  {
+    "id": "fix-snapshot-waveform-recopy",
+    "kind": "fix",
+    "area": "audio",
+    "priority": "P2",
+    "title": "[fix]/ Share immutable waveform peaks instead of cloning them on every snapshot",
+    "problem": "publish clones each deck peak Vec into a fresh Arc roughly eight times per second, despite the waveform remaining unchanged until new media loads. Other snapshot metadata is rebuilt in the render path as well.",
+    "evidence": [
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L1592-L1622",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L1644-L1646",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L740-L745"
+    ],
+    "acceptance": [
+      "Waveform data is immutable shared media metadata reused across snapshots.",
+      "Loading/unloading updates waveform identity exactly once per media change.",
+      "Snapshot publication has a documented allocation budget outside the audio callback."
+    ],
+    "validation": "Assert stable waveform Arc identity across unchanged snapshots and no peak-vector allocation while playing; verify replacement on media load.",
+    "dependencies": []
+  },
+  {
+    "id": "fix-quantized-launch-before-start",
+    "kind": "fix",
+    "area": "audio",
+    "priority": "P1",
+    "title": "[fix]/ Keep quantized clips pending until their scheduled start beat",
+    "problem": "LaunchClip stores a future start_beat, but render_track immediately wraps negative local time into the end of the clip. Notes can fire before the launch grid, and a one-shot can terminate at the scheduled start as though it wrapped.",
+    "evidence": [
+      "docs/evidence/core-results.txt: scheduled beat 1, note already active at 0.250043, one-shot gone by 1.111154.",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L1033-L1051",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L752-L760",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L814-L819"
+    ],
+    "acceptance": [
+      "Pending clips emit no notes/audio before the scheduled beat.",
+      "The first event at the start boundary fires exactly once.",
+      "One-shots run for their full length from the scheduled start; loops and retriggers remain correct."
+    ],
+    "validation": "Convert docs/evidence/core_probe.rs quantized one-shot scenario into assertions at sample-level boundaries for several quantizations and tempos.",
+    "dependencies": []
+  },
+  {
+    "id": "fix-clip-stop-owned-notes",
+    "kind": "fix",
+    "area": "audio",
+    "priority": "P1",
+    "title": "[fix]/ Release clip-owned voices when tracks or scenes stop or replace clips",
+    "problem": "StopTrack, ToggleScene and empty-cell replacement clear playing state without releasing voices that the previous clip started. The renderer then has no remaining event source to send their note-offs.",
+    "evidence": [
+      "docs/evidence/core-results.txt confirms scene-stop voice remains in sustain after two seconds.",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L1036-L1039",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L1058-L1073",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L1456-L1466"
+    ],
+    "acceptance": [
+      "Stopping a track/scene or replacing its clip releases every voice owned by that clip.",
+      "Other live-input notes and tracks remain unaffected.",
+      "Tail policy distinguishes envelope release from indefinitely sustained notes, including arpeggiator state."
+    ],
+    "validation": "Render a sustained chord, exercise each stop/replacement path, and assert all owned voices leave sustain within their release time.",
+    "dependencies": []
+  },
+  {
+    "id": "fix-noteoff-selected-track-owner",
+    "kind": "fix",
+    "area": "audio",
+    "priority": "P1",
+    "title": "[fix]/ Route note-offs back to the track and voice that received note-on",
+    "problem": "LiveNoteOn and LiveNoteOff both use the current selected_track, so changing selection while holding a note sends release to the wrong track. Sampler pad note-offs have the same selected-track dependency.",
+    "evidence": [
+      "docs/evidence/core-results.txt confirms the original track remains sustained two seconds after selection-changing release.",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L1299-L1304",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L1330-L1332",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L1495-L1497",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L1516-L1518"
+    ],
+    "acceptance": [
+      "Track active note ownership by input source/channel/note or pad identity.",
+      "Selection and scene changes do not redirect releases away from the original voice.",
+      "Repeated equal-pitch notes from independent inputs cannot incorrectly release each other."
+    ],
+    "validation": "Hold notes/pads, change selection, release, and assert all original owners release while unrelated same-pitch voices remain; synthetic engine/MIDI tests suffice.",
+    "dependencies": []
+  },
+  {
+    "id": "fix-mute-note-lifecycle",
+    "kind": "fix",
+    "area": "audio",
+    "priority": "P1",
+    "title": "[fix]/ Advance note and drum lifecycles while tracks are muted or excluded by solo",
+    "problem": "render_track skips the entire MIDI on/off crossing loop when silent, but still advances last_beat and synth envelopes. Missed note-offs leave voices sustained after unmute; muted drum positions are not advanced at all.",
+    "evidence": [
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L749-L763",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L797-L819",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L823-L844"
+    ],
+    "acceptance": [
+      "Mute and solo affect audibility without losing scheduled releases.",
+      "Muted one-shot drums progress or terminate according to an explicit mute policy rather than resuming old hits unexpectedly.",
+      "Unmute/unsolo cannot resurrect a note beyond its scheduled duration."
+    ],
+    "validation": "Mute during held notes and drum tails, cross their end times, then unmute and verify no stale sound/voice state. This is source-traced and needs a dedicated regression fixture.",
+    "dependencies": []
+  },
+  {
+    "id": "fix-compose-arm-target-drift",
+    "kind": "fix",
+    "area": "ui",
+    "priority": "P1",
+    "title": "[fix]/ Make pad composition arming explicit and keep its target stable",
+    "problem": "Select sets compose_armed permanently; no command clears it. LaunchClip changes the selected target, so stopping, restarting a scene and later playing a pad can silently append notes to a different existing clip.",
+    "evidence": [
+      "docs/evidence/ui-results.txt records arm_after_Stop=true and notes added to a changed selected clip.",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L1286-L1295",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L1052-L1054",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L1499-L1514"
+    ],
+    "acceptance": [
+      "Composition has visible, explicitly controllable armed/disarmed state.",
+      "Transport or playback selection cannot silently retarget an armed edit destination.",
+      "Pads outside an armed/recording workflow do not modify clips."
+    ],
+    "validation": "Turn the GUI Select\u2192Stop\u2192TogglePlay\u2192pad probe into assertions for stable destination and disarm behavior.",
+    "dependencies": []
+  },
+  {
+    "id": "fix-sampler-instrument-labels",
+    "kind": "fix",
+    "area": "audio",
+    "priority": "P2",
+    "title": "[fix]/ Map sampler instrument choices to the sounds named by the UI",
+    "problem": "The menu numbers drums/analog/keys/pad as 0/1/2/3, while Poly kinds are analog/keys/pad as 0/1/2 and SamplerInst clamps 3 to 2. Labels do not match kinds and keys/pad select the same kind.",
+    "evidence": [
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/ui.rs#L503-L517",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L1522-L1525",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/dsp.rs#L217-L225"
+    ],
+    "acceptance": [
+      "Use one typed instrument identity shared by UI and engine.",
+      "Every displayed choice selects the documented distinct implementation.",
+      "Unsupported choices are removed until implemented rather than aliased silently."
+    ],
+    "validation": "Select every menu value and assert the resulting instrument identity, envelope and sound fixture correspond to its label.",
+    "dependencies": []
+  },
+  {
+    "id": "fix-sampler-duplicate-routing",
+    "kind": "fix",
+    "area": "audio",
+    "priority": "P1",
+    "title": "[fix]/ Route instrument pads through one deliberate mixer destination",
+    "problem": "An instrument pad triggers both sampler_poly and the selected track poly. The global sampler is mixed outside track gain/mute/FX, so playing a pad can double the sound and remain audible despite muting its selected track.",
+    "evidence": [
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L1495-L1497",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L702-L705",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L823-L836"
+    ],
+    "acceptance": [
+      "Each pad voice has one explicit mixer destination unless deliberate layering is enabled.",
+      "Destination mute, gain, pan and FX apply consistently.",
+      "Recording/composition writes events without creating an unintended second monitor voice."
+    ],
+    "validation": "Compare pad output with the destination muted and gained to zero, count note-on owners, and verify one audible voice path.",
+    "dependencies": []
+  },
+  {
+    "id": "fix-record-note-duration",
+    "kind": "fix",
+    "area": "audio",
+    "priority": "P1",
+    "title": "[fix]/ Record actual held note durations instead of fixed quarter-beat notes",
+    "problem": "Both live-note recording and pad recording append notes with len=0.25 at note-on; release does not update the recorded duration. Playback therefore cannot reproduce what the player held.",
+    "evidence": [
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L1318-L1332",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L1507-L1518"
+    ],
+    "acceptance": [
+      "Pair recorded note-ons and note-offs by stable input identity.",
+      "Persist the actual held duration with an explicit policy for loop crossings and stop during a held note.",
+      "Velocity and timing remain intact for overlapping and repeated pitches."
+    ],
+    "validation": "Record known short, long, overlapping and loop-crossing holds, then compare stored lengths and playback event times against the synthetic input schedule.",
+    "dependencies": []
+  },
+  {
+    "id": "fix-record-clip-local-time",
+    "kind": "fix",
+    "area": "audio",
+    "priority": "P1",
+    "title": "[fix]/ Record note positions relative to the selected clip and its actual length",
+    "problem": "Recording uses global beat modulo four regardless of a clip launch offset or bars value. Notes recorded into nonaligned or multi-bar clips land in the wrong local position or collapse into the first bar.",
+    "evidence": [
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L1318-L1325",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L1499-L1512",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L754-L756"
+    ],
+    "acceptance": [
+      "Compute recording positions from the target clip start and length.",
+      "Preserve second/later-bar note positions instead of always wrapping at four beats.",
+      "Specify and test recording into stopped clips and quantized pending clips."
+    ],
+    "validation": "Record into one-, two- and four-bar clips launched at nonzero beats; assert stored starts and replay timing match the intended local beat.",
+    "dependencies": []
+  },
+  {
+    "id": "fix-deck-load-loop-state",
+    "kind": "fix",
+    "area": "audio",
+    "priority": "P1",
+    "title": "[fix]/ Reset track-specific loop state when replacing deck audio",
+    "problem": "DeckAudio resets position and hot cues but keeps loop_on, loop_start and loop_len from the previous file. render_deck immediately applies those old bounds to the new media.",
+    "evidence": [
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L1215-L1226",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L905-L911"
+    ],
+    "acceptance": [
+      "Loading new media clears or deliberately restores loop state belonging to that media only.",
+      "Old loop bounds cannot jump the new playhead or loop beyond the new media length.",
+      "Unload and reload state transitions are consistent in snapshots and audio."
+    ],
+    "validation": "Enable a late loop on a long track, replace it with a shorter track, and assert cleared loop state and a valid initial playhead.",
+    "dependencies": []
+  },
+  {
+    "id": "fix-keylock-seek-history",
+    "kind": "fix",
+    "area": "audio",
+    "priority": "P1",
+    "title": "[fix]/ Reset pitch-lock grain history after seeks, cues and media replacement",
+    "problem": "Pitch-lock grains retain grain_origin/prev_origin across DeckSeek, hot-cue jumps, DeckCue and DeckAudio replacement. These paths change the playhead or media without resetting grain history, while DeckPlay and keylock toggling do reset it.",
+    "evidence": [
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L950-L972",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L1088-L1095",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L1145-L1153",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L1215-L1245"
+    ],
+    "acceptance": [
+      "Every discontinuous playhead/media change updates grain origins through one shared transition path.",
+      "Post-seek output corresponds to the new location without stale-grain playback.",
+      "Transitions apply a defined click-control envelope without breaking pitch-lock timing."
+    ],
+    "validation": "Use distinct marked audio regions, seek/cue while keylocked, and verify the output belongs to the new region within documented transition latency; source-traced, no listening claim.",
+    "dependencies": []
+  },
+  {
+    "id": "fix-metronome-single-sample",
+    "kind": "fix",
+    "area": "audio",
+    "priority": "P2",
+    "title": "[fix]/ Render a timed metronome click instead of one sample per beat",
+    "problem": "The metronome changes metro_phase inside the beat-boundary condition, so only that one sample receives click energy. Its oscillator also uses the callback-local index, making click amplitude depend on block alignment.",
+    "evidence": [
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L715-L724"
+    ],
+    "acceptance": [
+      "A beat starts a click voice/envelope with a defined audible duration.",
+      "Click waveform and amplitude are independent of callback block boundaries.",
+      "Downbeat accent and enable/disable behavior are deterministic."
+    ],
+    "validation": "Render the same timeline using different block sizes and assert equivalent clicks, correct beat positions and multi-sample duration without relying on physical audio output.",
+    "dependencies": []
+  },
+  {
+    "id": "fix-svf-cutoff-clamp",
+    "kind": "fix",
+    "area": "audio",
+    "priority": "P2",
+    "title": "[fix]/ Apply the SVF cutoff limit in the correct frequency domain",
+    "problem": "Svf clamps PI*cutoff/sr to 0.45 before tan, limiting the effective cutoff to about 0.143*sr (6875Hz at 48kHz). Callers request frequencies up to 0.42*sr and the DJ control reaches 8200Hz, so upper ranges plateau unexpectedly.",
+    "evidence": [
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/dsp.rs#L28-L34",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/dsp.rs#L259-L260",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L938-L944"
+    ],
+    "acceptance": [
+      "Document the supported cutoff range and clamp frequency or normalized frequency consistently.",
+      "Upper supported control values produce distinct intended responses.",
+      "The filter remains finite and stable across sample rates, resonance limits and cutoff extremes."
+    ],
+    "validation": "Measure impulse/sine-sweep response for requested cutoffs above and below 6875Hz at 48kHz and repeat at other sample rates; compare against a reference coefficient calculation.",
+    "dependencies": []
+  },
+  {
+    "id": "fix-dj-lowpass-direction",
+    "kind": "fix",
+    "area": "audio",
+    "priority": "P2",
+    "title": "[fix]/ Make the DJ low-pass sweep progress smoothly away from bypass",
+    "problem": "For the low-pass half of the deck filter, moving from center toward the minimum increases cutoff from roughly 680Hz to 8200Hz. Crossing the center bypass threshold abruptly enables a low cutoff, then further rotation opens it, reversing the expected attenuation progression.",
+    "evidence": [
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L938-L944"
+    ],
+    "acceptance": [
+      "Define center as transparent bypass and map leftward movement monotonically toward stronger low-pass attenuation.",
+      "High-pass behavior is independently mapped and tested.",
+      "Transitions at the center deadband avoid a sudden response discontinuity."
+    ],
+    "validation": "Sweep a broadband fixture through the control and measure high-frequency attenuation and continuity at both bypass thresholds; this is a source-derived control-mapping defect.",
+    "dependencies": []
+  },
+  {
+    "id": "fix-clip-gain-unused",
+    "kind": "fix",
+    "area": "audio",
+    "priority": "P2",
+    "title": "[fix]/ Apply the stored clip gain during clip playback",
+    "problem": "Clip includes gain and seeded bass/keys/pad clips set distinct values, but render_track uses only track gain and never reads clip gain. Existing clip-level mix values have no effect.",
+    "evidence": [
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L43-L50",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L604-L640",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L749-L836"
+    ],
+    "acceptance": [
+      "Define and apply clip gain independently of track gain.",
+      "Clip changes do not unintentionally scale unrelated live-input voices or previous tails.",
+      "Unity and zero clip gain behave predictably and are represented in relevant snapshots/editing workflows."
+    ],
+    "validation": "Render the same MIDI clip at zero, half and unity clip gain with unrelated live input present; assert only clip-owned audio follows the gain.",
+    "dependencies": []
+  },
+  {
+    "id": "fix-builtin-crate-load",
+    "kind": "fix",
+    "area": "library",
+    "priority": "P1",
+    "title": "[fix]/ Load built-in crate entries through the built-in media path",
+    "problem": "load_sel uses Path::starts_with(\"builtin:\"), which compares path components rather than a string prefix. builtin:drums and builtin:harmony fail the check and are queued as nonexistent filesystem paths.",
+    "evidence": [
+      "docs/evidence/ui-results.txt: zero engine commands and a decoder job for each built-in entry.",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/ui.rs#L132-L147",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/dsp.rs#L607-L616",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L1481-L1484"
+    ],
+    "acceptance": [
+      "Represent built-in and filesystem media as distinct typed sources or correctly parse the existing scheme.",
+      "Both built-in entries load into either deck without entering the file decoder.",
+      "Loading a built-in again resets its playhead and reports actual success."
+    ],
+    "validation": "Turn the original load_sel GUI probe into assertions on emitted engine commands and decoder queue contents for both built-ins and a real file.",
+    "dependencies": []
+  },
+  {
+    "id": "fix-keyboard-text-focus",
+    "kind": "fix",
+    "area": "ui",
+    "priority": "P1",
+    "title": "[fix]/ Suppress global transport shortcuts while editing text",
+    "problem": "handle_keys consumes key events without checking text-input focus. With real egui search focus, typing q both inserts q and emits DeckPlay for deck A; space and other deck letters have similar conflicts.",
+    "evidence": [
+      "docs/evidence/ui-results.txt: confirmed search focus; q inserted and DeckPlay { deck:0 } emitted.",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/ui.rs#L212-L223",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/ui.rs#L276-L295",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/ui.rs#L565-L569"
+    ],
+    "acceptance": [
+      "Text editing consumes ordinary characters and editing keys without changing transport or deck state.",
+      "Global shortcuts work when focus is outside text input, with an explicit exception policy if needed.",
+      "Modal dialogs and future text fields use the same focus-aware dispatch."
+    ],
+    "validation": "Extend docs/evidence/ui_probe.py focused-search test to all bound characters, spaces and modifiers; assert text contents and absence of unintended commands.",
+    "dependencies": []
+  },
+  {
+    "id": "fix-documented-existing-shortcuts",
+    "kind": "fix",
+    "area": "ui",
+    "priority": "P2",
+    "title": "[fix]/ Restore documented shortcuts for implemented scene, sync, crossfader and load actions",
+    "problem": "README advertises 1\u20138 scene launch, W/O sync, brackets crossfader and F loading, but handle_keys omits them despite existing engine/UI actions. Arrange/Compose implementation and Tab view navigation remain separate feature scope.",
+    "evidence": [
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/README.md#L26-L45",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/ui.rs#L276-L295"
+    ],
+    "acceptance": [
+      "Implement documented shortcuts for existing controls or remove unsupported claims from README and in-app help.",
+      "Use one authoritative binding table for dispatch and help text.",
+      "Bindings honor text focus and modifiers and avoid conflicting transport actions."
+    ],
+    "validation": "Generate synthetic egui key events for the documented existing actions and assert exact commands and matching help labels; do not count absent arrangement views as repaired.",
+    "dependencies": []
+  },
+  {
+    "id": "fix-crate-row-virtualization",
+    "kind": "fix",
+    "area": "ui",
+    "priority": "P1",
+    "title": "[fix]/ Virtualize crate rows and cache unchanged filter/format work",
+    "problem": "Every frame filters the full crate, clones/formats every matching row, then visits every row inside ScrollArea::show. A fixed-height viewport therefore costs work proportional to the entire library.",
+    "evidence": [
+      "docs/evidence/ui-results.txt: medians 0.170ms,22.074ms,116.694ms for 100,10000,50000 entries at opt-level=1.",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/ui.rs#L170-L180",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/ui.rs#L588-L630",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/ui.rs#L267-L270"
+    ],
+    "acceptance": [
+      "Render and format only visible rows plus a bounded overscan region.",
+      "Cache filter/sort results until query or library metadata changes.",
+      "Selection, keyboard navigation and scrolling remain stable across filtering and updates."
+    ],
+    "validation": "Repeat the fixed 1440x108 headless fixture at 100,10000,50000 tracks and demonstrate visible-row-bounded render work; report elapsed headless time, not desktop FPS.",
+    "dependencies": []
+  },
+  {
+    "id": "fix-library-scan-blocks-ui",
+    "kind": "fix",
+    "area": "library",
+    "priority": "P1",
+    "title": "[fix]/ Move filesystem scanning off the UI and startup rendering path",
+    "problem": "App::new and the Scan button call scan_library synchronously. It traverses Music/music trees and sorts the full result on the UI thread, so slow storage or large collections stall the interface.",
+    "evidence": [
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/ui.rs#L73-L75",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/ui.rs#L78-L126",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/ui.rs#L569-L571"
+    ],
+    "acceptance": [
+      "Scan runs in a cancellable worker with progress and an explicit completion/error state.",
+      "UI and deck controls remain responsive throughout scanning.",
+      "Merge results atomically while preserving selection and existing valid metadata."
+    ],
+    "validation": "Use temporary slow/synthetic directory fixtures and a UI heartbeat/control test; confirm scans do not block event processing without claiming physical disk performance.",
+    "dependencies": []
+  },
+  {
+    "id": "fix-hidden-load-status",
+    "kind": "fix",
+    "area": "ui",
+    "priority": "P1",
+    "title": "[fix]/ Show loading, failure and completion status to the user",
+    "problem": "The decoder and load paths assign self.status, including load failed messages, but no UI renderer reads that field. Missing/corrupt files and failed built-in loads consequently fail without visible feedback.",
+    "evidence": [
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/ui.rs#L132-L147",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/ui.rs#L200-L210",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/ui.rs#L223-L266"
+    ],
+    "acceptance": [
+      "Render current load/progress/error state with the target deck and media identity.",
+      "Errors remain visible long enough to understand and can be retried or dismissed.",
+      "Success appears only after the requested media has actually become current."
+    ],
+    "validation": "Drive missing-file, corrupt-file and successful loads through the original UI completion path and assert visible status content in egui output/snapshots.",
+    "dependencies": []
+  },
+  {
+    "id": "fix-stale-decode-completions",
+    "kind": "fix",
+    "area": "library",
+    "priority": "P1",
+    "title": "[fix]/ Reject stale deck load completions and cancel obsolete decode jobs",
+    "problem": "Load requests use an unbounded serial queue carrying only deck and path; completions are applied unconditionally. Replacing a pending selection or unloading a deck does not invalidate its old completion, which can later reload unwanted media.",
+    "evidence": [
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/ui.rs#L45-L55",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/ui.rs#L145-L146",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/ui.rs#L200-L207",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L1228-L1239"
+    ],
+    "acceptance": [
+      "Assign monotonically tracked request/media identities per deck.",
+      "Unload and newer selections invalidate stale requests and results.",
+      "Bound/coalesce queued decode work and support cancellation at safe decode boundaries."
+    ],
+    "validation": "Inject controllably delayed decodes A/B, unload or select B before A completes, and assert only the latest valid request can change the deck; no timed slow-file claim existed in the audit.",
+    "dependencies": []
+  },
+  {
+    "id": "fix-decoder-partial-success",
+    "kind": "fix",
+    "area": "library",
+    "priority": "P1",
+    "title": "[fix]/ Report corrupt and incomplete audio decoding instead of silently accepting it",
+    "problem": "decode_audio breaks on most packet errors and continues after every decoder error, then returns success whenever any samples were decoded. Truncated/corrupt media can be presented as a successfully loaded shortened track with no warning.",
+    "evidence": [
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/dsp.rs#L639-L667"
+    ],
+    "acceptance": [
+      "Distinguish expected EOF, recoverable packet damage and fatal/incomplete decoding.",
+      "Return structured diagnostics and refuse or explicitly label partial media according to policy.",
+      "Handle reset-required streams deliberately rather than silently truncating at the reset."
+    ],
+    "validation": "Use small valid, truncated, corrupted and reset-requiring fixtures; assert duration/content and surfaced diagnostics. This source-traced issue does not establish corruption for any user file.",
+    "dependencies": []
+  },
+  {
+    "id": "fix-selected-deck-load-target",
+    "kind": "fix",
+    "area": "ui",
+    "priority": "P2",
+    "title": "[fix]/ Make deck selection control the crate double-click destination",
+    "problem": "Crate double-click loads into snapshot.selected_deck, but the UI never sends SelectDeck, so that value stays at its default A regardless of deck interaction.",
+    "evidence": [
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/ui.rs#L625-L627",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L495-L496",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L1297"
+    ],
+    "acceptance": [
+      "Expose and visibly indicate the currently selected deck.",
+      "Relevant deck interactions update selection through one clear policy.",
+      "Double-click loads the selected deck while explicit A/B buttons keep their direct targets."
+    ],
+    "validation": "Interact with deck B, double-click a crate entry, and assert only deck B receives the load; repeat for A and explicit load buttons.",
+    "dependencies": []
+  },
+  {
+    "id": "fix-crate-duration-never-updated",
+    "kind": "fix",
+    "area": "library",
+    "priority": "P2",
+    "title": "[fix]/ Populate file duration in the existing crate length column",
+    "problem": "Every scanned filesystem entry gets length=0 and the load completion path does not reconcile decoded duration back into the crate. The existing length column remains a dash even after successful decoding.",
+    "evidence": [
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/ui.rs#L110-L120",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/ui.rs#L200-L207",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/ui.rs#L596-L600",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/ui.rs#L869-L874"
+    ],
+    "acceptance": [
+      "Populate duration from reliable metadata/decoded frame count and cache it per file identity.",
+      "Unknown duration remains explicitly unknown rather than a false zero-length track.",
+      "Completed analysis/load refreshes the row without blocking the UI or resetting selection."
+    ],
+    "validation": "Scan and load known-duration mono/stereo fixtures and verify the length column updates; comprehensive analysis-library features remain separate scope.",
+    "dependencies": []
+  },
+  {
+    "id": "fix-filename-sharp-key-parser",
+    "kind": "fix",
+    "area": "library",
+    "priority": "P2",
+    "title": "[fix]/ Preserve accidentals when parsing filename key hints",
+    "problem": "parse_tags splits on every non-alphanumeric character before matching tokens such as A# and C#. The sharp character is already removed, so a sharp key is parsed as its natural note.",
+    "evidence": [
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/ui.rs#L839-L855"
+    ],
+    "acceptance": [
+      "Tokenization preserves supported sharp/flat/minor key notation.",
+      "Clearly separate inferred filename hints from verified musical-key analysis.",
+      "Unrecognized strings remain unknown rather than silently becoming a different key."
+    ],
+    "validation": "Table-test A#,C#m,Bb,Db and titles with incidental letters/numbers; do not claim filename parsing is actual key detection.",
+    "dependencies": []
+  },
+  {
+    "id": "fix-crate-bpm-provenance",
+    "kind": "fix",
+    "area": "library",
+    "priority": "P2",
+    "title": "[fix]/ Reconcile decoded BPM with crate metadata and identify filename guesses",
+    "problem": "The crate reads BPM from filename numbers, while decode_audio computes a BPM used by the deck. Completion updates only the deck, so the crate can keep a contradictory guessed BPM and sort order after media is loaded.",
+    "evidence": [
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/ui.rs#L110-L118",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/ui.rs#L200-L207",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/ui.rs#L839-L866",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/dsp.rs#L669-L682"
+    ],
+    "acceptance": [
+      "Track BPM value provenance and confidence/unknown state.",
+      "Reconcile successful analysis results to the correct crate entry without silently overwriting an explicit user correction.",
+      "Keep sorting/display coherent with the chosen authoritative value."
+    ],
+    "validation": "Load a fixture whose filename hint differs from returned analysis and assert consistent labeled crate/deck values and stable file identity. This issue does not assert the current BPM heuristic is accurate.",
+    "dependencies": []
+  },
+  {
+    "id": "fix-last-play-before-playback",
+    "kind": "fix",
+    "area": "library",
+    "priority": "P2",
+    "title": "[fix]/ Update play history only after successful playback",
+    "problem": "load_sel sets last_play before decoding or even confirming the built-in load path. A failed load or merely selecting media records it as played.",
+    "evidence": [
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/ui.rs#L132-L146",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/ui.rs#L200-L209"
+    ],
+    "acceptance": [
+      "Define the playback event that earns a last-play update and apply it consistently.",
+      "Failed loads and canceled requests never mark a track played.",
+      "History records the correct media identity even if crate filtering changes."
+    ],
+    "validation": "Drive failed, canceled, loaded-but-paused and actually played cases and assert history changes only for the chosen successful-play contract.",
+    "dependencies": []
+  },
+  {
+    "id": "fix-rescan-erases-play-history",
+    "kind": "fix",
+    "area": "library",
+    "priority": "P2",
+    "title": "[fix]/ Preserve existing crate history across rescans",
+    "problem": "scan_library rebuilds every LibItem with last_play=None and replaces the library vector. Pressing Scan erases in-session play history even for unchanged files.",
+    "evidence": [
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/ui.rs#L78-L125"
+    ],
+    "acceptance": [
+      "Merge scan results by stable file/media identity while retaining history for unchanged entries.",
+      "Removed/moved files follow an explicit history retention policy.",
+      "Rescan preserves selection when the selected item still exists."
+    ],
+    "validation": "Assign known history to temporary entries, rescan unchanged/moved/deleted fixtures and verify the documented merge behavior; cross-restart persistence belongs the separate library-history feature.",
+    "dependencies": []
+  },
+  {
+    "id": "fix-last-play-format",
+    "kind": "fix",
+    "area": "ui",
+    "priority": "P3",
+    "title": "[fix]/ Display last-play times as meaningful dates or elapsed time",
+    "problem": "fmt_play formats epoch seconds modulo 100000. That number wraps about every 27.8 hours and is neither a timestamp nor a meaningful relative age.",
+    "evidence": [
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/ui.rs#L877-L880"
+    ],
+    "acceptance": [
+      "Display a human-readable localized timestamp or elapsed time with an unambiguous reference.",
+      "Preserve unknown state and handle clock skew/future times safely.",
+      "Expose a precise timestamp in a tooltip or accessible description when using a relative label."
+    ],
+    "validation": "Test formatting for now, minutes ago, previous days, future timestamps and pre-epoch inputs using a fixed clock.",
+    "dependencies": []
+  },
+  {
+    "id": "fix-sample-pad-label-order",
+    "kind": "fix",
+    "area": "ui",
+    "priority": "P2",
+    "title": "[fix]/ Align displayed sample pad numbers with dispatched pad indexes",
+    "problem": "The top sample row displays 1\u20138 but dispatches pad indexes 8\u201315; the bottom displays 9\u201316 but dispatches 0\u20137. The piano layout explains the shared geometry but does not make sample numbering correct.",
+    "evidence": [
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/ui.rs#L533-L558",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L1486-L1493"
+    ],
+    "acceptance": [
+      "Each visible sample pad number maps consistently to its documented zero-based bank slot.",
+      "Piano accidental/natural routing remains correct when switching modes.",
+      "Labels, tooltips and any controller mapping use the same pad identity."
+    ],
+    "validation": "Generate pointer down/up for every visible pad in sample and instrument modes and assert the exact dispatched index and release pair.",
+    "dependencies": []
+  },
+  {
+    "id": "fix-theme-selected-font-unused",
+    "kind": "fix",
+    "area": "ui",
+    "priority": "P2",
+    "title": "[fix]/ Use the current Omarchy font when installing application fonts",
+    "problem": "Theme::reload fetches and stores omarchy font current, but install_fonts ignores that value and only loads fixed JetBrainsMono paths. The README promise to use the current font is not fulfilled.",
+    "evidence": [
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/theme.rs#L118-L125",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/theme.rs#L167-L197",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/ui.rs#L41-L44",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/README.md#L12"
+    ],
+    "acceptance": [
+      "Resolve and load the selected installed font with a documented fallback when unavailable.",
+      "Use the chosen font consistently in relevant text families without dropping required glyph fallback.",
+      "Avoid synchronous subprocess/font discovery on an audio or time-critical UI path."
+    ],
+    "validation": "Provide two controlled installed-font fixtures and verify the chosen egui font family changes; test missing-font fallback without altering the user desktop.",
+    "dependencies": []
+  },
+  {
+    "id": "fix-theme-font-settings-reload",
+    "kind": "fix",
+    "area": "ui",
+    "priority": "P2",
+    "title": "[fix]/ Reload font and shell theme settings when those sources change",
+    "problem": "maybe_reload watches only colors.toml mtime, although reload also reads shell.toml and the selected font. Font-only or base-size-only changes can remain unnoticed indefinitely.",
+    "evidence": [
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/theme.rs#L68-L83",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/theme.rs#L105-L125",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/ui.rs#L190-L198"
+    ],
+    "acceptance": [
+      "Watch every source contributing to applied theme/font settings or consume a reliable explicit reload signal.",
+      "Font/base-size-only changes trigger the necessary style/font reinstall.",
+      "Coalesce repeated changes and recover safely from temporarily invalid files."
+    ],
+    "validation": "Use a temporary theme directory, modify shell/font inputs without touching colors, and verify reload and applied style changes.",
+    "dependencies": []
+  },
+  {
+    "id": "fix-theme-unicode-color-panic",
+    "kind": "fix",
+    "area": "ui",
+    "priority": "P1",
+    "title": "[fix]/ Reject malformed UTF-8 color values without panicking",
+    "problem": "parse_hex checks byte length then slices string offsets 0..2,2..4,4..6. A multibyte character crossing one of those offsets panics rather than returning None; theme reload can therefore abort a release build.",
+    "evidence": [
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/theme.rs#L236-L251",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/Cargo.toml#L31-L34"
+    ],
+    "acceptance": [
+      "Validate ASCII hex length/content without slicing invalid UTF-8 boundaries.",
+      "Invalid colors preserve the fallback and surface a useful nonfatal diagnostic.",
+      "Support explicitly documented accepted formats only."
+    ],
+    "validation": "Unit-test multibyte values such as a six-byte string starting with a three-byte character, short/long strings and invalid ASCII; fuzz the parser with arbitrary UTF-8.",
+    "dependencies": []
+  },
+  {
+    "id": "fix-midi-realtime-length",
+    "kind": "fix",
+    "area": "midi",
+    "priority": "P1",
+    "title": "[fix]/ Parse one-byte MIDI real-time messages before channel-message length checks",
+    "problem": "handle_msg rejects every message shorter than two bytes before reaching Start/Stop/Clock handling. Valid single-byte 0xFA,0xFC and 0xF8 are discarded. Clock synchronization itself remains a separate feature.",
+    "evidence": [
+      "docs/evidence/integration-results.txt confirms 0xFA,0xFC,0xF8 each produced zero commands.",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/midi.rs#L196-L212",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/midi.rs#L237-L248"
+    ],
+    "acceptance": [
+      "Dispatch valid real-time bytes before reading channel-message data bytes.",
+      "Start/Stop reach their existing handlers and Clock reaches an explicit clock-consumer hook.",
+      "Malformed/truncated channel messages are safely rejected without inventing data bytes."
+    ],
+    "validation": "Convert the one-byte regression test in docs/evidence/midi_audit_tests.rs to positive assertions and include interleaved real-time bytes and short channel messages.",
+    "dependencies": []
+  },
+  {
+    "id": "fix-apc40-fader-fanout",
+    "kind": "fix",
+    "area": "midi",
+    "priority": "P1",
+    "title": "[fix]/ Remove duplicate APC40 fader bindings that alter every track",
+    "problem": "akai_apc40 adds channel-zero CC7 once for every track and also adds the intended per-channel binding. Dispatch visits every match, so B0 07 7F generates gains for tracks [0,0,1,2,3,4,5,6,7].",
+    "evidence": [
+      "Reproduced by docs/evidence/midi_audit_tests.rs and recorded in integration-results.txt.",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/midi.rs#L251-L269",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/midi.rs#L645-L658"
+    ],
+    "acceptance": [
+      "Each supported APC40 profile maps a physical fader address to its intended single track.",
+      "Reject accidental duplicate/conflicting binding addresses during profile validation.",
+      "Separate hardware variants when their channel/note layouts differ instead of combining incompatible assumptions."
+    ],
+    "validation": "Retain exhaustive synthetic CC/channel tests for all eight faders; physical controller compatibility must be reported separately.",
+    "dependencies": []
+  },
+  {
+    "id": "fix-relative-jog-sign",
+    "kind": "fix",
+    "area": "midi",
+    "priority": "P1",
+    "title": "[fix]/ Decode relative jog movement with correct signed deltas",
+    "problem": "The current relative-CC branch subtracts 0x40 from values 0x40\u20130x7F and otherwise keeps the value positive. An exhaustive 128-byte probe produced no negative jog delta, preventing reverse movement through this mapping.",
+    "evidence": [
+      "docs/evidence/integration-results.txt records negative_count=0 across all 128 input data bytes.",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/midi.rs#L294-L302",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/midi.rs#L325-L329"
+    ],
+    "acceptance": [
+      "Define and implement the relative encoding for each supported mapping.",
+      "Known forward/reverse/neutral bytes yield correctly signed and scaled deltas.",
+      "Support variant encodings through profile metadata rather than a guessed global decoder."
+    ],
+    "validation": "Exhaustively test all 128 bytes for each declared encoding and assert neutral/forward/reverse vectors; do not claim physical wheel validation.",
+    "dependencies": []
+  },
+  {
+    "id": "fix-midi-load-bridge",
+    "kind": "fix",
+    "area": "midi",
+    "priority": "P1",
+    "title": "[fix]/ Connect controller load commands to the actual library loader",
+    "problem": "Factory load buttons emit DeckLoadSelected, but RtEngine::apply discards that command with a comment saying UI resolves the path. No consumer bridges the command to App::load_sel or the decode worker.",
+    "evidence": [
+      "docs/evidence/midi_audit_tests.rs proves the mapping emits DeckLoadSelected while the engine retains the same audio allocation.",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/midi.rs#L386-L408",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L1247-L1249",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/ui.rs#L132-L147"
+    ],
+    "acceptance": [
+      "Controller load requests resolve the current selected library item through the same typed media-loading path as the GUI.",
+      "The requested deck and current selection are preserved without synchronous decoding on MIDI/audio threads.",
+      "Success/failure and pending state are visible to the user."
+    ],
+    "validation": "Route the existing synthetic Pioneer load message through application orchestration and assert a real built-in/file load request for the correct deck.",
+    "dependencies": []
+  },
+  {
+    "id": "fix-midi-browser-selection",
+    "kind": "fix",
+    "area": "midi",
+    "priority": "P2",
+    "title": "[fix]/ Connect controller browse events to the visible crate selection",
+    "problem": "Command::Browse modifies RtEngine::library_sel, but the UI uses its own lib_sel and Snapshot contains no library-selection bridge. This is an unfinished dormant dispatch path: no current built-in map constructs Action::Browse. Feeding the command changes isolated engine state rather than visible crate selection; a future mapping must not inherit this stub.",
+    "evidence": [
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/midi.rs#L401-L403",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L1279-L1284",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L301-L329",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/ui.rs#L132-L136",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/ui.rs#L622-L627"
+    ],
+    "acceptance": [
+      "Use one authoritative selection model or an explicit event bridge for GUI and controller browsing.",
+      "Browse movement respects the current filtered crate and clamps at valid bounds.",
+      "Subsequent controller load uses exactly the visible selected item."
+    ],
+    "validation": "Feed browse increments/decrements into a filtered synthetic crate, assert visible selection movement, then load and verify identity.",
+    "dependencies": []
+  },
+  {
+    "id": "fix-midi-connection-status",
+    "kind": "fix",
+    "area": "midi",
+    "priority": "P2",
+    "title": "[fix]/ Report MIDI devices as connected only after connection succeeds",
+    "problem": "Startup appends a device name/map to the displayed devices list before calling connect. Failed connections remain listed as if available, with failure present only in the separate log.",
+    "evidence": [
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/midi.rs#L110-L137",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/midi.rs#L160-L165"
+    ],
+    "acceptance": [
+      "Distinguish discovered, connecting, connected and failed device states.",
+      "Connection failure cannot leave a false connected entry or suppress the appropriate keyboard/mouse fallback.",
+      "Expose the failure reason and retry path without requiring log inspection."
+    ],
+    "validation": "Inject connection success/failure in a device-discovery abstraction and assert truthful snapshots; no physical port test was performed in the audit.",
+    "dependencies": []
+  },
+  {
+    "id": "fix-scene-index-abort",
+    "kind": "fix",
+    "area": "integration",
+    "priority": "P0",
+    "title": "[fix]/ Reject invalid scene indexes at CLI, IPC and engine boundaries",
+    "problem": "ctl scene 9 becomes zero-based scene 8, IPC accepts it, and LaunchScene indexes an eight-element clip array without validation. AddScene has the same unchecked pattern. A release-style isolated harness confirms SIGABRT because panic=abort.",
+    "evidence": [
+      "docs/evidence/integration-results.txt records scene 9 panic and isolated panic=abort return code -6; no desktop process was crashed.",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/main.rs#L101-L105",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/main.rs#L178-L180",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L1058-L1066",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L1471-L1478",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/Cargo.toml#L31-L34"
+    ],
+    "acceptance": [
+      "CLI accepts only documented one-based scene indexes and rejects missing/invalid arguments explicitly.",
+      "IPC validates types/ranges before conversion and engine scene operations defensively reject every invalid index.",
+      "Malformed input never panics, aborts, mutates a different scene or reports success.",
+      "Regression tests exercise every scene entry point including ToggleScene/RestartScene/AddScene."
+    ],
+    "validation": "Reuse integration scene tests with 0,9,255,256,negative,missing and nonnumeric values; test release panic strategy only in isolated processes with core dumps disabled.",
+    "dependencies": []
+  },
+  {
+    "id": "fix-ipc-false-success",
+    "kind": "fix",
+    "area": "integration",
+    "priority": "P1",
+    "title": "[fix]/ Return errors for malformed JSON and unknown IPC operations",
+    "problem": "handle_client converts parse failures to an empty object and ignores unknown operations, then unconditionally responds ok:true. Callers cannot distinguish an executed operation from invalid input.",
+    "evidence": [
+      "docs/evidence/integration-results.txt: malformed text, unknown operation and bare status all received ok=true.",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/main.rs#L169-L195"
+    ],
+    "acceptance": [
+      "Malformed JSON, missing op and unsupported op receive structured ok:false errors.",
+      "Successful responses correspond to valid accepted operations with clear request correlation.",
+      "CLI treats protocol failures as failures and exits nonzero where appropriate."
+    ],
+    "validation": "Convert the existing malformed/unknown request tests to assert negative replies and unchanged state; include partial lines and valid status as a control.",
+    "dependencies": []
+  },
+  {
+    "id": "fix-ipc-argument-coercion",
+    "kind": "fix",
+    "area": "integration",
+    "priority": "P2",
+    "title": "[fix]/ Validate IPC argument types instead of defaulting or wrapping targets",
+    "problem": "deck and scene values are read as u64, defaulted on failure and cast to u8; deck operations then modulo the deck count. Wrong types, negative values or large numbers can silently target deck A/B instead of returning an error.",
+    "evidence": [
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/main.rs#L178-L188",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L1075-L1077",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L1088-L1089"
+    ],
+    "acceptance": [
+      "Each opcode has a typed schema with required fields and documented range.",
+      "Reject missing, negative, fractional and oversized target values before any mutation.",
+      "Error responses identify the invalid field without substituting a target."
+    ],
+    "validation": "Table-test deck and scene payloads for invalid JSON types and range boundaries, asserting both response error and unchanged engine state.",
+    "dependencies": [
+      "fix-scene-index-abort",
+      "fix-ipc-false-success"
+    ]
+  },
+  {
+    "id": "fix-follow-invalid-status-payload",
+    "kind": "fix",
+    "area": "integration",
+    "priority": "P2",
+    "title": "[fix]/ Send valid status JSON from ctl follow",
+    "problem": "The follow loop calls send_op(\"status\") with bare text, unlike ctl status, which sends a JSON object. It currently works only because malformed requests are falsely acknowledged.",
+    "evidence": [
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/main.rs#L74-L100",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/main.rs#L118-L125"
+    ],
+    "acceptance": [
+      "Follow uses the same typed request encoder as ordinary status.",
+      "Strict server parsing does not break follow.",
+      "Protocol errors are distinguished from a stopped application and reported clearly."
+    ],
+    "validation": "Run follow against a strict temporary socket server and assert every outbound request is valid status JSON and the returned states parse correctly.",
+    "dependencies": [
+      "fix-ipc-false-success"
+    ]
+  },
+  {
+    "id": "fix-follow-socket-thread-churn",
+    "kind": "fix",
+    "area": "integration",
+    "priority": "P2",
+    "title": "[fix]/ Reuse a status connection instead of reconnecting and spawning a thread every poll",
+    "problem": "ctl follow opens a new socket each 250ms poll, and the server creates a thread for each connection. A single follower nominally creates about 14400 connections/threads per hour, excluding request time.",
+    "evidence": [
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/main.rs#L74-L92",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/main.rs#L118-L125",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/main.rs#L144-L149"
+    ],
+    "acceptance": [
+      "Use one persistent connection or a proper bounded subscription for a running follower.",
+      "Reconnect with backoff on server restart and close cleanly when the follower exits.",
+      "Avoid repeatedly serializing/copying large unrelated state for unchanged small status updates."
+    ],
+    "validation": "Count accepted connections and handler creation during a multi-minute temporary-server follow test; verify bounded steady-state resources and restart recovery. The audit measured source-derived churn, not catastrophic CPU usage.",
+    "dependencies": []
+  },
+  {
+    "id": "fix-live-socket-unlink",
+    "kind": "fix",
+    "area": "integration",
+    "priority": "P1",
+    "title": "[fix]/ Do not unlink a live instance socket after a slow response",
+    "problem": "single_instance_running treats any ping I/O failure, including a 200ms read timeout after successful connection, as a stale socket and unlinks its pathname. A delayed live listener loses its discoverable address.",
+    "evidence": [
+      "docs/evidence/integration-results.txt confirms a live listener delayed beyond 200ms was classified absent and its socket removed.",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/main.rs#L44-L61"
+    ],
+    "acceptance": [
+      "Distinguish absent/refused endpoints from connected-but-slow or malformed responses.",
+      "Never unlink an endpoint solely because a live peer missed a response timeout.",
+      "Use robust single-instance ownership/locking to prevent concurrent-launch races and preserve the winning endpoint."
+    ],
+    "validation": "Reuse the delayed-listener fixture and add simultaneous-launch ownership tests in private runtime directories; assert the live socket remains reachable.",
+    "dependencies": []
+  },
+  {
+    "id": "fix-ipc-unbounded-client-read",
+    "kind": "fix",
+    "area": "integration",
+    "priority": "P1",
+    "title": "[fix]/ Bound IPC request size and idle connection lifetime",
+    "problem": "Every client gets a new thread whose read_line has no size cap or read timeout. A local client can retain a thread indefinitely or grow an input String without a newline. This is a source-traced local resource-exhaustion risk, not a tested remote attack.",
+    "evidence": [
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/main.rs#L144-L149",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/main.rs#L161-L169"
+    ],
+    "acceptance": [
+      "Set explicit request-byte limits and idle/read deadlines.",
+      "Limit concurrent client work and clean up resources after violations or disconnects.",
+      "Return bounded diagnostics where possible without echoing arbitrary large payloads."
+    ],
+    "validation": "Use private Unix sockets with slow, oversized and many simultaneous clients; assert bounded memory/handler count, timely cleanup and continued valid-client service.",
+    "dependencies": []
+  },
+  {
+    "id": "fix-ipc-startup-failure-hidden",
+    "kind": "fix",
+    "area": "integration",
+    "priority": "P1",
+    "title": "[fix]/ Surface IPC startup failure instead of running without the control surface",
+    "problem": "start_ipc spawns asynchronously and returns no result. Bind failure is printed and the thread exits; thread-spawn failure is discarded. main continues opening the GUI, so shell/CLI control can be absent without startup reporting it.",
+    "evidence": [
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/main.rs#L23-L24",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/main.rs#L128-L152"
+    ],
+    "acceptance": [
+      "Bind and thread startup return an explicit success/failure result to application startup.",
+      "Do not delete an endpoint not proven to belong to this instance.",
+      "Expose an actionable error or a clearly labeled degraded mode if control cannot start."
+    ],
+    "validation": "Inject bind permission/address conflicts and thread-start failure through test seams, asserting startup result and endpoint preservation; do not run against the user runtime socket.",
+    "dependencies": []
+  },
+  {
+    "id": "fix-shell-scene-argument",
+    "kind": "fix",
+    "area": "integration",
+    "priority": "P2",
+    "title": "[fix]/ Forward the requested scene number through the shell service",
+    "problem": "Service.qml scene(n) calls send(\"scene\") and discards n. The CLI defaults a missing argument to scene 1, so every requested scene collapses to the same target.",
+    "evidence": [
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/plugin/Service.qml#L29-L45",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/main.rs#L101-L105"
+    ],
+    "acceptance": [
+      "Shell scene calls pass their validated argument through to the CLI/protocol.",
+      "Clearly document one-based versus zero-based scene numbering at each boundary.",
+      "Expose the scene method through the intended IPC surface if it is meant to be callable externally."
+    ],
+    "validation": "Use a mocked Process command sink to assert distinct scene numbers generate distinct correct commands, then test against a private application protocol harness.",
+    "dependencies": []
+  },
+  {
+    "id": "fix-shell-control-acknowledgment",
+    "kind": "fix",
+    "area": "integration",
+    "priority": "P1",
+    "title": "[fix]/ Report shell control results and avoid replacing in-flight commands",
+    "problem": "Service.send resets and restarts one shared Process and returns \"ok\" immediately, while the control Process has no stdout/error/exit handling. Rapid commands can replace in-flight work and callers receive success before execution is known.",
+    "evidence": [
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/plugin/Service.qml#L29-L34",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/plugin/Service.qml#L103-L107",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/plugin/Service.qml#L119-L130"
+    ],
+    "acceptance": [
+      "Serialize or correlate in-flight shell commands without killing earlier requests implicitly.",
+      "Parse actual command responses and expose failures/exit status.",
+      "Distinguish queued/accepted state from successful execution in the shell API."
+    ],
+    "validation": "Use a delayed/failing fake CLI process to test rapid ordered commands and verify no lost stop command or premature success; actual Quickshell runtime validation remains required separately.",
+    "dependencies": []
+  },
+  {
+    "id": "fix-ipc-midi-status-empty",
+    "kind": "fix",
+    "area": "integration",
+    "priority": "P2",
+    "title": "[fix]/ Publish MIDI device status into the shared snapshot used by CLI and shell",
+    "problem": "Engine::snapshot adds MIDI devices only to its returned GUI clone. RtEngine::publish copies the previous shared midi field, which starts empty, so IPC and the shell follower never receive the GUI device list.",
+    "evidence": [
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L1659-L1661",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L1966-L1975",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/main.rs#L193-L204",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/plugin/Service.qml#L58"
+    ],
+    "acceptance": [
+      "Use one shared device-status source for GUI, CLI and shell snapshots.",
+      "Connected/failed/disconnected states remain consistent across consumers.",
+      "Device-list updates do not require blocking audio-thread publication."
+    ],
+    "validation": "Inject synthetic device states and compare GUI snapshot, status JSON and shell state for equality; no physical device is needed for this consistency test.",
+    "dependencies": []
+  },
+  {
+    "id": "fix-installer-config-rollback",
+    "kind": "fix",
+    "area": "integration",
+    "priority": "P1",
+    "title": "[fix]/ Make multi-file installation transactional and recoverable",
+    "problem": "The installer overwrites binary/plugin/config files before all validation completes and has no backup or rollback. A later failure can leave a partial plugin or inconsistent desktop configuration.",
+    "evidence": [
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/scripts/install-omarchy.sh#L17-L47",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/scripts/install-omarchy.sh#L53-L99"
+    ],
+    "acceptance": [
+      "Stage generated artifacts and config edits, validate them, and retain recoverable backups before committing.",
+      "On any failed stage, restore the previous working state and report the exact failure.",
+      "Repeated successful installs remain idempotent and preserve unrelated user configuration."
+    ],
+    "validation": "Run an installer harness with a temporary HOME and stubbed external commands, inject failure at each mutation boundary, and assert exact restoration; separately validate a real desktop only with explicit deployment scope.",
+    "dependencies": []
+  },
+  {
+    "id": "fix-installer-validation-false-success",
+    "kind": "fix",
+    "area": "integration",
+    "priority": "P1",
+    "title": "[fix]/ Fail installation when Hyprland reload or configuration validation fails",
+    "problem": "The final hyprctl reload and configerrors commands both ignore failure via || true, after which the installer always prints done. Desktop configuration may be rejected while installation reports success.",
+    "evidence": [
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/scripts/install-omarchy.sh#L114-L121"
+    ],
+    "acceptance": [
+      "Inspect reload exit status and nonempty configuration-error output.",
+      "Return nonzero with actionable diagnostics on validation failure.",
+      "Print final success only after all required validations pass and rollback/recovery is complete."
+    ],
+    "validation": "Stub hyprctl to fail reload or return configuration errors with either exit status and assert failure reporting; never modify the real desktop for this unit-level check.",
+    "dependencies": [
+      "fix-installer-config-rollback"
+    ]
+  },
+  {
+    "id": "fix-installer-binary-atomic-replacement",
+    "kind": "fix",
+    "area": "integration",
+    "priority": "P1",
+    "title": "[fix]/ Replace the installed executable atomically",
+    "problem": "install writes directly to the final ~/.local/bin/omatainer pathname. It does not stage a complete verified executable then rename it, so replacement is not an atomic old-or-new publication and can conflict with an executing binary.",
+    "evidence": [
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/scripts/install-omarchy.sh#L14-L20"
+    ],
+    "acceptance": [
+      "Stage the executable on the same filesystem, verify it, and atomically rename into place.",
+      "Preserve a previous executable for rollback and retain correct mode/ownership.",
+      "Installation while the prior executable is running has a tested, explicit restart/update policy."
+    ],
+    "validation": "Use temporary executable fixtures and an active old process to prove complete old/new file visibility and recovery from staging failures; no replacement of the user-installed binary in tests.",
+    "dependencies": []
+  },
+  {
+    "id": "fix-reload-theme-status-alias",
+    "kind": "fix",
+    "area": "integration",
+    "priority": "P2",
+    "title": "[fix]/ Make reload-theme actually reload theme resources",
+    "problem": "The installer theme hook invokes ctl reload-theme, but that CLI operation is encoded as ordinary status. It neither invalidates theme caches nor requests font/style reapplication.",
+    "evidence": [
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/main.rs#L111",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/scripts/install-omarchy.sh#L102-L108",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/ui.rs#L190-L198"
+    ],
+    "acceptance": [
+      "Add a real reload request or remove the misleading command/hook if automatic watching fully replaces it.",
+      "A successful reload response reflects application of the current valid theme/font settings.",
+      "Invalid theme resources preserve the last usable style and return a meaningful error."
+    ],
+    "validation": "Change temporary theme resources without the watched colors timestamp, invoke reload-theme through a private IPC/UI harness, and verify applied state changes.",
+    "dependencies": [
+      "fix-theme-font-settings-reload"
+    ]
+  },
+  {
+    "id": "fix-runtime-socket-user-isolation",
+    "kind": "fix",
+    "area": "integration",
+    "priority": "P1",
+    "title": "[fix]/ Keep the fallback control socket private to the current user",
+    "problem": "When XDG_RUNTIME_DIR is absent, socket_path uses the shared pathname /tmp/omatainer.sock. Different users contend for one endpoint, and cleanup has no explicit owner check. Whether an unlink or connection succeeds depends on directory/socket permissions, including the sticky bit; the audit did not attempt cross-user interference.",
+    "evidence": [
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/theme.rs#L265-L274",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/main.rs#L44-L61",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/main.rs#L134-L137"
+    ],
+    "acceptance": [
+      "Require a trustworthy per-user runtime directory or create a private UID-scoped fallback with restrictive permissions.",
+      "Validate directory/socket ownership and never remove an endpoint owned by another user.",
+      "Keep stale cleanup confined to endpoints this instance is authorized to own."
+    ],
+    "validation": "Unset XDG_RUNTIME_DIR inside a temporary isolated environment and test ownership/collision fixtures; avoid operating on the real shared /tmp pathname.",
+    "dependencies": []
+  }
+]

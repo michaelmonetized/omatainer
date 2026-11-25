@@ -1,0 +1,2935 @@
+[
+  {
+    "id": "prod-session-scale",
+    "kind": "feat",
+    "area": "production",
+    "priority": "P1",
+    "title": "[feat]/ Support user-managed tracks and scenes beyond the fixed 8 by 8 grid",
+    "problem": "Producers need complete songs and live sets; TRACKS and SCENES are fixed at eight and their cells are initialized with the demo.",
+    "evidence": [
+      "https://www.ableton.com/en/manual/session-view/",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L15-L18",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L78-L95",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L444-L473",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/ui.rs#L634-L781"
+    ],
+    "acceptance": [
+      "Create, rename, reorder, duplicate, color and delete audio/MIDI tracks and scenes with stable identities.",
+      "Persist clip references and controller focus across reordering without retargeting sounding notes.",
+      "Virtualize a 128-track, 512-scene project and report an explicit resource limit rather than silently truncating.",
+      "Expose the same operations through keyboard navigation and accessible names."
+    ],
+    "validation": "Build and reopen a 128-track set, reorder populated tracks during playback and confirm clip/automation/controller references remain attached.",
+    "dependencies": [
+      "sys-project-save-open",
+      "sys-undo-redo"
+    ]
+  },
+  {
+    "id": "prod-clip-management",
+    "kind": "feat",
+    "area": "production",
+    "priority": "P1",
+    "title": "[feat]/ Add editable Session clip management and reusable clip presets",
+    "problem": "The grid can launch or select cells, but users cannot rename, duplicate, move, delete, deactivate or organize their clips.",
+    "evidence": [
+      "https://www.ableton.com/en/manual/session-view/",
+      "https://www.ableton.com/en/manual/clip-view/",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L42-L50",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/ui.rs#L223-L253"
+    ],
+    "acceptance": [
+      "Provide clip create, duplicate, move, delete, rename, color and deactivate actions with keyboard equivalents.",
+      "Keep clip content distinct from its slot and preserve launch settings when moving it.",
+      "Copy clips across tracks/scenes with explicit handling of audio versus MIDI incompatibility.",
+      "Save and audition reusable clip presets without overwriting the source media."
+    ],
+    "validation": "Create eight contrasting clips, reorganize the grid, reopen the project and confirm every clip retains its musical content and settings.",
+    "dependencies": [
+      "prod-session-scale",
+      "sys-project-save-open",
+      "sys-undo-redo"
+    ]
+  },
+  {
+    "id": "prod-launch-modes",
+    "kind": "feat",
+    "area": "production",
+    "priority": "P1",
+    "title": "[feat]/ Implement per-clip launch modes, launch quantization and legato switching",
+    "problem": "The current GUI only chooses one-shot or looping; performers need momentary, retrigger and phase-preserving launch behavior.",
+    "evidence": [
+      "https://www.ableton.com/en/manual/launching-clips/",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L42-L50",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/ui.rs#L223-L253"
+    ],
+    "acceptance": [
+      "Offer trigger, gate, toggle and repeat behavior with clearly defined press/release semantics.",
+      "Allow global-inherited and per-clip musical launch quantization including immediate launch.",
+      "Support legato clip switching that transfers musical phase without invalid note ownership.",
+      "Display queued, playing and stopping states and permit cancellation before a scheduled boundary."
+    ],
+    "validation": "Use a held-pad controller and mouse to switch clips of unequal lengths at multiple quantization values; compare timestamped MIDI/audio transitions.",
+    "dependencies": [
+      "prod-clip-management"
+    ]
+  },
+  {
+    "id": "prod-follow-actions",
+    "kind": "feat",
+    "area": "production",
+    "priority": "P2",
+    "title": "[feat]/ Add probabilistic clip and scene follow actions",
+    "problem": "The sequencer has no autonomous clip/scene transitions, limiting evolving arrangements and hands-free shows.",
+    "evidence": [
+      "https://www.ableton.com/en/manual/launching-clips/",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L42-L50",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/ui.rs#L223-L253"
+    ],
+    "acceptance": [
+      "Configure timed next, previous, first, last, random, stop and repeat actions for clips and scenes.",
+      "Support weighted alternatives and action timing independent of clip length.",
+      "Show the current action group and next scheduled decision without conflating it with manual launching.",
+      "Persist random seeds for reproducible offline renders while allowing a fresh performance seed."
+    ],
+    "validation": "Run a seeded 100-transition set with mixed clip lengths, verify scheduled outcomes and then interrupt it manually without orphaned notes.",
+    "dependencies": [
+      "prod-launch-modes"
+    ]
+  },
+  {
+    "id": "prod-scene-metadata",
+    "kind": "feat",
+    "area": "production",
+    "priority": "P1",
+    "title": "[feat]/ Give scenes names, tempo, meter and launch-state semantics",
+    "problem": "Scenes are currently numbered buttons over a shared clock; songs need named sections that can establish their own tempo and meter.",
+    "evidence": [
+      "https://www.ableton.com/en/manual/session-view/",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L42-L50",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/ui.rs#L223-L253"
+    ],
+    "acceptance": [
+      "Edit scene names, colors, tempo and time signature independently of clip names.",
+      "Apply scene tempo/meter atomically at its effective launch boundary.",
+      "Choose whether empty slots stop their tracks or leave existing material running.",
+      "Expose scene properties and queued changes to controller displays and accessibility APIs."
+    ],
+    "validation": "Launch 7/8 and 4/4 scenes at different tempos while several tracks continue, verifying downbeats and documented empty-slot behavior.",
+    "dependencies": [
+      "prod-session-scale",
+      "prod-launch-modes",
+      "prod-tempo-map"
+    ]
+  },
+  {
+    "id": "prod-arrangement",
+    "kind": "feat",
+    "area": "production",
+    "priority": "P1",
+    "title": "[feat]/ Build an editable linear audio and MIDI Arrangement timeline",
+    "problem": "Arrange exists only as a View enum; the UI has no timeline or arrangement playback model.",
+    "evidence": [
+      "https://www.ableton.com/en/manual/arrangement-view/",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L42-L50",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/ui.rs#L223-L253"
+    ],
+    "acceptance": [
+      "Place multiple audio and MIDI clip instances at independent song positions on each track.",
+      "Implement zoom, scroll, snapping, range selection and overview navigation for hour-long projects.",
+      "Edit instance offsets and durations without altering shared source material.",
+      "Playback and offline render must use the same arrangement event schedule."
+    ],
+    "validation": "Construct a five-minute song with overlapping audio/MIDI sections, seek through it and compare realtime playback with an exported reference.",
+    "dependencies": [
+      "prod-session-scale",
+      "sys-project-save-open",
+      "sys-undo-redo",
+      "sys-audio-export"
+    ]
+  },
+  {
+    "id": "prod-arrangement-time-edit",
+    "kind": "feat",
+    "area": "production",
+    "priority": "P1",
+    "title": "[feat]/ Implement arrangement split, consolidate and structural time editing",
+    "problem": "Without timeline editing, producers cannot turn repeated ideas into complete structures or edit multitrack sections together.",
+    "evidence": [
+      "https://www.ableton.com/en/manual/arrangement-view/",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L42-L50",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/ui.rs#L223-L253"
+    ],
+    "acceptance": [
+      "Implement split, trim, slip, duplicate, crop and consolidate with explicit destructive/non-destructive behavior.",
+      "Insert, duplicate, cut and delete time across selected tracks or the full arrangement.",
+      "Move attached automation with clips unless the user locks it to song time.",
+      "Preserve clip offsets and crossfade boundaries across variable-meter edits."
+    ],
+    "validation": "Cut and duplicate a chorus spanning audio, MIDI and automation; undo, redo and reopen, then compare event positions and rendered transitions.",
+    "dependencies": [
+      "prod-arrangement",
+      "prod-automation-lanes",
+      "sys-undo-redo"
+    ]
+  },
+  {
+    "id": "prod-locators",
+    "kind": "feat",
+    "area": "production",
+    "priority": "P1",
+    "title": "[feat]/ Add named arrangement locators, musical scrubbing and loop-region navigation",
+    "problem": "There are no song-position controls or locators beyond the deck waveform seeks.",
+    "evidence": [
+      "https://www.ableton.com/en/manual/arrangement-view/",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L42-L50",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/ui.rs#L223-L253"
+    ],
+    "acceptance": [
+      "Create, name, move and trigger arrangement locators while stopped, playing or recording.",
+      "Provide quantized previous/next locator jumps and direct time/beat entry.",
+      "Offer loop-to-next-locator and editable arrangement loop braces.",
+      "Make seeking chase appropriate MIDI state and safely end notes belonging to the old position."
+    ],
+    "validation": "Navigate a live set of named sections by keyboard and mapped controller, including jumps into sustained notes and meter changes.",
+    "dependencies": [
+      "prod-arrangement",
+      "prod-tempo-map"
+    ]
+  },
+  {
+    "id": "prod-tempo-map",
+    "kind": "feat",
+    "area": "production",
+    "priority": "P1",
+    "title": "[feat]/ Implement tempo automation and changing time signatures",
+    "problem": "Engine timing assumes a single BPM and four beats per bar; professional compositions require musical maps and pickups.",
+    "evidence": [
+      "https://www.ableton.com/en/manual/arrangement-view/",
+      "https://www.ableton.com/en/manual/audio-clips-tempo-and-warping/",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L666-L676",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L715-L724",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L1319-L1320",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L1500",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L1659"
+    ],
+    "acceptance": [
+      "Store tempo points/ramps and meter markers on a shared musical timeline.",
+      "Convert beat positions to sample positions consistently for recording, playback, warping and export.",
+      "Render bar/beat rulers correctly for pickups, odd meters and changes inside a song.",
+      "Expose metronome subdivisions, accents and count-in against the effective meter."
+    ],
+    "validation": "Render a piece alternating 7/8, 5/4 and 4/4 with a tempo ramp, then verify clip/automation and click positions against an independent timestamp oracle.",
+    "dependencies": [
+      "sys-project-save-open"
+    ]
+  },
+  {
+    "id": "prod-session-arrangement-capture",
+    "kind": "feat",
+    "area": "production",
+    "priority": "P1",
+    "title": "[feat]/ Record Session performances into Arrangement and restore arrangement control",
+    "problem": "Current clip launches only set transient PlayingClip state; live improvisations cannot become editable songs.",
+    "evidence": [
+      "https://www.ableton.com/en/manual/session-view/",
+      "https://www.ableton.com/en/manual/automation/",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L42-L50",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/ui.rs#L223-L253"
+    ],
+    "acceptance": [
+      "Record clip launches, stops and performance automation into arrangement clip instances.",
+      "Show tracks temporarily overridden by Session playback and support per-track/global return to arrangement.",
+      "Preserve source offsets when recording legato launches and loop repetitions.",
+      "Allow a recorded performance to continue independently after the original Session grid changes."
+    ],
+    "validation": "Perform a two-minute Session jam, return to Arrangement and reproduce its launches and fader moves without the controller.",
+    "dependencies": [
+      "prod-arrangement",
+      "prod-launch-modes",
+      "prod-automation-recording"
+    ]
+  },
+  {
+    "id": "prod-clip-fades",
+    "kind": "feat",
+    "area": "audio",
+    "priority": "P1",
+    "title": "[feat]/ Provide audio clip fades and editable arrangement crossfades",
+    "problem": "Audio clips have no fade envelopes or overlap-editing controls, making polished cuts impossible.",
+    "evidence": [
+      "https://www.ableton.com/en/manual/arrangement-view/",
+      "https://www.ableton.com/en/manual/clip-view/",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L42-L50",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/ui.rs#L223-L253"
+    ],
+    "acceptance": [
+      "Add adjustable fade-in/out durations and curves to every audio clip instance.",
+      "Create editable crossfades between adjacent or overlapping regions.",
+      "Offer automatic short edge fades without modifying original media.",
+      "Maintain linked phase-consistent fades across multitrack edits."
+    ],
+    "validation": "Edit sine, drum and vocal clips at non-zero crossings and measure transition discontinuities before and after fades.",
+    "dependencies": [
+      "prod-arrangement",
+      "prod-audio-clips"
+    ]
+  },
+  {
+    "id": "prod-linked-edit",
+    "kind": "feat",
+    "area": "audio",
+    "priority": "P1",
+    "title": "[feat]/ Support linked multitrack editing for phase-coherent recordings",
+    "problem": "Eight independent track cells provide no way to preserve alignment while editing multi-microphone recordings.",
+    "evidence": [
+      "https://www.ableton.com/en/manual/comping/",
+      "https://www.ableton.com/en/manual/arrangement-view/",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L42-L50",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/ui.rs#L223-L253"
+    ],
+    "acceptance": [
+      "Create explicit linked-edit groups independent of mix groups.",
+      "Apply matching trim, split, warp and comp selections across linked tracks.",
+      "Display link membership and let users temporarily suspend linked editing.",
+      "Reject or clearly resolve incompatible region boundaries rather than drifting tracks silently."
+    ],
+    "validation": "Edit a multi-mic drum recording and verify sample-relative offsets remain unchanged across comp, warp and split operations.",
+    "dependencies": [
+      "prod-arrangement",
+      "prod-comping",
+      "prod-warp-markers"
+    ]
+  },
+  {
+    "id": "prod-comping",
+    "kind": "feat",
+    "area": "production",
+    "priority": "P1",
+    "title": "[feat]/ Implement take lanes and non-destructive audio/MIDI comping",
+    "problem": "No take-lane model exists, so repeated performances cannot be auditioned and assembled without external editing.",
+    "evidence": [
+      "https://www.ableton.com/en/manual/comping/",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L42-L50",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/ui.rs#L223-L253"
+    ],
+    "acceptance": [
+      "Retain each recording pass as a named take lane for audio and MIDI.",
+      "Audition takes and promote selected ranges into the main lane with visible provenance.",
+      "Edit comp boundaries and auto-crossfades without deleting alternative takes.",
+      "Support grouping takes across tracks and undoing a complete comp gesture."
+    ],
+    "validation": "Record three vocal takes plus linked microphones, assemble a comp, revise a boundary and reopen with every original take intact.",
+    "dependencies": [
+      "prod-arrangement",
+      "prod-record-punch",
+      "prod-clip-fades",
+      "sys-undo-redo"
+    ]
+  },
+  {
+    "id": "prod-record-punch",
+    "kind": "feat",
+    "area": "production",
+    "priority": "P1",
+    "title": "[feat]/ Add count-in, punch recording and multi-pass recording workflows",
+    "problem": "Record currently toggles a boolean and inserts fixed-length MIDI notes; there is no musician-facing punch/take workflow.",
+    "evidence": [
+      "https://www.ableton.com/en/manual/recording-new-clips/",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L1019",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L1274-L1277",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L1299-L1328",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/audio.rs#L13-L66"
+    ],
+    "acceptance": [
+      "Provide explicit record-arm, count-in, pre-roll and punch-in/out controls per relevant recording context.",
+      "Capture aligned audio/MIDI to the arrangement with clear input monitoring state.",
+      "Retain loop-record passes and show growing waveforms/events during recording.",
+      "Handle disk errors, transport stop and device loss without presenting an incomplete take as successful."
+    ],
+    "validation": "Record a guitarist with pre-roll and punch boundaries while MIDI plays, then verify actual recorded timing, take retention and error recovery.",
+    "dependencies": [
+      "sys-audio-io-routing",
+      "prod-arrangement",
+      "sys-project-save-open"
+    ]
+  },
+  {
+    "id": "prod-session-record",
+    "kind": "feat",
+    "area": "production",
+    "priority": "P1",
+    "title": "[feat]/ Record and overdub audio or MIDI directly into Session slots",
+    "problem": "Selecting a cell and appending fixed notes is not quantized clip recording, and audio cannot be recorded into the grid.",
+    "evidence": [
+      "https://www.ableton.com/en/manual/recording-new-clips/",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L42-L50",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/ui.rs#L223-L253"
+    ],
+    "acceptance": [
+      "Record armed audio/MIDI sources into empty Session slots with selectable fixed or free lengths.",
+      "End recording at a requested quantized boundary and switch seamlessly to loop playback.",
+      "Provide MIDI overdub, replace and rehearsal modes with visible state.",
+      "Create a new take/scene without losing the previous clip or unexpectedly overwriting another target."
+    ],
+    "validation": "Build a song live from a microphone and MIDI keyboard, recording successive loops without transport interruption.",
+    "dependencies": [
+      "prod-audio-clips",
+      "prod-launch-modes",
+      "sys-audio-io-routing",
+      "sys-midi-port-routing"
+    ]
+  },
+  {
+    "id": "prod-capture-midi",
+    "kind": "feat",
+    "area": "midi",
+    "priority": "P2",
+    "title": "[feat]/ Recover recent MIDI performances with retrospective capture",
+    "problem": "The engine retains no played-note history unless recording/composition was already armed.",
+    "evidence": [
+      "https://www.ableton.com/en/manual/recording-new-clips/",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L42-L50",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/ui.rs#L223-L253"
+    ],
+    "acceptance": [
+      "Keep a bounded timestamped input history including notes and expression for monitored MIDI tracks.",
+      "Convert an explicitly chosen history range into a new clip without requiring prior record arming.",
+      "Infer or select a capture loop/tempo and allow correction before replacing musical material.",
+      "Honor privacy and resource preferences and discard history when explicitly cleared."
+    ],
+    "validation": "Improvise while recording is off, capture the phrase and compare note timing, release lengths and expression with the original input trace.",
+    "dependencies": [
+      "prod-piano-roll",
+      "sys-midi-port-routing"
+    ]
+  },
+  {
+    "id": "prod-step-record",
+    "kind": "feat",
+    "area": "midi",
+    "priority": "P1",
+    "title": "[feat]/ Add cursor-based MIDI step recording and computer-keyboard note input",
+    "problem": "Pads always append at the current beat; stopped input cannot advance through a melody or specify rests and durations.",
+    "evidence": [
+      "https://www.ableton.com/en/manual/recording-new-clips/",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L42-L50",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/ui.rs#L223-L253"
+    ],
+    "acceptance": [
+      "Insert held pitches/chords at a visible musical cursor with a selected rhythmic duration.",
+      "Advance, tie, rest and delete steps without starting transport.",
+      "Provide an explicit computer musical-keyboard mode with octave/velocity controls and safe focus behavior.",
+      "Send audition note-offs correctly when stepping, leaving the editor or losing keyboard focus."
+    ],
+    "validation": "Enter a melody with rests, ties, chords and triplets using only the keyboard, then play and compare to the intended score.",
+    "dependencies": [
+      "prod-piano-roll"
+    ]
+  },
+  {
+    "id": "prod-piano-roll",
+    "kind": "feat",
+    "area": "midi",
+    "priority": "P1",
+    "title": "[feat]/ Deliver a full MIDI piano-roll editor with keyboard-accessible editing",
+    "problem": "Compose is an enum and pad insertion path only; no MIDI note editor is rendered.",
+    "evidence": [
+      "https://www.ableton.com/en/manual/editing-midi/",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L42-L50",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/ui.rs#L223-L253"
+    ],
+    "acceptance": [
+      "Draw, select, move, resize, transpose, duplicate, mute and delete notes with grid/free and triplet modes.",
+      "Edit clip start/end/loop and note values numerically as well as by pointer.",
+      "Provide pitch/time rulers, audition, scale folding, zoom and scroll with accessible focus and announced values.",
+      "Persist stable note identities so expression, selection and undo follow edits correctly."
+    ],
+    "validation": "Compose and revise a 16-bar melody entirely in the editor, reopen it and compare emitted notes and durations with the edited data.",
+    "dependencies": [
+      "sys-project-save-open",
+      "sys-undo-redo"
+    ]
+  },
+  {
+    "id": "prod-multi-clip-midi",
+    "kind": "feat",
+    "area": "midi",
+    "priority": "P2",
+    "title": "[feat]/ Edit multiple MIDI clips together with explicit focus and ghost notes",
+    "problem": "The existing selection references a single track/scene and cannot compare harmonic material across clips.",
+    "evidence": [
+      "https://www.ableton.com/en/manual/editing-midi/",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L42-L50",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/ui.rs#L223-L253"
+    ],
+    "acceptance": [
+      "Display notes from selected clips on a shared musical ruler with track/clip ownership visible.",
+      "Support focus-only and multi-clip editing without accidental changes to ghost notes.",
+      "Preserve differing loop lengths, offsets and tuning contexts.",
+      "Allow selection by pitch/time/velocity criteria across the editable clips."
+    ],
+    "validation": "Edit bass and chord clips with unequal loop lengths together; verify focused edits affect only their intended notes after reopening.",
+    "dependencies": [
+      "prod-piano-roll"
+    ]
+  },
+  {
+    "id": "prod-note-chance-velocity",
+    "kind": "feat",
+    "area": "midi",
+    "priority": "P2",
+    "title": "[feat]/ Add per-note chance, velocity ranges and expressive note properties",
+    "problem": "MidiNote stores only pitch/start/length/one velocity; variations require manually duplicating clips.",
+    "evidence": [
+      "https://www.ableton.com/en/manual/editing-midi/",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L34-L40",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L797-L810"
+    ],
+    "acceptance": [
+      "Edit note velocity and optional velocity ranges in dedicated lanes.",
+      "Set per-note probability and linked/exclusive probability groups where meaningful.",
+      "Use project-controlled random state for reproducible rendering and deliberate variation.",
+      "Ensure note-off, expression and repeated-note handling remain paired when a note is skipped."
+    ],
+    "validation": "Render thousands of seeded loops, verify deterministic replay, observed probability and valid note lifecycle.",
+    "dependencies": [
+      "prod-piano-roll"
+    ]
+  },
+  {
+    "id": "prod-scales",
+    "kind": "feat",
+    "area": "midi",
+    "priority": "P2",
+    "title": "[feat]/ Make keys and scales shared musical context for editing and devices",
+    "problem": "The code uses a fixed A-based sampler layout and filename key strings; clips and devices lack harmonic context.",
+    "evidence": [
+      "https://www.ableton.com/en/manual/editing-midi/",
+      "https://www.ableton.com/en/live-manual/12/midi-tools/",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L42-L50",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/ui.rs#L223-L253"
+    ],
+    "acceptance": [
+      "Store clip/song tonic and scale with scale-highlight and fold modes.",
+      "Provide intentional in-scale transpose and harmonization while preserving chromatic notes unless requested.",
+      "Pass active scale context to participating instruments and MIDI tools.",
+      "Make scale changes explicit when clips with differing contexts are launched together."
+    ],
+    "validation": "Compose in three non-major scales, apply scale-aware generation/transposition and verify every accepted pitch and deliberate exception.",
+    "dependencies": [
+      "prod-piano-roll"
+    ]
+  },
+  {
+    "id": "prod-tuning",
+    "kind": "feat",
+    "area": "midi",
+    "priority": "P2",
+    "title": "[feat]/ Support microtonal tuning systems and per-track tuning bypass",
+    "problem": "The synth frequency calculation is hardcoded to twelve-tone equal temperament and MIDI-note integers.",
+    "evidence": [
+      "https://www.ableton.com/en/live-manual/12/using-tuning-systems/",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/dsp.rs#L246",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L34-L40"
+    ],
+    "acceptance": [
+      "Load documented open tuning descriptions such as Scala scales and keyboard mappings.",
+      "Carry tuning through built-in instruments, editor displays and supported expression/plugin routes.",
+      "Provide reference pitch, octave mapping and per-track bypass for percussion or external instruments.",
+      "Package only original or redistributable tuning definitions with provenance."
+    ],
+    "validation": "Play and export a 19-tone scale plus a non-octave tuning; measure output frequencies against supplied ratios and verify drum bypass.",
+    "dependencies": [
+      "prod-scales",
+      "prod-mpe"
+    ]
+  },
+  {
+    "id": "prod-mpe",
+    "kind": "feat",
+    "area": "midi",
+    "priority": "P1",
+    "title": "[feat]/ Record, edit and render per-note pitch, pressure and timbre expression",
+    "problem": "MIDI notes discard channel/expression ownership and synth voices expose no per-note expression lanes.",
+    "evidence": [
+      "https://www.ableton.com/en/manual/editing-mpe/",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L34-L40",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L1299-L1332",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/dsp.rs#L210-L235"
+    ],
+    "acceptance": [
+      "Ingest MPE zones with correct channel allocation, pitch-bend ranges and note ownership.",
+      "Record and edit independent pitch, pressure and timbre envelopes with stable note identities.",
+      "Route expression to built-in devices and supported plugin/hardware targets without merging voices.",
+      "Handle sustain, voice stealing, channel reuse and disconnect without stuck or retargeted expression."
+    ],
+    "validation": "Use an MPE controller trace with overlapping same-pitch notes and independent slides; compare replay and export to the captured expression.",
+    "dependencies": [
+      "prod-piano-roll",
+      "sys-midi-port-routing"
+    ]
+  },
+  {
+    "id": "prod-midi-control-envelopes",
+    "kind": "feat",
+    "area": "midi",
+    "priority": "P1",
+    "title": "[feat]/ Edit MIDI CC, pitch-bend, program and channel-pressure data in clips",
+    "problem": "Clip content cannot represent expressive channel messages or hardware patch changes.",
+    "evidence": [
+      "https://www.ableton.com/en/manual/clip-envelopes/",
+      "https://www.ableton.com/en/manual/live-midi-effect-reference/",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L42-L50",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/ui.rs#L223-L253"
+    ],
+    "acceptance": [
+      "Provide named editable lanes for CC, pitch bend and pressure with musical timing.",
+      "Support bank/program changes with explicit transmission order and device-specific labels.",
+      "Chase controller state on seek/launch and define reset behavior at stop.",
+      "Preserve message resolution and channel identity during edit, export and playback."
+    ],
+    "validation": "Program an external synth patch change and filter sweep, seek into the clip and verify the resulting wire-message sequence.",
+    "dependencies": [
+      "prod-piano-roll",
+      "sys-midi-port-routing",
+      "sys-midi-file-interchange"
+    ]
+  },
+  {
+    "id": "prod-grooves",
+    "kind": "feat",
+    "area": "production",
+    "priority": "P2",
+    "title": "[feat]/ Implement a groove pool with audio/MIDI extraction and commitment",
+    "problem": "Only fixed quantization exists; there is no reusable swing/timing/velocity groove representation.",
+    "evidence": [
+      "https://www.ableton.com/en/live-manual/12/using-grooves/",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L42-L50",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/ui.rs#L223-L253"
+    ],
+    "acceptance": [
+      "Import or extract timing and dynamics from user-authorized audio/MIDI material.",
+      "Apply adjustable groove timing, quantization, velocity and randomness non-destructively.",
+      "Share named groove templates across clips and preview their effect.",
+      "Commit a groove to editable events/warp markers with undo and without altering the template."
+    ],
+    "validation": "Extract a drummer groove, apply it to MIDI bass and audio percussion, then commit and compare event/transient timing.",
+    "dependencies": [
+      "prod-piano-roll",
+      "prod-warp-markers"
+    ]
+  },
+  {
+    "id": "prod-midi-timing-tools",
+    "kind": "feat",
+    "area": "midi",
+    "priority": "P2",
+    "title": "[feat]/ Add quantize, stretch, reverse and tempo-curve MIDI transformations",
+    "problem": "There is no editable MIDI transformation workflow; fixed-grid launch quantization does not edit note timing.",
+    "evidence": [
+      "https://www.ableton.com/en/live-manual/12/midi-tools/",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L42-L50",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/ui.rs#L223-L253"
+    ],
+    "acceptance": [
+      "Apply partial-strength quantize to starts and/or ends, with straight and tuplet grids.",
+      "Stretch, reverse and reshape time across selected notes while protecting note-expression relationships.",
+      "Preview transformation parameters non-destructively and commit as one undoable change.",
+      "Offer useful timing summaries so users can compare transformed and original phrases."
+    ],
+    "validation": "Transform a swung phrase containing overlapping notes and MPE data; verify timing, note lengths and undo against expected events.",
+    "dependencies": [
+      "prod-piano-roll",
+      "sys-undo-redo"
+    ]
+  },
+  {
+    "id": "prod-midi-articulation-tools",
+    "kind": "feat",
+    "area": "midi",
+    "priority": "P2",
+    "title": "[feat]/ Generate arpeggios, strums, ornaments and articulated note repetitions",
+    "problem": "The playback arp merely steps an existing chord; it cannot create editable expressive note arrangements.",
+    "evidence": [
+      "https://www.ableton.com/en/live-manual/12/midi-tools/",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L42-L50",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/ui.rs#L223-L253"
+    ],
+    "acceptance": [
+      "Create editable arpeggiation and strumming with order, rate, direction and gate controls.",
+      "Add controllable grace notes, flams, glissandi and chopped repetitions to selected material.",
+      "Apply length/legato shaping without creating invalid zero-length or overlapping same-voice note-offs.",
+      "Preview generated events before replacing or adding to the selection."
+    ],
+    "validation": "Generate a strummed chord, a flam pattern and a glissando, then edit individual resulting notes and validate output timing.",
+    "dependencies": [
+      "prod-piano-roll",
+      "prod-scales"
+    ]
+  },
+  {
+    "id": "prod-midi-recombine",
+    "kind": "feat",
+    "area": "midi",
+    "priority": "P2",
+    "title": "[feat]/ Recombine note properties and shape velocity using editable transformation tools",
+    "problem": "Current clips cannot reorder pitch/rhythm properties or draw repeatable expressive dynamics.",
+    "evidence": [
+      "https://www.ableton.com/en/live-manual/12/midi-tools/",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L42-L50",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/ui.rs#L223-L253"
+    ],
+    "acceptance": [
+      "Reorder or rotate pitch, timing, length and velocity independently within a selection.",
+      "Generate velocity curves from drawable or cyclic shapes.",
+      "Provide repeatable seed/history and a restore-original action during preview.",
+      "Respect selection boundaries and retain links to per-note expression."
+    ],
+    "validation": "Recombine a known motif and apply a velocity curve; compare resulting properties, preview reversibility and deterministic regeneration.",
+    "dependencies": [
+      "prod-piano-roll"
+    ]
+  },
+  {
+    "id": "prod-rhythm-generator",
+    "kind": "feat",
+    "area": "midi",
+    "priority": "P2",
+    "title": "[feat]/ Generate editable rhythmic and Euclidean MIDI patterns",
+    "problem": "The demo includes fixed drum notes but no tools for producing user-defined rhythmic structures.",
+    "evidence": [
+      "https://www.ableton.com/en/live-manual/12/midi-tools/",
+      "https://www.ableton.com/en/packs/midi-tools/",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L42-L50",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/ui.rs#L223-L253"
+    ],
+    "acceptance": [
+      "Generate patterns by steps, pulses, rotation and rhythmic density, including multiple voices.",
+      "Allow independent lane lengths and accents for polymetric material.",
+      "Preview variation with deterministic seeds and commit to normal editable notes.",
+      "Make empty/full rhythm extremes and scale/time-signature changes well-defined."
+    ],
+    "validation": "Generate several Euclidean and swung multi-voice patterns in odd meter, commit and verify step placement over the least-common loop length.",
+    "dependencies": [
+      "prod-piano-roll"
+    ]
+  },
+  {
+    "id": "prod-melody-generator",
+    "kind": "feat",
+    "area": "midi",
+    "priority": "P2",
+    "title": "[feat]/ Create shape-guided and seeded melodic MIDI generators",
+    "problem": "Users have no controlled way to explore melodic alternatives or convert a drawn contour into notes.",
+    "evidence": [
+      "https://www.ableton.com/en/live-manual/12/midi-tools/",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L42-L50",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/ui.rs#L223-L253"
+    ],
+    "acceptance": [
+      "Generate pitches from user-drawn contours within chosen ranges and scales.",
+      "Support seeded variation of density, duration, pitch and dynamics with bounds.",
+      "Preview, reroll and restore candidates without accumulating hidden notes.",
+      "Commit candidates to ordinary notes so no generator is required for later playback."
+    ],
+    "validation": "Generate and save ten reproducible melodic alternatives, edit one manually and verify the edits survive generator removal.",
+    "dependencies": [
+      "prod-piano-roll",
+      "prod-scales"
+    ]
+  },
+  {
+    "id": "prod-harmony-generator",
+    "kind": "feat",
+    "area": "midi",
+    "priority": "P2",
+    "title": "[feat]/ Build chord progression and voicing generation tools",
+    "problem": "The hardcoded harmony demo cannot help users author their own chord progressions and voice leading.",
+    "evidence": [
+      "https://www.ableton.com/en/live-manual/12/midi-tools/",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L42-L50",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/ui.rs#L223-L253"
+    ],
+    "acceptance": [
+      "Create and sequence editable chords with inversion, voicing, spread and register controls.",
+      "Constrain harmony to a selected scale or intentionally allow borrowed/chromatic chords.",
+      "Preview chord transitions and avoid unnecessary voice crossings when requested.",
+      "Commit notes with explicit rhythm and velocities, keeping generated harmony fully editable."
+    ],
+    "validation": "Generate an eight-chord progression, change inversions and voice-leading constraints, then verify committed notes and harmonic context.",
+    "dependencies": [
+      "prod-piano-roll",
+      "prod-scales"
+    ]
+  },
+  {
+    "id": "prod-audio-clips",
+    "kind": "feat",
+    "area": "audio",
+    "priority": "P1",
+    "title": "[feat]/ Make audio a first-class Session and Arrangement clip type",
+    "problem": "ClipKind::Audio and audio references exist, but track rendering only schedules MIDI and the UI loads files to decks.",
+    "evidence": [
+      "https://www.ableton.com/en/manual/clip-view/",
+      "https://www.ableton.com/en/manual/session-view/",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L28-L50",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L749-L845",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/ui.rs#L132-L146",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/ui.rs#L200-L207"
+    ],
+    "acceptance": [
+      "Import supported audio into track clips with waveform, source offset, duration and loop controls.",
+      "Play multiple independently positioned audio clips through track gain, routing and devices.",
+      "Support non-destructive trim, reverse, gain and transpose settings with visible feedback.",
+      "Stream long files or share immutable source buffers without copying whole assets per instance."
+    ],
+    "validation": "Import a long vocal and drum loops, arrange and launch them together, then render and reopen with correct offsets and levels.",
+    "dependencies": [
+      "sys-project-save-open",
+      "sys-audio-io-routing"
+    ]
+  },
+  {
+    "id": "prod-warp-markers",
+    "kind": "feat",
+    "area": "audio",
+    "priority": "P1",
+    "title": "[feat]/ Implement transient detection and editable audio warp markers",
+    "problem": "Deck rate/keylock has no editable relationship between source transients and musical positions.",
+    "evidence": [
+      "https://www.ableton.com/en/manual/audio-clips-tempo-and-warping/",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L42-L50",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/ui.rs#L223-L253"
+    ],
+    "acceptance": [
+      "Detect transients and create/move/delete source-to-beat warp markers in an audio editor.",
+      "Set downbeat and estimated source tempo, with correction and local segment re-analysis.",
+      "Preserve phase relationships when applying compatible marker maps to linked tracks.",
+      "Keep original audio and allow warp bypass/reset without destructive file changes."
+    ],
+    "validation": "Correct a drifting live drum take against a musical grid, then change song tempo and measure aligned transient positions.",
+    "dependencies": [
+      "prod-audio-clips",
+      "prod-tempo-map"
+    ]
+  },
+  {
+    "id": "prod-warp-quality",
+    "kind": "feat",
+    "area": "audio",
+    "priority": "P1",
+    "title": "[feat]/ Offer distinct high-quality warp modes for drums, tones, textures and mixes",
+    "problem": "The current fixed overlap-add keylock is a deck effect, not selectable production-grade clip warping.",
+    "evidence": [
+      "https://www.ableton.com/en/manual/audio-clips-tempo-and-warping/",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L42-L50",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/ui.rs#L223-L253"
+    ],
+    "acceptance": [
+      "Provide transient-preserving, tonal, texture, resampling and full-mix stretch modes with honest descriptions.",
+      "Allow independent pitch, time and applicable formant controls with automation.",
+      "Use offline-quality rendering options and report algorithmic latency to the host.",
+      "Select original or properly licensed algorithms and document quality/CPU tradeoffs without claiming proprietary algorithm compatibility."
+    ],
+    "validation": "Run listening and objective transient/pitch tests on licensed drum, vocal and full-mix fixtures across slow/fast tempo changes.",
+    "dependencies": [
+      "prod-warp-markers",
+      "sys-plugin-delay-compensation",
+      "sys-audio-export"
+    ]
+  },
+  {
+    "id": "prod-audio-midi",
+    "kind": "feat",
+    "area": "production",
+    "priority": "P2",
+    "title": "[feat]/ Convert recorded melodies, harmony and drums to editable MIDI",
+    "problem": "No analysis path converts audio into note events; users must transcribe samples manually.",
+    "evidence": [
+      "https://www.ableton.com/en/manual/converting-audio-to-midi/",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L42-L50",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/ui.rs#L223-L253"
+    ],
+    "acceptance": [
+      "Provide separate monophonic melody, polyphonic harmony and percussive onset conversion workflows.",
+      "Preview detected events with confidence/quantization options and correct them before commit.",
+      "Create an editable MIDI clip aligned to its source without deleting the audio.",
+      "Use independently implemented or properly licensed models and document supported input limitations."
+    ],
+    "validation": "Transcribe authorized melody, chord and drum fixtures, measure pitch/onset precision and complete correction in the piano roll.",
+    "dependencies": [
+      "prod-audio-clips",
+      "prod-piano-roll"
+    ]
+  },
+  {
+    "id": "prod-slice-rack",
+    "kind": "feat",
+    "area": "production",
+    "priority": "P2",
+    "title": "[feat]/ Slice samples to playable pads and reconstruct their rhythm as MIDI",
+    "problem": "Pad banks are synthesized constants; users cannot slice their own breaks or route slices to a drum instrument.",
+    "evidence": [
+      "https://www.ableton.com/en/manual/converting-audio-to-midi/",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L42-L50",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/ui.rs#L223-L253"
+    ],
+    "acceptance": [
+      "Slice user audio by transient, warp marker or fixed musical division.",
+      "Create a drum/sampler instrument with independently editable slice boundaries and envelopes.",
+      "Generate a MIDI reconstruction preserving original order and timing.",
+      "Keep sample references shared and allow reslicing without silently corrupting the original clip."
+    ],
+    "validation": "Slice a break, reproduce the original loop from generated MIDI and then rearrange the slices into a new pattern.",
+    "dependencies": [
+      "prod-warp-markers",
+      "prod-drum-rack",
+      "prod-piano-roll"
+    ]
+  },
+  {
+    "id": "prod-stem-separation",
+    "kind": "feat",
+    "area": "audio",
+    "priority": "P2",
+    "title": "[feat]/ Extract editable production stems from complete clips or selected time ranges",
+    "problem": "The decoder has no source-separation workflow. Stable Live Suite 12.3/12.4 provides a benchmark for editable production stems; live DJ stem controls are separate.",
+    "evidence": [
+      "https://www.ableton.com/en/live-manual/12/stem-separation/",
+      "https://www.ableton.com/en/release-notes/live-12/",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L42-L50",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/ui.rs#L223-L253"
+    ],
+    "acceptance": [
+      "Run an explicit background separation job producing vocal, drums, bass and remaining accompaniment tracks.",
+      "Process only requested audible/time-selected material and retain sample-accurate alignment.",
+      "Allow selected stems to be merged into a new clip while preserving originals and job provenance.",
+      "Offer cancellation, progress and capability checks; choose a redistributable or separately licensed model with documented terms."
+    ],
+    "validation": "Separate authorized mixed material, re-sum outputs, inspect leakage/alignment and confirm cancellation never replaces the original clips.",
+    "dependencies": [
+      "prod-audio-clips",
+      "prod-arrangement"
+    ]
+  },
+  {
+    "id": "prod-automation-lanes",
+    "kind": "feat",
+    "area": "production",
+    "priority": "P1",
+    "title": "[feat]/ Add editable multitrack automation lanes and breakpoint curves",
+    "problem": "Parameters are only immediate state changes; there is no song-time automation representation or editor.",
+    "evidence": [
+      "https://www.ableton.com/en/manual/automation/",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L42-L50",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/ui.rs#L223-L253"
+    ],
+    "acceptance": [
+      "Create named lanes for automatable mixer, device and transport parameters.",
+      "Draw, select, curve, copy, scale and numerically edit breakpoints with musical snapping.",
+      "Resolve automation by stable parameter identity across device moves and track reorder.",
+      "Render automation identically in realtime and offline, including tempo changes and seeks."
+    ],
+    "validation": "Automate a complete mix with curved filter, volume and tempo moves, export it and compare parameter/audio timestamps.",
+    "dependencies": [
+      "prod-arrangement",
+      "sys-undo-redo"
+    ]
+  },
+  {
+    "id": "prod-automation-recording",
+    "kind": "feat",
+    "area": "production",
+    "priority": "P1",
+    "title": "[feat]/ Record performance automation with explicit override and re-enable behavior",
+    "problem": "GUI and controller changes currently replace values immediately without a recordable history.",
+    "evidence": [
+      "https://www.ableton.com/en/manual/automation/",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L42-L50",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/ui.rs#L223-L253"
+    ],
+    "acceptance": [
+      "Record knob, fader and device gestures into Session or Arrangement automation as appropriate.",
+      "Separate recording arm from playback override so rehearsal does not silently rewrite automation.",
+      "Expose which parameters are overridden and provide per-parameter/global re-enable controls.",
+      "Thin redundant events within documented tolerances without changing audible gesture timing."
+    ],
+    "validation": "Record a hardware-fader mix, override several lanes during playback and restore automation while verifying existing curves remain unchanged.",
+    "dependencies": [
+      "prod-automation-lanes"
+    ]
+  },
+  {
+    "id": "prod-clip-envelopes",
+    "kind": "feat",
+    "area": "production",
+    "priority": "P2",
+    "title": "[feat]/ Provide linked and independent clip modulation envelopes",
+    "problem": "Clips lack automation/modulation content, so cyclic movement cannot travel with a musical idea.",
+    "evidence": [
+      "https://www.ableton.com/en/manual/clip-envelopes/",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L42-L50",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/ui.rs#L223-L253"
+    ],
+    "acceptance": [
+      "Attach parameter modulation and applicable audio/MIDI envelopes to clips.",
+      "Support envelope loops whose lengths and start offsets differ from the note/audio loop.",
+      "Distinguish relative modulation from absolute automation and show their combined result.",
+      "Copy, stretch and consolidate clips while preserving envelope phase and intended target mappings."
+    ],
+    "validation": "Create a three-bar filter envelope on a four-bar loop, record the performance and verify the twelve-bar combined cycle.",
+    "dependencies": [
+      "prod-automation-lanes",
+      "prod-clip-management"
+    ]
+  },
+  {
+    "id": "prod-instrument-racks",
+    "kind": "feat",
+    "area": "production",
+    "priority": "P1",
+    "title": "[feat]/ Build nested instrument and effect racks with key, velocity and chain zones",
+    "problem": "Every track currently has one fixed synth and a flat effect vector; layered or split instruments are unavailable.",
+    "evidence": [
+      "https://www.ableton.com/en/manual/instrument-drum-and-effect-racks/",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L42-L50",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/ui.rs#L223-L253"
+    ],
+    "acceptance": [
+      "Create reusable nested serial/parallel instrument, MIDI-effect and audio-effect chains.",
+      "Define key, velocity and selector zones with adjustable crossfades.",
+      "Mix and mute/solo individual chains without losing their state or routing.",
+      "Flatten the processing graph safely and report per-chain latency and resource use."
+    ],
+    "validation": "Build a velocity-layered piano/synth split with parallel processing, save as a preset and reproduce it on another track.",
+    "dependencies": [
+      "sys-audio-io-routing",
+      "prod-device-chain",
+      "sys-project-save-open"
+    ]
+  },
+  {
+    "id": "prod-drum-rack",
+    "kind": "feat",
+    "area": "production",
+    "priority": "P1",
+    "title": "[feat]/ Provide a user-editable drum rack with per-pad chains and choke groups",
+    "problem": "The sampler has fixed banks and global instrument selection; users cannot build kits from their own devices and samples.",
+    "evidence": [
+      "https://www.ableton.com/en/manual/instrument-drum-and-effect-racks/",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L42-L50",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/ui.rs#L223-L253"
+    ],
+    "acceptance": [
+      "Assign samples or instruments to named MIDI pads with independent gain, pan and effects.",
+      "Support choke groups, receive/play-note mapping and per-pad multi-output routing.",
+      "Expose a pad mixer, audition and swap/duplicate/extract-pad operations.",
+      "Persist kit presets with original or legally redistributable referenced content."
+    ],
+    "validation": "Build a kit with closed/open-hat choking and separate kick/snare outputs, sequence it and verify mute/solo/routing from the pad mixer.",
+    "dependencies": [
+      "prod-instrument-racks",
+      "prod-drum-sampler",
+      "sys-midi-port-routing"
+    ]
+  },
+  {
+    "id": "prod-rack-macros",
+    "kind": "feat",
+    "area": "production",
+    "priority": "P2",
+    "title": "[feat]/ Map rack macros and recall named macro variations",
+    "problem": "There is no multi-parameter mapping or device-level variation system for sound design and live use.",
+    "evidence": [
+      "https://www.ableton.com/en/manual/instrument-drum-and-effect-racks/",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L42-L50",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/ui.rs#L223-L253"
+    ],
+    "acceptance": [
+      "Map multiple compatible parameters to named macros with ranges, polarity and curves.",
+      "Provide learn, reorder and controller-friendly macro banks with meaningful units.",
+      "Store and recall named macro snapshots with selective exclusions and randomization bounds.",
+      "Retain mappings across nested-rack edits and expose modulated versus base values."
+    ],
+    "validation": "Build a performance rack controlling ten targets, save four variations and recall them without breaking parameter ownership.",
+    "dependencies": [
+      "prod-instrument-racks",
+      "prod-automation-lanes"
+    ]
+  },
+  {
+    "id": "prod-device-chain",
+    "kind": "feat",
+    "area": "production",
+    "priority": "P1",
+    "title": "[feat]/ Make device chains editable, inspectable and reusable with A/B states",
+    "problem": "The FX panel can add/toggle slots but cannot remove, reorder, name parameters or manage presets.",
+    "evidence": [
+      "https://www.ableton.com/en/manual/working-with-instruments-and-effects/",
+      "https://www.ableton.com/en/release-notes/live-12/",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/ui.rs#L784-L827",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L1557-L1577",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/fx.rs#L60-L102"
+    ],
+    "acceptance": [
+      "Add, remove, reorder, copy and bypass devices with stable parameter identities and predictable tails.",
+      "Give each device named, unit-aware controls, modulation/automation indication and accessible editing.",
+      "Save/load user presets and compare A/B parameter states without overwriting the saved preset.",
+      "Support device replacement with explicit mapping-loss warnings and uninterrupted unaffected tracks."
+    ],
+    "validation": "Build, reorder and duplicate a chain while playing, compare A/B presets, reopen the project and verify order/state/automation.",
+    "dependencies": [
+      "sys-project-save-open",
+      "sys-undo-redo",
+      "sys-audio-io-routing",
+      "sys-plugin-presets"
+    ]
+  },
+  {
+    "id": "prod-freeze",
+    "kind": "feat",
+    "area": "production",
+    "priority": "P2",
+    "title": "[feat]/ Freeze and unfreeze tracks without sacrificing editability",
+    "problem": "All tracks render live continuously; there is no way to trade CPU for a recoverable rendered track.",
+    "evidence": [
+      "https://www.ableton.com/en/manual/computer-audio-resources-and-strategies/",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L42-L50",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/ui.rs#L223-L253"
+    ],
+    "acceptance": [
+      "Create a background rendered cache of track clips/instruments/effects with source state retained.",
+      "Play frozen material with consistent timing, tails and routing while disabling redundant processing.",
+      "Invalidate or explicitly protect the cache when relevant edits change the sound.",
+      "Unfreeze losslessly and diagnose missing devices without deleting their retained state."
+    ],
+    "validation": "Freeze a resource-heavy instrument track, measure the actual processing reduction and confirm an unfreeze restores identical editable content.",
+    "dependencies": [
+      "sys-audio-export",
+      "prod-audio-clips",
+      "prod-device-chain",
+      "sys-project-save-open"
+    ]
+  },
+  {
+    "id": "prod-bounce",
+    "kind": "feat",
+    "area": "audio",
+    "priority": "P1",
+    "title": "[feat]/ Bounce clips, selected ranges and groups into editable audio tracks",
+    "problem": "There is no in-project bounce workflow for sound design, printing external gear or committing groups.",
+    "evidence": [
+      "https://www.ableton.com/en/live-manual/12/bounce-to-audio/",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L42-L50",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/ui.rs#L223-L253"
+    ],
+    "acceptance": [
+      "Bounce selected clips/time ranges or whole groups with explicit pre/post-effects and tail boundaries.",
+      "Create new aligned audio tracks or replace material only through an explicit reversible choice.",
+      "Respect sidechains, tempo automation and source offsets when rendering a selection.",
+      "Support realtime bounce for external hardware and retain provenance of the source state."
+    ],
+    "validation": "Bounce a sidechained group and a hardware-instrument passage, then compare timing and audible output with their source playback.",
+    "dependencies": [
+      "sys-audio-export",
+      "prod-arrangement",
+      "prod-group-tracks",
+      "sys-undo-redo"
+    ]
+  },
+  {
+    "id": "prod-production-mixer",
+    "kind": "feat",
+    "area": "production",
+    "priority": "P1",
+    "title": "[feat]/ Deliver a musician-facing mixer with pan laws, stereo controls and solo semantics",
+    "problem": "The current track controls expose gain/mute/solo only; pan exists internally but has no full mixer workflow.",
+    "evidence": [
+      "https://www.ableton.com/en/manual/mixing/",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L42-L50",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/ui.rs#L223-L253"
+    ],
+    "acceptance": [
+      "Provide linked Session/Arrangement mixer strips with faders, numeric gain, pan/balance and stereo-pan modes.",
+      "Expose input/output meters, clip indicators and clearly differentiated mute/solo/arm/monitor state.",
+      "Define solo-in-place, solo-safe and exclusive/additive selection behavior across groups and returns.",
+      "Offer keyboard-accessible multi-track adjustment without losing automation identity."
+    ],
+    "validation": "Mix a multitrack song from both views and verify calibrated gains, pan positions, solo behavior and recorded automation.",
+    "dependencies": [
+      "sys-audio-io-routing",
+      "prod-session-scale",
+      "prod-automation-lanes"
+    ]
+  },
+  {
+    "id": "prod-sends-returns",
+    "kind": "feat",
+    "area": "production",
+    "priority": "P1",
+    "title": "[feat]/ Add auxiliary sends, returns and musician-facing sidechain routing",
+    "problem": "The engine has fixed master effects, but no per-track sends or routable detector/control inputs.",
+    "evidence": [
+      "https://www.ableton.com/en/manual/mixing/",
+      "https://www.ableton.com/en/manual/routing-and-i-o/",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L42-L50",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/ui.rs#L223-L253"
+    ],
+    "acceptance": [
+      "Create named returns with configurable pre/post-fader sends and metered send levels.",
+      "Expose sidechain source and tap point per compatible device, including multi-output instruments.",
+      "Validate routing cycles and require explicit safe feedback configuration.",
+      "Preserve sends/sidechains on track/group duplication and show missing routes clearly."
+    ],
+    "validation": "Mix a shared reverb return, pre-fader cue effect and kick-ducked bass, then verify renders and route restoration after reopen.",
+    "dependencies": [
+      "sys-audio-io-routing",
+      "sys-plugin-delay-compensation",
+      "prod-production-mixer"
+    ]
+  },
+  {
+    "id": "prod-group-tracks",
+    "kind": "feat",
+    "area": "production",
+    "priority": "P1",
+    "title": "[feat]/ Implement nested group tracks, subgroup mixing and track organization",
+    "problem": "Tracks are a flat fixed array with no parent groups or shared musician-facing bus controls.",
+    "evidence": [
+      "https://www.ableton.com/en/manual/mixing/",
+      "https://www.ableton.com/en/manual/session-view/",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L42-L50",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/ui.rs#L223-L253"
+    ],
+    "acceptance": [
+      "Create and nest group tracks with clear child routing and independent subgroup device chains.",
+      "Fold/unfold groups and launch or stop their contained Session material coherently.",
+      "Apply group mute/solo/gain while preserving individual child settings and metering.",
+      "Move, duplicate and ungroup tracks without losing sends, automation or clip references."
+    ],
+    "validation": "Organize a 64-track production into nested drum/music/vocal groups and verify bus renders, solo behavior and duplication.",
+    "dependencies": [
+      "prod-session-scale",
+      "sys-audio-io-routing",
+      "prod-production-mixer"
+    ]
+  },
+  {
+    "id": "prod-external-instrument",
+    "kind": "feat",
+    "area": "production",
+    "priority": "P1",
+    "title": "[feat]/ Integrate external MIDI instruments as latency-compensated track devices",
+    "problem": "MIDI output helpers are not an external-instrument workflow with coupled audio return and rendering.",
+    "evidence": [
+      "https://www.ableton.com/en/manual/live-instrument-reference/",
+      "https://www.ableton.com/en/manual/routing-and-i-o/",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L42-L50",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/ui.rs#L223-L253"
+    ],
+    "acceptance": [
+      "Bind a device to an explicit MIDI destination/channel plus audio-return channels.",
+      "Provide calibrated hardware latency, gain and patch selection with visible connection status.",
+      "Support realtime freeze/bounce and retain timing alignment with software instruments.",
+      "Recover from port changes without silently sending notes to a different instrument."
+    ],
+    "validation": "Sequence an external synth beside a software reference, calibrate return timing and print aligned audio through realtime bounce.",
+    "dependencies": [
+      "sys-audio-io-routing",
+      "sys-midi-port-routing",
+      "sys-plugin-delay-compensation",
+      "prod-bounce"
+    ]
+  },
+  {
+    "id": "prod-external-effect",
+    "kind": "feat",
+    "area": "audio",
+    "priority": "P1",
+    "title": "[feat]/ Insert external hardware effects with round-trip latency calibration",
+    "problem": "No track device can route a send/return pair through outboard processing and keep it aligned.",
+    "evidence": [
+      "https://www.ableton.com/en/manual/live-audio-effect-reference/",
+      "https://www.ableton.com/en/manual/routing-and-i-o/",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L42-L50",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/ui.rs#L223-L253"
+    ],
+    "acceptance": [
+      "Choose explicit hardware send/return channels and show gain, meter and connection state.",
+      "Measure or enter round-trip latency and integrate it with compensation.",
+      "Provide safe bypass and feedback-loop warnings for mispatched outputs.",
+      "Mark sessions requiring realtime rendering and support calibrated realtime bounce."
+    ],
+    "validation": "Loop through an outboard compressor or physical loopback and verify alignment, bypass level and realtime export behavior.",
+    "dependencies": [
+      "sys-audio-io-routing",
+      "sys-plugin-delay-compensation",
+      "prod-bounce"
+    ]
+  },
+  {
+    "id": "prod-production-browser",
+    "kind": "feat",
+    "area": "ui",
+    "priority": "P2",
+    "title": "[feat]/ Browse, tag and audition instruments, presets, clips and production samples",
+    "problem": "The crate only scans filenames under Music and loads tracks to decks; it is not a production-content browser.",
+    "evidence": [
+      "https://www.ableton.com/en/manual/working-with-the-browser/",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/ui.rs#L78-L126",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/ui.rs#L132-L146",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/ui.rs#L565-L631"
+    ],
+    "acceptance": [
+      "Index devices, presets, clips and sample locations with editable tags and saved filters.",
+      "Audition samples in tempo and hot-swap sounds while retaining the target track/rack context.",
+      "Provide browsing history, favorites and missing-content state without blocking the UI.",
+      "Keep factory content read-only while allowing user tags and presets with accessible keyboard navigation."
+    ],
+    "validation": "Find and audition content in a large library, replace one drum-pad sound and save a tagged user preset without changing other pads.",
+    "dependencies": [
+      "sys-project-portability",
+      "prod-device-chain",
+      "prod-clip-management"
+    ]
+  },
+  {
+    "id": "prod-sample-similarity",
+    "kind": "feat",
+    "area": "production",
+    "priority": "P3",
+    "title": "[feat]/ Find and swap acoustically similar production samples",
+    "problem": "The browser only compares filename text; producers cannot explore alternatives by sound characteristics.",
+    "evidence": [
+      "https://www.ableton.com/en/manual/working-with-the-browser/",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L42-L50",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/ui.rs#L223-L253"
+    ],
+    "acceptance": [
+      "Analyze supported local samples asynchronously into a versioned acoustic index.",
+      "Find similar timbre/envelope candidates from user-selected sounds with explainable filters.",
+      "Preview and swap rack samples individually or as a kit while retaining mappings and user edits.",
+      "Make analysis opt-in, cancellable and local unless a separate provider is explicitly selected."
+    ],
+    "validation": "Index a licensed drum corpus, evaluate similarity retrieval against tagged fixtures and replace a kit without interrupting playback.",
+    "dependencies": [
+      "prod-production-browser",
+      "prod-drum-rack"
+    ]
+  },
+  {
+    "id": "prod-simple-sampler",
+    "kind": "feat",
+    "area": "production",
+    "priority": "P2",
+    "title": "[feat]/ Build an editable chromatic single-sample instrument",
+    "problem": "Pad voices replay fixed sample banks; producers need playable user samples with visible sound-shaping controls.",
+    "evidence": [
+      "https://www.ableton.com/en/manual/live-instrument-reference/",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/dsp.rs#L210-L315",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L453-L465",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L1486-L1525"
+    ],
+    "acceptance": [
+      "Load user samples with waveform start/end, loop, reverse and root-pitch editing.",
+      "Offer chromatic classic, one-shot and slicing playback with envelopes and resonant filtering.",
+      "Integrate warp and velocity/expression routing while sharing sample data between voices.",
+      "Expose named automatable controls and recall independent instance state from presets and projects."
+    ],
+    "validation": "Create a playable vocal instrument from an authorized recording, edit its loop and render sustained polyphony without loop clicks.",
+    "dependencies": [
+      "prod-device-chain",
+      "prod-audio-clips",
+      "prod-warp-quality"
+    ]
+  },
+  {
+    "id": "prod-multisampler",
+    "kind": "feat",
+    "area": "production",
+    "priority": "P2",
+    "title": "[feat]/ Add a multisample instrument with key/velocity zones and modulation",
+    "problem": "The engine has no user-imported multisample key/velocity zone map despite its six-sample drum kit and three generated 16-pad banks.",
+    "evidence": [
+      "https://www.ableton.com/en/manual/live-instrument-reference/",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/dsp.rs#L210-L315",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L453-L465",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L1486-L1525"
+    ],
+    "acceptance": [
+      "Create and edit overlapping key/velocity zones with root pitch, crossfades and release samples.",
+      "Support sustain/release loops, per-zone gain/tuning and modulation of synthesis parameters.",
+      "Load documented open sample-instrument formats only where supported and preserve source licensing metadata.",
+      "Expose named automatable controls and recall independent instance state from presets and projects."
+    ],
+    "validation": "Build a velocity-layered acoustic instrument with release noises, save it and verify zone boundaries and sustain behavior.",
+    "dependencies": [
+      "prod-device-chain",
+      "prod-simple-sampler",
+      "sys-project-portability"
+    ]
+  },
+  {
+    "id": "prod-drum-sampler",
+    "kind": "feat",
+    "area": "production",
+    "priority": "P2",
+    "title": "[feat]/ Create a per-hit drum sampler with transient shaping and creative playback",
+    "problem": "Current pad banks cannot be user-authored or shaped per hit; producers need drum-focused editing independent of the deck.",
+    "evidence": [
+      "https://www.ableton.com/en/manual/live-instrument-reference/",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/dsp.rs#L210-L315",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L453-L465",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L1486-L1525"
+    ],
+    "acceptance": [
+      "Edit sample boundaries, fades, tuning, pitch envelope and velocity response on a clear waveform.",
+      "Provide one-shot/gate modes and independently configurable per-hit playback effects.",
+      "Support sample replacement and rack integration without changing the receiving pad note.",
+      "Expose named automatable controls and recall independent instance state from presets and projects."
+    ],
+    "validation": "Load kick, snare and hats, shape their transients and replace one source while validating timing and rack mappings.",
+    "dependencies": [
+      "prod-device-chain",
+      "prod-audio-clips"
+    ]
+  },
+  {
+    "id": "prod-drum-synths",
+    "kind": "feat",
+    "area": "production",
+    "priority": "P2",
+    "title": "[feat]/ Provide editable kick, snare, clap, hat, cymbal, tom and metallic drum synthesis",
+    "problem": "synth_drum creates canned buffers but there is no editable drum-synthesis instrument family.",
+    "evidence": [
+      "https://www.ableton.com/en/manual/max-for-live-devices/",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/dsp.rs#L210-L315",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L453-L465",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L1486-L1525"
+    ],
+    "acceptance": [
+      "Offer distinct percussion models with appropriate pitch/noise/resonance and amplitude envelopes.",
+      "Map velocity/expression to meaningful timbre and dynamics without uncontrolled peaks.",
+      "Provide tuned tom/FM/metallic variants and parameter ranges suited to original kit design.",
+      "Expose named automatable controls and recall independent instance state from presets and projects."
+    ],
+    "validation": "Design and sequence a complete synthesized kit, vary velocity and render repeatable isolated hits for every model.",
+    "dependencies": [
+      "prod-device-chain",
+      "prod-drum-rack"
+    ]
+  },
+  {
+    "id": "prod-analog-synth",
+    "kind": "feat",
+    "area": "production",
+    "priority": "P2",
+    "title": "[feat]/ Build a programmable virtual-analog synth with mono, poly and expressive modes",
+    "problem": "Three hardcoded oscillator mixtures are not an editable analog instrument; the current instrument labels also map inconsistently.",
+    "evidence": [
+      "https://www.ableton.com/en/manual/live-instrument-reference/",
+      "https://www.ableton.com/en/packs/creative-extensions/",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/dsp.rs#L210-L315",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L453-L465",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L1486-L1525"
+    ],
+    "acceptance": [
+      "Expose oscillators, noise, sync/sub options, resonant filters, envelopes, LFOs and a modulation matrix.",
+      "Support mono/legato/glide and polyphonic/unison playing with predictable voice stealing.",
+      "Provide drift/expression controls and original bass, lead and poly presets without cloning commercial patches.",
+      "Expose named automatable controls and recall independent instance state from presets and projects."
+    ],
+    "validation": "Program a bass, lead and poly pad from initialized state, automate modulation and compare deterministic preset recall.",
+    "dependencies": [
+      "prod-device-chain",
+      "prod-mpe"
+    ]
+  },
+  {
+    "id": "prod-fm-synth",
+    "kind": "feat",
+    "area": "production",
+    "priority": "P2",
+    "title": "[feat]/ Add an FM and additive synthesis instrument",
+    "problem": "The fixed subtractive voices cannot produce editable operator-based frequency modulation or harmonic spectra.",
+    "evidence": [
+      "https://www.ableton.com/en/manual/live-instrument-reference/",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/dsp.rs#L210-L315",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L453-L465",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L1486-L1525"
+    ],
+    "acceptance": [
+      "Provide multiple operators with frequency ratios/fixed frequency, envelopes and selectable routings.",
+      "Allow user-shaped harmonic spectra and feedback with bounded stable behavior.",
+      "Integrate filters, modulation and expressive per-note controls across polyphonic voices.",
+      "Expose named automatable controls and recall independent instance state from presets and projects."
+    ],
+    "validation": "Create bell, electric-key and bass patches from operators, then verify tuning, modulation and safe peak levels across the keyboard.",
+    "dependencies": [
+      "prod-device-chain",
+      "prod-mpe"
+    ]
+  },
+  {
+    "id": "prod-wavetable-synth",
+    "kind": "feat",
+    "area": "production",
+    "priority": "P2",
+    "title": "[feat]/ Add a morphing wavetable instrument with user-table import",
+    "problem": "There is no wavetable data model, scan control or modulation matrix in the synth engine.",
+    "evidence": [
+      "https://www.ableton.com/en/manual/live-instrument-reference/",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/dsp.rs#L210-L315",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L453-L465",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L1486-L1525"
+    ],
+    "acceptance": [
+      "Provide independently tuned wavetable oscillators with scanning, sub oscillator and filters.",
+      "Import documented user wavetable formats with validation and spectral anti-aliasing strategy.",
+      "Support expressive modulation, unison and configurable polyphony with measured CPU limits.",
+      "Expose named automatable controls and recall independent instance state from presets and projects."
+    ],
+    "validation": "Import an original wavetable, build a scanning pad and render high-note sweeps to evaluate aliasing and preset portability.",
+    "dependencies": [
+      "prod-device-chain",
+      "prod-mpe",
+      "sys-project-portability"
+    ]
+  },
+  {
+    "id": "prod-macro-synth",
+    "kind": "feat",
+    "area": "production",
+    "priority": "P2",
+    "title": "[feat]/ Create an expressive dual-layer macro-oscillator instrument",
+    "problem": "The existing voices cannot combine independently modulated sound engines for complex evolving textures.",
+    "evidence": [
+      "https://www.ableton.com/en/manual/live-instrument-reference/",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/dsp.rs#L210-L315",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L453-L465",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L1486-L1525"
+    ],
+    "acceptance": [
+      "Offer two independently configurable macro-oscillator layers with complementary synthesis models.",
+      "Route modulation within and between layers using visible, bounded assignments.",
+      "Support per-note expression and tuning-aware oscillator/filter relationships.",
+      "Expose named automatable controls and recall independent instance state from presets and projects."
+    ],
+    "validation": "Design an evolving dual-layer texture, record MPE gestures and verify layer isolation, modulation and project recall.",
+    "dependencies": [
+      "prod-device-chain",
+      "prod-mpe",
+      "prod-tuning"
+    ]
+  },
+  {
+    "id": "prod-granular-synth",
+    "kind": "feat",
+    "area": "production",
+    "priority": "P2",
+    "title": "[feat]/ Provide a sample-based granular synthesis instrument",
+    "problem": "Deck keylock uses grains internally, but there is no playable granular sound-design instrument.",
+    "evidence": [
+      "https://www.ableton.com/en/packs/granulator-iii/",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/dsp.rs#L210-L315",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L453-L465",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L1486-L1525"
+    ],
+    "acceptance": [
+      "Load user audio and expose grain position, size, density, shape, pitch and scan behavior.",
+      "Offer contrasting scan/hold playback modes and live sample capture with explicit buffer ownership.",
+      "Map per-note expression to grain controls while keeping realtime processing bounded.",
+      "Expose named automatable controls and recall independent instance state from presets and projects."
+    ],
+    "validation": "Transform an authorized field recording into an expressive pad, capture new material live and reopen its self-contained preset.",
+    "dependencies": [
+      "prod-device-chain",
+      "prod-mpe",
+      "prod-audio-clips",
+      "sys-audio-io-routing"
+    ]
+  },
+  {
+    "id": "prod-mallet-model",
+    "kind": "feat",
+    "area": "production",
+    "priority": "P2",
+    "title": "[feat]/ Add physical-model mallet and resonant-percussion instruments",
+    "problem": "Fixed synthesized drums do not provide editable struck-resonator instruments for tuned percussion.",
+    "evidence": [
+      "https://www.ableton.com/en/manual/live-instrument-reference/",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/dsp.rs#L210-L315",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L453-L465",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L1486-L1525"
+    ],
+    "acceptance": [
+      "Combine mallet/noise excitation with selectable resonator materials and geometries.",
+      "Expose damping, brightness, position and pitch controls with velocity-sensitive response.",
+      "Keep extreme resonator settings stable and support expressive polyphony and microtuning.",
+      "Expose named automatable controls and recall independent instance state from presets and projects."
+    ],
+    "validation": "Create wood, metal and glass-like mallet patches, verify pitch/decay behavior and stress maximum resonance.",
+    "dependencies": [
+      "prod-device-chain",
+      "prod-tuning"
+    ]
+  },
+  {
+    "id": "prod-electric-piano",
+    "kind": "feat",
+    "area": "production",
+    "priority": "P2",
+    "title": "[feat]/ Provide a modeled electric-piano instrument",
+    "problem": "The keys choice selects a generic synth voice rather than a playable tine/reed/pickup model.",
+    "evidence": [
+      "https://www.ableton.com/en/manual/live-instrument-reference/",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/dsp.rs#L210-L315",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L453-L465",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L1486-L1525"
+    ],
+    "acceptance": [
+      "Model controllable hammer, tine/reed, damper and pickup behavior with responsive velocity.",
+      "Support sustain/release interactions, tuning and noise controls appropriate to keyboard performance.",
+      "Include original clean and driven presets with consistent gain across velocity layers.",
+      "Expose named automatable controls and recall independent instance state from presets and projects."
+    ],
+    "validation": "Perform soft-to-hard passages with sustain pedal, verify release behavior and compare preset renders at identical MIDI input.",
+    "dependencies": [
+      "prod-device-chain",
+      "sys-midi-port-routing"
+    ]
+  },
+  {
+    "id": "prod-string-model",
+    "kind": "feat",
+    "area": "production",
+    "priority": "P2",
+    "title": "[feat]/ Add a physical-model string synthesis instrument",
+    "problem": "The pad oscillator cannot model plucked, bowed or hammered strings and resonant bodies.",
+    "evidence": [
+      "https://www.ableton.com/en/manual/live-instrument-reference/",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/dsp.rs#L210-L315",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L453-L465",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L1486-L1525"
+    ],
+    "acceptance": [
+      "Provide independent excitation, string, damper and body controls.",
+      "Support continuous and transient excitation with pitch tracking and expressive playing.",
+      "Bound resonances and preserve stable voice termination with sustain and retriggering.",
+      "Expose named automatable controls and recall independent instance state from presets and projects."
+    ],
+    "validation": "Create plucked and bowed patches, play chords with expression and verify decay stability and tuning across registers.",
+    "dependencies": [
+      "prod-device-chain",
+      "prod-mpe",
+      "prod-tuning"
+    ]
+  },
+  {
+    "id": "prod-compressors",
+    "kind": "feat",
+    "area": "audio",
+    "priority": "P2",
+    "title": "[feat]/ Extend dynamics processing into configurable compressor and bus-compressor devices",
+    "problem": "The existing small compressor branch lacks the controls, detector routing and gain-reduction workflow needed for mixing.",
+    "evidence": [
+      "https://www.ableton.com/en/manual/live-audio-effect-reference/",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/fx.rs#L5-L19",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/fx.rs#L60-L102",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/fx.rs#L132-L242"
+    ],
+    "acceptance": [
+      "Expose threshold, ratio, knee, attack, release, makeup and dry/wet with meaningful units.",
+      "Offer peak/RMS detection, stereo-link behavior and an external filtered sidechain.",
+      "Provide a separate original bus-compressor character mode with level-matched comparison and gain-reduction metering.",
+      "Expose named automatable controls and recall independent instance state from presets and projects."
+    ],
+    "validation": "Measure transfer curves and attack/release response on calibrated fixtures, then duck bass from a kick sidechain in a saved session.",
+    "dependencies": [
+      "prod-device-chain",
+      "prod-sends-returns"
+    ]
+  },
+  {
+    "id": "prod-gate-expander",
+    "kind": "feat",
+    "area": "audio",
+    "priority": "P2",
+    "title": "[feat]/ Add a fully controllable gate and expander with sidechain audition",
+    "problem": "A threshold-only gate is insufficient for transparent cleanup and rhythmic noise shaping.",
+    "evidence": [
+      "https://www.ableton.com/en/manual/live-audio-effect-reference/",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/fx.rs#L5-L19",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/fx.rs#L60-L102",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/fx.rs#L132-L242"
+    ],
+    "acceptance": [
+      "Expose threshold, hysteresis, attack, hold, release and reduction-range controls.",
+      "Provide filtered external sidechain input and detector audition.",
+      "Support smooth gating/expansion without clicks or unintended channel imbalance.",
+      "Expose named automatable controls and recall independent instance state from presets and projects."
+    ],
+    "validation": "Clean a noisy vocal and shape a drum room using sidechain input, measuring transitions and recall.",
+    "dependencies": [
+      "prod-device-chain",
+      "prod-sends-returns"
+    ]
+  },
+  {
+    "id": "prod-limiter",
+    "kind": "feat",
+    "area": "audio",
+    "priority": "P2",
+    "title": "[feat]/ Provide a metered mastering limiter with lookahead and stereo modes",
+    "problem": "The master limiter is a fixed soft nonlinearity, not a configurable ceiling/true-peak mastering tool.",
+    "evidence": [
+      "https://www.ableton.com/en/manual/live-audio-effect-reference/",
+      "https://www.ableton.com/en/packs/creative-extensions/",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/fx.rs#L5-L19",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/fx.rs#L60-L102",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/fx.rs#L132-L242"
+    ],
+    "acceptance": [
+      "Expose ceiling, lookahead, release, channel linking and input gain with gain-reduction metering.",
+      "Provide documented true-peak oversampling and latency reporting for supported quality modes.",
+      "Offer transparent and original character-limiting options with explicit loudness/ceiling tradeoffs.",
+      "Expose named automatable controls and recall independent instance state from presets and projects."
+    ],
+    "validation": "Run intersample-peak and transient fixtures at multiple sample rates and verify measured exported peaks against the requested ceiling.",
+    "dependencies": [
+      "prod-device-chain",
+      "sys-plugin-delay-compensation",
+      "sys-audio-export"
+    ]
+  },
+  {
+    "id": "prod-multiband-dynamics",
+    "kind": "feat",
+    "area": "audio",
+    "priority": "P2",
+    "title": "[feat]/ Implement multiband compression, expansion and envelope shaping",
+    "problem": "The current engine has no adjustable crossovers or independently processed dynamics bands.",
+    "evidence": [
+      "https://www.ableton.com/en/manual/live-audio-effect-reference/",
+      "https://www.ableton.com/en/packs/creative-extensions/",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/fx.rs#L5-L19",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/fx.rs#L60-L102",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/fx.rs#L132-L242"
+    ],
+    "acceptance": [
+      "Provide phase-consistent adjustable crossovers with per-band solo and metering.",
+      "Support upward/downward compression and expansion with independent timing per band.",
+      "Include a multiband transient/envelope-shaping mode with bounded output and matched bypass.",
+      "Expose named automatable controls and recall independent instance state from presets and projects."
+    ],
+    "validation": "Process a calibrated multitone/drum fixture, validate crossover recombination and independent band response.",
+    "dependencies": [
+      "prod-device-chain"
+    ]
+  },
+  {
+    "id": "prod-parametric-eq",
+    "kind": "feat",
+    "area": "audio",
+    "priority": "P2",
+    "title": "[feat]/ Add a graphical parametric equalizer with stereo and mid/side editing",
+    "problem": "Existing EQ3/5/8 split signals into fixed regions with few shared gain parameters; users cannot place arbitrary bands.",
+    "evidence": [
+      "https://www.ableton.com/en/manual/live-audio-effect-reference/",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/fx.rs#L5-L19",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/fx.rs#L60-L102",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/fx.rs#L132-L242"
+    ],
+    "acceptance": [
+      "Edit independent frequency, gain, Q, type and slope per active band in graph and numeric controls.",
+      "Offer stereo, left/right and mid/side processing with spectrum overlay and band audition.",
+      "Support quality options with documented latency and stable automation of filter coefficients.",
+      "Expose named automatable controls and recall independent instance state from presets and projects."
+    ],
+    "validation": "Measure the response of saved multi-band curves at several sample rates and compare channel-isolated and mid/side renders.",
+    "dependencies": [
+      "prod-device-chain"
+    ]
+  },
+  {
+    "id": "prod-modulated-filter",
+    "kind": "feat",
+    "area": "audio",
+    "priority": "P2",
+    "title": "[feat]/ Add a modulation-capable filter device with envelope follower and sidechain",
+    "problem": "The basic filter branch cannot expose the production modulation and detector workflow used in creative filtering.",
+    "evidence": [
+      "https://www.ableton.com/en/manual/live-audio-effect-reference/",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/fx.rs#L5-L19",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/fx.rs#L60-L102",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/fx.rs#L132-L242"
+    ],
+    "acceptance": [
+      "Provide multiple filter responses, slope/drive choices and smooth automatable cutoff/resonance.",
+      "Include tempo/free-rate LFO shapes with phase/morph and envelope-follow controls.",
+      "Allow external detector input and show modulation separately from base cutoff.",
+      "Expose named automatable controls and recall independent instance state from presets and projects."
+    ],
+    "validation": "Create a tempo-synced moving filter and an audio-followed bass effect, verifying detector routing and automation continuity.",
+    "dependencies": [
+      "prod-device-chain",
+      "prod-sends-returns"
+    ]
+  },
+  {
+    "id": "prod-autopan-tremolo",
+    "kind": "feat",
+    "area": "audio",
+    "priority": "P2",
+    "title": "[feat]/ Provide tempo-synced auto-pan, tremolo and rhythmic chopping",
+    "problem": "Spread and balance do not provide periodic movement or shaped amplitude modulation.",
+    "evidence": [
+      "https://www.ableton.com/en/manual/live-audio-effect-reference/",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/fx.rs#L5-L19",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/fx.rs#L60-L102",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/fx.rs#L132-L242"
+    ],
+    "acceptance": [
+      "Offer pan and amplitude modes with stereo phase, depth and offset controls.",
+      "Support free/synced rate, variable waveform shape and retrigger rules.",
+      "Provide smooth and intentionally stepped modes with click-safe transitions.",
+      "Expose named automatable controls and recall independent instance state from presets and projects."
+    ],
+    "validation": "Render mono and stereo sources through a tempo change and confirm pan/amplitude cycles remain aligned.",
+    "dependencies": [
+      "prod-device-chain"
+    ]
+  },
+  {
+    "id": "prod-chorus-ensemble",
+    "kind": "feat",
+    "area": "audio",
+    "priority": "P2",
+    "title": "[feat]/ Expand chorus into chorus, ensemble and vibrato processing",
+    "problem": "The existing chorus branch is a minimal shared-delay effect without an ensemble or performance editor.",
+    "evidence": [
+      "https://www.ableton.com/en/manual/live-audio-effect-reference/",
+      "https://www.ableton.com/en/release-notes/live-12/",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/fx.rs#L5-L19",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/fx.rs#L60-L102",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/fx.rs#L132-L242"
+    ],
+    "acceptance": [
+      "Offer independently maintained stereo multi-tap chorus and dense ensemble modes.",
+      "Expose delay time, tap selection, rate, depth, width and tone with a true dry/wet path.",
+      "Include vibrato-only operation and safe feedback/modulation ranges.",
+      "Expose named automatable controls and recall independent instance state from presets and projects."
+    ],
+    "validation": "Process bass, guitar and sustained synth fixtures, measure channel independence and verify recall of slow/fast modulation.",
+    "dependencies": [
+      "prod-device-chain"
+    ]
+  },
+  {
+    "id": "prod-phaser-flanger",
+    "kind": "feat",
+    "area": "audio",
+    "priority": "P2",
+    "title": "[feat]/ Add phaser and flanger effects with controllable feedback and modulation",
+    "problem": "No phaser/flanger device exists in the current effect enum.",
+    "evidence": [
+      "https://www.ableton.com/en/manual/live-audio-effect-reference/",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/fx.rs#L5-L19",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/fx.rs#L60-L102",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/fx.rs#L132-L242"
+    ],
+    "acceptance": [
+      "Provide selectable all-pass phasing and short-delay flanging algorithms with independent instance state.",
+      "Expose stages/range, rate, depth, feedback, stereo phase and mix.",
+      "Synchronize modulation to musical tempo and support safe manual-sweep operation.",
+      "Expose named automatable controls and recall independent instance state from presets and projects."
+    ],
+    "validation": "Compare impulse/frequency sweeps and stereo motion for both modes, then automate a sweep across a tempo change.",
+    "dependencies": [
+      "prod-device-chain"
+    ]
+  },
+  {
+    "id": "prod-stereo-delay",
+    "kind": "feat",
+    "area": "audio",
+    "priority": "P2",
+    "title": "[feat]/ Build a configurable stereo delay with tempo divisions and advanced LFO shapes",
+    "problem": "The existing delay slot cannot deliver a complete independently configured stereo creative-delay workflow.",
+    "evidence": [
+      "https://www.ableton.com/en/manual/live-audio-effect-reference/",
+      "https://www.ableton.com/en/release-notes/live-12/",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/fx.rs#L5-L19",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/fx.rs#L60-L102",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/fx.rs#L132-L242"
+    ],
+    "acceptance": [
+      "Expose independent/linked channel delay times in milliseconds or musical divisions with filtering and feedback.",
+      "Provide ping-pong, freeze, modulation shapes/morph and explicit time-change behavior.",
+      "Maintain smooth parameter transitions and independent state per slot, with latency/feedback safety.",
+      "Expose named automatable controls and recall independent instance state from presets and projects."
+    ],
+    "validation": "Validate channel impulse timing at multiple BPMs and verify a modulated freeze/release gesture in a saved arrangement.",
+    "dependencies": [
+      "prod-device-chain"
+    ]
+  },
+  {
+    "id": "prod-character-echo",
+    "kind": "feat",
+    "area": "audio",
+    "priority": "P2",
+    "title": "[feat]/ Add an analog/digital character echo with modulation and noise shaping",
+    "problem": "The single basic delay lacks a dedicated character-echo sound-design workflow.",
+    "evidence": [
+      "https://www.ableton.com/en/manual/live-audio-effect-reference/",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/fx.rs#L5-L19",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/fx.rs#L60-L102",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/fx.rs#L132-L242"
+    ],
+    "acceptance": [
+      "Provide stereo, ping-pong and mid/side echo routes with time modulation.",
+      "Expose diffusion, filtering, saturation, wow/flutter and optional noise controls using original algorithms.",
+      "Keep feedback stable and support ducking/gating plus a correctly compensated wet mix.",
+      "Expose named automatable controls and recall independent instance state from presets and projects."
+    ],
+    "validation": "Create clean, tape-like and diffuse echo presets, measure timing and feedback decay and verify stereo independence.",
+    "dependencies": [
+      "prod-device-chain"
+    ]
+  },
+  {
+    "id": "prod-filter-delay",
+    "kind": "feat",
+    "area": "audio",
+    "priority": "P2",
+    "title": "[feat]/ Implement parallel filtered delay lines with independent pan and feedback",
+    "problem": "No device offers multiple independently filtered rhythmic echoes.",
+    "evidence": [
+      "https://www.ableton.com/en/manual/live-audio-effect-reference/",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/fx.rs#L5-L19",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/fx.rs#L60-L102",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/fx.rs#L132-L242"
+    ],
+    "acceptance": [
+      "Provide several parallel delay lines with per-line input filter, timing, pan and feedback.",
+      "Allow synchronized and free time values plus independent gain/enable controls.",
+      "Keep parallel-line state isolated and expose coherent global mix behavior.",
+      "Expose named automatable controls and recall independent instance state from presets and projects."
+    ],
+    "validation": "Create a three-part rhythmic echo and verify impulse arrival times, spectral filtering and pan of each line.",
+    "dependencies": [
+      "prod-device-chain"
+    ]
+  },
+  {
+    "id": "prod-grain-delay",
+    "kind": "feat",
+    "area": "audio",
+    "priority": "P2",
+    "title": "[feat]/ Add granular pitch-shifted delay for sound design",
+    "problem": "The current FX list has no granular delay or controllable pitched feedback.",
+    "evidence": [
+      "https://www.ableton.com/en/manual/live-audio-effect-reference/",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/fx.rs#L5-L19",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/fx.rs#L60-L102",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/fx.rs#L132-L242"
+    ],
+    "acceptance": [
+      "Expose grain size, frequency/density, delay time, pitch and controlled random spread.",
+      "Provide separate dry/wet and feedback paths with safe gain behavior.",
+      "Offer tempo-related delay and deterministic render-seed options for reproducible sound design.",
+      "Expose named automatable controls and recall independent instance state from presets and projects."
+    ],
+    "validation": "Create a pitched rhythmic texture from percussion, render repeatedly with a fixed seed and compare timing and level bounds.",
+    "dependencies": [
+      "prod-device-chain"
+    ]
+  },
+  {
+    "id": "prod-algorithmic-reverb",
+    "kind": "feat",
+    "area": "audio",
+    "priority": "P2",
+    "title": "[feat]/ Provide a fully editable stereo algorithmic reverb",
+    "problem": "The tiny reverb implementation lacks a room/tail editor and independent stereo production controls.",
+    "evidence": [
+      "https://www.ableton.com/en/manual/live-audio-effect-reference/",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/fx.rs#L5-L19",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/fx.rs#L60-L102",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/fx.rs#L132-L242"
+    ],
+    "acceptance": [
+      "Expose early reflections, predelay, decay, size, diffusion and damping with sensible units.",
+      "Offer stereo width, filtering and freeze behavior without sharing channel state.",
+      "Report measurable tail length and maintain stable automation across sample-rate changes.",
+      "Expose named automatable controls and recall independent instance state from presets and projects."
+    ],
+    "validation": "Measure impulse-decay curves for room and hall presets, inspect stereo correlation and compare saved-state renders.",
+    "dependencies": [
+      "prod-device-chain"
+    ]
+  },
+  {
+    "id": "prod-convolution-hybrid",
+    "kind": "feat",
+    "area": "audio",
+    "priority": "P2",
+    "title": "[feat]/ Implement convolution and hybrid reverb with licensed impulse responses",
+    "problem": "There is no convolution engine or way to combine recorded spaces with synthetic reverb.",
+    "evidence": [
+      "https://www.ableton.com/en/manual/live-audio-effect-reference/",
+      "https://www.ableton.com/en/packs/convolution-reverb/",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/fx.rs#L5-L19",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/fx.rs#L60-L102",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/fx.rs#L132-L242"
+    ],
+    "acceptance": [
+      "Load user impulse responses with start/length, predelay, normalization and EQ controls.",
+      "Combine convolution and algorithmic stages in serial/parallel routings with correct latency compensation.",
+      "Distribute only original or appropriately licensed impulse responses and retain their provenance.",
+      "Expose named automatable controls and recall independent instance state from presets and projects."
+    ],
+    "validation": "Load measured room IRs, compare convolution output with a reference and verify hybrid routing, latency and portable presets.",
+    "dependencies": [
+      "prod-device-chain",
+      "sys-plugin-delay-compensation",
+      "sys-project-portability"
+    ]
+  },
+  {
+    "id": "prod-beat-repeat",
+    "kind": "feat",
+    "area": "audio",
+    "priority": "P2",
+    "title": "[feat]/ Add tempo-synced beat repeat and controlled stutter processing",
+    "problem": "Looping whole deck regions does not provide a track effect that captures and rearranges short rhythmic slices.",
+    "evidence": [
+      "https://www.ableton.com/en/manual/live-audio-effect-reference/",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/fx.rs#L5-L19",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/fx.rs#L60-L102",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/fx.rs#L132-L242"
+    ],
+    "acceptance": [
+      "Capture and repeat incoming audio at musical divisions with interval, offset and gate controls.",
+      "Allow controlled chance, pitch/decay variation and explicit insert/mix output modes.",
+      "Keep manual repeat grabs responsive and bounded without disrupting transport.",
+      "Expose named automatable controls and recall independent instance state from presets and projects."
+    ],
+    "validation": "Perform manual and seeded repeats over a drum pattern, measuring capture boundaries and the return to dry playback.",
+    "dependencies": [
+      "prod-device-chain"
+    ]
+  },
+  {
+    "id": "prod-audio-looper",
+    "kind": "feat",
+    "area": "audio",
+    "priority": "P2",
+    "title": "[feat]/ Implement a playable record/overdub audio looper device",
+    "problem": "Deck loops replay existing files; the app has no real-time pedal-style audio recording and overdubbing device.",
+    "evidence": [
+      "https://www.ableton.com/en/manual/live-audio-effect-reference/",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/fx.rs#L5-L19",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/fx.rs#L60-L102",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/fx.rs#L132-L242"
+    ],
+    "acceptance": [
+      "Provide record, play, overdub, stop, undo and clear actions with controller mapping.",
+      "Support sync-aware loop lengths, feedback, reverse and speed changes with clear state feedback.",
+      "Export/drag a completed loop into a normal audio clip while retaining original timing.",
+      "Expose named automatable controls and recall independent instance state from presets and projects."
+    ],
+    "validation": "Build a three-layer guitar loop from live input, undo one overdub and transfer the result into Arrangement.",
+    "dependencies": [
+      "prod-device-chain",
+      "sys-audio-io-routing",
+      "prod-audio-clips"
+    ]
+  },
+  {
+    "id": "prod-saturation-drive",
+    "kind": "feat",
+    "area": "audio",
+    "priority": "P2",
+    "title": "[feat]/ Provide waveshaping, tube and pedal-style saturation tools",
+    "problem": "The current tanh drive exposes too little control for calibrated tonal and dynamic coloration.",
+    "evidence": [
+      "https://www.ableton.com/en/manual/live-audio-effect-reference/",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/fx.rs#L5-L19",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/fx.rs#L60-L102",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/fx.rs#L132-L242"
+    ],
+    "acceptance": [
+      "Offer distinct original waveshaping, tube-asymmetry and overdrive/distortion/fuzz modes.",
+      "Expose input/output gain, tonal shaping, bias and compensated dry/wet controls.",
+      "Provide oversampling quality choices and level-matched comparison without unreported latency.",
+      "Expose named automatable controls and recall independent instance state from presets and projects."
+    ],
+    "validation": "Measure harmonic spectra and aliasing for each mode, then verify level-matched bypass and automated gain staging.",
+    "dependencies": [
+      "prod-device-chain",
+      "sys-plugin-delay-compensation"
+    ]
+  },
+  {
+    "id": "prod-multistage-saturation",
+    "kind": "feat",
+    "area": "audio",
+    "priority": "P2",
+    "title": "[feat]/ Build a routable multistage saturation device with modulation",
+    "problem": "There is no multi-stage or multiband distortion graph for complex animated sound design.",
+    "evidence": [
+      "https://www.ableton.com/en/manual/live-audio-effect-reference/",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/fx.rs#L5-L19",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/fx.rs#L60-L102",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/fx.rs#L132-L242"
+    ],
+    "acceptance": [
+      "Route independent distortion stages in serial, parallel and split-band configurations.",
+      "Expose stage curves, feedback, filters and a bounded modulation matrix.",
+      "Provide frequency-aware visualization and safe output control at extreme settings.",
+      "Expose named automatable controls and recall independent instance state from presets and projects."
+    ],
+    "validation": "Design contrasting multi-stage patches and test feedback/automation stability at supported rates without reproducing proprietary presets.",
+    "dependencies": [
+      "prod-device-chain"
+    ]
+  },
+  {
+    "id": "prod-amp-cabinet",
+    "kind": "feat",
+    "area": "audio",
+    "priority": "P2",
+    "title": "[feat]/ Add guitar/bass amplifier and cabinet simulation",
+    "problem": "The app cannot process a direct guitar into a controllable amplifier-and-speaker sound without external software.",
+    "evidence": [
+      "https://www.ableton.com/en/manual/live-audio-effect-reference/",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/fx.rs#L5-L19",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/fx.rs#L60-L102",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/fx.rs#L132-L242"
+    ],
+    "acceptance": [
+      "Provide original or licensed clean/crunch/high-gain guitar and bass amplifier models.",
+      "Offer cabinet/microphone choices or user IR loading with placement/width controls.",
+      "Separate amp/cab stages and integrate realtime monitoring and latency reporting.",
+      "Expose named automatable controls and recall independent instance state from presets and projects."
+    ],
+    "validation": "Record a DI guitar through clean and driven rigs, verify monitor latency and reproduce the printed sound after reopen.",
+    "dependencies": [
+      "prod-device-chain",
+      "prod-convolution-hybrid",
+      "sys-audio-io-routing"
+    ]
+  },
+  {
+    "id": "prod-lofi-texture",
+    "kind": "feat",
+    "area": "audio",
+    "priority": "P2",
+    "title": "[feat]/ Provide bit reduction, erosion and vinyl-style texture processing",
+    "problem": "No user-facing devices cover controlled digital degradation, noise modulation or record-like wear.",
+    "evidence": [
+      "https://www.ableton.com/en/manual/live-audio-effect-reference/",
+      "https://www.ableton.com/en/release-notes/live-12/",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/fx.rs#L5-L19",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/fx.rs#L60-L102",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/fx.rs#L132-L242"
+    ],
+    "acceptance": [
+      "Expose sample-rate/bit reduction with dithering/filter choices and controllable aliasing.",
+      "Provide sine/noise erosion with blend, bandwidth and stereo width.",
+      "Offer optional crackle, wear and mechanical-noise layers with predictable gain and bypass.",
+      "Expose named automatable controls and recall independent instance state from presets and projects."
+    ],
+    "validation": "Process calibrated tones and a drum loop through each original algorithm, verifying spectral changes, silence behavior and stereo control.",
+    "dependencies": [
+      "prod-device-chain"
+    ]
+  },
+  {
+    "id": "prod-pitch-frequency-shift",
+    "kind": "feat",
+    "area": "audio",
+    "priority": "P2",
+    "title": "[feat]/ Add pitch shifting, frequency shifting and ring modulation",
+    "problem": "Deck speed/keylock controls cannot replace track effects for pitch manipulation and inharmonic modulation.",
+    "evidence": [
+      "https://www.ableton.com/en/manual/live-audio-effect-reference/",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/fx.rs#L5-L19",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/fx.rs#L60-L102",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/fx.rs#L132-L242"
+    ],
+    "acceptance": [
+      "Provide pitch, frequency-shift and ring-modulation modes with appropriate units and controls.",
+      "Support modulation, feedback and independent stereo offsets with bounded output.",
+      "Expose algorithm quality/latency and preserve a genuine dry/wet mix.",
+      "Expose named automatable controls and recall independent instance state from presets and projects."
+    ],
+    "validation": "Measure pitch/frequency movement of harmonic fixtures and compare latency-corrected dry/wet renders.",
+    "dependencies": [
+      "prod-device-chain",
+      "sys-plugin-delay-compensation"
+    ]
+  },
+  {
+    "id": "prod-pitch-correction",
+    "kind": "feat",
+    "area": "audio",
+    "priority": "P2",
+    "title": "[feat]/ Add real-time monophonic pitch correction and MIDI-driven harmony",
+    "problem": "There is no vocal pitch-tracking/correction device or MIDI-controlled harmonization.",
+    "evidence": [
+      "https://www.ableton.com/en/manual/live-audio-effect-reference/",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/fx.rs#L5-L19",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/fx.rs#L60-L102",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/fx.rs#L132-L242"
+    ],
+    "acceptance": [
+      "Detect pitch and expose correction scale, tolerance, speed and expressive transition controls.",
+      "Provide formant-aware transposition and MIDI-driven harmony voices where supported.",
+      "Show detection confidence and let unvoiced material pass predictably.",
+      "Use original or licensed algorithms and document supported material and monitoring latency.",
+      "Expose named automatable controls and recall independent instance state from presets and projects."
+    ],
+    "validation": "Record an authorized vocal phrase, audition correction and MIDI harmony, and measure pitch accuracy, artifacts and reported latency.",
+    "dependencies": [
+      "prod-device-chain",
+      "prod-scales",
+      "sys-midi-port-routing",
+      "sys-plugin-delay-compensation"
+    ]
+  },
+  {
+    "id": "prod-resonator-effects",
+    "kind": "feat",
+    "area": "audio",
+    "priority": "P2",
+    "title": "[feat]/ Provide tuned resonator banks and physically modeled resonant-body effects",
+    "problem": "The FX enum lacks playable resonators and body modeling for resynthesis of incoming sound.",
+    "evidence": [
+      "https://www.ableton.com/en/manual/live-audio-effect-reference/",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/fx.rs#L5-L19",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/fx.rs#L60-L102",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/fx.rs#L132-L242"
+    ],
+    "acceptance": [
+      "Offer a bank of tuned resonators with damping, decay and scale-aware pitch relationships.",
+      "Provide distinct modeled-body modes with controllable excitation/position and optional MIDI pitch input.",
+      "Balance dry/body signals and keep high-resonance output stable.",
+      "Expose named automatable controls and recall independent instance state from presets and projects."
+    ],
+    "validation": "Excite the devices with impulses and percussion, verify resonance frequencies/decays and play the effect from MIDI.",
+    "dependencies": [
+      "prod-device-chain",
+      "prod-scales",
+      "sys-midi-port-routing"
+    ]
+  },
+  {
+    "id": "prod-vocoder",
+    "kind": "feat",
+    "area": "audio",
+    "priority": "P2",
+    "title": "[feat]/ Add a playable vocoder with external carrier routing",
+    "problem": "No analysis/synthesis filter bank can impose vocal articulation on an instrument or noise carrier.",
+    "evidence": [
+      "https://www.ableton.com/en/manual/live-audio-effect-reference/",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/fx.rs#L5-L19",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/fx.rs#L60-L102",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/fx.rs#L132-L242"
+    ],
+    "acceptance": [
+      "Provide internal noise/oscillator and external carrier choices with explicit routing.",
+      "Expose analysis bands, formant shift, attack/release and voiced/unvoiced handling.",
+      "Support stereo output and MIDI-controlled carriers without channel-state leakage.",
+      "Expose named automatable controls and recall independent instance state from presets and projects."
+    ],
+    "validation": "Route a voice and synth carrier through the vocoder, vary articulation and compare independent left/right behavior.",
+    "dependencies": [
+      "prod-device-chain",
+      "prod-sends-returns",
+      "sys-midi-port-routing"
+    ]
+  },
+  {
+    "id": "prod-spectral-processing",
+    "kind": "feat",
+    "area": "audio",
+    "priority": "P2",
+    "title": "[feat]/ Add spectral resonation, spectral delay/freeze and spectral blur devices",
+    "problem": "There is no spectral-domain processing despite these being distinct current Suite sound-design capabilities.",
+    "evidence": [
+      "https://www.ableton.com/en/manual/live-audio-effect-reference/",
+      "https://www.ableton.com/en/packs/creative-extensions/",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/fx.rs#L5-L19",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/fx.rs#L60-L102",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/fx.rs#L132-L242"
+    ],
+    "acceptance": [
+      "Provide spectral resonation driven by tuned or MIDI targets with bounded harmonic control.",
+      "Offer spectral delay/freeze and frequency-dependent processing with clear latency.",
+      "Provide blur/freeze textures with selectable frequency range and separately mixed residual signal.",
+      "Expose named automatable controls and recall independent instance state from presets and projects."
+    ],
+    "validation": "Freeze, retune and disperse a recorded chord, verify latency and state restoration and measure finite bounded output.",
+    "dependencies": [
+      "prod-device-chain",
+      "sys-plugin-delay-compensation",
+      "sys-midi-port-routing"
+    ]
+  },
+  {
+    "id": "prod-utility-analysis",
+    "kind": "feat",
+    "area": "audio",
+    "priority": "P2",
+    "title": "[feat]/ Provide gain/stereo/alignment utilities plus spectrum and tuning analysis",
+    "problem": "Existing balance/spread controls are not a calibrated utility or diagnostic device suite.",
+    "evidence": [
+      "https://www.ableton.com/en/manual/live-audio-effect-reference/",
+      "https://www.ableton.com/en/manual/max-for-live-devices/",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/fx.rs#L5-L19",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/fx.rs#L60-L102",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/fx.rs#L132-L242"
+    ],
+    "acceptance": [
+      "Expose gain, polarity, channel swap, mono, width, mid/side and low-frequency mono controls.",
+      "Offer a precise sample/time alignment delay independent of musical echo effects.",
+      "Provide configurable spectrum analysis and a tuner referenced to the project tuning system.",
+      "Expose named automatable controls and recall independent instance state from presets and projects."
+    ],
+    "validation": "Run known channel, phase, impulse and frequency fixtures through the tools and verify indicated values against independent measurements.",
+    "dependencies": [
+      "prod-device-chain",
+      "prod-tuning"
+    ]
+  },
+  {
+    "id": "prod-modulators",
+    "kind": "feat",
+    "area": "production",
+    "priority": "P2",
+    "title": "[feat]/ Add assignable LFO, envelope, shaper and performance-expression modulators",
+    "problem": "Parameter changes are absolute immediate commands; producers cannot layer reusable modulation over editable base values.",
+    "evidence": [
+      "https://www.ableton.com/en/manual/max-for-live-devices/",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L365-L440",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/fx.rs#L60-L65"
+    ],
+    "acceptance": [
+      "Provide tempo/free LFO, audio-envelope follower, note-triggered envelope and drawable repeating shaper sources.",
+      "Map each source to several parameter targets with ranges, polarity, smoothing and base-value preservation.",
+      "Map velocity, key tracking, pitch bend, mod wheel and pressure as expressive sources.",
+      "Visualize combined modulation and stop/remove sources without leaving targets at stale offsets."
+    ],
+    "validation": "Modulate a filter and rack macro from several sources, adjust their base values live and verify deterministic rendering and removal.",
+    "dependencies": [
+      "prod-automation-lanes",
+      "prod-rack-macros",
+      "prod-sends-returns"
+    ]
+  },
+  {
+    "id": "prod-midi-note-effects",
+    "kind": "feat",
+    "area": "midi",
+    "priority": "P2",
+    "title": "[feat]/ Provide composable pitch, scale, chord, random, velocity and note-length MIDI effects",
+    "problem": "The only MIDI effect is a special-case track arp; there is no configurable MIDI processing chain.",
+    "evidence": [
+      "https://www.ableton.com/en/manual/live-midi-effect-reference/",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L42-L50",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/ui.rs#L223-L253"
+    ],
+    "acceptance": [
+      "Implement independently insertable pitch/scale mapping, chord generation, randomization, velocity and note-length devices.",
+      "Keep note-on/off and expression ownership valid through transforms, splits and held-note parameter changes.",
+      "Provide scale awareness, ranges and reproducible random seeds with user-visible musical units.",
+      "Support serial and parallel MIDI-effect racks before instruments and hardware outputs."
+    ],
+    "validation": "Build a transformed chord/arpeggio chain, change parameters while holding notes and verify valid output events with no orphaned notes.",
+    "dependencies": [
+      "prod-instrument-racks",
+      "prod-scales",
+      "sys-midi-port-routing"
+    ]
+  },
+  {
+    "id": "prod-midi-arpeggio-echo",
+    "kind": "feat",
+    "area": "midi",
+    "priority": "P2",
+    "title": "[feat]/ Add performance arpeggiator and MIDI note-echo devices",
+    "problem": "The existing arp only steps notes already in a clip; live input needs editable rhythmic processing and note echoes.",
+    "evidence": [
+      "https://www.ableton.com/en/manual/live-midi-effect-reference/",
+      "https://www.ableton.com/en/manual/max-for-live-devices/",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L42-L50",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/ui.rs#L223-L253"
+    ],
+    "acceptance": [
+      "Offer hold/latch, direction, rhythmic rate, octave range, gate and retrigger controls for live arpeggiation.",
+      "Generate note echoes with tempo delay, repeats, velocity decay and optional pitch changes.",
+      "Coordinate generated note ownership with sustain, input releases and transport/tempo changes.",
+      "Expose deterministic patterns and permit recording the processed MIDI output into clips."
+    ],
+    "validation": "Feed live chords through an arp and note echo, capture their output and verify timing and note closure across stop/restart.",
+    "dependencies": [
+      "prod-midi-note-effects",
+      "prod-session-record"
+    ]
+  },
+  {
+    "id": "prod-midi-control-tools",
+    "kind": "feat",
+    "area": "midi",
+    "priority": "P2",
+    "title": "[feat]/ Provide CC controls, MIDI monitoring and expression-shaping devices",
+    "problem": "The MIDI log is not a track device and there are no automatable CC controls or expression remapping tools.",
+    "evidence": [
+      "https://www.ableton.com/en/manual/live-midi-effect-reference/",
+      "https://www.ableton.com/en/manual/max-for-live-devices/",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L42-L50",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/ui.rs#L223-L253"
+    ],
+    "acceptance": [
+      "Expose named assignable CC controls with channel/range and automation support.",
+      "Display filtered per-track MIDI events, channels and high-resolution values without blocking audio.",
+      "Remap pressure, timbre, pitch and velocity curves with MPE-safe per-note ownership.",
+      "Avoid duplicate feedback when mapped controls both send and receive values."
+    ],
+    "validation": "Control and monitor an external instrument, reshape an MPE trace and compare input/output event ownership and timing.",
+    "dependencies": [
+      "sys-midi-port-routing",
+      "prod-mpe",
+      "prod-automation-lanes"
+    ]
+  },
+  {
+    "id": "prod-generative-sequencers",
+    "kind": "feat",
+    "area": "midi",
+    "priority": "P2",
+    "title": "[feat]/ Provide evolving step, probability and polyrhythmic sequencer devices",
+    "problem": "Only a fixed clip-note list exists; Suite-bundled sequencers and MIDI Tools establish a broader generative workflow benchmark.",
+    "evidence": [
+      "https://www.ableton.com/en/packs/sequencers/",
+      "https://www.ableton.com/en/packs/midi-tools/",
+      "https://www.ableton.com/en/packs/creative-extensions/",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L42-L50",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/ui.rs#L223-L253"
+    ],
+    "acceptance": [
+      "Offer independently sized lanes for pitch, rhythm, velocity, gate and probability with visible playheads.",
+      "Provide deterministic stage/rule-based sequencing and controlled randomization with reset/seed controls.",
+      "Route generated MIDI to instruments or record it into ordinary editable clips.",
+      "Supply original example patches covering melodic, probabilistic and Euclidean/polymetric use without copying Pack assets."
+    ],
+    "validation": "Perform and capture an evolving polymetric sequence, reproduce it from a seed and edit the recorded result without the generator.",
+    "dependencies": [
+      "prod-midi-note-effects",
+      "prod-session-record"
+    ]
+  },
+  {
+    "id": "prod-creative-delay-extensions",
+    "kind": "feat",
+    "area": "audio",
+    "priority": "P3",
+    "title": "[feat]/ Add sequenced, pitch-reversing and dual-buffer creative delay devices",
+    "problem": "Core delay cannot provide the distinct gated, pitch-feedback and micro-loop workflows found in Suite-included creative extensions.",
+    "evidence": [
+      "https://www.ableton.com/en/packs/creative-extensions/",
+      "https://www.ableton.com/en/packs/pitchloop89/",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L42-L50",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/ui.rs#L223-L253"
+    ],
+    "acceptance": [
+      "Gate sends to delay using editable musical step sequences.",
+      "Provide pitch/reverse feedback transformations with bounded gain and controllable randomness.",
+      "Offer independently controlled short-loop buffers for freeze, jitter and pitch motion.",
+      "Implement original algorithms and presets rather than distributing proprietary Max patches."
+    ],
+    "validation": "Build gated, reverse-pitched and micro-loop textures from authorized audio; validate seed recall, tails and stability.",
+    "dependencies": [
+      "prod-stereo-delay",
+      "prod-pitch-frequency-shift"
+    ]
+  },
+  {
+    "id": "prod-nature-generators",
+    "kind": "feat",
+    "area": "production",
+    "priority": "P3",
+    "title": "[feat]/ Provide playable physics-inspired modulation and generative sound devices",
+    "problem": "The project has no generative particle/physical-process control sources; Suite-included Inspired by Nature represents this distinct creative category.",
+    "evidence": [
+      "https://www.ableton.com/en/packs/inspired-nature/",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L42-L50",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/ui.rs#L223-L253"
+    ],
+    "acceptance": [
+      "Provide original gravity/orbit/collision or growth-inspired generators with visible deterministic state.",
+      "Map generated events to MIDI, modulation and applicable sample/granular parameters.",
+      "Expose seed, reset, rate and bounded-complexity controls so projects replay safely.",
+      "Ship original examples and explain that benchmark Pack assets/patches are not redistributed."
+    ],
+    "validation": "Create a deterministic evolving composition using two independent generators, render repeatedly and confirm repeatability and bounded processing.",
+    "dependencies": [
+      "prod-generative-sequencers",
+      "prod-modulators",
+      "prod-granular-synth"
+    ]
+  },
+  {
+    "id": "prod-performance-controls",
+    "kind": "feat",
+    "area": "ui",
+    "priority": "P2",
+    "title": "[feat]/ Create customizable performance macro pages spanning the whole set",
+    "problem": "Rack macros alone cannot present a tailored live-control surface across tracks and external gear; Suite Performance Pack is the benchmark.",
+    "evidence": [
+      "https://www.ableton.com/en/packs/performance-pack/",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L42-L50",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/ui.rs#L223-L253"
+    ],
+    "acceptance": [
+      "Create named pages of faders, buttons, dials and crossfaders mapped to multiple project targets.",
+      "Edit mapping curves/ranges and preserve controller feedback without overriding target ownership.",
+      "Support page templates reflecting actual controllers and accessible on-screen operation.",
+      "Protect critical transport/record actions with explicit mapping state and visible targets."
+    ],
+    "validation": "Build a controller-specific performance page, switch banks during a set and verify target feedback and state after reopen.",
+    "dependencies": [
+      "prod-rack-macros",
+      "prod-automation-recording"
+    ]
+  },
+  {
+    "id": "prod-performance-variations",
+    "kind": "feat",
+    "area": "production",
+    "priority": "P2",
+    "title": "[feat]/ Recall selective performance snapshots across tracks and devices",
+    "problem": "The app stores only immediate runtime values; performers cannot recall coherent scenes of mixer/device state.",
+    "evidence": [
+      "https://www.ableton.com/en/packs/performance-pack/",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L42-L50",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/ui.rs#L223-L253"
+    ],
+    "acceptance": [
+      "Capture named snapshots of explicitly selected tracks, devices, routing and macro values.",
+      "Exclude protected parameters and show differences before overwriting stored snapshots.",
+      "Recall from clips/scenes/controllers at a musical boundary with optional safe interpolation.",
+      "Preserve sounding-note ownership and reject invalid references after project edits."
+    ],
+    "validation": "Store and recall several complete performance states during playback, verifying exclusions, transitions and saved-session restoration.",
+    "dependencies": [
+      "prod-performance-controls",
+      "prod-launch-modes",
+      "sys-project-save-open"
+    ]
+  },
+  {
+    "id": "prod-arrangement-performance-loop",
+    "kind": "feat",
+    "area": "production",
+    "priority": "P2",
+    "title": "[feat]/ Grab and release arrangement loops during live performance",
+    "problem": "The app has deck loops but no performer-facing way to extend the current arrangement section on demand.",
+    "evidence": [
+      "https://www.ableton.com/en/packs/performance-pack/",
+      "https://www.ableton.com/en/manual/arrangement-view/",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L42-L50",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/ui.rs#L223-L253"
+    ],
+    "acceptance": [
+      "Capture a loop around the current arrangement position with configurable musical lengths.",
+      "Change loop length or release to continuation at a quantized boundary.",
+      "Show original timeline position and prevent surprises when tempo/meter changes occur inside the loop.",
+      "Allow MIDI/keyboard mapping without switching away from the live performance page."
+    ],
+    "validation": "Extend a breakdown repeatedly, resize its loop and release into the next section while verifying note and automation continuity.",
+    "dependencies": [
+      "prod-arrangement",
+      "prod-locators",
+      "prod-launch-modes"
+    ]
+  },
+  {
+    "id": "prod-prearranged-recording",
+    "kind": "feat",
+    "area": "production",
+    "priority": "P3",
+    "title": "[feat]/ Populate prearranged clip placeholders from a live recording",
+    "problem": "There is no way to plan repetitions and structure before a live source has been recorded.",
+    "evidence": [
+      "https://www.ableton.com/en/packs/performance-pack/",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L42-L50",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/ui.rs#L223-L253"
+    ],
+    "acceptance": [
+      "Place linked recording placeholders at chosen future arrangement positions.",
+      "Record an authorized source into a source slot and atomically resolve linked instances to the resulting take.",
+      "Preserve independent occurrence offsets/fades while keeping their source relationship visible.",
+      "Handle incomplete, cancelled or missing recordings without replacing placeholders with silent success."
+    ],
+    "validation": "Prearrange a vocal loop through several song sections, record it during performance and verify every future occurrence plays correctly.",
+    "dependencies": [
+      "prod-arrangement",
+      "prod-session-record",
+      "sys-project-save-open"
+    ]
+  },
+  {
+    "id": "prod-cv-tools",
+    "kind": "feat",
+    "area": "audio",
+    "priority": "P3",
+    "title": "[feat]/ Integrate pitch, gates, clocks and modulation with modular hardware",
+    "problem": "There is no CV calibration or modular-signal workflow; ordinary audio outputs cannot safely imply control-voltage support.",
+    "evidence": [
+      "https://www.ableton.com/en/packs/cv-tools/",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L42-L50",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/ui.rs#L223-L253"
+    ],
+    "acceptance": [
+      "Expose calibrated pitch/gate/trigger/clock output and matching clock/control input where hardware supports it.",
+      "Provide voltage/range and DC-coupled-device requirements explicitly, with safe defaults and per-output limits.",
+      "Map incoming CV/audio envelopes to parameters and generate LFO/shaper/utility control signals.",
+      "Store hardware calibration profiles and provide a test mode that requires deliberate routing."
+    ],
+    "validation": "Use a documented compatible interface and modular test setup to measure tuning, voltage range, trigger timing and disconnect behavior.",
+    "dependencies": [
+      "sys-audio-io-routing",
+      "prod-modulators",
+      "prod-tempo-map"
+    ]
+  },
+  {
+    "id": "prod-ableton-link",
+    "kind": "feat",
+    "area": "midi",
+    "priority": "P2",
+    "title": "[feat]/ Implement Link-compatible tempo, phase and start/stop synchronization",
+    "problem": "The engine has one local clock and no peer synchronization protocol; producers need shared timing with Link-capable music tools.",
+    "evidence": [
+      "https://www.ableton.com/en/manual/synchronizing-with-link-tempo-follower-and-midi/",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L42-L50",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/ui.rs#L223-L253"
+    ],
+    "acceptance": [
+      "Join and leave Link sessions with tempo/beat-phase synchronization and optional shared start/stop.",
+      "Expose peer count, quantum and effective clock ownership without coupling to MIDI transport unexpectedly.",
+      "Handle peer loss, tempo edits and latency changes without discontinuous local note scheduling.",
+      "Use an authorized SDK or independently permitted implementation and record license compatibility before distribution."
+    ],
+    "validation": "Jam with at least two independently implemented Link peers over LAN/Wi-Fi, measuring phase stability through joins, tempo changes and dropout.",
+    "dependencies": [
+      "prod-tempo-map"
+    ]
+  },
+  {
+    "id": "prod-link-audio",
+    "kind": "feat",
+    "area": "audio",
+    "priority": "P2",
+    "title": "[feat]/ Send and receive Link Audio streams with track-level routing and latency controls",
+    "problem": "Live12.4 stable adds network audio to Link; Omatainer currently has neither peer timing nor network-audio source tracks.",
+    "evidence": [
+      "https://www.ableton.com/en/manual/synchronizing-with-link-tempo-follower-and-midi/",
+      "https://www.ableton.com/en/release-notes/live-12/",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L42-L50",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/ui.rs#L223-L253"
+    ],
+    "acceptance": [
+      "Discover authorized Link Audio peers and expose their named track streams as routable inputs/outputs.",
+      "Provide buffering/latency and sync-to-incoming-audio controls with clear clock consequences.",
+      "Record incoming streams into aligned audio clips and show underruns or disconnected sources.",
+      "Verify protocol/SDK licensing and interoperate with current released peers rather than claiming generic network audio is Link Audio."
+    ],
+    "validation": "Send and receive several tracks with a released Live12.4 peer on wired and impaired networks; verify recorded alignment and graceful failure.",
+    "dependencies": [
+      "prod-ableton-link",
+      "sys-audio-io-routing",
+      "prod-session-record"
+    ]
+  },
+  {
+    "id": "prod-tempo-follower",
+    "kind": "feat",
+    "area": "audio",
+    "priority": "P2",
+    "title": "[feat]/ Follow the tempo of live incoming audio with controlled fallback",
+    "problem": "detect_bpm analyzes completed samples; it cannot make the running set follow a drummer or other live timing source.",
+    "evidence": [
+      "https://www.ableton.com/en/manual/synchronizing-with-link-tempo-follower-and-midi/",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L42-L50",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/ui.rs#L223-L253"
+    ],
+    "acceptance": [
+      "Select an input and estimate tempo/phase continuously with confidence reporting.",
+      "Constrain tempo range, smoothing and response so ambiguous input does not create violent jumps.",
+      "Allow manual takeover, pause and stable fallback when the source becomes silent or irregular.",
+      "Keep warp, clip launch and metronome scheduling aligned to the followed tempo."
+    ],
+    "validation": "Play against recorded and live drumming with accelerando, breaks and noise; measure tracking error and takeover behavior.",
+    "dependencies": [
+      "sys-audio-io-routing",
+      "prod-tempo-map",
+      "prod-warp-quality"
+    ]
+  },
+  {
+    "id": "prod-push-classic",
+    "kind": "feat",
+    "area": "midi",
+    "priority": "P2",
+    "title": "[feat]/ Provide full production control for Push 1 and Push 2",
+    "problem": "Factory maps cover APC/MPK and DJ controllers but contain no Push production workflow or screen integration.",
+    "evidence": [
+      "https://www.ableton.com/en/manual/using-push-2/",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/midi.rs#L503-L720"
+    ],
+    "acceptance": [
+      "Support note/drum layouts, step sequencing, clip/scene control, track selection and transport with bidirectional feedback.",
+      "Expose device/macro browsing, parameter banks, mixer controls and relevant screen content.",
+      "Support fixed-length recording, quantization and sample editing from the controller.",
+      "Use documented or legally usable protocols and state tested model/firmware compatibility explicitly."
+    ],
+    "validation": "Create a complete drum-and-bass Session sketch using actual Push1 and Push2 hardware, then verify displayed values against project state.",
+    "dependencies": [
+      "prod-session-record",
+      "prod-drum-rack",
+      "prod-device-chain",
+      "prod-rack-macros"
+    ]
+  },
+  {
+    "id": "prod-push-expressive",
+    "kind": "feat",
+    "area": "midi",
+    "priority": "P2",
+    "title": "[feat]/ Support expressive Push 3 controller workflows without implying standalone licensing",
+    "problem": "Push3 adds expressive hardware interaction; the repository has no model-specific support and no licensed route to installing an app into its standalone OS.",
+    "evidence": [
+      "https://www.ableton.com/en/push/manual/",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L42-L50",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/ui.rs#L223-L253"
+    ],
+    "acceptance": [
+      "Support controller-mode polyphonic pitch, pressure and slide with configurable pad sensitivity and note layouts.",
+      "Provide navigation, browser/device/mixer feedback and expressive step editing where the protocol permits.",
+      "Test audio/MIDI interface behavior and clearly distinguish controller compatibility from unsupported standalone execution.",
+      "Document the licensing/protocol boundary and do not redistribute Ableton firmware or claim standalone compatibility without authorization."
+    ],
+    "validation": "Record and edit an expressive performance on physical Push3 in controller mode, comparing gesture playback and screen feedback.",
+    "dependencies": [
+      "prod-push-classic",
+      "prod-mpe"
+    ]
+  },
+  {
+    "id": "prod-extension-runtime",
+    "kind": "feat",
+    "area": "production",
+    "priority": "P2",
+    "title": "[feat]/ Host user-authored audio, MIDI and instrument devices through an open extension runtime",
+    "problem": "Max for Live is included in Suite, while Omatainer only compiles a fixed Rust device enum; users cannot add their own creative devices.",
+    "evidence": [
+      "https://www.ableton.com/en/manual/max-for-live/",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L42-L50",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/ui.rs#L223-L253"
+    ],
+    "acceptance": [
+      "Define a documented versioned extension contract for audio/MIDI/instrument processing, parameters and persistent state.",
+      "Run third-party code with explicit realtime, memory and capability boundaries and recover from device failure.",
+      "Integrate device automation, controller display and asset dependency resolution with ordinary chains.",
+      "Choose an original open runtime or separately licensed integration; do not promise loading proprietary Max patches or shipping Max without authorization."
+    ],
+    "validation": "Build an example MIDI transformer and audio device outside the app, install them, automate them and recover from a deliberately failing extension.",
+    "dependencies": [
+      "prod-device-chain",
+      "sys-project-portability"
+    ]
+  },
+  {
+    "id": "prod-extension-authoring",
+    "kind": "feat",
+    "area": "production",
+    "priority": "P3",
+    "title": "[feat]/ Provide visual/code device authoring, a musical object API and custom MIDI tools",
+    "problem": "A runtime alone does not replace the authoring and project-control capabilities producers use from Max for Live.",
+    "evidence": [
+      "https://www.ableton.com/en/manual/max-for-live/",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L42-L50",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/ui.rs#L223-L253"
+    ],
+    "acceptance": [
+      "Provide a supported authoring workflow with signal/MIDI/control building blocks and inspectable realtime errors.",
+      "Expose safe stable-identity APIs for clips, notes, parameters and transport with observer lifetimes and capability checks.",
+      "Allow custom MIDI transformations/generators to preview and commit edits through the same undoable tool interface.",
+      "Package dependencies and examples with original code and explicit licenses; exclude beta-only Ableton Extensions SDK compatibility claims."
+    ],
+    "validation": "Author a custom MIDI generator and parameter-observer device from documentation, package them and load the result on a clean installation.",
+    "dependencies": [
+      "prod-extension-runtime",
+      "prod-midi-timing-tools",
+      "prod-melody-generator",
+      "sys-undo-redo"
+    ]
+  },
+  {
+    "id": "prod-content-core",
+    "kind": "feat",
+    "area": "production",
+    "priority": "P2",
+    "title": "[feat]/ Ship an original tagged production library of kits, presets, loops and clips",
+    "problem": "The factory content is one house demo and generated banks; producers need diverse legal starting points rather than copied Ableton content.",
+    "evidence": [
+      "https://www.ableton.com/en/live/compare-editions/",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L551-L658",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L1786-L1930"
+    ],
+    "acceptance": [
+      "Create a curated original or licensed core collection spanning drum kits, synth presets, audio/MIDI loops and useful device racks.",
+      "Tag tempo, key, instrumentation, articulation and style consistently for browsing and similarity search.",
+      "Include simple, mix-ready and experimental examples that exercise the supported devices with sensible levels.",
+      "Record authorship, redistribution rights and attribution per asset; provide optional downloads with integrity/version metadata."
+    ],
+    "validation": "Install the content on a clean offline machine, audition representative material and verify every referenced asset and license manifest.",
+    "dependencies": [
+      "prod-production-browser",
+      "prod-drum-rack",
+      "prod-analog-synth",
+      "sys-project-portability"
+    ]
+  },
+  {
+    "id": "prod-content-acoustic",
+    "kind": "feat",
+    "area": "production",
+    "priority": "P3",
+    "title": "[feat]/ Add optional licensed acoustic drums, pianos, electric keys, guitar and bass libraries",
+    "problem": "Current synthesized samples do not cover nuanced acoustic instruments represented by Suite-bundled sound packs.",
+    "evidence": [
+      "https://www.ableton.com/en/live/compare-editions/",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L42-L50",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/ui.rs#L223-L253"
+    ],
+    "acceptance": [
+      "Provide independently recorded or licensed multisampled drums, piano, electric keyboard, guitar and bass content.",
+      "Support meaningful velocity layers, round-robin/release behavior and relevant articulations in the sampler/racks.",
+      "Offer both dry and room/character variants with original performance clips and consistent loudness.",
+      "Keep downloads optional and publish source/performer rights and redistribution licenses without copying commercial Pack samples."
+    ],
+    "validation": "Play dynamic passages for each instrument family, audit zone/articulation transitions and verify portable project packaging.",
+    "dependencies": [
+      "prod-multisampler",
+      "prod-content-core"
+    ]
+  },
+  {
+    "id": "prod-content-orchestral-world",
+    "kind": "feat",
+    "area": "production",
+    "priority": "P3",
+    "title": "[feat]/ Add optional orchestral, chamber and global-percussion instrument collections",
+    "problem": "There are no orchestral or culturally varied acoustic instruments; Suite content establishes a breadth benchmark rather than an asset-copying permission.",
+    "evidence": [
+      "https://www.ableton.com/en/live/compare-editions/",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L42-L50",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/ui.rs#L223-L253"
+    ],
+    "acceptance": [
+      "Provide original or licensed strings, brass, woodwinds, mallets and chamber ensembles with usable articulation switching.",
+      "Include documented global-percussion instruments with appropriate performance mappings and creator attribution.",
+      "Keep sample provenance, tuning and articulation metadata visible and consistent with the instrument UI.",
+      "Make these optional downloads and avoid claiming the recordings or branding of existing commercial Packs."
+    ],
+    "validation": "Create a short ensemble arrangement with dynamic/articulation changes and verify every instrument mapping and license manifest.",
+    "dependencies": [
+      "prod-multisampler",
+      "prod-content-core",
+      "prod-tuning"
+    ]
+  },
+  {
+    "id": "prod-content-creative",
+    "kind": "feat",
+    "area": "production",
+    "priority": "P3",
+    "title": "[feat]/ Add original vocal, foley, cinematic, electronic and generative production packs",
+    "problem": "The single demo lacks the vocal, found-sound, cinematic and electronic building blocks in current Suite content families.",
+    "evidence": [
+      "https://www.ableton.com/en/live/compare-editions/",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L42-L50",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/ui.rs#L223-L253"
+    ],
+    "acceptance": [
+      "Provide original or licensed vocal material, foley, textures, drones, electronic drums and genre-spanning synth/rack presets.",
+      "Include playable instruments and editable clips, not only flattened demonstration audio.",
+      "Supply construction examples showing sampling, MPE and modulation with clear tempo/key/tuning metadata.",
+      "Document performer consent and usage terms; keep optional content clearly distinct from core application capabilities."
+    ],
+    "validation": "Build contrasting vocal/electronic/cinematic sketches solely from installed content and verify editable sources and redistribution documentation.",
+    "dependencies": [
+      "prod-content-core",
+      "prod-granular-synth",
+      "prod-modulators"
+    ]
+  },
+  {
+    "id": "prod-sample-provider",
+    "kind": "feat",
+    "area": "production",
+    "priority": "P3",
+    "title": "[feat]/ Integrate optional licensed sample-provider search and audition for production",
+    "problem": "Live12.3 includes Splice integration, but external catalogs and subscriptions are not free factory assets; Omatainer has no provider abstraction.",
+    "evidence": [
+      "https://help.ableton.com/hc/en-us/articles/22060471916316-Splice-integration-in-Ableton-Live-FAQ",
+      "https://www.ableton.com/en/manual/working-with-the-browser/",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L42-L50",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/ui.rs#L223-L253"
+    ],
+    "acceptance": [
+      "Provide a provider-neutral search, preview, license/acquire and import workflow with explicit account/cost state.",
+      "Support similarity or audio-query search only where a provider officially exposes and permits it.",
+      "Download acquired assets into managed project media with receipts/provenance and offline fallback.",
+      "Keep the provider optional and use authorized APIs; do not scrape protected catalogs or imply subscription content is bundled."
+    ],
+    "validation": "Using an authorized test account, preview and license a sample, import it into a project and verify offline reopening and entitlement errors.",
+    "dependencies": [
+      "prod-production-browser",
+      "prod-sample-similarity",
+      "sys-project-portability"
+    ]
+  },
+  {
+    "id": "prod-drum-bus",
+    "kind": "feat",
+    "area": "audio",
+    "priority": "P2",
+    "title": "[feat]/ Add an integrated drum-bus processor with transient shaping and tuned low-end enhancement",
+    "problem": "Producers need to shape a drum group cohesively in one recallable device. The current FX types provide a basic drive but no integrated drum compression, transient shaping or tuned low-frequency resonator.",
+    "evidence": [
+      "https://www.ableton.com/en/manual/live-audio-effect-reference/#drum-buss",
+      "https://www.ableton.com/en/blog/live-10s-new-effects-look-behind-scenes/",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/fx.rs#L5-L19",
+      "https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/fx.rs#L132-L242"
+    ],
+    "acceptance": [
+      "Provide an original integrated signal path with selectable drive character, compression and high-frequency/transient shaping controls suitable for drum groups.",
+      "Add a tunable low-end resonator with frequency, decay, amount and audition controls; bound its output under high drive and repeated excitation.",
+      "Expose input/output gain, dry/wet balance and level-matched bypass with smooth parameter automation and explicit latency reporting.",
+      "Save independent instance state and useful original kick, breakbeat and full-drum-bus presets without copying proprietary DSP or assets."
+    ],
+    "validation": "Process isolated kicks and a multitrack drum group; measure resonant pitch and decay, confirm transient controls change attack predictably, automate all stages without discontinuities, and reopen the saved project with identical output.",
+    "dependencies": [
+      "prod-device-chain",
+      "sys-plugin-delay-compensation"
+    ]
+  }
+]

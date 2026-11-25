@@ -1,0 +1,11 @@
+{
+  "audio_sha256": "144fcfb269e923590d7c8b3b3c4f133138ed0709f9ad763433ef4f98bbb1c6c2",
+  "channels": 2,
+  "conductor": null,
+  "exact_bpm": null,
+  "frames": 128,
+  "placement": null,
+  "rate": 48000,
+  "schema": 1,
+  "source_alias": "2"
+}

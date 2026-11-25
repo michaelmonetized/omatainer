@@ -1,0 +1,18 @@
+default_stopped_output: last_left=0.065097496 last_right=0.065097496 playing=false decks_playing=[false, false]
+idle: frames=1024 allocations=0 allocated_bytes=0 cpu_wall_ms=0.371
+demo active_clips=4 note_count=30
+demo: frames=1024 allocations=4096 allocated_bytes=368640 cpu_wall_ms=0.910
+one_fx_each_track: frames=1024 allocations=8192 allocated_bytes=196608 cpu_wall_ms=0.429
+one_arp_chord: frames=1024 allocations=3072 allocated_bytes=106496 cpu_wall_ms=0.464
+paused_deck: playing=false pos=0 final_left=0.20935817 final_right=0.20935817 max_abs=0.20935817
+left_only_after_deck_eq: final_left=0.10413283 final_right=-0.104132734
+drum_vel=1 abs_sum=788.015258789
+drum_vel=127 abs_sum=788.015258789
+empty_fx_impulse=(1.0, 0.0),(0.0, 1.0)
+delay_param0=0 first_echo_sample=Some(12000)
+delay_param0=1 first_echo_sample=Some(12000)
+serial_delay_slots=1 first_echo=Some(12000)
+serial_delay_slots=2 first_echo=Some(12000)
+master_echo_120_bpm: configured_delay_samples=18000 first_echo_frame=Some(9000)
+balance_mix_zero=(0.8, 0.0)
+snapshot_lock_contention: one_frame_wall_ms=50.117 reported_cpu_fraction=0.02275596

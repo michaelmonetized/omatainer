@@ -1,0 +1,18 @@
+{
+  "version": 6,
+  "name": "Stage",
+  "device_hint": "Same controller",
+  "revision_hint": "",
+  "layer": "factory_overlay",
+  "bindings": [
+    {
+      "kind": "Note",
+      "ch": 0,
+      "data": 60,
+      "action": "DeckCueHold",
+      "deck": 0,
+      "extra": 0,
+      "relative": null
+    }
+  ]
+}

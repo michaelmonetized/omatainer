@@ -1,0 +1,1255 @@
+[
+  {
+    "id": "sys-project-save-open",
+    "kind": "feat",
+    "area": "project",
+    "priority": "P0",
+    "title": "[feat]/ Save and reopen complete native production and DJ projects",
+    "problem": "A producer cannot commit work to a product that reconstructs the demo on every launch. Native project persistence is missing.",
+    "evidence": [
+      "Audited baseline: https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L365 and https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/Cargo.toml. This capability is absent or materially narrower in the current command model, UI and dependency graph.",
+      "Benchmark/reference: https://www.ableton.com/en/live-manual/12/managing-files-and-sets/. Requirements below are proposed Omatainer behavior, not a claim of identical vendor implementation."
+    ],
+    "acceptance": [
+      "Provide New, Open, Open Recent, Save, Save As and Save Copy with dirty-state and unsaved-change handling.",
+      "Round-trip tracks, clips, notes, automation, routing, devices, plugin state, decks, sample references, mappings and view state without lossy reconstruction.",
+      "Use an explicitly versioned format with compatibility checks, atomic replacement and understandable validation errors.",
+      "Reopening in a fresh process reproduces project state and reference rendering; an interrupted save preserves the previous good file."
+    ],
+    "validation": "Exercise the workflow through the shipped UI, persist/reopen applicable state, and test cancellation and failure paths. Record the actual supported platform and fixture results.",
+    "dependencies": []
+  },
+  {
+    "id": "sys-autosave-recovery",
+    "kind": "feat",
+    "area": "project",
+    "priority": "P0",
+    "title": "[feat]/ Recover unsaved work after crashes and interrupted writes",
+    "problem": "The application has no project journal, autosave or recovery workflow.",
+    "evidence": [
+      "Audited baseline: https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L365 and https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/Cargo.toml. This capability is absent or materially narrower in the current command model, UI and dependency graph.",
+      "Benchmark/reference: https://help.ableton.com/hc/en-us/articles/115001878844-Recovering-a-Set-manually-after-a-crash. Requirements below are proposed Omatainer behavior, not a claim of identical vendor implementation."
+    ],
+    "acceptance": [
+      "Journal edits and rotate recoverable checkpoints outside the real-time thread, including untitled projects.",
+      "Offer recovery preview on restart without overwriting the last explicitly saved version.",
+      "Survive process termination, full disk, malformed final record and missing external assets with a usable recovery report.",
+      "Expose checkpoint interval, retention and storage use; preserve live-set playback while checkpoints are written."
+    ],
+    "validation": "Exercise the workflow through the shipped UI, persist/reopen applicable state, and test cancellation and failure paths. Record the actual supported platform and fixture results.",
+    "dependencies": [
+      "sys-project-save-open"
+    ]
+  },
+  {
+    "id": "sys-undo-redo",
+    "kind": "feat",
+    "area": "project",
+    "priority": "P0",
+    "title": "[feat]/ Provide nondestructive undo history across all creative edits",
+    "problem": "There is no undo/redo transaction model for composition, clip edits, routing or device changes.",
+    "evidence": [
+      "Audited baseline: https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L365 and https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/Cargo.toml. This capability is absent or materially narrower in the current command model, UI and dependency graph.",
+      "Benchmark/reference: https://www.ableton.com/en/live-manual/12/managing-files-and-sets/. Requirements below are proposed Omatainer behavior, not a claim of identical vendor implementation."
+    ],
+    "acceptance": [
+      "Group continuous gestures and multi-object actions into meaningful reversible transactions.",
+      "Undo/redo notes, samples, warps, clip operations, automation, mixer/device edits and metadata edits without losing referenced media.",
+      "Expose named history and keyboard commands; distinguish edits from ephemeral transport or hardware events.",
+      "Bound history memory and preserve playback/held-note correctness when undo changes active objects."
+    ],
+    "validation": "Exercise the workflow through the shipped UI, persist/reopen applicable state, and test cancellation and failure paths. Record the actual supported platform and fixture results.",
+    "dependencies": []
+  },
+  {
+    "id": "sys-project-portability",
+    "kind": "feat",
+    "area": "project",
+    "priority": "P1",
+    "title": "[feat]/ Collect project media and package portable self-contained sessions",
+    "problem": "Current sample paths have no dependency manifest, collect-assets workflow or portability guarantees.",
+    "evidence": [
+      "Audited baseline: https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L365 and https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/Cargo.toml. This capability is absent or materially narrower in the current command model, UI and dependency graph.",
+      "Benchmark/reference: https://help.ableton.com/hc/en-us/articles/209775645-Collect-All-and-Save. Requirements below are proposed Omatainer behavior, not a claim of identical vendor implementation."
+    ],
+    "acceptance": [
+      "List every used sample, preset, plugin identifier and license-sensitive dependency.",
+      "Collect selected external assets with checksums and relative paths; deduplicate without changing originals.",
+      "Export/import a portable archive with traversal-safe extraction, conflict handling and missing-plugin fallbacks.",
+      "Open the package on a clean supported machine with original directories unavailable and verify playback."
+    ],
+    "validation": "Exercise the workflow through the shipped UI, persist/reopen applicable state, and test cancellation and failure paths. Record the actual supported platform and fixture results.",
+    "dependencies": [
+      "sys-project-save-open"
+    ]
+  },
+  {
+    "id": "sys-missing-assets",
+    "kind": "feat",
+    "area": "project",
+    "priority": "P1",
+    "title": "[feat]/ Relink missing project media and restore unavailable devices",
+    "problem": "Professional projects must remain inspectable when drives or plug-ins are unavailable.",
+    "evidence": [
+      "Audited baseline: https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L365 and https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/Cargo.toml. This capability is absent or materially narrower in the current command model, UI and dependency graph.",
+      "Benchmark/reference: https://www.ableton.com/en/live-manual/12/managing-files-and-sets/. Requirements below are proposed Omatainer behavior, not a claim of identical vendor implementation."
+    ],
+    "acceptance": [
+      "Show missing assets and devices without discarding clips, automation or serialized state.",
+      "Locate moved files by identity and offer batch relink with preview before accepting ambiguous matches.",
+      "Preserve offline device placeholders and restore them when compatible plugins return.",
+      "Offer rendered fallback playback when available and a detailed unresolved-dependency report."
+    ],
+    "validation": "Exercise the workflow through the shipped UI, persist/reopen applicable state, and test cancellation and failure paths. Record the actual supported platform and fixture results.",
+    "dependencies": [
+      "sys-project-save-open"
+    ]
+  },
+  {
+    "id": "sys-project-templates",
+    "kind": "feat",
+    "area": "project",
+    "priority": "P1",
+    "title": "[feat]/ Save reusable project, track and live-set templates",
+    "problem": "A fixed seeded demo cannot represent a producer studio or a DJ performance setup.",
+    "evidence": [
+      "Audited baseline: https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L365 and https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/Cargo.toml. This capability is absent or materially narrower in the current command model, UI and dependency graph.",
+      "Benchmark/reference: https://www.ableton.com/en/live-manual/12/managing-files-and-sets/. Requirements below are proposed Omatainer behavior, not a claim of identical vendor implementation."
+    ],
+    "acceptance": [
+      "Create templates for projects and track/device/routing configurations and choose a startup default.",
+      "Offer clean empty-session startup and duplicate-template workflows without editing the source template.",
+      "Preserve hardware aliases and identify unavailable endpoints rather than silently rerouting.",
+      "Include user-authored templates in portable backup and migration."
+    ],
+    "validation": "Exercise the workflow through the shipped UI, persist/reopen applicable state, and test cancellation and failure paths. Record the actual supported platform and fixture results.",
+    "dependencies": [
+      "sys-project-save-open"
+    ]
+  },
+  {
+    "id": "sys-project-versions",
+    "kind": "feat",
+    "area": "project",
+    "priority": "P2",
+    "title": "[feat]/ Manage named project versions and compare creative revisions",
+    "problem": "Professionals need alternate arrangements/mixes and a way back after destructive decisions.",
+    "evidence": [
+      "Audited baseline: https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L365 and https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/Cargo.toml. This capability is absent or materially narrower in the current command model, UI and dependency graph.",
+      "Benchmark/reference: https://www.ableton.com/en/live-manual/12/managing-files-and-sets/. Requirements below are proposed Omatainer behavior, not a claim of identical vendor implementation."
+    ],
+    "acceptance": [
+      "Save named snapshots and revision notes with shared immutable media instead of duplicating all recordings.",
+      "Compare changes to tracks, clips, routing and device settings before restoring a version.",
+      "Branch an alternative mix into a new project without changing the original.",
+      "Prune versions only after showing which assets become unreferenced."
+    ],
+    "validation": "Exercise the workflow through the shipped UI, persist/reopen applicable state, and test cancellation and failure paths. Record the actual supported platform and fixture results.",
+    "dependencies": [
+      "sys-project-save-open"
+    ]
+  },
+  {
+    "id": "sys-project-merge",
+    "kind": "feat",
+    "area": "project",
+    "priority": "P2",
+    "title": "[feat]/ Import tracks, clips and device chains from another project",
+    "problem": "Reusing existing material currently requires rebuilding state manually.",
+    "evidence": [
+      "Audited baseline: https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L365 and https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/Cargo.toml. This capability is absent or materially narrower in the current command model, UI and dependency graph.",
+      "Benchmark/reference: https://www.ableton.com/en/live-manual/12/managing-files-and-sets/. Requirements below are proposed Omatainer behavior, not a claim of identical vendor implementation."
+    ],
+    "acceptance": [
+      "Browse another project without replacing the current session.",
+      "Import selected tracks/clips/devices/automation and dependencies with stable ID remapping.",
+      "Resolve routing, tempo, sample-rate and device conflicts explicitly.",
+      "Undo the import as one transaction and verify both source and destination remain valid."
+    ],
+    "validation": "Exercise the workflow through the shipped UI, persist/reopen applicable state, and test cancellation and failure paths. Record the actual supported platform and fixture results.",
+    "dependencies": [
+      "sys-project-save-open",
+      "sys-undo-redo"
+    ]
+  },
+  {
+    "id": "sys-project-cleanup",
+    "kind": "feat",
+    "area": "project",
+    "priority": "P2",
+    "title": "[feat]/ Inspect project storage and safely clean unused media",
+    "problem": "Long sessions accumulate recordings and renders that need transparent management.",
+    "evidence": [
+      "Audited baseline: https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L365 and https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/Cargo.toml. This capability is absent or materially narrower in the current command model, UI and dependency graph.",
+      "Benchmark/reference: https://www.ableton.com/en/live-manual/12/managing-files-and-sets/. Requirements below are proposed Omatainer behavior, not a claim of identical vendor implementation."
+    ],
+    "acceptance": [
+      "Explain project disk use by original recording, referenced slice, cache, render and recovery data.",
+      "Identify unused assets across saved versions before cleanup.",
+      "Use reversible trash/quarantine rather than immediate destructive deletion.",
+      "Run cleanup and archive compaction without blocking active audio."
+    ],
+    "validation": "Exercise the workflow through the shipped UI, persist/reopen applicable state, and test cancellation and failure paths. Record the actual supported platform and fixture results.",
+    "dependencies": [
+      "sys-project-versions"
+    ]
+  },
+  {
+    "id": "sys-preferences",
+    "kind": "feat",
+    "area": "ui",
+    "priority": "P1",
+    "title": "[feat]/ Persist user preferences and named studio/performance profiles",
+    "problem": "The current application has no coherent settings/profile workflow.",
+    "evidence": [
+      "Audited baseline: https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L365 and https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/Cargo.toml. This capability is absent or materially narrower in the current command model, UI and dependency graph.",
+      "Benchmark/reference: https://www.ableton.com/en/live-manual/12/first-steps/. Requirements below are proposed Omatainer behavior, not a claim of identical vendor implementation."
+    ],
+    "acceptance": [
+      "Persist audio, MIDI, paths, appearance, shortcuts and startup preferences with defaults and reset controls.",
+      "Switch named studio and performance profiles with preview of affected devices/routes.",
+      "Validate incompatible values and migrate settings across releases without silent loss.",
+      "Export/import preferences excluding credentials and machine-specific secrets."
+    ],
+    "validation": "Exercise the workflow through the shipped UI, persist/reopen applicable state, and test cancellation and failure paths. Record the actual supported platform and fixture results.",
+    "dependencies": []
+  },
+  {
+    "id": "sys-audio-device-settings",
+    "kind": "feat",
+    "area": "audio",
+    "priority": "P0",
+    "title": "[feat]/ Configure professional audio devices, sample rates and buffers",
+    "problem": "Audio currently opens the default output configuration only.",
+    "evidence": [
+      "Audited baseline: https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L365 and https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/Cargo.toml. This capability is absent or materially narrower in the current command model, UI and dependency graph.",
+      "Benchmark/reference: https://www.ableton.com/en/live-manual/12/routing-and-i-o/. Requirements below are proposed Omatainer behavior, not a claim of identical vendor implementation."
+    ],
+    "acceptance": [
+      "Enumerate input/output devices and expose supported rates, sample formats, channel layouts and buffer sizes.",
+      "Show estimated and measured round-trip latency and negotiated actual settings.",
+      "Preview/confirm disruptive reconfiguration safely and roll back failed changes.",
+      "Persist device identities and test 44.1/48/96/192 kHz where supported; do not claim unsupported hardware modes."
+    ],
+    "validation": "Exercise the workflow through the shipped UI, persist/reopen applicable state, and test cancellation and failure paths. Record the actual supported platform and fixture results.",
+    "dependencies": [
+      "sys-preferences"
+    ]
+  },
+  {
+    "id": "sys-linux-audio-backends",
+    "kind": "feat",
+    "area": "audio",
+    "priority": "P1",
+    "title": "[feat]/ Integrate low-latency PipeWire, JACK and ALSA workflows",
+    "problem": "A native Linux professional product must work reliably with studio audio graphs and direct interfaces.",
+    "evidence": [
+      "Audited baseline: https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L365 and https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/Cargo.toml. This capability is absent or materially narrower in the current command model, UI and dependency graph.",
+      "Benchmark/reference: https://docs.pipewire.org/. Requirements below are proposed Omatainer behavior, not a claim of identical vendor implementation."
+    ],
+    "acceptance": [
+      "Document and implement supported PipeWire/JACK/ALSA paths, clock ownership and scheduling setup.",
+      "Expose named graph ports and reconnect persisted endpoints without duplicating or feeding back routes.",
+      "Handle graph/sample-rate/quantum changes without allocating in the callback or losing project state.",
+      "Publish measured supported configurations; include loopback latency and reconnect tests on real backends."
+    ],
+    "validation": "Exercise the workflow through the shipped UI, persist/reopen applicable state, and test cancellation and failure paths. Record the actual supported platform and fixture results.",
+    "dependencies": [
+      "sys-audio-device-settings"
+    ]
+  },
+  {
+    "id": "sys-audio-io-routing",
+    "kind": "feat",
+    "area": "audio",
+    "priority": "P0",
+    "title": "[feat]/ Route independent multichannel inputs and outputs through an audio graph",
+    "problem": "The renderer currently produces a stereo mix and zero-fills extra output channels; there is no input graph.",
+    "evidence": [
+      "Audited baseline: https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L365 and https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/Cargo.toml. This capability is absent or materially narrower in the current command model, UI and dependency graph.",
+      "Benchmark/reference: https://www.ableton.com/en/live-manual/12/routing-and-i-o/. Requirements below are proposed Omatainer behavior, not a claim of identical vendor implementation."
+    ],
+    "acceptance": [
+      "Address configurable mono/stereo/multichannel physical and virtual ports using stable channel aliases.",
+      "Route tracks, buses, record sources and deck outputs independently with explicit tap positions.",
+      "Detect cycles and invalid channel maps, and preserve routes across device absence.",
+      "Provide channel meters/test signals and verify every supported output with captured loopback audio."
+    ],
+    "validation": "Exercise the workflow through the shipped UI, persist/reopen applicable state, and test cancellation and failure paths. Record the actual supported platform and fixture results.",
+    "dependencies": [
+      "sys-audio-device-settings"
+    ]
+  },
+  {
+    "id": "sys-input-monitoring",
+    "kind": "feat",
+    "area": "audio",
+    "priority": "P0",
+    "title": "[feat]/ Monitor live inputs with explicit In, Auto and Off modes",
+    "problem": "A producer cannot currently monitor microphones, instruments or external processors through tracks.",
+    "evidence": [
+      "Audited baseline: https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L365 and https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/Cargo.toml. This capability is absent or materially narrower in the current command model, UI and dependency graph.",
+      "Benchmark/reference: https://www.ableton.com/en/live-manual/12/routing-and-i-o/. Requirements below are proposed Omatainer behavior, not a claim of identical vendor implementation."
+    ],
+    "acceptance": [
+      "Provide per-track monitoring and arm state with explicit record/playback monitoring precedence.",
+      "Avoid double monitoring and feedback when direct hardware monitoring or resampling is used.",
+      "Offer low-latency monitored paths with clear latency-compensation tradeoffs.",
+      "Verify overdub timing and cue mixes through loopback and an actual interface."
+    ],
+    "validation": "Exercise the workflow through the shipped UI, persist/reopen applicable state, and test cancellation and failure paths. Record the actual supported platform and fixture results.",
+    "dependencies": [
+      "sys-audio-io-routing"
+    ]
+  },
+  {
+    "id": "sys-audio-device-recovery",
+    "kind": "feat",
+    "area": "audio",
+    "priority": "P0",
+    "title": "[feat]/ Recover safely from audio-device loss and backend restarts",
+    "problem": "A live set must survive USB removal, interface failure and audio-server restart without losing its document.",
+    "evidence": [
+      "Audited baseline: https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L365 and https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/Cargo.toml. This capability is absent or materially narrower in the current command model, UI and dependency graph.",
+      "Professional-readiness requirement inferred from the combined producer/live-DJ brief; not asserted to be a bundled feature of either reference product."
+    ],
+    "acceptance": [
+      "Detect lost devices and expose clear recovery state without crashing.",
+      "Reconnect by stable identity, preserving routes and preventing accidental output on a different device.",
+      "Offer explicit safe fallback and resume behavior with controlled ramps.",
+      "Run unplug/replug, server restart and suspend/resume fault tests while recording and performing."
+    ],
+    "validation": "Exercise the workflow through the shipped UI, persist/reopen applicable state, and test cancellation and failure paths. Record the actual supported platform and fixture results.",
+    "dependencies": [
+      "sys-audio-device-settings",
+      "sys-project-save-open"
+    ]
+  },
+  {
+    "id": "sys-plugin-vst3",
+    "kind": "feat",
+    "area": "audio",
+    "priority": "P1",
+    "title": "[feat]/ Host native VST3 instruments and audio effects",
+    "problem": "No external plug-in host exists, preventing use of professional instrument/effect libraries.",
+    "evidence": [
+      "Audited baseline: https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L365 and https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/Cargo.toml. This capability is absent or materially narrower in the current command model, UI and dependency graph.",
+      "Benchmark/reference: https://steinbergmedia.github.io/vst3_dev_portal/. Requirements below are proposed Omatainer behavior, not a claim of identical vendor implementation."
+    ],
+    "acceptance": [
+      "Host native supported-platform VST3 processors, editors, buses, events, state and parameter automation.",
+      "Handle sidechains, multiple outputs, tempo context, latency changes and plugin bypass/tails.",
+      "Preserve exact plugin identity/version state and show actionable missing-plugin placeholders.",
+      "Validate multiple independent third-party plugins and SDK fixtures; record licensing and architecture support."
+    ],
+    "validation": "Exercise the workflow through the shipped UI, persist/reopen applicable state, and test cancellation and failure paths. Record the actual supported platform and fixture results.",
+    "dependencies": [
+      "sys-audio-io-routing"
+    ]
+  },
+  {
+    "id": "sys-plugin-clap",
+    "kind": "feat",
+    "area": "audio",
+    "priority": "P2",
+    "title": "[feat]/ Host CLAP instruments and effects with expression support",
+    "problem": "Native Linux musicians need a modern alternative plug-in ecosystem in addition to VST3.",
+    "evidence": [
+      "Audited baseline: https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L365 and https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/Cargo.toml. This capability is absent or materially narrower in the current command model, UI and dependency graph.",
+      "Benchmark/reference: https://www.cleveraudio.org/1-feature-overview/. Requirements below are proposed Omatainer behavior, not a claim of identical vendor implementation."
+    ],
+    "acceptance": [
+      "Load CLAP modules and preserve state, editors, ports and parameter metadata.",
+      "Implement supported note-expression and modulation extensions with sample-accurate event delivery.",
+      "Negotiate optional host features and make unsupported extensions visible.",
+      "Validate with open-source fixtures and multiple real plugins on supported architectures."
+    ],
+    "validation": "Exercise the workflow through the shipped UI, persist/reopen applicable state, and test cancellation and failure paths. Record the actual supported platform and fixture results.",
+    "dependencies": [
+      "sys-audio-io-routing"
+    ]
+  },
+  {
+    "id": "sys-plugin-lv2",
+    "kind": "feat",
+    "area": "audio",
+    "priority": "P2",
+    "title": "[feat]/ Host LV2 instruments, effects and native Linux plugin UIs",
+    "problem": "LV2 ecosystem compatibility is a Linux-specific professional requirement, not a claimed Ableton feature.",
+    "evidence": [
+      "Audited baseline: https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L365 and https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/Cargo.toml. This capability is absent or materially narrower in the current command model, UI and dependency graph.",
+      "Benchmark/reference: https://lv2plug.in/. Requirements below are proposed Omatainer behavior, not a claim of identical vendor implementation."
+    ],
+    "acceptance": [
+      "Discover LV2 bundles and support required audio/control/Atom/MIDI/state features.",
+      "Host supported UIs and present usable generic controls where no compatible UI exists.",
+      "Preserve patch/state paths and validate plugin extension requirements before activation.",
+      "Test audio/MIDI/state round trips across a documented LV2 compatibility matrix."
+    ],
+    "validation": "Exercise the workflow through the shipped UI, persist/reopen applicable state, and test cancellation and failure paths. Record the actual supported platform and fixture results.",
+    "dependencies": [
+      "sys-audio-io-routing"
+    ]
+  },
+  {
+    "id": "sys-plugin-legacy-compatibility",
+    "kind": "feat",
+    "area": "audio",
+    "priority": "P3",
+    "title": "[feat]/ Support lawful legacy and platform-specific plug-in interoperability",
+    "problem": "Existing projects may depend on VST2 or macOS Audio Units; these are not universally loadable on Linux.",
+    "evidence": [
+      "Audited baseline: https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L365 and https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/Cargo.toml. This capability is absent or materially narrower in the current command model, UI and dependency graph.",
+      "Benchmark/reference: https://help.ableton.com/hc/en-us/articles/5937501570460-Supported-Plug-in-Formats. Requirements below are proposed Omatainer behavior, not a claim of identical vendor implementation."
+    ],
+    "acceptance": [
+      "Define native versus optional bridge support for legacy/platform formats based on actual SDK and distribution rights.",
+      "Keep AU support conditional on a macOS port and never claim native Linux AU compatibility.",
+      "Provide explicit architecture/format mismatch diagnostics and rendered-stem fallback migration.",
+      "Validate supported paths with licensed plugins; document unavailable formats rather than spoofing compatibility."
+    ],
+    "validation": "Exercise the workflow through the shipped UI, persist/reopen applicable state, and test cancellation and failure paths. Record the actual supported platform and fixture results.",
+    "dependencies": [
+      "sys-plugin-vst3"
+    ]
+  },
+  {
+    "id": "sys-plugin-scanner",
+    "kind": "feat",
+    "area": "audio",
+    "priority": "P1",
+    "title": "[feat]/ Scan, catalog and quarantine plugins outside the application process",
+    "problem": "Plugin discovery must not put application startup or a live set at the mercy of third-party code.",
+    "evidence": [
+      "Audited baseline: https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L365 and https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/Cargo.toml. This capability is absent or materially narrower in the current command model, UI and dependency graph.",
+      "Professional-readiness requirement inferred from the combined producer/live-DJ brief; not asserted to be a bundled feature of either reference product."
+    ],
+    "acceptance": [
+      "Scan in recoverable worker processes with timeout, crash quarantine and incremental cache.",
+      "Allow user paths, rescan, blacklist management and clear architecture/version diagnostics.",
+      "Keep already-known plugins usable while background scanning proceeds.",
+      "Exercise crashing/hanging/corrupt plugins and verify bounded startup plus retriable failures."
+    ],
+    "validation": "Exercise the workflow through the shipped UI, persist/reopen applicable state, and test cancellation and failure paths. Record the actual supported platform and fixture results.",
+    "dependencies": [
+      "sys-plugin-vst3"
+    ]
+  },
+  {
+    "id": "sys-plugin-isolation",
+    "kind": "feat",
+    "area": "audio",
+    "priority": "P1",
+    "title": "[feat]/ Isolate plugin failures and restore processing without losing sessions",
+    "problem": "One third-party effect must not destroy the project or take every deck down.",
+    "evidence": [
+      "Audited baseline: https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L365 and https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/Cargo.toml. This capability is absent or materially narrower in the current command model, UI and dependency graph.",
+      "Professional-readiness requirement inferred from the combined producer/live-DJ brief; not asserted to be a bundled feature of either reference product."
+    ],
+    "acceptance": [
+      "Offer documented per-plugin or per-group process isolation with bounded audio transport.",
+      "On plugin crash preserve state/automation and switch to controlled bypass or silence according to policy.",
+      "Restart the failed instance and restore state with user-visible diagnostics.",
+      "Measure isolation latency and inject crashes/hangs while unaffected tracks keep their audio deadlines."
+    ],
+    "validation": "Exercise the workflow through the shipped UI, persist/reopen applicable state, and test cancellation and failure paths. Record the actual supported platform and fixture results.",
+    "dependencies": [
+      "sys-plugin-scanner",
+      "sys-autosave-recovery"
+    ]
+  },
+  {
+    "id": "sys-plugin-delay-compensation",
+    "kind": "feat",
+    "area": "audio",
+    "priority": "P0",
+    "title": "[feat]/ Compensate device and routing latency across the complete graph",
+    "problem": "Parallel signals, automation and recordings require sample-aligned processing as latency changes.",
+    "evidence": [
+      "Audited baseline: https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L365 and https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/Cargo.toml. This capability is absent or materially narrower in the current command model, UI and dependency graph.",
+      "Benchmark/reference: https://help.ableton.com/hc/en-us/articles/360010545559-How-Latency-Works. Requirements below are proposed Omatainer behavior, not a claim of identical vendor implementation."
+    ],
+    "acceptance": [
+      "Account for plugin lookahead, internal DSP, routing and external measured offsets.",
+      "Compensate nested buses/returns/sidechains and preserve automation/event alignment.",
+      "Expose a monitored low-latency override with clear synchronization consequences.",
+      "Null-test parallel paths and measure dynamic-latency transitions, render parity and recording placement."
+    ],
+    "validation": "Exercise the workflow through the shipped UI, persist/reopen applicable state, and test cancellation and failure paths. Record the actual supported platform and fixture results.",
+    "dependencies": [
+      "sys-audio-io-routing"
+    ]
+  },
+  {
+    "id": "sys-plugin-presets",
+    "kind": "feat",
+    "area": "audio",
+    "priority": "P1",
+    "title": "[feat]/ Manage plugin presets, A/B states and reusable device chains",
+    "problem": "Device settings need recallable, portable workflows rather than session-only controls.",
+    "evidence": [
+      "Audited baseline: https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L365 and https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/Cargo.toml. This capability is absent or materially narrower in the current command model, UI and dependency graph.",
+      "Benchmark/reference: https://www.ableton.com/en/live-manual/12/working-with-instruments-and-effects/. Requirements below are proposed Omatainer behavior, not a claim of identical vendor implementation."
+    ],
+    "acceptance": [
+      "Save/browse user presets with parameter and opaque plugin state plus referenced assets.",
+      "Compare A/B states, copy/paste devices and replace devices without destroying recoverable state.",
+      "Expose generic parameter controls and searchable automation names alongside native editors.",
+      "Round-trip presets through reload and missing/reinstalled plugin states."
+    ],
+    "validation": "Exercise the workflow through the shipped UI, persist/reopen applicable state, and test cancellation and failure paths. Record the actual supported platform and fixture results.",
+    "dependencies": [
+      "sys-plugin-vst3",
+      "sys-project-save-open"
+    ]
+  },
+  {
+    "id": "sys-audio-export",
+    "kind": "feat",
+    "area": "project",
+    "priority": "P0",
+    "title": "[feat]/ Export offline and real-time master audio with professional format controls",
+    "problem": "There is no delivery/export workflow for completed production work.",
+    "evidence": [
+      "Audited baseline: https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L365 and https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/Cargo.toml. This capability is absent or materially narrower in the current command model, UI and dependency graph.",
+      "Benchmark/reference: https://www.ableton.com/en/live-manual/12/managing-files-and-sets/. Requirements below are proposed Omatainer behavior, not a claim of identical vendor implementation."
+    ],
+    "acceptance": [
+      "Render defined ranges, loops and full sessions with explicit tail handling, mono/stereo and normalization settings.",
+      "Offer supported lossless/compressed formats, sample rates, bit depths and dither with clear use conditions.",
+      "Use real-time rendering for hardware paths and offline rendering where valid, with cancel/progress and disk-error handling.",
+      "Compare exported audio against playback and verify file headers, duration, channel order and repeatability."
+    ],
+    "validation": "Exercise the workflow through the shipped UI, persist/reopen applicable state, and test cancellation and failure paths. Record the actual supported platform and fixture results.",
+    "dependencies": [
+      "sys-project-save-open",
+      "sys-audio-io-routing"
+    ]
+  },
+  {
+    "id": "sys-batch-stem-export",
+    "kind": "feat",
+    "area": "project",
+    "priority": "P1",
+    "title": "[feat]/ Export aligned stems, track groups and delivery versions in batches",
+    "problem": "Producers need mix stems, instrumentals, clean edits and mastering handoffs from the same project.",
+    "evidence": [
+      "Audited baseline: https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L365 and https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/Cargo.toml. This capability is absent or materially narrower in the current command model, UI and dependency graph.",
+      "Benchmark/reference: https://www.ableton.com/en/live-manual/12/managing-files-and-sets/. Requirements below are proposed Omatainer behavior, not a claim of identical vendor implementation."
+    ],
+    "acceptance": [
+      "Select tracks/groups/returns with consistent start/end, tail and naming rules.",
+      "Define inclusion of bus/master processing and sidechain dependencies instead of silently changing the mix.",
+      "Queue multiple delivery presets and retain per-item success/error reports.",
+      "Reimport all stems to prove alignment and expected sum against the reference mix."
+    ],
+    "validation": "Exercise the workflow through the shipped UI, persist/reopen applicable state, and test cancellation and failure paths. Record the actual supported platform and fixture results.",
+    "dependencies": [
+      "sys-audio-export"
+    ]
+  },
+  {
+    "id": "sys-delivery-qc",
+    "kind": "feat",
+    "area": "audio",
+    "priority": "P2",
+    "title": "[feat]/ Validate loudness, true peaks and metadata before delivery",
+    "problem": "Professional delivery requires observable output quality and format compliance, beyond a saturating limiter.",
+    "evidence": [
+      "Audited baseline: https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L365 and https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/Cargo.toml. This capability is absent or materially narrower in the current command model, UI and dependency graph.",
+      "Professional-readiness requirement inferred from the combined producer/live-DJ brief; not asserted to be a bundled feature of either reference product."
+    ],
+    "acceptance": [
+      "Measure integrated/short-term loudness, sample/true peak and clipping with stated measurement standards.",
+      "Attach QC reports and optional target presets without silently normalizing a mix.",
+      "Support artist/title/ISRC or broadcast metadata when the chosen format permits it.",
+      "Validate with published reference fixtures and flag unsupported target requirements explicitly."
+    ],
+    "validation": "Exercise the workflow through the shipped UI, persist/reopen applicable state, and test cancellation and failure paths. Record the actual supported platform and fixture results.",
+    "dependencies": [
+      "sys-audio-export"
+    ]
+  },
+  {
+    "id": "sys-midi-file-interchange",
+    "kind": "feat",
+    "area": "midi",
+    "priority": "P1",
+    "title": "[feat]/ Import and export Standard MIDI Files without losing musical timing",
+    "problem": "Existing MIDI compositions cannot be exchanged with the current pad-only note model.",
+    "evidence": [
+      "Audited baseline: https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L365 and https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/Cargo.toml. This capability is absent or materially narrower in the current command model, UI and dependency graph.",
+      "Benchmark/reference: https://www.ableton.com/en/live-manual/12/managing-files-and-sets/. Requirements below are proposed Omatainer behavior, not a claim of identical vendor implementation."
+    ],
+    "acceptance": [
+      "Import/export notes, velocity, channels, controllers, program changes, tempo and time signatures using declared supported SMF forms.",
+      "Offer track/channel mapping, merge and tempo-conflict choices.",
+      "Preserve tick-to-musical-time precision and report unsupported proprietary events.",
+      "Round-trip fixtures through an independent DAW and verify durations, meter changes and controller lanes."
+    ],
+    "validation": "Exercise the workflow through the shipped UI, persist/reopen applicable state, and test cancellation and failure paths. Record the actual supported platform and fixture results.",
+    "dependencies": [
+      "sys-project-save-open"
+    ]
+  },
+  {
+    "id": "sys-dawproject",
+    "kind": "feat",
+    "area": "project",
+    "priority": "P2",
+    "title": "[feat]/ Exchange editable sessions using an open DAW interchange format",
+    "problem": "Cross-DAW collaboration should not require flattening every musical decision to stereo audio.",
+    "evidence": [
+      "Audited baseline: https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L365 and https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/Cargo.toml. This capability is absent or materially narrower in the current command model, UI and dependency graph.",
+      "Benchmark/reference: https://github.com/bitwig/dawproject. Requirements below are proposed Omatainer behavior, not a claim of identical vendor implementation."
+    ],
+    "acceptance": [
+      "Implement documented DAWproject import/export for supported tracks, clips, automation, media and device state.",
+      "Publish a compatibility matrix and report unsupported constructs without deleting source data.",
+      "Bundle media safely and map plugin identities with user-confirmed substitutions.",
+      "Round-trip fixtures with an independent compatible host and compare timing and reference audio."
+    ],
+    "validation": "Exercise the workflow through the shipped UI, persist/reopen applicable state, and test cancellation and failure paths. Record the actual supported platform and fixture results.",
+    "dependencies": [
+      "sys-project-portability"
+    ]
+  },
+  {
+    "id": "sys-postproduction-interchange",
+    "kind": "feat",
+    "area": "project",
+    "priority": "P3",
+    "title": "[feat]/ Support post-production session exchange and broadcast media metadata",
+    "problem": "Scoring and post-production specialists need timecode-aware handoffs beyond music-only files; this exceeds the named core benchmarks.",
+    "evidence": [
+      "Audited baseline: https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L365 and https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/Cargo.toml. This capability is absent or materially narrower in the current command model, UI and dependency graph.",
+      "Professional-readiness requirement inferred from the combined producer/live-DJ brief; not asserted to be a bundled feature of either reference product."
+    ],
+    "acceptance": [
+      "Provide a documented AAF/OMF/BWF interoperability plan using available licensed/open implementations.",
+      "Preserve source offsets, timestamps, handles, fades and channel assignments for supported exchanges.",
+      "Export consolidated media and detailed reports for unsupported effects or edit constructs.",
+      "Validate representative handoffs with an independent post-production tool and retain the original project."
+    ],
+    "validation": "Exercise the workflow through the shipped UI, persist/reopen applicable state, and test cancellation and failure paths. Record the actual supported platform and fixture results.",
+    "dependencies": [
+      "sys-audio-export",
+      "sys-project-portability"
+    ]
+  },
+  {
+    "id": "sys-video-scoring",
+    "kind": "feat",
+    "area": "production",
+    "priority": "P2",
+    "title": "[feat]/ Score to video with frame-accurate playback and timecode",
+    "problem": "A professional producer may need music-to-picture work; the current timeline has no video path.",
+    "evidence": [
+      "Audited baseline: https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L365 and https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/Cargo.toml. This capability is absent or materially narrower in the current command model, UI and dependency graph.",
+      "Benchmark/reference: https://www.ableton.com/en/manual/working-with-video/. Requirements below are proposed Omatainer behavior, not a claim of identical vendor implementation."
+    ],
+    "acceptance": [
+      "Import supported video and expose a resizable/detachable preview tied to timeline transport.",
+      "Handle frame rates, timecode offset, scrubbing, locators and audio/video alignment explicitly.",
+      "Permit video-aware trim/placement and audio render against picture without drift.",
+      "Validate supported codecs/frame rates and long-duration sync; report decoder failures safely."
+    ],
+    "validation": "Exercise the workflow through the shipped UI, persist/reopen applicable state, and test cancellation and failure paths. Record the actual supported platform and fixture results.",
+    "dependencies": [
+      "sys-project-save-open"
+    ]
+  },
+  {
+    "id": "sys-surround-immersive",
+    "kind": "feat",
+    "area": "audio",
+    "priority": "P3",
+    "title": "[feat]/ Support multichannel and immersive production as an advanced workflow",
+    "problem": "Film, installation and immersive specialists need channel layouts beyond stereo; this is an extension beyond Live/Serato core parity.",
+    "evidence": [
+      "Audited baseline: https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L365 and https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/Cargo.toml. This capability is absent or materially narrower in the current command model, UI and dependency graph.",
+      "Professional-readiness requirement inferred from the combined producer/live-DJ brief; not asserted to be a bundled feature of either reference product."
+    ],
+    "acceptance": [
+      "Add explicit speaker-layout buses and panners with channel-order contracts.",
+      "Support downmix audition and export metadata for declared layouts.",
+      "Treat branded immersive/object formats as optional integrations requiring actual SDK/licensing availability.",
+      "Validate routing, downmix coefficients and export round trips with calibrated multichannel fixtures."
+    ],
+    "validation": "Exercise the workflow through the shipped UI, persist/reopen applicable state, and test cancellation and failure paths. Record the actual supported platform and fixture results.",
+    "dependencies": [
+      "sys-audio-io-routing",
+      "sys-audio-export"
+    ]
+  },
+  {
+    "id": "sys-score-notation",
+    "kind": "feat",
+    "area": "production",
+    "priority": "P3",
+    "title": "[feat]/ Offer notation and MusicXML exchange for composer collaboration",
+    "problem": "Some professional composers require score-readable handoff; this is broader than the named DAW/DJ baselines.",
+    "evidence": [
+      "Audited baseline: https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L365 and https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/Cargo.toml. This capability is absent or materially narrower in the current command model, UI and dependency graph.",
+      "Professional-readiness requirement inferred from the combined producer/live-DJ brief; not asserted to be a bundled feature of either reference product."
+    ],
+    "acceptance": [
+      "Provide a notation view linked to MIDI musical timing with clefs, meter, key, ties and readable quantization.",
+      "Import/export declared MusicXML coverage without rewriting the performed MIDI timing.",
+      "Offer printable/PDF parts and explicit handling of unsupported notation.",
+      "Round-trip representative scores with a dedicated notation tool and retain expression data in the project."
+    ],
+    "validation": "Exercise the workflow through the shipped UI, persist/reopen applicable state, and test cancellation and failure paths. Record the actual supported platform and fixture results.",
+    "dependencies": [
+      "sys-midi-file-interchange"
+    ]
+  },
+  {
+    "id": "sys-midi-port-routing",
+    "kind": "feat",
+    "area": "midi",
+    "priority": "P1",
+    "title": "[feat]/ Route MIDI by device, port, channel and message type",
+    "problem": "Generic MIDI currently targets one selected track and ignores channel ownership for playback.",
+    "evidence": [
+      "Audited baseline: https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L365 and https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/Cargo.toml. This capability is absent or materially narrower in the current command model, UI and dependency graph.",
+      "Benchmark/reference: https://www.ableton.com/en/live-manual/12/routing-and-i-o/. Requirements below are proposed Omatainer behavior, not a claim of identical vendor implementation."
+    ],
+    "acceptance": [
+      "Configure input/output ports and per-track channel/filter mappings independently of UI selection.",
+      "Route notes, CC, program/bank change, pressure, pitch bend and supported SysEx with observable activity.",
+      "Prevent MIDI feedback loops and provide all-notes-off/reset on route or device changes.",
+      "Validate simultaneous controllers and multitimbral hardware with captured MIDI traces."
+    ],
+    "validation": "Exercise the workflow through the shipped UI, persist/reopen applicable state, and test cancellation and failure paths. Record the actual supported platform and fixture results.",
+    "dependencies": [
+      "sys-preferences"
+    ]
+  },
+  {
+    "id": "sys-midi2",
+    "kind": "feat",
+    "area": "midi",
+    "priority": "P3",
+    "title": "[feat]/ Support negotiated MIDI 2.0 and high-resolution expression",
+    "problem": "High-resolution expressive hardware is a forward-looking professional capability, separate from baseline MIDI1/MPE.",
+    "evidence": [
+      "Audited baseline: https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L365 and https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/Cargo.toml. This capability is absent or materially narrower in the current command model, UI and dependency graph.",
+      "Professional-readiness requirement inferred from the combined producer/live-DJ brief; not asserted to be a bundled feature of either reference product."
+    ],
+    "acceptance": [
+      "Introduce UMP-capable event representation and negotiate endpoint capabilities.",
+      "Preserve per-note controllers and resolution where supported, with explicit MIDI1 conversion.",
+      "Persist expression data without silent truncation and isolate unsupported protocol messages.",
+      "Validate against official protocol fixtures and actual supported hardware before advertising compatibility."
+    ],
+    "validation": "Exercise the workflow through the shipped UI, persist/reopen applicable state, and test cancellation and failure paths. Record the actual supported platform and fixture results.",
+    "dependencies": [
+      "sys-midi-port-routing"
+    ]
+  },
+  {
+    "id": "sys-osc-automation-api",
+    "kind": "feat",
+    "area": "integration",
+    "priority": "P2",
+    "title": "[feat]/ Expose a versioned automation and remote-control API",
+    "problem": "Studios and stage systems need scriptable control beyond the small unauthenticated line protocol.",
+    "evidence": [
+      "Audited baseline: https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L365 and https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/Cargo.toml. This capability is absent or materially narrower in the current command model, UI and dependency graph.",
+      "Professional-readiness requirement inferred from the combined producer/live-DJ brief; not asserted to be a bundled feature of either reference product."
+    ],
+    "acceptance": [
+      "Define discoverable typed commands/state subscriptions with stable IDs, errors and transactional edits.",
+      "Provide local automation and optional OSC/network adapters with explicit access boundaries.",
+      "Support scheduled musical-time actions without placing network IO on the audio callback.",
+      "Exercise disconnect/reconnect, malformed input, permissions and concurrent-controller conflicts."
+    ],
+    "validation": "Exercise the workflow through the shipped UI, persist/reopen applicable state, and test cancellation and failure paths. Record the actual supported platform and fixture results.",
+    "dependencies": [
+      "sys-project-save-open"
+    ]
+  },
+  {
+    "id": "sys-performance-diagnostics",
+    "kind": "feat",
+    "area": "audio",
+    "priority": "P0",
+    "title": "[feat]/ Expose audio deadlines, xruns, latency and device-level performance diagnostics",
+    "problem": "Users need reliable evidence of headroom and failure causes rather than the partial current CPU fraction.",
+    "evidence": [
+      "Audited baseline: https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L365 and https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/Cargo.toml. This capability is absent or materially narrower in the current command model, UI and dependency graph.",
+      "Benchmark/reference: https://www.ableton.com/en/live-manual/12/computer-audio-resources-and-strategies/. Requirements below are proposed Omatainer behavior, not a claim of identical vendor implementation."
+    ],
+    "acceptance": [
+      "Measure callback wall time including commands/publication, deadline misses, xruns and queue pressure without blocking audio.",
+      "Show per-device/track load and distinguish render CPU, UI frame time and output latency.",
+      "Provide a bounded diagnostic capture with project/hardware/version metadata and redacted export.",
+      "Validate displayed metrics against independently instrumented fault and load fixtures."
+    ],
+    "validation": "Exercise the workflow through the shipped UI, persist/reopen applicable state, and test cancellation and failure paths. Record the actual supported platform and fixture results.",
+    "dependencies": []
+  },
+  {
+    "id": "sys-performance-regression",
+    "kind": "feat",
+    "area": "audio",
+    "priority": "P0",
+    "title": "[feat]/ Gate releases on production-scale audio and UI workloads",
+    "problem": "Thirteen small engine tests cannot establish professional workload readiness.",
+    "evidence": [
+      "Audited baseline: https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L365 and https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/Cargo.toml. This capability is absent or materially narrower in the current command model, UI and dependency graph.",
+      "Professional-readiness requirement inferred from the combined producer/live-DJ brief; not asserted to be a bundled feature of either reference product."
+    ],
+    "acceptance": [
+      "Define fixed reproducible sessions, large crates, dense automation, long recordings and multi-controller stress fixtures.",
+      "Enforce allocation/deadline/jitter and UI frame-time budgets on documented local hardware.",
+      "Cover full UI/MIDI/IPC entry paths and golden audio/state behavior rather than isolated helper success.",
+      "Publish benchmark conditions, results and unresolved limits with each release."
+    ],
+    "validation": "Exercise the workflow through the shipped UI, persist/reopen applicable state, and test cancellation and failure paths. Record the actual supported platform and fixture results.",
+    "dependencies": [
+      "sys-performance-diagnostics"
+    ]
+  },
+  {
+    "id": "sys-show-safety",
+    "kind": "feat",
+    "area": "dj",
+    "priority": "P0",
+    "title": "[feat]/ Provide a performance mode that protects the active show",
+    "problem": "Editing, device changes and background jobs must not surprise a live performer.",
+    "evidence": [
+      "Audited baseline: https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L365 and https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/Cargo.toml. This capability is absent or materially narrower in the current command model, UI and dependency graph.",
+      "Professional-readiness requirement inferred from the combined producer/live-DJ brief; not asserted to be a bundled feature of either reference product."
+    ],
+    "acceptance": [
+      "Offer a visible performance mode with protected playing-track loads, destructive edits and audio-device changes.",
+      "Prioritize audio and essential control events over scans, analysis, exports and updates.",
+      "Provide deliberate emergency all-notes-off, safe transport stop and controlled recovery actions.",
+      "Validate sustained sets with controller bursts, background work, device faults and accidental shortcuts."
+    ],
+    "validation": "Exercise the workflow through the shipped UI, persist/reopen applicable state, and test cancellation and failure paths. Record the actual supported platform and fixture results.",
+    "dependencies": [
+      "sys-performance-diagnostics"
+    ]
+  },
+  {
+    "id": "sys-seamless-project-switch",
+    "kind": "feat",
+    "area": "dj",
+    "priority": "P1",
+    "title": "[feat]/ Switch live sets without interrupting the outgoing mix",
+    "problem": "A combined DAW/DJ performer needs the next project ready before retiring the current one.",
+    "evidence": [
+      "Audited baseline: https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L365 and https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/Cargo.toml. This capability is absent or materially narrower in the current command model, UI and dependency graph.",
+      "Professional-readiness requirement inferred from the combined producer/live-DJ brief; not asserted to be a bundled feature of either reference product."
+    ],
+    "acceptance": [
+      "Preflight and preload the next session in bounded background resources.",
+      "Preserve active decks/tails and cue-monitor the next set until an explicit transition point.",
+      "Handle missing assets/plugins and failed preload without disturbing the current performance.",
+      "Measure worst-case transition gaps and resource peaks with large projects and hardware routes."
+    ],
+    "validation": "Exercise the workflow through the shipped UI, persist/reopen applicable state, and test cancellation and failure paths. Record the actual supported platform and fixture results.",
+    "dependencies": [
+      "sys-project-save-open",
+      "sys-show-safety"
+    ]
+  },
+  {
+    "id": "sys-background-job-scheduler",
+    "kind": "feat",
+    "area": "audio",
+    "priority": "P1",
+    "title": "[feat]/ Prioritize and cancel expensive background audio jobs",
+    "problem": "Analysis, plugin scanning, export and stem separation must coexist with live audio predictably.",
+    "evidence": [
+      "Audited baseline: https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L365 and https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/Cargo.toml. This capability is absent or materially narrower in the current command model, UI and dependency graph.",
+      "Professional-readiness requirement inferred from the combined producer/live-DJ brief; not asserted to be a bundled feature of either reference product."
+    ],
+    "acceptance": [
+      "Provide progress/cancellation and concurrency limits for decode, analysis, indexing, rendering and downloads.",
+      "Apply performance-mode CPU/IO priorities and memory budgets.",
+      "Deduplicate equivalent requests and discard stale results using stable request identities.",
+      "Exercise cancellation, supersession and resource exhaustion while meeting audio deadlines."
+    ],
+    "validation": "Exercise the workflow through the shipped UI, persist/reopen applicable state, and test cancellation and failure paths. Record the actual supported platform and fixture results.",
+    "dependencies": [
+      "sys-show-safety"
+    ]
+  },
+  {
+    "id": "sys-streaming-media-engine",
+    "kind": "feat",
+    "area": "audio",
+    "priority": "P1",
+    "title": "[feat]/ Stream long recordings and deck media with bounded caches",
+    "problem": "Whole-track in-memory decoding limits long DJ sets, recordings and large arrangements.",
+    "evidence": [
+      "Audited baseline: https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L365 and https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/Cargo.toml. This capability is absent or materially narrower in the current command model, UI and dependency graph.",
+      "Professional-readiness requirement inferred from the combined producer/live-DJ brief; not asserted to be a bundled feature of either reference product."
+    ],
+    "acceptance": [
+      "Introduce asynchronous seekable decode with bounded read-ahead and waveform/analysis caches.",
+      "Handle scratched/reverse/looped playback without synchronous file IO in the callback.",
+      "Expose cache pressure and handle missing/slow removable storage predictably.",
+      "Test multi-hour high-rate multichannel files and concurrent decks/recording under constrained RAM."
+    ],
+    "validation": "Exercise the workflow through the shipped UI, persist/reopen applicable state, and test cancellation and failure paths. Record the actual supported platform and fixture results.",
+    "dependencies": [
+      "sys-background-job-scheduler"
+    ]
+  },
+  {
+    "id": "sys-multicore-rendering",
+    "kind": "feat",
+    "area": "audio",
+    "priority": "P2",
+    "title": "[feat]/ Schedule independent tracks across cores with bounded real-time execution",
+    "problem": "Professional projects need scalable DSP scheduling rather than unlimited work on one callback thread.",
+    "evidence": [
+      "Audited baseline: https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L365 and https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/Cargo.toml. This capability is absent or materially narrower in the current command model, UI and dependency graph.",
+      "Benchmark/reference: https://www.ableton.com/en/live-manual/12/computer-audio-resources-and-strategies/. Requirements below are proposed Omatainer behavior, not a claim of identical vendor implementation."
+    ],
+    "acceptance": [
+      "Build a dependency-aware graph with safe parallelism and explicit critical paths.",
+      "Keep allocations, locks and unbounded waits off real-time workers.",
+      "Coordinate plugin worker extensions and avoid oversubscription.",
+      "Compare deterministic output and tail latency across dense projects and core counts."
+    ],
+    "validation": "Exercise the workflow through the shipped UI, persist/reopen applicable state, and test cancellation and failure paths. Record the actual supported platform and fixture results.",
+    "dependencies": [
+      "sys-audio-io-routing",
+      "sys-performance-diagnostics"
+    ]
+  },
+  {
+    "id": "sys-accessible-ui",
+    "kind": "feat",
+    "area": "ui",
+    "priority": "P1",
+    "title": "[feat]/ Expose complete keyboard and assistive-technology operation",
+    "problem": "Custom-painted controls currently lack a demonstrated screen-reader and keyboard-only workflow.",
+    "evidence": [
+      "Audited baseline: https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L365 and https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/Cargo.toml. This capability is absent or materially narrower in the current command model, UI and dependency graph.",
+      "Benchmark/reference: https://www.ableton.com/en/live-manual/12/accessibility-options-in-live/. Requirements below are proposed Omatainer behavior, not a claim of identical vendor implementation."
+    ],
+    "acceptance": [
+      "Expose semantic names, roles, values, actions and focus for every editor and live control.",
+      "Provide keyboard traversal, focus visibility, editable numeric values and discoverable shortcuts.",
+      "Support screen readers through actual Linux accessibility APIs with user-tested workflows.",
+      "Complete project creation/edit/save and deck preparation/performance using keyboard and assistive tools."
+    ],
+    "validation": "Exercise the workflow through the shipped UI, persist/reopen applicable state, and test cancellation and failure paths. Record the actual supported platform and fixture results.",
+    "dependencies": []
+  },
+  {
+    "id": "sys-display-accessibility",
+    "kind": "feat",
+    "area": "ui",
+    "priority": "P1",
+    "title": "[feat]/ Provide scalable, high-contrast and color-independent layouts",
+    "problem": "Professional use spans dark booths, daylight stages, visual impairments and high-DPI displays.",
+    "evidence": [
+      "Audited baseline: https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L365 and https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/Cargo.toml. This capability is absent or materially narrower in the current command model, UI and dependency graph.",
+      "Benchmark/reference: https://www.ableton.com/en/live-manual/12/accessibility-options-in-live/. Requirements below are proposed Omatainer behavior, not a claim of identical vendor implementation."
+    ],
+    "acceptance": [
+      "Offer adjustable UI/text scale, contrast themes and color-independent state cues.",
+      "Maintain hit targets and readability across small laptops, large monitors and scaling factors.",
+      "Allow reduced motion and configurable waveform/level contrast without changing audio.",
+      "Validate reference layouts and common color-vision modes without clipped controls."
+    ],
+    "validation": "Exercise the workflow through the shipped UI, persist/reopen applicable state, and test cancellation and failure paths. Record the actual supported platform and fixture results.",
+    "dependencies": [
+      "sys-preferences"
+    ]
+  },
+  {
+    "id": "sys-workspace-layouts",
+    "kind": "feat",
+    "area": "ui",
+    "priority": "P2",
+    "title": "[feat]/ Save configurable workspaces and multiple-window layouts",
+    "problem": "A fixed all-in-one layout cannot serve editing, mixing and performance equally well.",
+    "evidence": [
+      "Audited baseline: https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L365 and https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/Cargo.toml. This capability is absent or materially narrower in the current command model, UI and dependency graph.",
+      "Professional-readiness requirement inferred from the combined producer/live-DJ brief; not asserted to be a bundled feature of either reference product."
+    ],
+    "acceptance": [
+      "Resize/hide/rearrange panels and recall named production, mix and DJ workspaces.",
+      "Support secondary windows/monitors with sensible focus and controller targeting.",
+      "Restore layouts safely when a monitor disappears or DPI changes.",
+      "Keep transport and critical warnings visible in every supported workspace."
+    ],
+    "validation": "Exercise the workflow through the shipped UI, persist/reopen applicable state, and test cancellation and failure paths. Record the actual supported platform and fixture results.",
+    "dependencies": [
+      "sys-preferences"
+    ]
+  },
+  {
+    "id": "sys-shortcut-command-search",
+    "kind": "feat",
+    "area": "ui",
+    "priority": "P2",
+    "title": "[feat]/ Customize shortcuts and find commands through a command palette",
+    "problem": "A mature tool needs discoverable, remappable actions without text-entry collisions.",
+    "evidence": [
+      "Audited baseline: https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L365 and https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/Cargo.toml. This capability is absent or materially narrower in the current command model, UI and dependency graph.",
+      "Professional-readiness requirement inferred from the combined producer/live-DJ brief; not asserted to be a bundled feature of either reference product."
+    ],
+    "acceptance": [
+      "Expose a searchable command registry with descriptions and current bindings.",
+      "Edit/export bindings, detect collisions and distinguish text, editor and performance contexts.",
+      "Provide resettable defaults and keyboard-layout-aware display.",
+      "Exercise keyboard-only workflows and verify search/text entry never triggers musical commands."
+    ],
+    "validation": "Exercise the workflow through the shipped UI, persist/reopen applicable state, and test cancellation and failure paths. Record the actual supported platform and fixture results.",
+    "dependencies": [
+      "sys-preferences"
+    ]
+  },
+  {
+    "id": "sys-touch-pen-input",
+    "kind": "feat",
+    "area": "ui",
+    "priority": "P2",
+    "title": "[feat]/ Support touch, pen and simultaneous performance gestures",
+    "problem": "Performers may use touchscreens and producers may use pen displays alongside controllers.",
+    "evidence": [
+      "Audited baseline: https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L365 and https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/Cargo.toml. This capability is absent or materially narrower in the current command model, UI and dependency graph.",
+      "Professional-readiness requirement inferred from the combined producer/live-DJ brief; not asserted to be a bundled feature of either reference product."
+    ],
+    "acceptance": [
+      "Implement independent pointer ownership for multiple pads/faders and reliable release/cancel handling.",
+      "Support pen pressure only where meaningful, with equivalent mouse/keyboard controls.",
+      "Provide scalable hit targets and prevent gesture conflicts with scrolling/editing.",
+      "Validate multi-touch hold/release and focus/device loss on actual supported hardware."
+    ],
+    "validation": "Exercise the workflow through the shipped UI, persist/reopen applicable state, and test cancellation and failure paths. Record the actual supported platform and fixture results.",
+    "dependencies": [
+      "sys-accessible-ui"
+    ]
+  },
+  {
+    "id": "sys-localization",
+    "kind": "feat",
+    "area": "ui",
+    "priority": "P2",
+    "title": "[feat]/ Localize the interface and preserve international file and metadata handling",
+    "problem": "Professional libraries and collaborators use many languages and keyboard layouts.",
+    "evidence": [
+      "Audited baseline: https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L365 and https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/Cargo.toml. This capability is absent or materially narrower in the current command model, UI and dependency graph.",
+      "Professional-readiness requirement inferred from the combined producer/live-DJ brief; not asserted to be a bundled feature of either reference product."
+    ],
+    "acceptance": [
+      "Externalize UI text and format locale-sensitive dates/numbers without changing musical values.",
+      "Preserve Unicode paths, tags, project names and search normalization across import/export.",
+      "Support text expansion and documented bidirectional-text behavior.",
+      "Test representative translated layouts, combining characters and non-Latin removable-drive paths."
+    ],
+    "validation": "Exercise the workflow through the shipped UI, persist/reopen applicable state, and test cancellation and failure paths. Record the actual supported platform and fixture results.",
+    "dependencies": [
+      "sys-project-save-open"
+    ]
+  },
+  {
+    "id": "sys-tutorials-help",
+    "kind": "feat",
+    "area": "ui",
+    "priority": "P1",
+    "title": "[feat]/ Provide contextual help, interactive lessons and complete workflow documentation",
+    "problem": "A cheat sheet and optimistic README do not teach a full production/performance environment.",
+    "evidence": [
+      "Audited baseline: https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L365 and https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/Cargo.toml. This capability is absent or materially narrower in the current command model, UI and dependency graph.",
+      "Benchmark/reference: https://help.ableton.com/hc/en-us/articles/26963870210076-What-s-new-in-Live-12-4. Requirements below are proposed Omatainer behavior, not a claim of identical vendor implementation."
+    ],
+    "acceptance": [
+      "Provide tooltips/parameter units and task-based contextual help for every shipped control.",
+      "Include guided audio setup, recording, editing, mixing, DJ preparation, controller and emergency workflows.",
+      "Keep offline manuals, examples and shortcut references synchronized with implemented features.",
+      "Validate lessons against fresh installs and accessibility workflows; do not teach unimplemented actions."
+    ],
+    "validation": "Exercise the workflow through the shipped UI, persist/reopen applicable state, and test cancellation and failure paths. Record the actual supported platform and fixture results.",
+    "dependencies": []
+  },
+  {
+    "id": "sys-diagnostic-reports",
+    "kind": "feat",
+    "area": "integration",
+    "priority": "P1",
+    "title": "[feat]/ Export actionable support bundles and recovery-safe crash diagnostics",
+    "problem": "Failures need reproducible evidence without exposing private music or credentials.",
+    "evidence": [
+      "Audited baseline: https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L365 and https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/Cargo.toml. This capability is absent or materially narrower in the current command model, UI and dependency graph.",
+      "Benchmark/reference: https://help.ableton.com/hc/en-us/articles/209773265-Troubleshooting-a-crash. Requirements below are proposed Omatainer behavior, not a claim of identical vendor implementation."
+    ],
+    "acceptance": [
+      "Collect bounded logs, engine/backend versions, routing and performance counters with explicit redaction.",
+      "Allow users to inspect contents and opt in before any upload.",
+      "Associate crash reports with recoverable projects and safe-mode launch options.",
+      "Validate reports from simulated audio, plugin, parser and storage failures without attaching original media by default."
+    ],
+    "validation": "Exercise the workflow through the shipped UI, persist/reopen applicable state, and test cancellation and failure paths. Record the actual supported platform and fixture results.",
+    "dependencies": [
+      "sys-performance-diagnostics"
+    ]
+  },
+  {
+    "id": "sys-release-updates",
+    "kind": "feat",
+    "area": "integration",
+    "priority": "P1",
+    "title": "[feat]/ Deliver verified releases with safe updates and rollback",
+    "problem": "Professionals require repeatable installation and must not receive disruptive updates during a show.",
+    "evidence": [
+      "Audited baseline: https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L365 and https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/Cargo.toml. This capability is absent or materially narrower in the current command model, UI and dependency graph.",
+      "Professional-readiness requirement inferred from the combined producer/live-DJ brief; not asserted to be a bundled feature of either reference product."
+    ],
+    "acceptance": [
+      "Publish versioned packages/checksums, supported system requirements and migration notes.",
+      "Install/update atomically with rollback and defer all updates in performance mode.",
+      "Preserve projects, configuration and plugin compatibility across supported upgrades.",
+      "Exercise clean install, upgrade, failed update and rollback locally on supported systems."
+    ],
+    "validation": "Exercise the workflow through the shipped UI, persist/reopen applicable state, and test cancellation and failure paths. Record the actual supported platform and fixture results.",
+    "dependencies": [
+      "sys-project-save-open",
+      "sys-show-safety"
+    ]
+  },
+  {
+    "id": "sys-offline-operation",
+    "kind": "feat",
+    "area": "integration",
+    "priority": "P1",
+    "title": "[feat]/ Preserve and qualify offline operation as optional online features arrive",
+    "problem": "The current demo and local-file application already run locally. Preserve that behavior as project persistence, plugin hosting, providers and optional cloud transfer are added; the missing deliverable is an explicit tested offline-support contract, not removal of a present login gate.",
+    "evidence": [
+      "Current local baseline starts directly without network authentication: https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/main.rs#L13-L37 . This issue protects and qualifies existing local behavior across planned integrations.",
+      "Professional-readiness requirement inferred from the combined producer/live-DJ brief; not asserted to be a bundled feature of either reference product."
+    ],
+    "acceptance": [
+      "Make local media, projects, plugins and documentation usable without a cloud session.",
+      "Isolate optional network integrations and expose their offline/cache restrictions honestly.",
+      "Keep credentials in an appropriate secret store and never embed them in projects/support bundles.",
+      "Validate cold startup and a full performance with network access disabled."
+    ],
+    "validation": "Exercise the workflow through the shipped UI, persist/reopen applicable state, and test cancellation and failure paths. Record the actual supported platform and fixture results.",
+    "dependencies": [
+      "sys-project-save-open"
+    ]
+  },
+  {
+    "id": "sys-collaboration-handoff",
+    "kind": "feat",
+    "area": "project",
+    "priority": "P2",
+    "title": "[feat]/ Create reviewable collaboration packages with mix notes and references",
+    "problem": "Collaborators need a common revision, reference mixes and unambiguous requested changes.",
+    "evidence": [
+      "Audited baseline: https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L365 and https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/Cargo.toml. This capability is absent or materially narrower in the current command model, UI and dependency graph.",
+      "Professional-readiness requirement inferred from the combined producer/live-DJ brief; not asserted to be a bundled feature of either reference product."
+    ],
+    "acceptance": [
+      "Package a versioned session or aligned stems with notes, locators and media manifest.",
+      "Attach time-based review notes and resolve them without changing audio unintentionally.",
+      "Import collaborator changes into a copy with conflict preview.",
+      "Verify offline handoff between clean user accounts and preserve authorship/reference metadata."
+    ],
+    "validation": "Exercise the workflow through the shipped UI, persist/reopen applicable state, and test cancellation and failure paths. Record the actual supported platform and fixture results.",
+    "dependencies": [
+      "sys-project-portability",
+      "sys-batch-stem-export"
+    ]
+  },
+  {
+    "id": "sys-optional-cloud-sync",
+    "kind": "feat",
+    "area": "project",
+    "priority": "P3",
+    "title": "[feat]/ Offer optional cross-device project transfer with explicit conflict handling",
+    "problem": "Mobile sketch-to-studio workflows are part of the current ecosystem; cloud must remain optional.",
+    "evidence": [
+      "Audited baseline: https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L365 and https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/Cargo.toml. This capability is absent or materially narrower in the current command model, UI and dependency graph.",
+      "Benchmark/reference: https://help.ableton.com/hc/en-us/articles/7355427492380-Ableton-Cloud-FAQ. Requirements below are proposed Omatainer behavior, not a claim of identical vendor implementation."
+    ],
+    "acceptance": [
+      "Sync or transfer selected projects through an explicitly configured provider with progress and resumable failure handling.",
+      "Detect conflicting edits and preserve both revisions instead of silently merging audio state.",
+      "Provide local export/import equivalent and clear storage/account limits.",
+      "Do not claim Ableton Cloud interoperability without an authorized supported path; validate the implemented provider end to end."
+    ],
+    "validation": "Exercise the workflow through the shipped UI, persist/reopen applicable state, and test cancellation and failure paths. Record the actual supported platform and fixture results.",
+    "dependencies": [
+      "sys-project-portability",
+      "sys-project-versions"
+    ]
+  },
+  {
+    "id": "sys-cross-platform-handoff",
+    "kind": "feat",
+    "area": "integration",
+    "priority": "P3",
+    "title": "[feat]/ Support professional cross-platform collaboration and document native limits",
+    "problem": "Collaborators may use macOS or Windows while Omatainer is Omarchy-native; platform scope must be explicit.",
+    "evidence": [
+      "Audited baseline: https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L365 and https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/Cargo.toml. This capability is absent or materially narrower in the current command model, UI and dependency graph.",
+      "Professional-readiness requirement inferred from the combined producer/live-DJ brief; not asserted to be a bundled feature of either reference product."
+    ],
+    "acceptance": [
+      "Define supported native platforms and portable audio/MIDI/project handoff guarantees.",
+      "If providing desktop ports, implement platform audio/MIDI, file dialogs, plugin UIs and packaging rather than only compiling.",
+      "Handle filesystem case sensitivity, missing platform plugins and channel naming in shared projects.",
+      "Validate supported platform handoffs with actual files and playback; label unavailable ports honestly."
+    ],
+    "validation": "Exercise the workflow through the shipped UI, persist/reopen applicable state, and test cancellation and failure paths. Record the actual supported platform and fixture results.",
+    "dependencies": [
+      "sys-project-portability",
+      "sys-dawproject"
+    ]
+  },
+  {
+    "id": "sys-content-license-manifest",
+    "kind": "feat",
+    "area": "project",
+    "priority": "P1",
+    "title": "[feat]/ Track factory content, model and integration licensing in shipped assets",
+    "problem": "Professional users must know which factory sounds and optional models/integrations can be distributed and used.",
+    "evidence": [
+      "Audited baseline: https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L365 and https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/Cargo.toml. This capability is absent or materially narrower in the current command model, UI and dependency graph.",
+      "Professional-readiness requirement inferred from the combined producer/live-DJ brief; not asserted to be a bundled feature of either reference product."
+    ],
+    "acceptance": [
+      "Ship a machine-readable provenance/license manifest for samples, presets, impulse responses, ML models and SDK components.",
+      "Expose clear commercial-use and redistribution information supplied by licensors.",
+      "Exclude unavailable proprietary reference-product assets and provide original/licensed equivalents.",
+      "Validate package contents against the manifest and retain source/license records per release."
+    ],
+    "validation": "Exercise the workflow through the shipped UI, persist/reopen applicable state, and test cancellation and failure paths. Record the actual supported platform and fixture results.",
+    "dependencies": []
+  },
+  {
+    "id": "sys-capability-regression",
+    "kind": "feat",
+    "area": "integration",
+    "priority": "P1",
+    "title": "[feat]/ Maintain a versioned professional capability and compatibility matrix",
+    "problem": "The current feature claims outrun reachable workflows; parity must be evidenced continuously.",
+    "evidence": [
+      "Audited baseline: https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/src/engine/mod.rs#L365 and https://github.com/michaelmonetized/omatainer/blob/cae546c7bc840ec1a643e4befe18f91e86d0e4c7/Cargo.toml. This capability is absent or materially narrower in the current command model, UI and dependency graph.",
+      "Professional-readiness requirement inferred from the combined producer/live-DJ brief; not asserted to be a bundled feature of either reference product."
+    ],
+    "acceptance": [
+      "Track each advertised capability to working UI/MIDI/CLI paths and an acceptance fixture.",
+      "Record tested audio devices/controllers/plugins/platforms with exact versions and known limits.",
+      "Review stable Ableton/Serato release changes separately from betas/paid expansions.",
+      "Generate release documentation from verified status and keep unimplemented work explicitly planned."
+    ],
+    "validation": "Exercise the workflow through the shipped UI, persist/reopen applicable state, and test cancellation and failure paths. Record the actual supported platform and fixture results.",
+    "dependencies": [
+      "sys-performance-regression"
+    ]
+  }
+]

@@ -1,0 +1,9 @@
+builtin load builtin:drums: engine command count=0 decoder job=Some((0, "builtin:drums"))
+builtin load builtin:harmony: engine command count=0 decoder job=Some((0, "builtin:harmony"))
+search focus confirmed=true
+type q in focused search: text="q" engine commands=[DeckPlay { deck: 0 }]
+scene2 chain after adding only to scene1: fx_view=101 fx_slots=1
+compose permanent: initial_notes=1 arm_after_Stop=true selected_after_play=(3, 0) added_notes_target=4
+headless crate count=100 warm_frames=10 median_cpu_ms=0.170 min_cpu_ms=0.167 max_cpu_ms=0.175
+headless crate count=10000 warm_frames=10 median_cpu_ms=22.074 min_cpu_ms=19.865 max_cpu_ms=29.138
+headless crate count=50000 warm_frames=10 median_cpu_ms=116.694 min_cpu_ms=111.969 max_cpu_ms=118.972

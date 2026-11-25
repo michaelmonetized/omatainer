@@ -1,0 +1,5 @@
+QUANT first frame: beat=0.250043, scheduled=1, active=[(60, 1)]
+QUANT one-shot after scheduled start: beat=1.111154, playing_clip=None, active=[(60, 2)]
+NOTE OFF after changing selection: old_track=[(60, 3)], new_track=[]
+SCENE OFF after 2 s: playing_clip=None, active=[(64, 3)]
+SNAPSHOT lock: render blocked=true, total_ms=80.105, simulated_block_budget_ms=10.667

@@ -1,0 +1,1021 @@
+   Compiling omatainer v0.1.0 (/tmp/omatainer-integration-audit-2jds_41w)
+warning: field `audio` is never read
+  --> src/engine/mod.rs:50:9
+   |
+43 | pub struct Clip {
+   |            ---- field in this struct
+...
+50 |     pub audio: Option<Arc<Sample>>,
+   |         ^^^^^
+   |
+   = note: `Clip` has derived impls for the traits `Debug` and `Clone`, but these are intentionally ignored during dead code analysis
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: field `filter_morph` is never read
+   --> src/engine/mod.rs:119:9
+    |
+104 | pub struct DeckRt {
+    |            ------ field in this struct
+...
+119 |     pub filter_morph: f32, // 0.5 = bypass-ish, 0 LP 1 HP. 0.5 + offset
+    |         ^^^^^^^^^^^^
+    |
+    = note: `DeckRt` has derived impls for the traits `Debug` and `Clone`, but these are intentionally ignored during dead code analysis
+
+warning: field `clock_accum` is never read
+   --> src/engine/mod.rs:232:5
+    |
+207 | pub struct RtEngine {
+    |            -------- field in this struct
+...
+232 |     clock_accum: f64,
+    |     ^^^^^^^^^^^
+
+warning: field `ch` is never read
+   --> src/engine/mod.rs:409:18
+    |
+409 |     LiveNoteOn { ch: u8, note: u8, vel: u8 },
+    |     ----------   ^^
+    |     |
+    |     field in this variant
+    |
+    = note: `Command` has derived impls for the traits `Debug` and `Clone`, but these are intentionally ignored during dead code analysis
+
+warning: field `ch` is never read
+   --> src/engine/mod.rs:410:19
+    |
+410 |     LiveNoteOff { ch: u8, note: u8 },
+    |     -----------   ^^
+    |     |
+    |     field in this variant
+    |
+    = note: `Command` has derived impls for the traits `Debug` and `Clone`, but these are intentionally ignored during dead code analysis
+
+warning: fields `param`, `ch`, `d1`, `d2`, and `status` are never read
+   --> src/engine/mod.rs:416:20
+    |
+416 |     LearnCapture { param: String, ch: u8, d1: u8, d2: u8, status: u8 },
+    |     ------------   ^^^^^          ^^      ^^      ^^      ^^^^^^
+    |     |
+    |     fields in this variant
+    |
+    = note: `Command` has derived impls for the traits `Debug` and `Clone`, but these are intentionally ignored during dead code analysis
+
+warning: multiple variants are never constructed
+   --> src/engine/mod.rs:372:5
+    |
+366 | pub enum Command {
+    |          ------- variants in this enum
+...
+372 |     SetBpm(f32),
+    |     ^^^^^^
+...
+375 |     StopTrack { track: u8 },
+    |     ^^^^^^^^^
+...
+401 |     TrackPan { track: u8, value: f32 },
+    |     ^^^^^^^^
+...
+404 |     Arm { track: u8 },
+    |     ^^^
+...
+407 |     SelectDeck(usize),
+    |     ^^^^^^^^^^
+408 |     SetView(View),
+    |     ^^^^^^^
+...
+411 |     SetNotes { track: u8, scene: u8, notes: Vec<MidiNote> },
+    |     ^^^^^^^^
+...
+414 |     Quant(f32),
+    |     ^^^^^
+415 |     Metronome,
+    |     ^^^^^^^^^
+416 |     LearnCapture { param: String, ch: u8, d1: u8, d2: u8, status: u8 },
+417 |     NudgeBpm(f32),
+    |     ^^^^^^^^
+    |
+    = note: `Command` has derived impls for the traits `Debug` and `Clone`, but these are intentionally ignored during dead code analysis
+
+warning: methods `notes` and `sr` are never used
+    --> src/engine/mod.rs:1978:12
+     |
+1941 | impl Engine {
+     | ----------- methods in this implementation
+...
+1978 |     pub fn notes(&self, track: usize, scene: usize) -> Vec<MidiNote> {
+     |            ^^^^^
+...
+1988 |     pub fn sr(&self) -> u32 {
+     |            ^^
+
+warning: field `sr` is never read
+ --> src/engine/audio.rs:9:9
+  |
+8 | pub struct AudioOut {
+  |            -------- field in this struct
+9 |     pub sr: u32,
+  |         ^^
+
+warning: field `cutoff` is never read
+   --> src/engine/dsp.rs:216:9
+    |
+210 | pub struct Voice {
+    |            ----- field in this struct
+...
+216 |     pub cutoff: f32,
+    |         ^^^^^^
+    |
+    = note: `Voice` has derived impls for the traits `Debug` and `Clone`, but these are intentionally ignored during dead code analysis
+
+warning: field `kind` is never read
+   --> src/engine/dsp.rs:269:9
+    |
+266 | pub struct Poly {
+    |            ---- field in this struct
+...
+269 |     pub kind: u8,
+    |         ^^^^
+    |
+    = note: `Poly` has derived impls for the traits `Debug` and `Clone`, but these are intentionally ignored during dead code analysis
+
+warning: field `path` is never read
+   --> src/engine/dsp.rs:325:9
+    |
+318 | pub struct Sample {
+    |            ------ field in this struct
+...
+325 |     pub path: String,
+    |         ^^^^
+    |
+    = note: `Sample` has derived impls for the traits `Debug` and `Clone`, but these are intentionally ignored during dead code analysis
+
+warning: function `db` is never used
+   --> src/engine/dsp.rs:362:8
+    |
+362 | pub fn db(g: f32) -> f32 {
+    |        ^^
+
+warning: function `cubic` is never used
+   --> src/engine/dsp.rs:379:8
+    |
+379 | pub fn cubic(p: f32) -> f32 {
+    |        ^^^^^
+
+warning: function `midi_to_hz` is never used
+   --> src/engine/dsp.rs:387:8
+    |
+387 | pub fn midi_to_hz(n: u8) -> f32 {
+    |        ^^^^^^^^^^
+
+warning: multiple variants are never constructed
+  --> src/engine/midi.rs:49:5
+   |
+28 | pub enum Action {
+   |          ------ variants in this enum
+...
+49 |     CueMix,
+   |     ^^^^^^
+50 |     Browse,
+   |     ^^^^^^
+51 |     LoadA,
+   |     ^^^^^
+52 |     LoadB,
+   |     ^^^^^
+...
+57 |     Play,
+   |     ^^^^
+58 |     Stop,
+   |     ^^^^
+59 |     Record,
+   |     ^^^^^^
+60 |     Tap,
+   |     ^^^
+   |
+   = note: `Action` has derived impls for the traits `Debug` and `Clone`, but these are intentionally ignored during dead code analysis
+
+warning: fields `outs`, `log`, `learn`, and `shift` are never read
+  --> src/engine/midi.rs:81:5
+   |
+79 | pub struct MidiHub {
+   |            ------- fields in this struct
+80 |     _ins: Vec<MidiInputConnection<()>>,
+81 |     outs: Arc<Mutex<Vec<MidiOutputConnection>>>,
+   |     ^^^^
+82 |     pub devices: Arc<Mutex<Vec<MidiDevice>>>,
+83 |     pub log: Arc<Mutex<Vec<String>>>,
+   |         ^^^
+84 |     pub learn: Arc<Mutex<Option<String>>>,
+   |         ^^^^^
+85 |     shift: Arc<Mutex<[bool; 4]>>,
+   |     ^^^^^
+
+warning: methods `send_clock_tick`, `send_clock_start`, and `note_led` are never used
+   --> src/engine/midi.rs:177:12
+    |
+ 88 | impl MidiHub {
+    | ------------ methods in this implementation
+...
+177 |     pub fn send_clock_tick(&self) {
+    |            ^^^^^^^^^^^^^^^
+...
+183 |     pub fn send_clock_start(&self, start: bool) {
+    |            ^^^^^^^^^^^^^^^^
+...
+189 |     pub fn note_led(&self, ch: u8, note: u8, vel: u8) {
+    |            ^^^^^^^^
+
+warning: function `config_dir` is never used
+   --> src/theme.rs:260:8
+    |
+260 | pub fn config_dir() -> PathBuf {
+    |        ^^^^^^^^^^
+
+warning: `omatainer` (bin "omatainer" test) generated 19 warnings
+    Finished `test` profile [optimized + debuginfo] target(s) in 2.67s
+     Running unittests src/main.rs (target/debug/deps/omatainer-e3d5886f1baf8b8c)
+
+running 8 tests
+test adversarial_ipc_audit::audit_slow_live_socket_is_unlinked_as_stale ... Live listener with >200ms response: running=false, socket_path_exists=false
+ok
+test adversarial_ipc_audit::audit_unknown_and_invalid_requests_report_success ... IPC payload "not JSON at all": ok=true
+IPC payload "{\"op\":\"definitelyNotAnOperation\"}": ok=true
+IPC payload "status": ok=true
+ok
+test adversarial_scene_audit::audit_cli_scene_nine_panics_in_engine ... 
+thread 'adversarial_scene_audit::audit_cli_scene_nine_panics_in_engine' (137366) panicked at src/engine/mod.rs:1060:24:
+index out of bounds: the len is 8 but the index is 8
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+ctl scene 9 -> zero-based index8 -> engine panicked=true
+ok
+test engine::midi::adversarial_midi_audit::audit_apc40_first_fader_fans_out_to_every_track ... APC40 B0 07 7F changes tracks [0, 0, 1, 2, 3, 4, 5, 6, 7]
+ok
+test engine::midi::adversarial_midi_audit::audit_learning_swallows_every_message_without_finishing ... Forced learn mode converts CC, NoteOn and NoteOff into 3 discarded LearnCapture commands; stays enabled
+ok
+test engine::midi::adversarial_midi_audit::audit_one_byte_clock_and_transport_are_discarded ... MIDI realtime 0xfa: 0 commands
+MIDI realtime 0xfc: 0 commands
+MIDI realtime 0xf8: 0 commands
+ok
+test engine::midi::adversarial_midi_audit::audit_pioneer_load_reaches_empty_engine_arm ... Pioneer load button emits DeckLoadSelected; engine keeps same audio allocation
+ok
+test engine::midi::adversarial_midi_audit::audit_relative_jog_decoder_has_no_reverse_value ... All 128 relative jog bytes: min=0 max=22.05 negative_count=0
+ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 13 filtered out; finished in 0.67s
+
+   Compiling omatainer v0.1.0 (/tmp/omatainer-integration-audit-2jds_41w)
+warning: field `audio` is never read
+  --> src/engine/mod.rs:50:9
+   |
+43 | pub struct Clip {
+   |            ---- field in this struct
+...
+50 |     pub audio: Option<Arc<Sample>>,
+   |         ^^^^^
+   |
+   = note: `Clip` has derived impls for the traits `Debug` and `Clone`, but these are intentionally ignored during dead code analysis
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: field `last_beat` is never read
+  --> src/engine/mod.rs:73:9
+   |
+70 | pub struct PlayingClip {
+   |            ----------- field in this struct
+...
+73 |     pub last_beat: f64,
+   |         ^^^^^^^^^
+   |
+   = note: `PlayingClip` has derived impls for the traits `Debug` and `Clone`, but these are intentionally ignored during dead code analysis
+
+warning: fields `eq`, `drum_samples`, and `arp_note` are never read
+  --> src/engine/mod.rs:89:9
+   |
+78 | pub struct TrackRt {
+   |            ------- fields in this struct
+...
+89 |     pub eq: ThreeBand,
+   |         ^^
+90 |     pub meter: f32,
+91 |     pub drum_samples: [Arc<Sample>; 6],
+   |         ^^^^^^^^^^^^
+...
+94 |     pub arp_note: Option<u8>,
+   |         ^^^^^^^^
+   |
+   = note: `TrackRt` has derived impls for the traits `Debug` and `Clone`, but these are intentionally ignored during dead code analysis
+
+warning: fields `filter` and `filter_morph` are never read
+   --> src/engine/mod.rs:118:9
+    |
+104 | pub struct DeckRt {
+    |            ------ fields in this struct
+...
+118 |     pub filter: Svf,
+    |         ^^^^^^
+119 |     pub filter_morph: f32, // 0.5 = bypass-ish, 0 LP 1 HP. 0.5 + offset
+    |         ^^^^^^^^^^^^
+    |
+    = note: `DeckRt` has derived impls for the traits `Debug` and `Clone`, but these are intentionally ignored during dead code analysis
+
+warning: method `play_rate` is never used
+   --> src/engine/mod.rs:191:8
+    |
+140 | impl DeckRt {
+    | ----------- method in this implementation
+...
+191 |     fn play_rate(&self) -> f32 {
+    |        ^^^^^^^^^
+
+warning: multiple fields are never read
+   --> src/engine/mod.rs:216:9
+    |
+207 | pub struct RtEngine {
+    |            -------- fields in this struct
+...
+216 |     pub xfader_curve: f32,
+    |         ^^^^^^^^^^^^
+...
+221 |     pub delay: Delay,
+    |         ^^^^^
+222 |     pub reverb: Reverb,
+    |         ^^^^^^
+...
+230 |     pub cmd_rx: crossbeam_channel::Receiver<Command>,
+    |         ^^^^^^
+231 |     pub snap: Arc<Mutex<Snapshot>>,
+232 |     clock_accum: f64,
+    |     ^^^^^^^^^^^
+233 |     cpu_acc: f32,
+234 |     frames_done: u64,
+    |     ^^^^^^^^^^^
+235 |     metronome: bool,
+236 |     metro_phase: u8,
+    |     ^^^^^^^^^^^
+237 |     scratch: Vec<f32>,
+    |     ^^^^^^^
+
+warning: field `peaks` is never read
+   --> src/engine/mod.rs:271:9
+    |
+253 | pub struct DeckSnap {
+    |            -------- field in this struct
+...
+271 |     pub peaks: std::sync::Arc<Vec<[f32; 3]>>,
+    |         ^^^^^
+    |
+    = note: `DeckSnap` has derived impls for the traits `Debug` and `Clone`, but these are intentionally ignored during dead code analysis
+
+warning: multiple variants are never constructed
+   --> src/engine/mod.rs:367:5
+    |
+366 | pub enum Command {
+    |          ------- variants in this enum
+367 |     Play,
+    |     ^^^^
+368 |     Stop,
+369 |     TogglePlay,
+    |     ^^^^^^^^^^
+370 |     Record,
+    |     ^^^^^^
+371 |     Tap(Instant),
+    |     ^^^
+372 |     SetBpm(f32),
+    |     ^^^^^^
+...
+375 |     StopTrack { track: u8 },
+    |     ^^^^^^^^^
+376 |     DeckPlay { deck: u8 },
+    |     ^^^^^^^^
+377 |     DeckCue { deck: u8 },
+    |     ^^^^^^^
+378 |     DeckSync { deck: u8 },
+    |     ^^^^^^^^
+379 |     DeckJog { deck: u8, delta: f32 },
+    |     ^^^^^^^
+380 |     DeckTouch { deck: u8, on: bool },
+    |     ^^^^^^^^^
+381 |     DeckPitch { deck: u8, value: f32 },
+    |     ^^^^^^^^^
+382 |     DeckGain { deck: u8, value: f32 },
+    |     ^^^^^^^^
+383 |     DeckEq { deck: u8, band: u8, value: f32 },
+    |     ^^^^^^
+384 |     DeckFilter { deck: u8, value: f32 },
+    |     ^^^^^^^^^^
+385 |     DeckPfl { deck: u8 },
+    |     ^^^^^^^
+386 |     DeckHotCue { deck: u8, pad: u8, del: bool },
+    |     ^^^^^^^^^^
+387 |     DeckLoop { deck: u8, beats: f32 },
+    |     ^^^^^^^^
+388 |     DeckLoopIn { deck: u8 },
+    |     ^^^^^^^^^^
+389 |     DeckLoopOut { deck: u8 },
+    |     ^^^^^^^^^^^
+390 |     DeckLoadSelected { deck: u8 },
+    |     ^^^^^^^^^^^^^^^^
+391 |     DeckVinyl { deck: u8 },
+    |     ^^^^^^^^^
+392 |     DeckKeylock { deck: u8 },
+    |     ^^^^^^^^^^^
+393 |     DeckAudio { deck: u8, audio: Arc<Sample> },
+394 |     DeckSeek { deck: u8, frac: f32 },
+    |     ^^^^^^^^
+395 |     DeckUnload { deck: u8 },
+    |     ^^^^^^^^^^
+396 |     LoadBuiltin { deck: u8, stem: u8 },
+    |     ^^^^^^^^^^^
+397 |     Xfader(f32),
+    |     ^^^^^^
+398 |     Master(f32),
+    |     ^^^^^^
+399 |     CueMix(f32),
+    |     ^^^^^^
+400 |     TrackGain { track: u8, value: f32 },
+    |     ^^^^^^^^^
+401 |     TrackPan { track: u8, value: f32 },
+    |     ^^^^^^^^
+402 |     Mute { track: u8 },
+    |     ^^^^
+403 |     Solo { track: u8 },
+    |     ^^^^
+404 |     Arm { track: u8 },
+    |     ^^^
+405 |     Browse(f32),
+    |     ^^^^^^
+406 |     Select { track: usize, scene: usize },
+    |     ^^^^^^
+407 |     SelectDeck(usize),
+    |     ^^^^^^^^^^
+408 |     SetView(View),
+    |     ^^^^^^^
+409 |     LiveNoteOn { ch: u8, note: u8, vel: u8 },
+    |     ^^^^^^^^^^
+410 |     LiveNoteOff { ch: u8, note: u8 },
+    |     ^^^^^^^^^^^
+411 |     SetNotes { track: u8, scene: u8, notes: Vec<MidiNote> },
+    |     ^^^^^^^^
+412 |     FxWet { slot: u8, value: f32 },
+    |     ^^^^^
+413 |     FxSelect { slot: u8 },
+    |     ^^^^^^^^
+414 |     Quant(f32),
+    |     ^^^^^
+415 |     Metronome,
+    |     ^^^^^^^^^
+416 |     LearnCapture { param: String, ch: u8, d1: u8, d2: u8, status: u8 },
+    |     ^^^^^^^^^^^^
+417 |     NudgeBpm(f32),
+    |     ^^^^^^^^
+418 |     ToggleQuant,
+    |     ^^^^^^^^^^^
+419 |     DeckLoopDouble { deck: u8 },
+    |     ^^^^^^^^^^^^^^
+420 |     DeckLoopHalf { deck: u8 },
+    |     ^^^^^^^^^^^^
+421 |     DeckReloop { deck: u8 },
+    |     ^^^^^^^^^^
+422 |     DeckMatch,
+    |     ^^^^^^^^^
+423 |     DeckEqCut { deck: u8, band: u8 },
+    |     ^^^^^^^^^
+424 |     DeckEqSolo { deck: u8, band: u8 },
+    |     ^^^^^^^^^^
+425 |     DeckPitchRange { deck: u8 },
+    |     ^^^^^^^^^^^^^^
+426 |     FireClip { track: u8, scene: u8, looping: bool },
+    |     ^^^^^^^^
+427 |     ToggleScene { scene: u8 },
+    |     ^^^^^^^^^^^
+428 |     RestartScene { scene: u8 },
+    |     ^^^^^^^^^^^^
+429 |     AddScene { scene: u8 },
+    |     ^^^^^^^^
+430 |     SamplerPad { pad: u8, on: bool },
+    |     ^^^^^^^^^^
+431 |     SamplerBank(usize),
+    |     ^^^^^^^^^^^
+432 |     SamplerInst(i8),
+    |     ^^^^^^^^^^^
+433 |     SamplerOct(i8),
+    |     ^^^^^^^^^^
+434 |     OpenFxTrack(u8),
+    |     ^^^^^^^^^^^
+435 |     OpenFxScene(u8),
+    |     ^^^^^^^^^^^
+436 |     CloseFx,
+    |     ^^^^^^^
+437 |     FxAdd(u8),
+    |     ^^^^^
+438 |     FxToggle(usize),
+    |     ^^^^^^^^
+439 |     FxMix { slot: usize, value: f32 },
+    |     ^^^^^
+440 |     FxParam { slot: usize, p: u8, value: f32 },
+    |     ^^^^^^^
+    |
+    = note: `Command` has derived impls for the traits `Debug` and `Clone`, but these are intentionally ignored during dead code analysis
+
+warning: multiple methods are never used
+    --> src/engine/mod.rs:533:12
+     |
+ 443 | impl RtEngine {
+     | ------------- methods in this implementation
+...
+ 533 |     pub fn set_sample_rate(&mut self, sr: u32) {
+     |            ^^^^^^^^^^^^^^^
+...
+ 660 |     pub fn process(&mut self, out: &mut [f32]) {
+     |            ^^^^^^^
+...
+ 749 |     fn render_track(&mut self, ti: usize, any_solo: bool) -> (f32, f32, bool) {
+     |        ^^^^^^^^^^^^
+...
+ 865 |     fn tick_drums(&mut self, ti: usize) -> f32 {
+     |        ^^^^^^^^^^
+...
+ 883 |     fn render_deck(&mut self, di: usize) -> (f32, f32) {
+     |        ^^^^^^^^^^^
+...
+ 950 |     fn deck_grain(&mut self, di: usize, sr: f64) -> (f32, f32) {
+     |        ^^^^^^^^^^
+...
+ 975 |     fn tick_pads(&mut self) -> (f32, f32) {
+     |        ^^^^^^^^^
+...
+1707 |     pub fn process_interleaved(&mut self, data: &mut [f32], ch: usize) {
+     |            ^^^^^^^^^^^^^^^^^^^
+
+warning: function `crossed` is never used
+    --> src/engine/mod.rs:1734:4
+     |
+1734 | fn crossed(prev: f64, now: f64, t: f64, len: f64) -> bool {
+     |    ^^^^^^^
+
+warning: struct `Engine` is never constructed
+    --> src/engine/mod.rs:1933:12
+     |
+1933 | pub struct Engine {
+     |            ^^^^^^
+
+warning: associated items `start`, `send`, `snapshot`, `notes`, and `sr` are never used
+    --> src/engine/mod.rs:1942:12
+     |
+1941 | impl Engine {
+     | ----------- associated items in this implementation
+1942 |     pub fn start() -> anyhow::Result<Self> {
+     |            ^^^^^
+...
+1957 |     pub fn send(&self, c: Command) {
+     |            ^^^^
+...
+1966 |     pub fn snapshot(&self) -> Snapshot {
+     |            ^^^^^^^^
+...
+1978 |     pub fn notes(&self, track: usize, scene: usize) -> Vec<MidiNote> {
+     |            ^^^^^
+...
+1988 |     pub fn sr(&self) -> u32 {
+     |            ^^
+
+warning: struct `AudioOut` is never constructed
+ --> src/engine/audio.rs:8:12
+  |
+8 | pub struct AudioOut {
+  |            ^^^^^^^^
+
+warning: function `start` is never used
+  --> src/engine/audio.rs:13:8
+   |
+13 | pub fn start(rt: Arc<Mutex<RtEngine>>) -> anyhow::Result<AudioOut> {
+   |        ^^^^^
+
+warning: function `build` is never used
+  --> src/engine/audio.rs:35:4
+   |
+35 | fn build<T>(
+   |    ^^^^^
+
+warning: fields `a` and `z` are never read
+ --> src/engine/dsp.rs:5:9
+  |
+4 | pub struct OnePole {
+  |            ------- fields in this struct
+5 |     pub a: f32,
+  |         ^
+6 |     pub z: f32,
+  |         ^
+  |
+  = note: `OnePole` has derived impls for the traits `Debug` and `Clone`, but these are intentionally ignored during dead code analysis
+
+warning: method `tick` is never used
+  --> src/engine/dsp.rs:14:12
+   |
+ 9 | impl OnePole {
+   | ------------ method in this implementation
+...
+14 |     pub fn tick(&mut self, x: f32) -> f32 {
+   |            ^^^^
+
+warning: fields `low` and `high` are never read
+  --> src/engine/dsp.rs:55:9
+   |
+54 | pub struct ThreeBand {
+   |            --------- fields in this struct
+55 |     pub low: OnePole,
+   |         ^^^
+56 |     pub high: OnePole,
+   |         ^^^^
+   |
+   = note: `ThreeBand` has derived impls for the traits `Debug` and `Clone`, but these are intentionally ignored during dead code analysis
+
+warning: method `tick` is never used
+  --> src/engine/dsp.rs:72:12
+   |
+62 | impl ThreeBand {
+   | -------------- method in this implementation
+...
+72 |     pub fn tick(&mut self, x: f32) -> f32 {
+   |            ^^^^
+
+warning: fields `buf` and `w` are never read
+  --> src/engine/dsp.rs:83:5
+   |
+82 | pub struct Delay {
+   |            ----- fields in this struct
+83 |     buf: Vec<f32>,
+   |     ^^^
+84 |     w: usize,
+   |     ^
+   |
+   = note: `Delay` has derived impls for the traits `Debug` and `Clone`, but these are intentionally ignored during dead code analysis
+
+warning: method `tick` is never used
+   --> src/engine/dsp.rs:100:12
+    |
+ 90 | impl Delay {
+    | ---------- method in this implementation
+...
+100 |     pub fn tick(&mut self, x: f32) -> f32 {
+    |            ^^^^
+
+warning: fields `delays` and `mix` are never read
+   --> src/engine/dsp.rs:117:5
+    |
+116 | pub struct Reverb {
+    |            ------ fields in this struct
+117 |     delays: [Delay; 4],
+    |     ^^^^^^
+118 |     pub mix: f32,
+    |         ^^^
+    |
+    = note: `Reverb` has derived impls for the traits `Debug` and `Clone`, but these are intentionally ignored during dead code analysis
+
+warning: method `tick` is never used
+   --> src/engine/dsp.rs:139:12
+    |
+121 | impl Reverb {
+    | ----------- method in this implementation
+...
+139 |     pub fn tick(&mut self, x: f32) -> f32 {
+    |            ^^^^
+
+warning: field `cutoff` is never read
+   --> src/engine/dsp.rs:216:9
+    |
+210 | pub struct Voice {
+    |            ----- field in this struct
+...
+216 |     pub cutoff: f32,
+    |         ^^^^^^
+    |
+    = note: `Voice` has derived impls for the traits `Debug` and `Clone`, but these are intentionally ignored during dead code analysis
+
+warning: field `kind` is never read
+   --> src/engine/dsp.rs:269:9
+    |
+266 | pub struct Poly {
+    |            ---- field in this struct
+...
+269 |     pub kind: u8,
+    |         ^^^^
+    |
+    = note: `Poly` has derived impls for the traits `Debug` and `Clone`, but these are intentionally ignored during dead code analysis
+
+warning: field `path` is never read
+   --> src/engine/dsp.rs:325:9
+    |
+318 | pub struct Sample {
+    |            ------ field in this struct
+...
+325 |     pub path: String,
+    |         ^^^^
+    |
+    = note: `Sample` has derived impls for the traits `Debug` and `Clone`, but these are intentionally ignored during dead code analysis
+
+warning: function `db` is never used
+   --> src/engine/dsp.rs:362:8
+    |
+362 | pub fn db(g: f32) -> f32 {
+    |        ^^
+
+warning: function `xfader_gains` is never used
+   --> src/engine/dsp.rs:370:8
+    |
+370 | pub fn xfader_gains(x: f32, curve: f32) -> (f32, f32) {
+    |        ^^^^^^^^^^^^
+
+warning: function `cubic` is never used
+   --> src/engine/dsp.rs:379:8
+    |
+379 | pub fn cubic(p: f32) -> f32 {
+    |        ^^^^^
+
+warning: function `limiter` is never used
+   --> src/engine/dsp.rs:383:8
+    |
+383 | pub fn limiter(x: f32) -> f32 {
+    |        ^^^^^^^
+
+warning: function `midi_to_hz` is never used
+   --> src/engine/dsp.rs:387:8
+    |
+387 | pub fn midi_to_hz(n: u8) -> f32 {
+    |        ^^^^^^^^^^
+
+warning: function `decode_audio` is never used
+   --> src/engine/dsp.rs:607:8
+    |
+607 | pub fn decode_audio(path: &std::path::Path) -> anyhow::Result<Sample> {
+    |        ^^^^^^^^^^^^
+
+warning: multiple fields are never read
+   --> src/engine/fx.rs:94:5
+    |
+ 92 | pub struct FxChain {
+    |            ------- fields in this struct
+ 93 |     pub slots: Vec<FxSlot>,
+ 94 |     delay: Delay,
+    |     ^^^^^
+ 95 |     reverb: Reverb,
+    |     ^^^^^^
+ 96 |     chorus: Delay,
+    |     ^^^^^^
+ 97 |     chorus_ph: f32,
+    |     ^^^^^^^^^
+ 98 |     env: f32,
+    |     ^^^
+ 99 |     svf: Svf,
+    |     ^^^
+100 |     eq_lp: [crate::engine::dsp::OnePole; 8],
+    |     ^^^^^
+101 |     haas: Delay,
+    |     ^^^^
+    |
+    = note: `FxChain` has derived impls for the traits `Debug` and `Clone`, but these are intentionally ignored during dead code analysis
+
+warning: methods `tick`, `tick_stereo`, `width`, and `balance` are never used
+   --> src/engine/fx.rs:132:12
+    |
+104 | impl FxChain {
+    | ------------ methods in this implementation
+...
+132 |     pub fn tick(&mut self, x: f32, sr: f32) -> f32 {
+    |            ^^^^
+...
+189 |     pub fn tick_stereo(&mut self, x: f32, sr: f32) -> (f32, f32) {
+    |            ^^^^^^^^^^^
+...
+209 |     pub fn width(&self) -> f32 {
+    |            ^^^^^
+...
+216 |     pub fn balance(&self) -> f32 {
+    |            ^^^^^^^
+
+warning: function `eq_n` is never used
+   --> src/engine/fx.rs:225:4
+    |
+225 | fn eq_n(lp: &mut [crate::engine::dsp::OnePole; 8], x: f32, p: [f32; 4], n: usize) -> f32 {
+    |    ^^^^
+
+warning: enum `MsgKind` is never used
+  --> src/engine/midi.rs:10:10
+   |
+10 | pub enum MsgKind {
+   |          ^^^^^^^
+
+warning: struct `Binding` is never constructed
+  --> src/engine/midi.rs:18:12
+   |
+18 | pub struct Binding {
+   |            ^^^^^^^
+
+warning: enum `Action` is never used
+  --> src/engine/midi.rs:28:10
+   |
+28 | pub enum Action {
+   |          ^^^^^^
+
+warning: struct `MidiMap` is never constructed
+  --> src/engine/midi.rs:67:12
+   |
+67 | pub struct MidiMap {
+   |            ^^^^^^^
+
+warning: struct `MidiDevice` is never constructed
+  --> src/engine/midi.rs:74:12
+   |
+74 | pub struct MidiDevice {
+   |            ^^^^^^^^^^
+
+warning: struct `MidiHub` is never constructed
+  --> src/engine/midi.rs:79:12
+   |
+79 | pub struct MidiHub {
+   |            ^^^^^^^
+
+warning: associated items `start`, `send_clock_tick`, `send_clock_start`, and `note_led` are never used
+   --> src/engine/midi.rs:89:12
+    |
+ 88 | impl MidiHub {
+    | ------------ associated items in this implementation
+ 89 |     pub fn start(cmd: crossbeam_channel::Sender<Command>) -> Self {
+    |            ^^^^^
+...
+177 |     pub fn send_clock_tick(&self) {
+    |            ^^^^^^^^^^^^^^^
+...
+183 |     pub fn send_clock_start(&self, start: bool) {
+    |            ^^^^^^^^^^^^^^^^
+...
+189 |     pub fn note_led(&self, ch: u8, note: u8, vel: u8) {
+    |            ^^^^^^^^
+
+warning: function `handle_msg` is never used
+   --> src/engine/midi.rs:196:4
+    |
+196 | fn handle_msg(
+    |    ^^^^^^^^^^
+
+warning: function `dispatch` is never used
+   --> src/engine/midi.rs:286:4
+    |
+286 | fn dispatch(
+    |    ^^^^^^^^
+
+warning: function `pick_map` is never used
+   --> src/engine/midi.rs:457:4
+    |
+457 | fn pick_map(maps: &[MidiMap], name: &str) -> MidiMap {
+    |    ^^^^^^^^
+
+warning: function `nbind` is never used
+   --> src/engine/midi.rs:472:4
+    |
+472 | fn nbind(ch: u8, note: u8, action: Action, deck: u8, extra: u8) -> Binding {
+    |    ^^^^^
+
+warning: function `cbind` is never used
+   --> src/engine/midi.rs:482:4
+    |
+482 | fn cbind(ch: u8, cc: u8, action: Action, deck: u8, extra: u8) -> Binding {
+    |    ^^^^^
+
+warning: function `rbind` is never used
+   --> src/engine/midi.rs:492:4
+    |
+492 | fn rbind(ch: u8, cc: u8, action: Action, deck: u8, extra: u8) -> Binding {
+    |    ^^^^^
+
+warning: function `builtin_maps` is never used
+   --> src/engine/midi.rs:503:8
+    |
+503 | pub fn builtin_maps() -> Vec<MidiMap> {
+    |        ^^^^^^^^^^^^
+
+warning: function `pioneer_ddj_fx` is never used
+   --> src/engine/midi.rs:516:4
+    |
+516 | fn pioneer_ddj_fx() -> MidiMap {
+    |    ^^^^^^^^^^^^^^
+
+warning: function `numark_ns7` is never used
+   --> src/engine/midi.rs:566:4
+    |
+566 | fn numark_ns7(fx: bool) -> MidiMap {
+    |    ^^^^^^^^^^
+
+warning: function `akai_apc_mini` is never used
+   --> src/engine/midi.rs:621:4
+    |
+621 | fn akai_apc_mini() -> MidiMap {
+    |    ^^^^^^^^^^^^^
+
+warning: function `akai_apc40` is never used
+   --> src/engine/midi.rs:645:4
+    |
+645 | fn akai_apc40() -> MidiMap {
+    |    ^^^^^^^^^^
+
+warning: function `akai_mpk` is never used
+   --> src/engine/midi.rs:668:4
+    |
+668 | fn akai_mpk() -> MidiMap {
+    |    ^^^^^^^^
+
+warning: function `class_compliant` is never used
+   --> src/engine/midi.rs:689:4
+    |
+689 | fn class_compliant() -> MidiMap {
+    |    ^^^^^^^^^^^^^^^
+
+warning: struct `Theme` is never constructed
+ --> src/theme.rs:7:12
+  |
+7 | pub struct Theme {
+  |            ^^^^^
+
+warning: associated items `load`, `maybe_reload`, `reload`, `apply`, `install_fonts`, and `track_color` are never used
+   --> src/theme.rs:62:12
+    |
+ 61 | impl Theme {
+    | ---------- associated items in this implementation
+ 62 |     pub fn load() -> Self {
+    |            ^^^^
+...
+ 68 |     pub fn maybe_reload(&mut self) -> bool {
+    |            ^^^^^^^^^^^^
+...
+ 79 |     pub fn reload(&mut self) {
+    |            ^^^^^^
+...
+129 |     pub fn apply(&self, ctx: &egui::Context) {
+    |            ^^^^^
+...
+167 |     pub fn install_fonts(ctx: &egui::Context) {
+    |            ^^^^^^^^^^^^^
+...
+200 |     pub fn track_color(&self, i: usize) -> Color32 {
+    |            ^^^^^^^^^^^
+
+warning: function `st` is never used
+   --> src/theme.rs:217:4
+    |
+217 | fn st(width: f32, color: Color32) -> Stroke {
+    |    ^^
+
+warning: function `widget` is never used
+   --> src/theme.rs:221:4
+    |
+221 | fn widget(bg: Color32, fg: Color32, stroke: Color32) -> egui::style::WidgetVisuals {
+    |    ^^^^^^
+
+warning: function `rgb` is never used
+   --> src/theme.rs:232:4
+    |
+232 | fn rgb(r: u8, g: u8, b: u8) -> Color32 {
+    |    ^^^
+
+warning: function `hex_of` is never used
+   --> src/theme.rs:236:4
+    |
+236 | fn hex_of(v: &toml::Value, key: &str, fallback: Color32) -> Color32 {
+    |    ^^^^^^
+
+warning: function `parse_hex` is never used
+   --> src/theme.rs:243:4
+    |
+243 | fn parse_hex(s: &str) -> Option<Color32> {
+    |    ^^^^^^^^^
+
+warning: function `theme_dir` is never used
+   --> src/theme.rs:254:8
+    |
+254 | pub fn theme_dir() -> PathBuf {
+    |        ^^^^^^^^^
+
+warning: function `config_dir` is never used
+   --> src/theme.rs:260:8
+    |
+260 | pub fn config_dir() -> PathBuf {
+    |        ^^^^^^^^^^
+
+warning: function `runtime_dir` is never used
+   --> src/theme.rs:265:8
+    |
+265 | pub fn runtime_dir() -> PathBuf {
+    |        ^^^^^^^^^^^
+
+warning: function `socket_path` is never used
+   --> src/theme.rs:273:8
+    |
+273 | pub fn socket_path() -> PathBuf {
+    |        ^^^^^^^^^^^
+
+warning: `omatainer` (bin "audit_scene_crash") generated 66 warnings
+    Finished `dev` profile [optimized + debuginfo] target(s) in 1.10s
+
+thread 'main' (137629) panicked at src/engine/mod.rs:1060:24:
+index out of bounds: the len is 8 but the index is 8
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+scene 9 panic=abort return code: -6
