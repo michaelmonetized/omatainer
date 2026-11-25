@@ -13,6 +13,7 @@ struct Instance {
     buffers: BusAudioBuffers,
     editor: Option<PluginWindow>,
     parameters: Vec<u32>,
+    note_expression: bool,
 }
 fn class(plugin: &Plugin) -> Result<Class, String> {
     let result = Class {
@@ -21,6 +22,11 @@ fn class(plugin: &Plugin) -> Result<Class, String> {
         parameters: plugin.get_parameters().map_err(|e| e.to_string())?,
         latency: plugin.latency_samples(),
         tail: plugin.tail_samples(),
+        note_expression: Some({
+            let types = plugin.note_expressions().map_err(|e| e.to_string())?;
+            [vst3_host::NoteExpressionType::Tuning, vst3_host::NoteExpressionType::Expression, vst3_host::NoteExpressionType::Brightness]
+                .iter().all(|kind| types.iter().any(|item| item.kind == *kind && item.min == 0.0 && item.max == 1.0 && !item.is_one_shot))
+        }),
     };
     result.validate()?;
     Ok(result)
@@ -120,6 +126,7 @@ fn handle(request: Request, instance: &mut Option<Instance>) -> Result<Response,
             plugin.start_processing().map_err(|e| e.to_string())?;
             *instance = Some(Instance {
                 parameters: report.writable_parameters().map(|p|p.id).collect(),
+                note_expression: report.note_expression.unwrap_or(false),
                 host,
                 plugin: Arc::new(Mutex::new(plugin)),
                 saved,
@@ -158,7 +165,12 @@ fn handle(request: Request, instance: &mut Option<Instance>) -> Result<Response,
                 p.set_parameter_at(id, value, offset)
                     .map_err(|e| e.to_string())?;
             }
-            for (offset, b) in frame.midi {
+            if !frame.expression.is_empty() && !instance.note_expression { return Err("This plugin does not advertise independent pitch, pressure and timbre expression".into()); }
+            let mut events: Vec<_> = frame.midi.into_iter().map(|(offset,bytes)| (offset,expression::Routed::Midi(bytes)))
+                .chain(frame.expression.into_iter().map(|(offset,event)| (offset,expression::Routed::Expression(event)))).collect();
+            events.sort_by_key(|(offset,_)| *offset);
+            for (offset, event) in events {
+                let b = match event { expression::Routed::Midi(bytes) => bytes, expression::Routed::Expression(event) => { event.send(&mut p,offset,frame.beat)?; continue; } };
                 let channel = MidiChannel::from_index(b[0] & 15).ok_or("Invalid MIDI channel")?;
                 let event = match b[0] & 0xf0 {
                     0x80 => MidiEvent::NoteOff {
@@ -205,7 +217,9 @@ fn handle(request: Request, instance: &mut Option<Instance>) -> Result<Response,
             }
             p.process_bus_audio(&mut instance.buffers)
                 .map_err(|e| e.to_string())?;
-            let restart = p.take_restart_flags().bits() as u32;
+            let restart = p.take_restart_flags();
+            if restart.note_expression_changed() && instance.note_expression { return Err("Plugin expression capabilities changed; stop playback and reload this processor".into()); }
+            let restart = restart.bits() as u32;
             let outputs = instance
                 .buffers
                 .outputs

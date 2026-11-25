@@ -276,6 +276,7 @@ impl InputSink {
 }
 
 struct InputWorker {
+    expression_state: crate::engine::mpe::State,
     decoder: super::surface::Decoder,
     learning_revision: u64,
     routing_revision: u64,
@@ -336,6 +337,8 @@ impl InputWorker {
                 let mut paired = super::controls::PairValues::default();
                 match frame {
                     super::routing::packet::Frame::Musical(packet) => {
+                        let expression_before = self.expression_state;
+                        self.expression_state.input(packet.bytes());
                         if self.map.name.starts_with("Akai MPD232") && super::surface::mpd232::transport(packet.bytes(), &cmd) { continue; }
                         if packet.bytes().len()==3 && packet.channel().is_some() {
                             let message:[u8;3]=packet.bytes().try_into().unwrap();
@@ -348,7 +351,10 @@ impl InputWorker {
                                 super::learn::Dispatch::Normal => {},
                             }
                         }
-                        self.shared.routing.input_at(self.sources,&self.name,&self.port_id,event.routing,packet,event.at,&cmd,|allow_live| {
+                        self.shared.routing.input_mpe_at(self.sources,&self.name,&self.port_id,event.routing,packet,event.at,Some(&expression_before),&cmd,|allow_live| {
+                            if allow_live && self.map.unmapped_notes == super::UnmappedNotes::Live && packet.bytes().len() == 2 && packet.bytes()[0] & 0xf0 == 0xd0 {
+                                if cmd.send(Command::MidiExpression { source: self.source, bytes: [packet.bytes()[0], packet.bytes()[1], 0], length: 2 }).is_err() { cmd.release_midi_source(self.source); }
+                            }
                             if packet.bytes().len()==3 && packet.channel().is_some() {
                                 let frame:[u8;3]=packet.bytes().try_into().unwrap();
                                 if !self.decoder.input_at(&self.map,&frame,&cmd,self.source,event.at) {
@@ -494,6 +500,7 @@ fn channel_with_capture(capacity:usize,source:u64,map:MidiMap,cmd:CommandPort,lo
             sequence: 0,
         },
         InputWorker {
+            expression_state: crate::engine::mpe::State::default(),
             decoder: super::surface::Decoder::default(),
             learning_revision: shared.learning.revision.load(Acquire),
             routing_revision: shared.routing.generation.load(Acquire),
@@ -587,6 +594,7 @@ pub(super) fn start_profile(
 }
 impl Drop for InputWorker {
     fn drop(&mut self) {
+        self.cmd.forget_midi_expression(self.source);
         self.shared.learning.disconnected(self.source);
         self.shared.routing.release(self.sources,&self.cmd);
         self.shared.routing.unregister(self.source);

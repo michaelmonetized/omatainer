@@ -7,6 +7,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
+pub(crate) mod expression;
 pub(crate) mod process;
 pub(crate) mod realtime;
 pub(crate) mod scanner;
@@ -161,6 +162,8 @@ pub(crate) struct Class {
     pub parameters: Vec<vst3_host::Parameter>,
     pub latency: u32,
     pub tail: u32,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub note_expression: Option<bool>,
 }
 impl Class {
     /// Select the native sound controls.
@@ -242,6 +245,8 @@ pub(crate) struct Frame {
     pub signature: [i32; 2],
     pub parameters: Vec<(u32, f64, i32)>,
     pub midi: Vec<(i32, [u8; 3])>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub expression: Vec<(i32, expression::Event)>,
 }
 impl Frame {
     pub fn validate(&self) -> Result<(), String> {
@@ -262,7 +267,7 @@ impl Frame {
             || !(1..=64).contains(&self.signature[0])
             || ![1, 2, 4, 8, 16, 32, 64].contains(&self.signature[1])
             || self.parameters.len() > 512
-            || self.midi.len() > 512
+            || self.midi.len() + self.expression.len() > 512
         {
             return Err("Plugin processing frame exceeds audio/event/context limits".into());
         }
@@ -275,7 +280,7 @@ impl Frame {
                 || bytes[0] >= 0xf0
                 || bytes[1] > 127
                 || bytes[2] > 127
-        }) {
+        }) || self.expression.iter().any(|(offset, event)| *offset < 0 || *offset >= self.frames as i32 || !event.valid()) {
             return Err("Plugin event value or offset is invalid".into());
         }
         Ok(())

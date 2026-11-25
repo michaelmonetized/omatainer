@@ -90,6 +90,7 @@ struct AdmissionShared {
     now_playing: std::sync::Arc<crate::performance_history::now_playing::Shared>,
     midi_learn: std::sync::Arc<super::midi::learn::Shared>,
     midi_routing: std::sync::Arc<super::midi::routing::Shared>,
+    expression_resets: std::sync::Arc<super::mpe::Resets>,
     clock_output: std::sync::Arc<super::midi::clock::Shared>,
     clock_input: std::sync::Arc<super::midi::clock_input::Shared>,
     retrospective: std::sync::Arc<super::retrospective::Shared>,
@@ -187,6 +188,9 @@ impl Drop for CommandReceiver {
 }
 
 impl CommandReceiver {
+    pub(crate) fn expression_resets(&self) -> std::sync::Arc<super::mpe::Resets> {
+        self.shared.as_ref().map_or_else(|| std::sync::Arc::new(super::mpe::Resets::default()), |shared| shared.expression_resets.clone())
+    }
     /// Prepare an offline renderer with no command producer.
     /// Takes no arguments; returns an empty disconnected ring with no admission or device owners.
     pub(crate) fn disconnected() -> Self {
@@ -538,6 +542,7 @@ impl CommandPort {
             midi_routing: std::sync::Arc::new(super::midi::routing::Shared::default()),
             clock_output: std::sync::Arc::new(super::midi::clock::Shared::default()),
             clock_input: std::sync::Arc::new(super::midi::clock_input::Shared::default()),
+            expression_resets: std::sync::Arc::new(super::mpe::Resets::default()),
             retrospective: std::sync::Arc::new(super::retrospective::Shared::default()),
             performance: super::performance::Handle::default(),
             project_writers: std::sync::atomic::AtomicU64::new(0),
@@ -610,6 +615,7 @@ impl CommandPort {
     /// its release, so input overflow can retire exactly that source's gates
     /// even while ordinary engine queue capacity is exhausted.
     pub(super) fn release_midi_source(&self, source: u64) {
+        self.shared.expression_resets.request(source);
         self.shared.clock_input.retire(source, super::midi::clock_input::Loss::Retired);
         self.shared.midi_learn.retire_pending();
         let gates = self.admission.lock().gates;
@@ -639,6 +645,7 @@ impl CommandPort {
             let _ = self.send(command);
         }
     }
+    pub(crate) fn forget_midi_expression(&self, source: u64) { self.shared.expression_resets.forget(source); }
 
     pub(crate) fn take_ui_receiver(&self) -> Option<super::ui_requests::Receiver> {
         self.shared.ui_requests.receiver()
@@ -774,6 +781,9 @@ impl CommandPort {
         }
         if matches!(&command, Command::DeckChannelEffect { deck, .. } if usize::from(*deck) >= super::DECKS) { return fail(SubmissionError::InvalidTarget); }
         if matches!(&command,Command::RoutedNoteOn {track,ch,note,vel,..} if usize::from(*track)>=super::session::MAX_TRACKS || *ch>15 || *note>127 || *vel>127) {
+            return fail(SubmissionError::InvalidTarget);
+        }
+        if matches!(&command, Command::MidiExpression { source, bytes, length } if *source == 0 || usize::from(*length) > bytes.len() || !super::mpe::valid(&bytes[..usize::from(*length)])) {
             return fail(SubmissionError::InvalidTarget);
         }
         if matches!(&command, Command::SamplerPadPressure { pad, pressure } if *pad >= 16 || !pressure.is_finite() || !(0.0..=1.0).contains(pressure)) {

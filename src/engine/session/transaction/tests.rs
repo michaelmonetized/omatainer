@@ -239,6 +239,7 @@ fn deleted_track_closes_live_gates_and_an_old_routed_target_cannot_play_a_reused
     let old = rt.session.reference(Axis::Track, 2).unwrap();
     rt.apply(Command::RoutedNoteOn {
         source: 19,
+        origin: 19,
         ch: 1,
         note: 72,
         vel: 91,
@@ -279,6 +280,7 @@ fn deleted_track_closes_live_gates_and_an_old_routed_target_cannot_play_a_reused
     rt.midi_routing.identity.publish(&rt.session);
     rt.apply(Command::RoutedNoteOn {
         source: 20,
+        origin: 20,
         ch: 1,
         note: 73,
         vel: 91,

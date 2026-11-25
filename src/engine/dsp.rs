@@ -319,6 +319,12 @@ pub struct Voice {
     pitch_updates: u64,
     pub owner: VoiceOwner,
     pub input: Option<InputKey>,
+    pub(crate) source_origin: u64,
+    pub(crate) clip_note: Option<super::midi_edit::NoteId>,
+    clip_channel: Option<u8>,
+    pub(crate) expression: Option<super::mpe::Note>,
+    pub(crate) expression_values: super::mpe::Values,
+    expression_sustain: bool,
     pub vel: f32,
     pub clip_gain: f32,
     pub phase: f32,
@@ -342,6 +348,12 @@ impl Voice {
             pitch_updates: 0,
             owner: VoiceOwner::Live,
             input: None,
+            source_origin: 0,
+            clip_note: None,
+            clip_channel: None,
+            expression: None,
+            expression_values: super::mpe::Values::default(),
+            expression_sustain: false,
             vel: 0.0,
             clip_gain: 1.0,
             phase: 0.0,
@@ -356,13 +368,20 @@ impl Voice {
     fn refresh_pitch(&mut self) {
         // Preserve the original f32 operation order exactly. The detuned
         // oscillator's fixed ratio is cached at the same boundary.
-        let hz = self.tuning_hz * 2f32.powf((self.note as f32 - 69.0) / 12.0);
+        let pitch = self.note as f32 - 69.0;
+        let pitch = if self.expression_values.pitch == 0.0 { pitch } else { pitch + self.expression_values.pitch };
+        let hz = self.tuning_hz * 2f32.powf(pitch / 12.0);
         self.phase_increment = hz / self.sample_rate;
         self.detuned_increment = self.phase_increment * 0.997;
         #[cfg(test)]
         { self.pitch_updates += 1; }
     }
     pub fn note(&self) -> u8 { self.note }
+    fn set_expression(&mut self, values: super::mpe::Values) {
+        let pitch_changed = self.expression_values.pitch != values.pitch;
+        self.expression_values = values;
+        if pitch_changed { self.refresh_pitch(); }
+    }
     pub fn set_note(&mut self, note: u8) {
         if self.note != note {
             self.note = note;
@@ -408,6 +427,10 @@ impl Voice {
             SynthInstrument::Pad => sine * 0.6 + (self.phase2 * 2.0 - 1.0) * 0.4,
         };
         let e = self.env.tick();
+        let expression = self.expression_values;
+        let cutoff = if expression.timbre == 64 && expression.pressure == 0 { cutoff } else {
+            cutoff * 2f32.powf((f32::from(expression.timbre) - 64.0) / 32.0) + f32::from(expression.pressure) / 127.0 * 1800.0
+        };
         let cf = (cutoff + e * 1800.0).clamp(80.0, sr * 0.42);
         let y = res_svf.process(osc * e * self.vel, cf, 0.35, sr, 0.0);
         y * 0.35 * self.clip_gain
@@ -477,7 +500,24 @@ impl Poly {
     pub fn note_on_input(&mut self, note: u8, vel: f32, input: InputKey) {
         self.note_on_owned(note, vel, VoiceOwner::Live, Some(input), 1.0);
     }
-    fn note_on_owned(&mut self, note: u8, vel: f32, owner: VoiceOwner, input: Option<InputKey>, gain: f32) {
+    /// Start a source-owned expressive note.
+    /// Takes note, velocity, physical input, native source and its current zone state; returns through the prepared voice pool without allocating.
+    pub(crate) fn note_on_expressive(&mut self, note: u8, vel: f32, input: InputKey, source: u64, state: Option<&super::mpe::State>) {
+        let index = self.note_on_owned(note, vel, VoiceOwner::Live, Some(input), 1.0);
+        let voice = &mut self.voices[index];
+        voice.source_origin = source;
+        if let (Some(state), InputKey::Midi { ch, .. }) = (state, input) {
+            if let Some(expression) = state.note(source, ch) {
+                voice.expression = Some(expression);
+                voice.expression_sustain = state.sustain(expression.manager);
+                voice.set_expression(state.combined(expression));
+            }
+        }
+    }
+    fn note_on_owned(&mut self, note: u8, vel: f32, owner: VoiceOwner, input: Option<InputKey>, gain: f32) -> usize {
+        self.note_on_owned_id(note, vel, owner, input, gain, None)
+    }
+    fn note_on_owned_id(&mut self, note: u8, vel: f32, owner: VoiceOwner, input: Option<InputKey>, gain: f32, clip_note: Option<super::midi_edit::NoteId>) -> usize {
         #[cfg(test)]
         { self.note_on_events += 1; }
         // Prefer a held gate's existing voice over an earlier free slot.
@@ -487,8 +527,8 @@ impl Poly {
         let available = self
             .voices
             .iter()
-            .position(|v| v.owner == owner && v.input == input
-                && (input.is_some() || v.note() == note)
+            .position(|v| v.owner == owner && v.input == input && v.clip_note == clip_note
+                && (clip_note.is_some() || input.is_some() || v.note() == note)
                 && (owner != VoiceOwner::Clip || matches!(v.env.stage, 1..=3)))
             .or_else(|| self.voices.iter().position(|v| !v.env.active()));
         let i = available.unwrap_or_else(|| self
@@ -509,8 +549,35 @@ impl Poly {
         }
         self.voices[i].owner = owner;
         self.voices[i].input = input;
+        self.voices[i].source_origin = 0;
+        self.voices[i].clip_note = clip_note;
+        self.voices[i].clip_channel = None;
+        self.voices[i].expression = None;
+        self.voices[i].expression_values = super::mpe::Values::default();
+        self.voices[i].expression_sustain = false;
         self.voices[i].clip_gain = gain;
         self.voices[i].trig(note, vel);
+        i
+    }
+    /// Start an expressive clip voice with its stable note identity.
+    /// Takes note, velocity, clip gain, identity, channel and chased zone state; keeps same-pitch notes independent in the prepared pool.
+    pub(crate) fn note_on_clip_expressive(&mut self, note: u8, vel: f32, gain: f32, id: super::midi_edit::NoteId, channel: u8, state: &super::mpe::State) {
+        let index = self.note_on_owned_id(note, vel, VoiceOwner::Clip, None, gain, Some(id));
+        let voice = &mut self.voices[index];
+        voice.clip_channel = Some(channel);
+        if let Some(expression) = state.note(0, channel) {
+            voice.expression = Some(expression);
+            voice.expression_sustain = state.sustain(expression.manager);
+            voice.set_expression(state.combined(expression));
+        }
+    }
+    pub(crate) fn note_off_clip_id(&mut self, id: super::midi_edit::NoteId) {
+        for voice in &mut self.voices {
+            if voice.clip_note == Some(id) && matches!(voice.env.stage, 1..=3) {
+                if let Some(note) = &mut voice.expression { note.held = false; }
+                if !voice.expression_sustain { voice.env.off(); }
+            }
+        }
     }
     pub fn note_off(&mut self, note: u8) {
         self.note_off_owned(note, VoiceOwner::Live);
@@ -528,7 +595,11 @@ impl Poly {
     pub fn note_off_input(&mut self, input: InputKey) {
         for v in &mut self.voices {
             if v.input == Some(input) && matches!(v.env.stage, 1..=3) {
-                v.env.off();
+                if let Some(expression) = &mut v.expression {
+                    expression.held = false;
+                    v.input = None;
+                    if !v.expression_sustain { v.env.off(); }
+                } else { v.env.off(); }
             }
         }
     }
@@ -540,12 +611,53 @@ impl Poly {
         }
     }
     pub fn release_all(&mut self) {
-        for voice in &mut self.voices { if matches!(voice.env.stage, 1..=3) { voice.env.off(); } }
+        for voice in &mut self.voices {
+            if let Some(expression) = &mut voice.expression { expression.held = false; voice.input = None; }
+            voice.expression_sustain = false;
+            if matches!(voice.env.stage, 1..=3) { voice.env.off(); }
+        }
+    }
+    pub(crate) fn expression_input(&mut self, source: u64, state: &super::mpe::State, update: super::mpe::Update) {
+        for voice in &mut self.voices {
+            if voice.source_origin != source || !voice.env.active() { continue; }
+            let channel = voice.expression.map(|note| note.channel).or(voice.clip_channel).or_else(|| match voice.input { Some(InputKey::Midi { ch, .. }) => Some(ch), _ => None });
+            let Some(channel) = channel else { continue; };
+            if (update.reset | update.silence) & (1 << channel) != 0 {
+                voice.env.off();
+                if update.silence & (1 << channel) != 0 { voice.env.stage = 0; voice.env.level = 0.0; }
+                voice.expression = None;
+                voice.input = None;
+                voice.expression_sustain = false;
+                continue;
+            }
+            let Some(mut note) = voice.expression else { continue; };
+            if update.release & (1 << channel) != 0 { note.held = false; voice.input = None; }
+            if note.held { note.member = state.member(note.channel); }
+            voice.expression_sustain = state.sustain(note.manager);
+            if !note.held && !voice.expression_sustain && matches!(voice.env.stage, 1..=3) { voice.env.off(); }
+            voice.expression = Some(note);
+            voice.set_expression(state.combined(note));
+        }
+    }
+    pub(crate) fn expression_retire(&mut self, source: u64) {
+        for voice in &mut self.voices {
+            let physical = match voice.input { Some(InputKey::Midi { source, .. }) => Some(source), _ => None };
+            if source == 0 && (voice.source_origin != 0 || physical.is_some()) || source != 0 && (voice.source_origin == source || physical == Some(source)) {
+                if let Some(note) = &mut voice.expression { note.held = false; }
+                voice.input = None;
+                voice.expression_sustain = false;
+                if matches!(voice.env.stage, 1..=3) { voice.env.off(); }
+            }
+        }
     }
     pub fn release_clip(&mut self) {
         for v in &mut self.voices {
-            if v.owner == VoiceOwner::Clip && matches!(v.env.stage, 1..=3) {
-                v.env.off();
+            if v.owner == VoiceOwner::Clip {
+                if matches!(v.env.stage, 1..=3) { v.env.off(); }
+                v.expression = None;
+                v.expression_sustain = false;
+                v.clip_note = None;
+                v.clip_channel = None;
             }
         }
     }

@@ -440,6 +440,7 @@ fn maximum_native_container_reopens_music_automation_and_playback_reorder() {
     rt.apply(Command::Play);
     rt.apply(Command::RoutedNoteOn {
         source: 913,
+        origin: 913,
         ch: 12,
         note: 72,
         vel: 90,

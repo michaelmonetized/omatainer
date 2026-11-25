@@ -638,6 +638,7 @@ fn destructive(command: &Command) -> bool {
         | Command::SetView(_)
         | Command::LiveNoteOn { .. }
         | Command::RoutedNoteOn { .. }
+        | Command::MidiExpression { .. }
         | Command::LiveNoteOff { .. }
         | Command::FxWet { .. }
         | Command::PluginParameter { .. }

@@ -1,6 +1,8 @@
 use super::{InputKey, session::MAX_TRACKS};
 #[cfg(test)]
 mod tests;
+mod expression;
+pub(crate) use expression::Owner as ExpressionOwner;
 
 const EVENTS: usize = 512;
 #[derive(Clone, Copy)]
@@ -13,9 +15,12 @@ pub(crate) struct Routing {
     held: [Option<Held>; 256],
     refused: [bool; MAX_TRACKS],
     clips: Vec<[[u32;128];16]>,
+    expressions: Vec<Vec<crate::plugin_host::expression::Event>>,
+    expression_voices: Vec<Option<expression::Voice>>,
+    expression_id: i32,
 }
 impl Default for Routing {
-    fn default() -> Self { Self { mask: 0, frames: vec![[[0;3];EVENTS];MAX_TRACKS].into_boxed_slice(), lengths:[0;MAX_TRACKS],held:[None;256],refused:[false;MAX_TRACKS], clips: (0..MAX_TRACKS).map(|_| [[0;128];16]).collect() } }
+    fn default() -> Self { Self { mask: 0, frames: vec![[[0;3];EVENTS];MAX_TRACKS].into_boxed_slice(), lengths:[0;MAX_TRACKS],held:[None;256],refused:[false;MAX_TRACKS], clips: (0..MAX_TRACKS).map(|_| [[0;128];16]).collect(), expressions: (0..MAX_TRACKS).map(|_| Vec::with_capacity(EVENTS)).collect(), expression_voices: vec![None;256], expression_id: 0 } }
 }
 impl Routing {
     /// Retain one channel message for every processor using this track.
@@ -23,7 +28,7 @@ impl Routing {
     pub(crate) fn push(&mut self, track: usize, bytes: [u8;3]) -> bool {
         if track >= MAX_TRACKS || self.refused[track] { return false; }
         let length = self.lengths[track];
-        if length == EVENTS { self.refused[track] = true; return false; }
+        if length + self.expressions[track].len() == EVENTS { self.refused[track] = true; return false; }
         self.frames[track][length] = bytes; self.lengths[track] += 1; true
     }
     pub(crate) fn events(&self, track: usize) -> &[[u8;3]] { &self.frames[track][..self.lengths[track]] }
@@ -31,6 +36,7 @@ impl Routing {
     /// Route a physical note release to its original destination.
     /// Takes retained input ownership; queues its note off even after track selection changes.
     pub(crate) fn release(&mut self, key: InputKey) {
+        self.expression_release_input(key);
         for index in 0..self.held.len() {
             if let Some(held) = self.held[index].filter(|held| held.key == key) {
                 self.held[index] = None;
@@ -49,7 +55,7 @@ impl Routing {
     }
     /// End one shared graph sample after all MIDI consumers read it.
     /// Takes mutable event storage; clears counters without dropping note ownership.
-    pub(crate) fn next(&mut self) { self.lengths.fill(0); }
+    pub(crate) fn next(&mut self) { self.lengths.fill(0); for events in &mut self.expressions { events.clear(); } }
     /// Preserve overlapping clip and live gates on a shared plugin channel.
     /// Takes a complete clip packet and overlap weight; emits a release only when every owner of that pitch has ended.
     pub(crate) fn clip(&mut self, track: usize, bytes: [u8;3], weight: u32) {
@@ -69,6 +75,7 @@ impl Routing {
     /// Release clip gates while preserving physical keys still held on that track.
     /// Takes the original track slot; emits bounded note offs or refuses the overflowing processor.
     pub(crate) fn clear_clip(&mut self, track: usize) {
+        self.expression_clear_clip(track);
         for channel in 0..16 { for note in 0..128 {
             if self.clips[track][channel][note] > 0 {
                 self.clips[track][channel][note] = 0;
@@ -76,5 +83,5 @@ impl Routing {
             }
         } }
     }
-    pub(crate) fn reset(&mut self) { self.lengths.fill(0); self.held.fill(None); self.refused.fill(false); self.clips.fill([[0;128];16]); }
+    pub(crate) fn reset(&mut self) { self.lengths.fill(0); self.held.fill(None); self.refused.fill(false); self.clips.fill([[0;128];16]); for events in &mut self.expressions { events.clear(); } self.expression_voices.fill(None); }
 }

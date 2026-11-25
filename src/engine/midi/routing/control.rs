@@ -392,6 +392,11 @@ impl Shared {
         &self, sources: Sources, name: &str, id: &str, generation: u64, packet: Packet,
         at: std::time::Instant, cmd: &CommandPort, controller: impl FnOnce(bool),
     ) {
+        self.input_mpe_at(sources,name,id,generation,packet,at,None,cmd,controller);
+    }
+    pub(crate) fn input_mpe_at(
+        &self,sources:Sources,name:&str,id:&str,generation:u64,packet:Packet,at:std::time::Instant,expression:Option<&crate::engine::mpe::State>,cmd:&CommandPort,controller:impl FnOnce(bool),
+    ) {
         // Serialize dispatch with route publication. A worker cannot enqueue an
         // old onset after that publication's guaranteed source releases.
         let live = self.live.lock();
@@ -407,6 +412,11 @@ impl Shared {
         controller(!live.config.enabled);
         if !live.config.enabled {
             return;
+        }
+        if crate::engine::mpe::valid(packet.bytes()) && live.config.routes.iter().any(|route| route.monitor && route.inputs.iter().any(|input| input.port.matches(name, id))) {
+            let mut bytes = [0; 3];
+            bytes[..packet.bytes().len()].copy_from_slice(packet.bytes());
+            if cmd.send(Command::MidiExpression { source: sources.native, bytes, length: packet.bytes().len() as u8 }).is_err() { self.release(sources, cmd); return; }
         }
         let mut recent = [false; TRACKS];
         for route in &live.config.routes {
@@ -450,6 +460,7 @@ impl Shared {
                     let command = if on {
                         Command::RoutedNoteOn {
                             source,
+                            origin: sources.native,
                             ch,
                             note,
                             vel,
@@ -466,7 +477,7 @@ impl Shared {
                 }
                 let track = usize::from(route.track);
                 if !recent[track] {
-                    cmd.retrospective().observe(route.track, sources.tracks[track], at, packet.bytes());
+                    cmd.retrospective().observe_with_setup(route.track, sources.tracks[track], at, packet.bytes(), expression);
                     recent[track] = true;
                 }
             }

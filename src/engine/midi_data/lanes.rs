@@ -18,6 +18,8 @@ pub(crate) struct Lanes {
     #[serde(skip)]
     pub(crate) state: Vec<super::StateLane>,
     #[serde(skip)]
+    pub(crate) expression: Option<Arc<crate::engine::mpe::Index>>,
+    #[serde(skip)]
     cached_bytes: usize,
 }
 impl PartialEq for Lanes {
@@ -59,6 +61,7 @@ impl Lanes {
             meta,
             labels: Vec::new(),
             state: Vec::new(),
+            expression: None,
             cached_bytes: 0,
         }
         .prepare_with_cancel(cancel)
@@ -72,7 +75,7 @@ impl Lanes {
         Self::named_with_cancel(ppqn, end_tick, messages, meta, labels, &mut || false)
     }
     pub fn named_with_cancel(ppqn: u16, end_tick: u64, messages: Vec<Message>, meta: Vec<Meta>, labels: Vec<super::Label>, cancel: &mut impl FnMut() -> bool) -> Result<Arc<Self>, String> {
-        Self { ppqn, end_tick, messages, meta, labels, state: Vec::new(), cached_bytes: 0 }.prepare_with_cancel(cancel)
+        Self { ppqn, end_tick, messages, meta, labels, state: Vec::new(), expression: None, cached_bytes: 0 }.prepare_with_cancel(cancel)
     }
     fn prepare_with_cancel(&self, cancel: &mut impl FnMut() -> bool) -> Result<Arc<Self>, String> {
         if cancel() {
@@ -93,6 +96,7 @@ impl Lanes {
         for label in &mut result.labels { label.name.shrink_to_fit(); }
         result.validate_with_cancel(cancel)?;
         result.state = super::control::index(&result.messages);
+        result.expression = crate::engine::mpe::Index::prepare(&result.messages, cancel)?;
         result.validate_with_cancel(cancel)?;
         result.cached_bytes = result.bytes();
         Ok(Arc::new(result))
@@ -102,6 +106,7 @@ impl Lanes {
             return self.cached_bytes;
         }
         std::mem::size_of::<Self>()
+            + self.expression.as_ref().map_or(0, |index| index.bytes())
             + self.messages.capacity() * std::mem::size_of::<Message>()
             + self.meta.capacity() * std::mem::size_of::<Meta>()
             + self.labels.capacity() * std::mem::size_of::<super::Label>()

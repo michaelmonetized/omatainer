@@ -510,6 +510,7 @@ fn recording_first_pass_and_unrelated_cell_edits_do_not_retrigger_external_notes
         .send(crate::engine::Command::RoutedNoteOn {
             target: None,
             source: 888,
+        origin: 888,
             ch: 3,
             note: 60,
             vel: 95,

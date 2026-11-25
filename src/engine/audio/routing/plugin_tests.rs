@@ -6,6 +6,69 @@ pub(crate) fn fixture(instrument:bool)->(Class,Saved) {
     let root=PathBuf::from(std::env::var_os("OMATAINER_VST3_FIXTURES").expect("Native fixture directory is required"));
     probe(root.join("Contract.vst3"),instrument)
 }
+
+#[test]
+#[ignore="requires the freshly compiled native worker and private pinned-SDK expression fixture; no devices"]
+fn native_mpe_sources_reach_independent_plugin_note_ids_and_sample_offsets() {
+    let fixture=PathBuf::from(std::env::var_os("OMATAINER_MPE_FIXTURES").expect("Private MPE fixture directory is required")).join("Expression.vst3");
+    let (class,saved)=probe(fixture,true);
+    assert_eq!(class.note_expression,Some(true));
+    assert_eq!(class.layout.outputs.iter().map(|bus|bus.channel_count).collect::<Vec<_>>(),[4]);
+    let (_,mut rt)=Engine::headless_for_test(48000,256);
+    rt.selected_track=2;rt.master=1.0;
+    let track=rt.session.tracks[2].id;
+    let mut model=Model::default();model.version=3;model.next_id=11;
+    model.ports.push(Port {id:10,alias:"Private expression values".into(),direction:Direction::Output,channels:vec![0,1,2,3]});
+    model.plugins.push(instance(&class,saved.clone(),Some(track)));
+    model.connections=vec![link(Group::Plugin(2),Group::Output(10),&[(0,0,1.0),(1,1,1.0),(2,2,1.0),(3,3,1.0)])];
+    let mut graph=Prepared::at_rate(Arc::new(model),&rt.session,48000).unwrap();graph.offline=true;
+    assert!(graph.plugins[0].error.is_none(),"{:?}",graph.plugins[0].error);
+    rt.routing=Some(Box::new(graph));
+    let send=|rt:&mut RtEngine,source,bytes:&[u8]| {
+        let mut data=[0;3];data[..bytes.len()].copy_from_slice(bytes);
+        rt.apply(Command::MidiExpression {source,bytes:data,length:bytes.len() as u8});
+    };
+    for source in [71,72] { for bytes in [[0xb0,101,0],[0xb0,100,6],[0xb0,6,4]] {send(&mut rt,source,&bytes);} }
+    for (source,bend,pressure,timbre) in [(71,96,32,16),(72,32,96,112)] {
+        send(&mut rt,source,&[0xe1,0,bend]);send(&mut rt,source,&[0xd1,pressure]);send(&mut rt,source,&[0xb1,74,timbre]);
+        rt.apply(Command::LiveNoteOn {source,ch:1,note:60,vel:100});
+    }
+    let check=|rt:&mut RtEngine,expected:[f32;4]| {
+        let mut block=[0.0;1024];for _ in 0..8 {rt.process_interleaved(&mut block,4);}
+        for (channel,expected) in expected.into_iter().enumerate() {assert!((block[1020+channel]-engine::limiter(expected)).abs()<1e-6,"channel {channel}: {} != {expected}",block[1020+channel]);}
+        assert!(!rt.routing.as_ref().unwrap().plugins[0].endpoint.as_ref().unwrap().faulted());
+    };
+    check(&mut rt,[0.02,0.1,12.8/127.0,12.8/127.0]);
+    send(&mut rt,71,&[0xe1,0,80]);send(&mut rt,71,&[0xd1,64]);send(&mut rt,71,&[0xb1,74,80]);
+    check(&mut rt,[0.02,0.095,16.0/127.0,19.2/127.0]);
+    rt.selected_track=3;rt.apply(Command::LiveNoteOff {source:72,ch:1,note:60});
+    check(&mut rt,[0.01,0.055,6.4/127.0,8.0/127.0]);
+    send(&mut rt,71,&[0xb0,64,127]);rt.apply(Command::LiveNoteOff {source:71,ch:1,note:60});
+    send(&mut rt,71,&[0xd1,100]);
+    check(&mut rt,[0.01,0.055,6.4/127.0,8.0/127.0]);
+    send(&mut rt,71,&[0xb0,64,0]);check(&mut rt,[0.0;4]);
+    rt.routing.as_mut().unwrap().offline=false;
+    assert_eq!(engine::test_alloc::measure(||rt.process_interleaved(&mut [0.0;1024],4)),Default::default());
+    let exe=PathBuf::from(std::env::var_os("OMATAINER_TEST_BIN").unwrap());
+    let mut worker=plugin_host::process::Process::start(&exe).unwrap();
+    let cancel=AtomicBool::new(false);
+    assert!(matches!(worker.exchange(&Request::Load {saved,rate:48000},&cancel,Duration::from_secs(10)).unwrap(),Response::Loaded {..}));
+    use plugin_host::expression::{Event,Values};
+    let first=Values {pitch:24.0,pressure:32,timbre:16};
+    let second=Values {pitch:-24.0,pressure:96,timbre:112};
+    let changed=Values {pitch:12.0,pressure:64,timbre:80};
+    let frame=plugin_host::Frame {inputs:vec![],frames:256,bpm:120.0,beat:0.0,sample_position:0,playing:true,signature:[4,4],parameters:vec![],midi:vec![],expression:vec![
+        (3,Event::On {id:1,pitch:60,velocity:100,values:first}),
+        (9,Event::On {id:2,pitch:60,velocity:100,values:second}),
+        (17,Event::Values {id:1,values:changed}),
+        (31,Event::Off {id:2,pitch:60}),
+    ]};
+    let output=match worker.exchange(&Request::Process {frame},&cancel,Duration::from_secs(10)).unwrap() {Response::Audio {outputs,..}=>outputs,_=>panic!("Missing expression PCM")};
+    for sample in 0..256 {
+        let expected=match sample {0..=2=>[0.0;4],3..=8=>[0.01,0.06,3.2/127.0,1.6/127.0],9..=16=>[0.02,0.1,12.8/127.0,12.8/127.0],17..=30=>[0.02,0.095,16.0/127.0,19.2/127.0],_=>[0.01,0.055,6.4/127.0,8.0/127.0]};
+        for channel in 0..4 {assert!((output[0][channel][sample]-expected[channel]).abs()<1e-6,"sample {sample}, channel {channel}: {} != {}",output[0][channel][sample],expected[channel]);}
+    }
+}
 pub(crate) fn probe(bundle:PathBuf,instrument:bool)->(Class,Saved){
     let exe=PathBuf::from(std::env::var_os("OMATAINER_TEST_BIN").expect("Fresh native app executable is required"));
     let mut worker=plugin_host::process::Process::start(&exe).unwrap();

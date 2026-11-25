@@ -347,7 +347,7 @@ enum Event {
     Off(usize),
     Expression(usize),
 }
-fn event_orders(content: &Content) -> Result<Vec<(u32, u32)>, String> {
+pub(crate) fn event_orders(content: &Content) -> Result<Vec<(u32, u32)>, String> {
     let mut next = content
         .messages
         .iter()

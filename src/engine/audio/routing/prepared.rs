@@ -47,7 +47,7 @@ pub(crate) struct Plugin {
     pub initial: bool,
     pub observed_editor: bool,
     pub(super) dry: super::latency::History,
-    pub midi: std::collections::VecDeque<(u64,[u8;3])>,
+    pub midi: std::collections::VecDeque<(u64,crate::plugin_host::expression::Routed)>,
     pub frame: u64,
     pub automation_beat: Option<f64>,
     pub parameters: [Option<super::plugins::Parameter>; super::plugins::MAX_PARAMETERS],

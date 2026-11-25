@@ -67,12 +67,17 @@ impl Prepared {
                 if rt.plugin_midi.refused(track) { endpoint.refuse(); }
                 for bytes in rt.plugin_midi.events(track) {
                     if plugin.midi.len() == plugin.midi.capacity() { endpoint.refuse(); break; }
-                    plugin.midi.push_back((plugin.frame.saturating_add(u64::from(delay)), *bytes));
+                    plugin.midi.push_back((plugin.frame.saturating_add(u64::from(delay)), crate::plugin_host::expression::Routed::Midi(*bytes)));
+                }
+                for event in rt.plugin_midi.expressions(track) {
+                    if plugin.midi.len() == plugin.midi.capacity() { endpoint.refuse(); break; }
+                    plugin.midi.push_back((plugin.frame.saturating_add(u64::from(delay)), crate::plugin_host::expression::Routed::Expression(*event)));
                 }
             }
             while plugin.midi.front().is_some_and(|(frame,_)| *frame <= plugin.frame) {
-                let (_,bytes) = plugin.midi.pop_front().unwrap();
-                if !endpoint.midi(bytes) { endpoint.refuse(); }
+                let (_,event) = plugin.midi.pop_front().unwrap();
+                let accepted = match event { crate::plugin_host::expression::Routed::Midi(bytes) => endpoint.midi(bytes), crate::plugin_host::expression::Routed::Expression(event) => endpoint.expression(event) };
+                if !accepted { endpoint.refuse(); }
             }
             output = endpoint.tick(input,context);
             if self.offline && endpoint.block_offset() == 0 {

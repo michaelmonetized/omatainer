@@ -95,6 +95,7 @@ pub mod midi;
 #[cfg(test)]
 mod master_stereo_tests;
 mod midi_schedule;
+pub(crate) mod mpe;
 mod metronome;
 #[cfg(test)]
 mod midi_schedule_tests;
@@ -252,6 +253,8 @@ pub struct PlayingClip {
 /// A finite drum hit captures its clip level when triggered. Live hits use unity.
 #[derive(Clone, Copy, Debug, PartialEq, Serialize)]
 pub struct DrumVoice {
+    #[serde(skip)]
+    pub(crate) expression: Option<mpe::Drum>,
     pub sample: usize,
     pub position: f64,
     pub clip_gain: f32,
@@ -289,6 +292,7 @@ pub struct TrackRt {
     midi_schedule: midi_schedule::MidiSchedule,
     note_seed: u64,
     midi_output: midi::routing::playback::Playback,
+    expression_clip: mpe::State,
     // Capture playback policy belongs only to the current launch.
     recorded_playback: Vec<Option<recording::RecordedPlayback>>,
 }
@@ -309,6 +313,7 @@ impl TrackRt {
             arp_note: None, arp_cache: arp::ChordCache::default(),
             midi_schedule: midi_schedule::MidiSchedule::default(), note_seed: note_variation::DEFAULT_SEED,
             midi_output: midi::routing::playback::Playback::default(),
+            expression_clip: mpe::State::default(),
             recorded_playback: Vec::new(),
         }
     }
@@ -353,6 +358,7 @@ impl TrackRt {
     fn release_clip_notes(&mut self) {
         self.midi_output.invalidate();
         self.poly.release_clip();
+        for voice in self.drum_pos.iter_mut().flatten() {if let Some(expression)=&mut voice.expression {expression.freeze_clip();}}
         self.arp_note = None;
         self.arp_cache.invalidate();
         self.midi_schedule.reset();
@@ -687,6 +693,8 @@ pub struct RtEngine {
     midi_learning: Arc<midi::learn::Shared>,
     midi_output_mask:u128,
     pub(crate) plugin_midi: Box<plugin_midi::Routing>,
+    expression: mpe::Sources,
+    expression_resets: Arc<mpe::Resets>,
     pub(crate) routing_plugin_instruments: u128,
     pub(crate) offline_plugin_cancel: Arc<std::sync::atomic::AtomicBool>,
     midi_output_budget:usize,
@@ -1214,7 +1222,8 @@ pub enum Command {
     SelectDeckRequested { deck: usize, request: u64 },
     SetView(View),
     LiveNoteOn { source: u64, ch: u8, note: u8, vel: u8 },
-    RoutedNoteOn { source: u64, ch: u8, note: u8, vel: u8, track: u8, target: Option<session::Reference> },
+    RoutedNoteOn { source: u64, origin: u64, ch: u8, note: u8, vel: u8, track: u8, target: Option<session::Reference> },
+    MidiExpression { source: u64, bytes: [u8; 3], length: u8 },
     LiveNoteOff { source: u64, ch: u8, note: u8 },
     AudioClipEdit(Box<audio_clip::edit::Request>),
     ArrangementEdit(Box<arrangement::edit::Request>),
@@ -1320,6 +1329,8 @@ impl RtEngine {
             midi_learning:cmd_rx.midi_learning(),
             midi_output_mask:0,
             plugin_midi: Box::new(plugin_midi::Routing::default()),
+            expression: mpe::Sources::default(),
+            expression_resets: cmd_rx.expression_resets(),
             routing_plugin_instruments: 0,
             offline_plugin_cancel: Arc::new(std::sync::atomic::AtomicBool::new(false)),
             midi_output_budget:256,
@@ -1681,6 +1692,7 @@ impl RtEngine {
         }
         self.performance_tick();
         self.maintain_monitor(channels, !out.is_empty());
+        self.expression_releases();
         self.command_batch.receive_into(&self.cmd_rx);
         self.command_stats.record(&self.command_batch);
         for index in 0..control::COMMANDS_PER_BLOCK {
@@ -2007,7 +2019,7 @@ impl RtEngine {
                     }
                 }
                 let prev = p.last_beat;
-                if self.tracks[ti].clips[scene].kind == ClipKind::Midi {
+                if self.tracks[ti].clips[scene].kind == ClipKind::Midi && !self.tracks[ti].clips[scene].lanes.as_ref().is_some_and(|lanes| lanes.expression.is_some()) {
                     let kind = self.tracks[ti].kind;
                     let gain = clip_gain(self.tracks[ti].clips[scene].gain);
                     let arp = self.tracks[ti]
@@ -2160,7 +2172,8 @@ impl RtEngine {
         self.trig_drum_with_gain(ti, pitch, vel, 1.0);
     }
 
-    fn trig_drum_with_gain(&mut self, ti: usize, pitch: u8, vel: f32, clip_gain: f32) {
+    fn trig_drum_with_gain(&mut self, ti: usize, pitch: u8, vel: f32, clip_gain: f32) {self.trig_drum_expression(ti,pitch,vel,clip_gain,None);}
+    fn trig_drum_expression(&mut self, ti: usize, pitch: u8, vel: f32, clip_gain: f32, expression:Option<mpe::Drum>) {
         // A zero-velocity onset is a release, never a new one-shot or a steal.
         // Existing finite hits keep playing under the drum release policy.
         if !vel.is_finite() || vel <= 0.0 { return; }
@@ -2175,9 +2188,9 @@ impl RtEngine {
         };
         let slots = &mut self.tracks[ti].drum_pos;
         if let Some(slot) = slots.iter_mut().find(|s| s.is_none()) {
-            *slot = Some(DrumVoice { sample: idx, position: 0.0, clip_gain, velocity });
+            *slot = Some(DrumVoice { expression, sample: idx, position: 0.0, clip_gain, velocity });
         } else if let Some(slot) = slots.first_mut() {
-            *slot = Some(DrumVoice { sample: idx, position: 0.0, clip_gain, velocity });
+            *slot = Some(DrumVoice { expression, sample: idx, position: 0.0, clip_gain, velocity });
         }
     }
 
@@ -2192,8 +2205,10 @@ impl RtEngine {
             if let Some(voice) = slot {
                 let samp = &samples[voice.sample];
                 let (l, _) = samp.at(voice.position);
-                s += l * voice.clip_gain * voice.velocity;
-                voice.position += samp.sr as f64 / sr;
+                let value=l*voice.clip_gain*voice.velocity;
+                s+=voice.expression.as_mut().map_or(value,|expression|expression.sample(value));
+                let step=samp.sr as f64/sr;
+                voice.position+=voice.expression.as_ref().map_or(step,|expression|step*expression.step);
                 if voice.position >= samp.frames() as f64 {
                     *slot = None;
                 }
@@ -2465,16 +2480,24 @@ impl RtEngine {
     }
 
     fn live_note_on(&mut self, source:u64, ch:u8, note:u8, vel:u8, t:usize) {
+        self.live_note_on_from(source, source, ch, note, vel, t);
+    }
+    fn live_note_on_from(&mut self, source:u64, origin:u64, ch:u8, note:u8, vel:u8, t:usize) {
                 let input = InputKey::Midi { source, ch: ch & 15, note };
                 self.release_input(input);
-                if self.routing.as_ref().is_some_and(|graph| graph.model.plugins.iter().any(|p| p.midi_track == Some(self.session.tracks[t].id))) { self.plugin_midi.on(input,t,ch & 15,note,vel); }
+                if self.routing.as_ref().is_some_and(|graph| graph.model.plugins.iter().any(|p| p.midi_track == Some(self.session.tracks[t].id))) {
+                    if let Some(state) = self.expression.get(origin).copied().filter(|state| state.note(origin, ch & 15).is_some()) {
+                        self.plugin_midi.expression_on(plugin_midi::ExpressionOwner::Live { key: input, origin }, t, ch & 15, note, vel, &state);
+                    } else { self.plugin_midi.on(input,t,ch & 15,note,vel); }
+                }
                 if vel == 0 {
                     return;
                 }
                 if self.tracks[t].kind == 0 {
-                    self.trig_drum(t, note, vel as f32 / 127.0);
+                    let expression=self.expression.get(origin).and_then(|state|mpe::Drum::new(state,origin,ch&15,Some(input),None,self.sr));
+                    self.trig_drum_expression(t,note,vel as f32/127.0,1.0,expression);
                 } else {
-                    self.tracks[t].poly.note_on_input(note, vel as f32 / 127.0, input);
+                    self.tracks[t].poly.note_on_expressive(note, vel as f32 / 127.0, input, origin, self.expression.get(origin));
                 }
                 if self.recording && self.playing {
                     let scene = self.selected_scene;
@@ -2496,6 +2519,7 @@ impl RtEngine {
         let midi_beat = self.precise_midi_beat();
         for track in &mut self.tracks {
             track.poly.note_off_input(input);
+            for voice in track.drum_pos.iter_mut().flatten() {if let Some(expression)=voice.expression.as_mut().filter(|expression|expression.input==Some(input)) {expression.release();}}
             track.recorded_input_released(input, self.beat, midi_beat);
         }
         self.sampler_poly.note_off_input(input);
@@ -3200,10 +3224,13 @@ impl RtEngine {
                 self.selected_deck_request = request;
             }
             Command::SetView(v) => self.view = v,
-            Command::RoutedNoteOn { source, ch, note, vel, track, target } => {
+            Command::RoutedNoteOn { source, origin, ch, note, vel, track, target } => {
                 if usize::from(track) < self.tracks.len() && self.session.tracks[usize::from(track)].active && target.is_none_or(|reference| self.session.resolves(session::Axis::Track, usize::from(track), reference)) && ch<=15 && note<=127 && vel<=127 {
-                    self.live_note_on(source,ch,note,vel,usize::from(track));
+                    self.live_note_on_from(source,origin,ch,note,vel,usize::from(track));
                 }
+            }
+            Command::MidiExpression { source, bytes, length } => {
+                if usize::from(length) <= bytes.len() { self.expression_input(source, &bytes[..usize::from(length)]); }
             }
             Command::LiveNoteOn { source, ch, note, vel } => self.live_note_on(source,ch,note,vel,self.selected_track),
             Command::LiveNoteOff { source, ch, note } => {

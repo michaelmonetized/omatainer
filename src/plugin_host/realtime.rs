@@ -41,6 +41,8 @@ struct Midi {
     offset: i32,
     bytes: [u8; 3],
 }
+#[derive(Clone, Copy, Debug, Default)]
+struct Expression { offset: i32, event: Option<super::expression::Event> }
 struct Packet {
     sequence: u64,
     latency: u32,
@@ -51,6 +53,8 @@ struct Packet {
     parameter_count: usize,
     midi: [Midi; 512],
     midi_count: usize,
+    expression: [Expression; 512],
+    expression_count: usize,
 }
 impl Packet {
     fn new() -> Self {
@@ -64,6 +68,8 @@ impl Packet {
             parameter_count: 0,
             midi: [Midi::default(); 512],
             midi_count: 0,
+            expression: [Expression::default(); 512],
+            expression_count: 0,
         }
     }
 }
@@ -198,6 +204,9 @@ pub(crate) struct Endpoint {
     pending_midi: [Midi; 512],
     pending_midi_count: usize,
     held_notes: [[bool;128];16],
+    held_expression: [Option<(i32,u8)>; 256],
+    pending_expression: [Expression; 512],
+    pending_expression_count: usize,
     pending_parameters: [Parameter; 512],
     pending_parameter_count: usize,
     prepared: bool,
@@ -289,6 +298,9 @@ impl Endpoint {
             pending_midi: [Midi::default(); 512],
             pending_midi_count: 0,
             held_notes: [[false;128];16],
+            held_expression: [None;256],
+            pending_expression: [Expression::default();512],
+            pending_expression_count: 0,
             pending_parameters: [Parameter::default(); 512],
             pending_parameter_count: 0,
             control,
@@ -334,6 +346,7 @@ impl Endpoint {
             packet.context = context;
             packet.parameter_count = 0;
             packet.midi_count = 0;
+            packet.expression_count = 0;
         }
     }
     /// Publish a block's reported delay before graph alignment begins.
@@ -362,8 +375,8 @@ impl Endpoint {
     /// Queue a channel message at the current sample offset.
     /// Takes three MIDI bytes; returns false on the fixed event/pool bound without allocation or waiting.
     pub fn midi(&mut self, bytes: [u8; 3]) -> bool {
-        let occupied = self.current.as_ref().map_or(0, |p| p.midi_count);
-        if self.pending_midi_count + occupied >= 512 {
+        let occupied = self.current.as_ref().map_or(0, |p| p.midi_count + p.expression_count);
+        if self.pending_midi_count + self.pending_expression_count + occupied >= 512 {
             return false;
         }
         self.pending_midi[self.pending_midi_count] = Midi {
@@ -374,9 +387,34 @@ impl Endpoint {
         if matches!(bytes[0] & 0xf0,0x80 | 0x90) && bytes[1] < 128 { self.held_notes[(bytes[0] & 15) as usize][bytes[1] as usize] = bytes[0] & 0xf0 == 0x90 && bytes[2] > 0; }
         true
     }
+    /// Queue an independent voice event.
+    /// Takes a validated identity-bearing event; returns false when the plugin does not advertise all three dimensions or the shared event/voice bound is full.
+    pub(crate) fn expression(&mut self, event: super::expression::Event) -> bool {
+        use super::expression::Event;
+        let occupied = self.current.as_ref().map_or(0, |p| p.midi_count + p.expression_count);
+        if self.control.class.note_expression != Some(true) || !event.valid() || self.pending_midi_count + self.pending_expression_count + occupied >= 512 { return false; }
+        match event {
+            Event::On { id, pitch, .. } => {
+                if self.held_expression.iter().flatten().any(|(held,_)| *held == id) { return false; }
+                let Some(slot) = self.held_expression.iter_mut().find(|slot| slot.is_none()) else { return false; };
+                *slot = Some((id,pitch));
+            }
+            Event::Off { id, .. } => {
+                if let Some(slot) = self.held_expression.iter_mut().find(|slot| slot.is_some_and(|(held,_)| held == id)) { *slot = None; }
+            }
+            Event::Values { .. } => {}
+        }
+        self.pending_expression[self.pending_expression_count] = Expression { offset: self.offset as i32, event: Some(event) };
+        self.pending_expression_count += 1; true
+    }
     /// Release the notes this processor actually received.
     /// Takes exclusive endpoint ownership; queues individual note offs or stops an overflowing processor without relying on optional controller mappings.
     pub(crate) fn release_notes(&mut self) {
+        for slot in 0..self.held_expression.len() {
+            if let Some((id,pitch)) = self.held_expression[slot] {
+                if !self.expression(super::expression::Event::Off { id, pitch }) { self.refuse(); return; }
+            }
+        }
         for channel in 0..16 { for note in 0..128 {
             if self.held_notes[channel][note] && !self.midi([0x80 | channel as u8,note as u8,0]) { self.refuse(); return; }
         } }
@@ -414,12 +452,17 @@ impl Endpoint {
                 packet.midi[packet.midi_count] = *event;
                 packet.midi_count += 1;
             }
+            for event in &self.pending_expression[..self.pending_expression_count] {
+                packet.expression[packet.expression_count] = *event;
+                packet.expression_count += 1;
+            }
             for event in &self.pending_parameters[..self.pending_parameter_count] {
                 packet.parameters[packet.parameter_count] = *event;
                 packet.parameter_count += 1;
             }
         }
         self.pending_midi_count = 0;
+        self.pending_expression_count = 0;
         self.pending_parameter_count = 0;
         if let Some(packet) = &mut self.current {
             for (channel, value) in packet.input.iter_mut().zip(input) {
@@ -562,6 +605,7 @@ fn owner(
                 .iter()
                 .map(|p| (p.id, p.value, p.offset))
                 .collect(),
+            expression: packet.expression[..packet.expression_count].iter().map(|event| (event.offset,event.event.unwrap())).collect(),
             midi: packet.midi[..packet.midi_count]
                 .iter()
                 .map(|m| (m.offset, m.bytes))

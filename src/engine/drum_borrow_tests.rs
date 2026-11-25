@@ -27,6 +27,7 @@ fn previous_tick(rt: &mut RtEngine, track: usize) -> f32 {
 fn reset(rt: &mut RtEngine, voices: usize) {
     rt.tracks[0].drum_pos = std::array::from_fn(|index| {
         (index < voices).then_some(DrumVoice {
+            expression:None,
             sample: index % 6,
             position: 0.0,
             velocity: 1.0,

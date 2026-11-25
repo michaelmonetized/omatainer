@@ -53,6 +53,7 @@ impl App {
                     for (class_index,class) in record.classes.iter().enumerate(){
                         if ui.selectable_label(selected==Some((index,class_index)),format!("{} · {} · {}",class.info.name,class.info.vendor,class.info.version)).clicked(){selected=Some((index,class_index));}
                         ui.label(format!("Class {} · {} · {} input buses / {} output buses · {} parameters · {} samples latency",class.info.uid,class.info.category,class.layout.inputs.len(),class.layout.outputs.len(),class.parameters.len(),class.latency));
+                        ui.label(match class.note_expression {Some(true)=>"Independent note pitch, pressure and timbre supported",Some(false)=>"Independent note expression unavailable for this plugin",None=>"Rescan this plugin to check independent note expression"});
                         ui.label(if class.tail==u32::MAX{"Tail: unlimited".into()}else{format!("Tail: {} samples",class.tail)});
                     }
                 });

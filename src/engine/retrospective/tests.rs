@@ -1,5 +1,6 @@
 use super::*;
 use std::sync::Arc;
+use crate::engine::test_alloc;
 
 fn configured(capacity: u32) -> (Arc<Shared>, Instant) {
     let shared = Arc::new(Shared::default());
@@ -31,6 +32,55 @@ fn choice() -> Choice {
         tempo: 120.0,
         loop_beats: 4.0,
     }
+}
+
+#[test]
+fn mpe_setup_before_opt_in_survives_capture_replay_and_actual_smf_export() {
+    use crate::engine::{midi_data::Lanes, midi_interchange, mpe::{State,Values}, project, Command, Engine};
+    let (shared,start)=configured(256);
+    let mut state=State::default();
+    for bytes in [[0xb0,101,0],[0xb0,100,6],[0xb0,6,4]] {state.input(&bytes);}
+    state.input(&[0xe1,0,96]);state.input(&[0xe2,0,32]);
+    let trace=[(50,&[0x91,60,100][..]),(75,&[0x92,60,80][..]),(100,&[0xd1,91][..]),(125,&[0xb2,74,24][..]),(700,&[0x81,60,37][..]),(750,&[0x82,60,21][..])];
+    for (millis,bytes) in trace {assert!(shared.observe_with_setup(2,17,start+Duration::from_millis(millis),bytes,Some(&state)));state.input(bytes);}
+    let snapshot=shared.snapshot(start+Duration::from_secs(1));
+    let captured=prepare(&snapshot,choice(),&AtomicBool::new(false)).unwrap();
+    let lanes=Lanes::new(captured.content.ppqn,captured.content.end_tick,captured.content.messages.clone(),captured.content.meta.clone()).unwrap();
+    let index=lanes.expression.as_ref().unwrap();
+    assert_eq!(index.before(300.0,&lanes.state).member(1),Values {pitch:24.0,pressure:91,timbre:64});
+    assert_eq!(index.before(300.0,&lanes.state).member(2),Values {pitch:-24.0,pressure:0,timbre:24});
+    let (_,mut rt)=Engine::headless_for_test(48000,256);
+    let clip=&mut rt.tracks[2].clips[0];clip.kind=crate::engine::ClipKind::Midi;clip.bars=1.0;clip.notes=captured.content.notes.clone();clip.lanes=Some(lanes.clone());
+    rt.quant=0.0;rt.bpm=120.0;rt.apply(Command::LaunchClip {track:2,scene:0});
+    let mut energy=0.0f32;
+    assert_eq!(test_alloc::measure(||for _ in 0..100 {let mut block=[0.0;256];rt.process(&mut block);energy+=block.iter().map(|value|value.abs()).sum::<f32>();}),Default::default());
+    assert!(energy>1.0);
+    for (id,expected) in captured.content.notes.iter().map(|note|(note.id,if note.channel==1 {24.0} else {-24.0})) {
+        assert_eq!(rt.tracks[2].poly.voices.iter().find(|voice|voice.clip_note==Some(id)).unwrap().expression_values.pitch,expected);
+    }
+    let (mut saved,media)=project::State::empty().unwrap();let clip=&mut saved.tracks[2].clips[0];clip.kind=crate::engine::ClipKind::Midi;clip.bars=1.0;clip.notes=captured.content.notes;clip.lanes=Some(lanes);
+    saved.validate(&media).unwrap();
+    let file=midi_interchange::export(&saved,&[(2,0)],midi_interchange::ExportOptions {ppqn:PPQN,single_track:true,include_muted:true,allow_rounding:false,session_conductor:false}).unwrap();
+    let roundtrip=crate::midi_file::decode(&crate::midi_file::encode(&file,false).unwrap()).unwrap();
+    assert_eq!(roundtrip.tracks[0].messages.iter().map(|m|(m.tick,m.bytes,m.length)).collect::<Vec<_>>(),file.tracks[0].messages.iter().map(|m|(m.tick,m.bytes,m.length)).collect::<Vec<_>>());
+}
+
+#[test]
+fn aged_mpe_zone_and_range_are_preserved_at_the_retained_history_boundary() {
+    let (shared,start)=configured(256);
+    shared.configure(Config {enabled:true,seconds:1,events:256},start).unwrap();
+    for bytes in [[0xb0,101,0],[0xb0,100,6],[0xb0,6,4],[0xb1,101,0],[0xb1,100,0],[0xb1,6,12]] {send(&shared,start,20,2,17,&bytes);}
+    for millis in (200..=2000).step_by(100) {send(&shared,start,millis,2,17,&[0xb1,1,10]);}
+    send(&shared,start,2100,2,17,&[0x91,60,100]);
+    send(&shared,start,2150,2,17,&[0xe1,0,96]);
+    send(&shared,start,2200,2,17,&[0x81,60,20]);
+    let snapshot=shared.snapshot(start+Duration::from_millis(2250));
+    let prepared=prepare(&snapshot,choice(),&AtomicBool::new(false)).unwrap();
+    let lanes=crate::engine::midi_data::Lanes::new(PPQN,prepared.content.end_tick,prepared.content.messages,prepared.content.meta).unwrap();
+    let state=lanes.expression.as_ref().unwrap().before(1800.0,&lanes.state);
+    assert_eq!(state.role(1),Some((0,true)));
+    assert_eq!(state.range(1),12);
+    assert_eq!(state.member(1).pitch,6.0);
 }
 #[test]
 fn timestamped_overlapping_trace_retains_original_channels_release_velocity_expression_and_wire_order(

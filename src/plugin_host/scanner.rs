@@ -434,6 +434,7 @@ impl Browser {
                             .as_ref()
                             .is_ok_and(|b| catalog.records[i].binary.as_ref() == Some(b))
                             && (!retry || catalog.records[i].failure.is_none())
+                            && catalog.records[i].classes.iter().all(|class| class.note_expression.is_some())
                     }) {
                         continue;
                     }

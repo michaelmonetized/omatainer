@@ -19,6 +19,7 @@ mod tools;
 mod scale;
 mod variation;
 mod retrospective;
+mod expression;
 
 pub(super) struct Editor {
     open: bool,
@@ -86,6 +87,7 @@ struct Draft {
     controls: control::Controls,
     tools: tools::Tools,
     variation: variation::Controls,
+    expression: expression::Controls,
 }
 #[derive(Clone, Copy)]
 struct Values {
@@ -169,6 +171,7 @@ impl Draft {
             rhythm: rhythm::Generator::default(),
             tools: tools::Tools::default(),
             variation: variation::Controls::default(),
+            expression: expression::Controls::default(),
         }
     }
     fn resolved_context(&self) -> crate::engine::musical_context::Resolved {
@@ -348,7 +351,7 @@ impl Editor {
             || self.loading.is_some()
             || self.preparing.is_some()
             || self.pending.is_some()
-            || self.draft.as_ref().is_some_and(|draft| draft.tools.busy() || draft.variation.busy())
+            || self.draft.as_ref().is_some_and(|draft| draft.tools.busy() || draft.variation.busy() || draft.expression.busy())
     }
     fn stop(&mut self, engine: &Engine) {
         if let Some(id) = self.audition {
@@ -452,6 +455,7 @@ impl Editor {
         }
         if let Some(draft) = &mut self.draft {
             if let Err(error) = variation::poll(draft, engine) { self.error = Some(error); }
+            if let Err(error) = expression::poll(draft) { self.error = Some(error); }
             let mut tools = std::mem::take(&mut draft.tools);
             if let Err(error) = tools.poll(draft) {
                 self.error = Some(error);
@@ -779,6 +783,9 @@ impl App {
                                 ui.label("Focus musical keyboard: A W S E D F T G Y H U J K play C through C. Z/X change octave; C/V change velocity. Space inserts held notes or a rest; Shift+Space ties; Backspace removes the last step. With Record steps enabled, releasing a chord inserts it and advances. Tab away releases all notes.");
                                 match rhythm::show(ui, draft) { Ok(true) => editor.error = None, Err(error) => editor.error = Some(error), _ => {} }
                                 match control::show(ui, draft, &self.theme) { Ok(true) => editor.error = None, Err(error) => editor.error = Some(error), _ => {} }
+                                if draft.baseline.lanes.as_ref().is_some_and(|lanes| lanes.expression.is_some()) {
+                                    match expression::show(ui, draft, &self.theme, &self.engine) { Ok(true) => editor.error = None, Err(error) => editor.error = Some(error), _ => {} }
+                                }
                                 let layers=editor.comparison.layers();
                                 if let Err(error) = canvas::show_compared(ui, &self.theme, draft, self.snap.timing.as_deref(),editor.comparison.offset,&layers) { editor.error = Some(error); }
                                 let selected = ui.label(draft.selected_label());

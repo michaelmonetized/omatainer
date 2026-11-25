@@ -251,7 +251,16 @@ impl Playback {
             let tick = source * f64::from(lanes.ppqn);
             let previous_end = end * f64::from(lanes.ppqn);
             let loop_tick = self.region.loop_start * f64::from(lanes.ppqn);
+            if let Some(index) = &lanes.expression {
+                let state = index.before(tick, &lanes.state);
+                let mut order = 0;
+                state.setup(|bytes, length| {
+                    self.events.push(Reverse(Event { beat: elapsed, order, cycle: i64::MIN, weight: 1, kind: Kind::Chase(bytes, length), repeating: false }));
+                    order += 1;
+                });
+            }
             let point = |key: u16| {
+                if lanes.expression.is_some() && matches!(key % 256, 64 | 74 | 121 | 128 | 129) { return None; }
                 let lane = lanes.state.binary_search_by_key(&key, |l| l.key).ok().map(|i| &lanes.state[i])?;
                 let mut value = lane.before(tick);
                 if cycling && value.is_none_or(|p| (p.message.tick as f64) < loop_tick) {
@@ -270,7 +279,7 @@ impl Playback {
                 Some(value)
             };
             let chase = |bytes: [u8; 3], length: u8, order: u64| {
-                self.events.push(Reverse(Event { beat: elapsed, order, cycle: i64::MIN, weight: 1, kind: Kind::Chase(bytes, length), repeating: false }));
+                self.events.push(Reverse(Event { beat: elapsed, order: order + 256, cycle: i64::MIN, weight: 1, kind: Kind::Chase(bytes, length), repeating: false }));
             };
             crate::engine::midi_data::chase(point,chase);
             let beat = |index: usize| lanes.messages[index].tick as f64 / f64::from(lanes.ppqn);
@@ -444,6 +453,7 @@ impl crate::engine::RtEngine {
         for (t, track) in self.tracks.iter_mut().enumerate() {
             let output = &mut track.midi_output;
             if output.generation != generation || output.epoch != epoch {
+                if track.poly.voices.iter().any(|voice| voice.clip_note.is_some()) { track.poly.release_clip(); }
                 let refused = output.generation == generation
                     && (output.refused || track.playing.is_some() && output.epoch != epoch);
                 if self.plugin_midi.mask & (1 << t) != 0 { self.plugin_midi.clear_clip(t); }
@@ -457,6 +467,7 @@ impl crate::engine::RtEngine {
             }
             self.midi_routing.clip_refused(t, output.refused||self.arrangement.output_refused(t));
             if output.clear {
+                if track.poly.voices.iter().any(|voice| voice.clip_note.is_some()) { track.poly.release_clip(); }
                 if self.plugin_midi.mask & (1 << t) != 0 { self.plugin_midi.clear_clip(t); }
                 if mask & (1 << t) != 0 {
                     self.midi_routing.clear_clip(t as u8);
@@ -466,7 +477,8 @@ impl crate::engine::RtEngine {
         }
     }
     pub(crate) fn render_midi_output(&mut self, track: usize) {
-        if (self.midi_output_mask | self.plugin_midi.mask) & (1 << track) == 0
+        let expressive = self.tracks[track].playing.is_some_and(|playing| self.tracks[track].clips[usize::from(playing.scene)].lanes.as_ref().is_some_and(|lanes| lanes.expression.is_some()));
+        if !expressive && (self.midi_output_mask | self.plugin_midi.mask) & (1 << track) == 0
             || !self.playing
             || self.count_in.is_some()
             || self.tracks[track].midi_output.refused
@@ -497,6 +509,7 @@ impl crate::engine::RtEngine {
                 playing.looping,
                 &t.recorded_playback,
             );
+            if expressive { t.expression_clip = crate::engine::mpe::State::default(); }
         }
         while self.midi_output_budget > 0 {
             let t = &mut self.tracks[track];
@@ -508,11 +521,12 @@ impl crate::engine::RtEngine {
             };
             self.midi_output_budget -= 1;
             let Advance::Packet(packet, owner, weight) = advanced else { continue };
+            if expressive { self.expression_clip_packet(track, packet, owner); }
             #[cfg(test)]
             if let Some(trace) = &mut self.tracks[track].midi_output.trace {
                 trace.push((elapsed, packet));
             }
-            if self.plugin_midi.mask & (1 << track) != 0 {
+            if !expressive && self.plugin_midi.mask & (1 << track) != 0 {
                 let b=packet.bytes();
                 if b.len() <= 3 { let mut bytes=[0;3]; bytes[..b.len()].copy_from_slice(b); self.plugin_midi.clip(track, bytes, weight); }
             }

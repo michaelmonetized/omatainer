@@ -416,6 +416,9 @@ fn handle_channel_value(
     // Live MIDI notes onto the selected track when no map consumed a note
     // (generic class-compliant keyboards / Akai MPK keys).
     if allow_live && !matched && map.unmapped_notes == UnmappedNotes::Live {
+        if super::mpe::valid(msg) {
+            if cmd.send(Command::MidiExpression { source, bytes: *msg, length: 3 }).is_err() { cmd.release_midi_source(source); }
+        }
         if kind_hi == 0x90 && d2 > 0 {
             let _ = cmd.send(Command::LiveNoteOn {
                 source,

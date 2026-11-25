@@ -47,6 +47,9 @@ fn fixture() -> (
             pending_midi: [Midi::default(); 512],
             pending_midi_count: 0,
             held_notes: [[false;128];16],
+            held_expression: [None;256],
+            pending_expression: [Expression::default();512],
+            pending_expression_count: 0,
             pending_parameters: [Parameter::default(); 512],
             pending_parameter_count: 0,
             control,
@@ -94,6 +97,35 @@ fn fixed_bridge_delay_and_first_sample_events_are_allocation_free() {
         endpoint.control.latency(),
         BLOCK as u32 * BRIDGE_BLOCKS as u32
     );
+}
+
+#[test]
+fn independent_plugin_events_keep_offsets_release_ids_and_share_the_original_bound() {
+    use crate::plugin_host::expression::{Event,Values};
+    let (mut endpoint,mut requests,mut responses)=fixture();
+    assert_eq!(endpoint.control.class.note_expression,None,"An old cached class has unknown expression support");
+    assert!(!endpoint.expression(Event::On {id:1,pitch:60,velocity:100,values:Values {pitch:0.0,pressure:0,timbre:64}}));
+    Arc::get_mut(&mut endpoint.control.class).unwrap().note_expression=Some(true);
+    let counts=crate::engine::test_alloc::measure(|| {
+        for sample in 0..BLOCK*4 {
+            if sample==3 { assert!(endpoint.expression(Event::On {id:1,pitch:60,velocity:100,values:Values {pitch:12.0,pressure:44,timbre:91}})); }
+            if sample==17 { assert!(endpoint.expression(Event::On {id:2,pitch:60,velocity:100,values:Values {pitch:-12.0,pressure:99,timbre:31}})); }
+            if sample==31 { endpoint.release_notes(); }
+            endpoint.tick([0.0;MAX_CHANNELS],Context::default());
+            if let Ok(mut packet)=requests.pop() {
+                if packet.sequence==0 {
+                    assert_eq!(packet.expression_count,4);
+                    assert_eq!(std::array::from_fn::<_,4,_>(|index|packet.expression[index].offset),[3,17,31,31]);
+                    assert_eq!(packet.expression[2].event,Some(Event::Off {id:1,pitch:60}));
+                    assert_eq!(packet.expression[3].event,Some(Event::Off {id:2,pitch:60}));
+                }
+                packet.output=packet.input;assert!(responses.push(packet).is_ok());
+            }
+        }
+        for _ in 0..512 { assert!(endpoint.midi([0xb0,7,100])); }
+        assert!(!endpoint.expression(Event::Values {id:1,values:Values {pitch:0.0,pressure:0,timbre:64}}));
+    });
+    assert_eq!(counts,crate::engine::test_alloc::Counts::default());
 }
 #[test]
 fn late_workers_and_event_bounds_never_grow_callback_storage() {

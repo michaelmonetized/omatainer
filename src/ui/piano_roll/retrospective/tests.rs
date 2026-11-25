@@ -226,6 +226,39 @@ fn actual_monitored_input_recording_off_capture_range_preview_edit_apply_undo_re
     std::fs::remove_file(file).unwrap();
     eprintln!("MIDI_RETROSPECTIVE_NATIVE {{\"actual_egui_accesskit\":true,\"normal_monitored_input_handoff\":true,\"recording_off\":true,\"editable_capture\":true,\"release_and_expression_retained\":true,\"one_undo_redo\":true,\"native_save_reopen\":true,\"private_history_not_saved\":true,\"physical_devices_opened\":false}}");
 }
+
+#[test]
+fn configured_mpe_input_capture_opens_real_per_note_controls_and_replays_distinct_voices() {
+    let (mut gui,mut input)=fixture();
+    for bytes in [[0xb0,101,0],[0xb0,100,6],[0xb0,6,4],[0xe1,0,96],[0xe2,0,32]] {input.push(&bytes);}
+    gui.frame(vec![]);
+    gui.app.engine.cmd.retrospective().configure(Config {enabled:true,seconds:30,events:1024},Instant::now()).unwrap();
+    for bytes in [&[0x91,60,100][..],&[0x92,60,80][..],&[0xd1,91][..],&[0xb2,74,24][..],&[0x81,60,37][..],&[0x82,60,21][..]] {input.push(bytes);std::thread::sleep(Duration::from_millis(3));}
+    gui.frame(vec![]);preview(&mut gui);
+    let source=gui.app.piano_roll.recent.prepared.as_ref().unwrap().content.clone();
+    assert_eq!(source.notes.len(),2);
+    let id=source.notes[0].id;
+    gui.click("Recent MIDI capture: Open captured MIDI draft");
+    wait(&mut gui,|g|g.app.piano_roll.recent.transfer.is_none()&&!g.app.piano_roll.busy());
+    gui.apply();
+    assert!(gui.rt.tracks[2].clips[7].lanes.as_ref().unwrap().expression.is_some());
+    gui.click("MIDI piano roll: Cancel / close MIDI editor");
+    gui.click("Sampler: Edit selected MIDI clip");gui.settle();
+    gui.app.piano_roll.draft.as_mut().unwrap().selected.insert(id);
+    gui.click_text("Per-note expression");
+    gui.click("MIDI piano roll: Inspect selected note expression");gui.settle();
+    assert!(gui.app.piano_roll.error.is_none(),"{:?}",gui.app.piano_roll.error);
+    let draft=gui.app.piano_roll.draft.as_ref().unwrap();
+    let content=draft.controls.content(&draft.notes);
+    let envelope=crate::engine::mpe::envelope::inspect(&content,id,&AtomicBool::new(false)).unwrap();
+    assert_eq!(envelope.note,id);assert_eq!(envelope.initial.pitch,24.0);
+    assert!(envelope.points.iter().any(|point|point.dimension==crate::engine::mpe::envelope::Dimension::Pressure&&point.value==91.0));
+    let lanes=gui.rt.tracks[2].clips[7].lanes.clone().unwrap();
+    let state=lanes.expression.as_ref().unwrap().before(lanes.end_tick as f64,&lanes.state);
+    assert_eq!(state.member(1).pitch,24.0);assert_eq!(state.member(2).pitch,-24.0);
+    assert_eq!(gui.rt.tracks[2].clips[7].notes[0].id,id);
+    assert!(!gui.app.snap.recording);
+}
 #[test]
 fn actual_nonempty_target_refusal_clear_and_disconnect_preserve_existing_music_and_discard_private_review(
 ) {

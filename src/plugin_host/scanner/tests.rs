@@ -20,12 +20,24 @@ fn frame_rejects_nonfinite_audio_and_out_of_block_events() {
         signature: [4, 4],
         parameters: vec![],
         midi: vec![],
+        expression: vec![],
     };
     assert!(f.validate().is_ok());
     f.midi.push((256, [0x90, 60, 127]));
     assert!(f.validate().is_err());
     f.midi.clear();
     f.inputs[0][0][1] = f32::NAN;
+    assert!(f.validate().is_err());
+    f.inputs[0][0][1] = 0.0;
+    use crate::plugin_host::expression::{Event,Values};
+    f.expression.push((0,Event::On {id:1,pitch:60,velocity:100,values:Values {pitch:24.0,pressure:91,timbre:64}}));
+    assert!(f.validate().is_ok());
+    f.expression[0].0=256;
+    assert!(f.validate().is_err());
+    f.expression[0].0=0;
+    f.expression[0].1=Event::Values {id:-1,values:Values {pitch:0.0,pressure:0,timbre:64}};
+    assert!(f.validate().is_err());
+    f.expression[0].1=Event::Values {id:1,values:Values {pitch:f32::NAN,pressure:0,timbre:64}};
     assert!(f.validate().is_err());
 }
 
@@ -141,6 +153,7 @@ fn frame(class: &Class) -> Frame {
         signature: [4, 4],
         parameters: vec![],
         midi: vec![],
+        expression: vec![],
     }
 }
 fn outputs(p: &mut process::Process, f: Frame) -> Vec<Vec<Vec<f32>>> {

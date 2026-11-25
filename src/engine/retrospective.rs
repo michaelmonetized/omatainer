@@ -58,6 +58,20 @@ struct State {
     events: VecDeque<Event>,
     dropped: u64,
     lost_before: Option<Instant>,
+    setup: Vec<Setup>,
+}
+#[derive(Clone, Copy, Debug)]
+struct Setup { track: u8, source: u64, state: super::mpe::State }
+const SOURCES: usize = 4096;
+impl State {
+    fn evict(&mut self) -> Option<Event> {
+        let event = self.events.pop_front()?;
+        if let Some(setup) = self.setup.iter_mut().find(|setup| setup.source == event.source && setup.track == event.track) {
+            if event.length == 0 { setup.state = super::mpe::State::default(); }
+            else { setup.state.input(&event.bytes[..usize::from(event.length)]); }
+        }
+        Some(event)
+    }
 }
 pub(crate) struct Shared {
     enabled: AtomicBool,
@@ -77,6 +91,7 @@ impl Default for Shared {
                 events: VecDeque::new(),
                 dropped: 0,
                 lost_before: None,
+                setup: Vec::with_capacity(SOURCES),
             }),
         }
     }
@@ -91,6 +106,7 @@ pub(crate) struct Snapshot {
     pub events: Vec<Event>,
     pub dropped: u64,
     pub lost_before: Option<Instant>,
+    setup: Vec<Setup>,
 }
 impl Shared {
     /// Change opt-in MIDI history settings and clear private input.
@@ -118,6 +134,7 @@ impl Shared {
             events,
             dropped: 0,
             lost_before: None,
+            setup: Vec::with_capacity(SOURCES),
         };
         self.enabled.store(config.enabled, Ordering::Release);
         Ok(epoch)
@@ -133,6 +150,8 @@ impl Shared {
             event.length = 0;
         }
         state.events.clear();
+        for setup in &mut state.setup { *setup = Setup { track: 0, source: 0, state: super::mpe::State::default() }; }
+        state.setup.clear();
         state.origin = now;
         state.watermark = now;
         state.lost_before = None;
@@ -150,6 +169,11 @@ impl Shared {
     /// Retain monitored channel data outside the audio renderer.
     /// Takes a stable source, destination track, original timestamp and bounded wire frame; returns whether it entered the opt-in ring without allocating.
     pub(crate) fn observe(&self, track: u8, source: u64, at: Instant, bytes: &[u8]) -> bool {
+        self.observe_with_setup(track,source,at,bytes,None)
+    }
+    /// Capture a complete expression performance after its controller was configured.
+    /// Takes the original frame and the input worker's preceding zone state; preserves setup at the history boundary without retaining input while capture is disabled.
+    pub(crate) fn observe_with_setup(&self, track: u8, source: u64, at: Instant, bytes: &[u8], initial: Option<&super::mpe::State>) -> bool {
         if !self.enabled.load(Ordering::Acquire)
             || source == 0
             || usize::from(track) >= super::session::MAX_TRACKS
@@ -171,6 +195,14 @@ impl Shared {
         if !state.config.enabled || at < state.origin {
             return false;
         }
+        if !state.setup.iter().any(|setup| setup.source == source && setup.track == track) {
+            if state.setup.len() == SOURCES {
+                state.dropped = state.dropped.saturating_add(1);
+                state.lost_before = Some(state.lost_before.map_or(at, |old| old.max(at)));
+                return false;
+            }
+            state.setup.push(Setup {track,source,state:initial.copied().unwrap_or_default()});
+        }
         state.watermark = state.watermark.max(at);
         let cutoff = state
             .watermark
@@ -182,10 +214,10 @@ impl Shared {
             return false;
         }
         while state.events.front().is_some_and(|event| event.at < cutoff) {
-            state.events.pop_front();
+            state.evict();
         }
         if state.events.len() == state.config.events as usize {
-            let old = state.events.pop_front().unwrap();
+            let old = state.evict().unwrap();
             state.lost_before = Some(state.lost_before.map_or(old.at, |at| at.max(old.at)));
             state.dropped = state.dropped.saturating_add(1);
         }
@@ -229,7 +261,7 @@ impl Shared {
                 continue;
             }
             if state.events.len() == state.config.events as usize {
-                let old = state.events.pop_front().unwrap();
+                let old = state.evict().unwrap();
                 state.lost_before = Some(state.lost_before.map_or(old.at, |at| at.max(old.at)));
                 state.dropped = state.dropped.saturating_add(1);
             }
@@ -262,6 +294,13 @@ impl Shared {
             .filter(|e| e.at >= cutoff && e.at <= now)
             .collect();
         events.sort_by_key(|e| (e.at, e.order));
+        let mut setup = state.setup.clone();
+        for event in state.events.iter().filter(|event| event.at < cutoff) {
+            if let Some(setup) = setup.iter_mut().find(|setup|setup.source == event.source && setup.track == event.track) {
+                if event.length == 0 {setup.state = super::mpe::State::default();}
+                else {setup.state.input(&event.bytes[..usize::from(event.length)]);}
+            }
+        }
         Snapshot {
             config: state.config,
             epoch: state.epoch,
@@ -270,6 +309,7 @@ impl Shared {
             events,
             dropped: state.dropped,
             lost_before: state.lost_before,
+            setup,
         }
     }
 }
@@ -393,6 +433,11 @@ pub(crate) fn prepare(
         }
     }
     let mut messages = Vec::new();
+    if let Some(setup) = snapshot.setup.iter().find(|setup|setup.source == choice.source && setup.track == choice.track) {
+        if (0..16).any(|channel| setup.state.role(channel).is_some()) {
+            setup.state.setup(|bytes,length| {serial += 1;messages.push(Message {tick:0,order:serial,bytes,length});});
+        }
+    }
     for event in &controls {
         serial += 1;
         messages.push(Message {
